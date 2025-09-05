@@ -1,5 +1,5 @@
 const Spinner = {
-    showLoadingSpinner() {
+    showSpinner() {
         try {
             const existingSpinner = document.getElementById('gobo-loading-spinner-container');
             if (existingSpinner) existingSpinner.remove();
@@ -13,7 +13,7 @@ const Spinner = {
             console.error('Failed to show loading spinner:', error.message);
         }
     },
-    hideLoadingSpinner() {
+    hideSpinner() {
         try {
             const spinnerContainer = document.getElementById('gobo-loading-spinner-container');
             if (spinnerContainer) {

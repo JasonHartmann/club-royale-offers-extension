@@ -39,12 +39,32 @@ const SortUtils = {
                     bValue = b.sailing.itineraryDescription || b.sailing.sailingType?.name || '';
                     break;
                 case 'category':
-                    aValue = a.sailing.roomType || '';
-                    bValue = b.sailing.roomType || '';
+                    let aRoom = a.sailing.roomType;
+                    if (a.sailing.isGTY) {
+                        aRoom = aRoom ? aRoom + ' GTY' : 'GTY';
+                    }
+                    let bRoom = b.sailing.roomType;
+                    if (b.sailing.isGTY) {
+                        bRoom = bRoom ? bRoom + ' GTY' : 'GTY';
+                    }
+                    aValue = aRoom || '';
+                    bValue = bRoom || '';
                     break;
-                case 'gobo':
-                    aValue = a.sailing.isGOBO ? 'Yes' : 'No';
-                    bValue = b.sailing.isGOBO ? 'Yes' : 'No';
+                case 'quality':
+                    aValue = a.sailing.isGOBO ? '2 Guests' : '1 Guest';
+                    if (a.sailing.isDOLLARSOFF && a.sailing.DOLLARSOFF_AMT > 0) {
+                        aValue += ` + $${a.sailing.DOLLARSOFF_AMT} off`;
+                    }
+                    if (a.sailing.isFREEPLAY && a.sailing.FREEPLAY_AMT > 0) {
+                        aValue += ` + $${a.sailing.FREEPLAY_AMT} freeplay`;
+                    }
+                    bValue = b.sailing.isGOBO ? '2 Guests' : '1 Guest';
+                    if (b.sailing.isDOLLARSOFF && b.sailing.DOLLARSOFF_AMT > 0) {
+                        bValue += ` + $${b.sailing.DOLLARSOFF_AMT} off`;
+                    }
+                    if (b.sailing.isFREEPLAY && b.sailing.FREEPLAY_AMT > 0) {
+                        bValue += ` + $${b.sailing.FREEPLAY_AMT} freeplay`;
+                    }
                     break;
             }
             if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;

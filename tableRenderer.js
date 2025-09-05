@@ -40,7 +40,7 @@ const TableRenderer = {
                     { key: 'departurePort', label: 'Departure Port' },
                     { key: 'itinerary', label: 'Itinerary' },
                     { key: 'category', label: 'Category' },
-                    { key: 'gobo', label: 'GOBO' }
+                    { key: 'quality', label: 'Quality' }
                 ],
                 currentSortColumn: null,
                 currentSortOrder: 'original',

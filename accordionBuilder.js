@@ -29,10 +29,24 @@ const AccordionBuilder = {
                     groupKey = sailing.itineraryDescription || sailing.sailingType?.name || '-';
                     break;
                 case 'category':
-                    groupKey = sailing.roomType || '-';
+                    let room = sailing.roomType;
+                    if (sailing.isGTY) {
+                        if (room) {
+                            room += ' GTY';
+                        } else {
+                            room = 'GTY';
+                        }
+                    }
+                    groupKey = room || '-';
                     break;
-                case 'gobo':
-                    groupKey = sailing.isGOBO ? 'Yes' : 'No';
+                case 'quality':
+                    groupKey = sailing.isGOBO ? '2 Guests' : '1 Guest';
+                    if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
+                        groupKey += ` + $${sailing.DOLLARSOFF_AMT} off`;
+                    }
+                    if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
+                        groupKey += ` + $${sailing.FREEPLAY_AMT} freeplay`;
+                    }
                     break;
             }
             if (!groupedData[groupKey]) groupedData[groupKey] = [];
@@ -96,6 +110,21 @@ const AccordionBuilder = {
             groupRows.forEach(({ offer, sailing }) => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
+                let qualityText = sailing.isGOBO ? '2 Guests' : '1 Guest';
+                if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
+                    qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
+                }
+                if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
+                    qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
+                }
+                let room = sailing.roomType;
+                if (sailing.isGTY) {
+                    if (room) {
+                        room += ' GTY';
+                    } else {
+                        room = 'GTY';
+                    }
+                }
                 row.innerHTML = `
                     <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
                     <td class="border p-2">${new Date(offer.campaignOffer?.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
@@ -105,12 +134,8 @@ const AccordionBuilder = {
                     <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
                     <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
                     <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
-                    <td class="border p-2">${sailing.roomType || '-'}</td>
-                    <td class="border p-2">
-                        <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
-                            ${sailing.isGOBO ? 'Yes' : 'No'}
-                        </span>
-                    </td>
+                    <td class="border p-2">${room || '-'}</td>
+                    <td class="border p-2">${qualityText}</td>
                 `;
                 groupTbody.appendChild(row);
             });
