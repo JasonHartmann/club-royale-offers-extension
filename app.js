@@ -1,0 +1,24 @@
+(function() {
+    console.log('Club Royale GOBO Indicator extension loaded on:', window.location.href);
+
+    // Global App object to coordinate modules
+    window.App = {
+        DOMUtils,
+        Styles,
+        ButtonManager,
+        ErrorHandler,
+        ApiClient,
+        Spinner,
+        Modal,
+        TableBuilder,
+        AccordionBuilder,
+        SortUtils,
+        TableRenderer,
+        init() {
+            this.DOMUtils.waitForDom();
+        }
+    };
+
+    // Start the application
+    App.init();
+})();

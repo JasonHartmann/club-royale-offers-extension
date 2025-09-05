@@ -14,7 +14,20 @@
   "content_scripts": [
     {
       "matches": ["https://www.royalcaribbean.com/club-royale/offers*"],
-      "js": ["content.js"],
+      "js": [
+        "domUtils.js",
+        "styles.js",
+        "buttonManager.js",
+        "errorHandler.js",
+        "apiClient.js",
+        "spinner.js",
+        "modal.js",
+        "tableBuilder.js",
+        "accordionBuilder.js",
+        "sortUtils.js",
+        "tableRenderer.js",
+        "app.js"
+      ],
       "run_at": "document_start"
     }
   ],
