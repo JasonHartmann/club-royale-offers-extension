@@ -21,7 +21,7 @@ const Styles = {
                 .table-scroll-container {
                     flex: 1 1 auto;
                     overflow-y: auto;
-                    max-height: calc(90vh - 60px); /* Account for footer height */
+                    max-height: calc(90vh - 60px);
                     padding: 8px;
                 }
                 .table-scroll-container::-webkit-scrollbar {
@@ -105,7 +105,7 @@ const Styles = {
                     width: 100%;
                 }
                 .table-auto th, .table-auto td {
-                    width: 11.11%; /* Equal width for 9 columns */
+                    width: 11.11%;
                     box-sizing: border-box;
                 }
                 .close-button {
@@ -118,6 +118,36 @@ const Styles = {
                 }
                 .close-button:hover {
                     background-color: #b91c1c;
+                }
+                .breadcrumb-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px;
+                    margin-bottom: 8px;
+                }
+                .breadcrumb-link {
+                    color: #2563eb;
+                    text-decoration: underline;
+                    cursor: pointer;
+                }
+                .breadcrumb-link:hover {
+                    color: #1e40af;
+                }
+                .breadcrumb-arrow {
+                    display: none;
+                }
+                .accordion-view .breadcrumb-arrow {
+                    display: inline;
+                }
+                .breadcrumb-arrow::after {
+                    content: '→';
+                    margin-left: 8px;
+                    margin-right: 8px;
+                }
+                .group-title {
+                    font-weight: 600;
+                    color: #1f2937;
                 }
             `;
             document.head.appendChild(style);

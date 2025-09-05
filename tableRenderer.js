@@ -31,10 +31,8 @@ const TableRenderer = {
             accordionContainer.className = 'w-full';
 
             const backButton = document.createElement('button');
-            backButton.className = 'bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg hover:bg-blue-700 mb-4';
-            backButton.textContent = 'Back to Table';
             backButton.style.display = 'none';
-            backButton.addEventListener('click', () => {
+            backButton.onclick = () => {
                 console.log('Switching back to table view');
                 this.updateView({
                     sortedOffers,
@@ -53,7 +51,7 @@ const TableRenderer = {
                     container,
                     backdrop
                 });
-            });
+            };
 
             const { originalOffers, sortedOffers } = this.prepareOfferData(data);
             let currentSortColumn = null;
@@ -104,7 +102,16 @@ const TableRenderer = {
     updateView({ sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, groupSortStates, table, thead, tbody, accordionContainer, backButton, headers, container, backdrop }) {
         table.style.display = viewMode === 'table' ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
-        backButton.style.display = viewMode === 'accordion' ? 'block' : 'none';
+
+        const breadcrumbContainer = document.querySelector('.breadcrumb-container');
+        if (breadcrumbContainer) {
+            breadcrumbContainer.classList.toggle('accordion-view', viewMode === 'accordion');
+        }
+
+        const groupTitle = document.getElementById('group-title');
+        if (groupTitle) {
+            groupTitle.textContent = viewMode === 'accordion' && currentGroupColumn ? headers.find(h => h.key === currentGroupColumn)?.label || '' : '';
+        }
 
         if (viewMode === 'table') {
             if (currentSortOrder !== 'original') {
@@ -113,7 +120,7 @@ const TableRenderer = {
                 sortedOffers = [...originalOffers];
             }
             App.TableBuilder.renderTable(tbody, sortedOffers);
-            table.appendChild(thead); // Ensure headers are reattached
+            table.appendChild(thead);
         } else {
             const groupedData = App.AccordionBuilder.createGroupedData(sortedOffers, currentGroupColumn);
             App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, headers, sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, table, thead, tbody, accordionContainer, backButton, container, backdrop);

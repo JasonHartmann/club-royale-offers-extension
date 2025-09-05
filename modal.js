@@ -23,13 +23,28 @@ const Modal = {
         closeButton.textContent = 'Close';
         closeButton.addEventListener('click', () => this.closeModal(container, backdrop, overlappingElements));
 
+        const breadcrumbContainer = document.createElement('div');
+        breadcrumbContainer.className = 'breadcrumb-container';
+        const allOffersLink = document.createElement('span');
+        allOffersLink.className = 'breadcrumb-link';
+        allOffersLink.textContent = 'All Offers';
+        allOffersLink.addEventListener('click', backButton.onclick);
+        const arrow = document.createElement('span');
+        arrow.className = 'breadcrumb-arrow';
+        const groupTitle = document.createElement('span');
+        groupTitle.id = 'group-title';
+        groupTitle.className = 'group-title';
+        breadcrumbContainer.appendChild(allOffersLink);
+        breadcrumbContainer.appendChild(arrow);
+        breadcrumbContainer.appendChild(groupTitle);
+
         backdrop.addEventListener('click', () => this.closeModal(container, backdrop, overlappingElements));
 
         document.addEventListener('keydown', this.handleEscapeKey);
 
         table.appendChild(tbody);
+        scrollContainer.appendChild(breadcrumbContainer);
         scrollContainer.appendChild(table);
-        scrollContainer.appendChild(backButton);
         scrollContainer.appendChild(accordionContainer);
         footerContainer.appendChild(closeButton);
         container.appendChild(scrollContainer);
@@ -37,7 +52,6 @@ const Modal = {
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
 
-        // Log scroll events for debugging
         scrollContainer.addEventListener('scroll', () => {
             console.log('Table scrolled, scrollTop:', scrollContainer.scrollTop);
         });
