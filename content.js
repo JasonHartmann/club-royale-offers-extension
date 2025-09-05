@@ -38,7 +38,7 @@
             document.head.appendChild(tailwindLink);
             console.log('Tailwind CSS injected');
 
-            // Inject custom scrollbar and spinner styles
+            // Inject custom scrollbar, spinner, and sort arrow styles
             const style = document.createElement('style');
             style.textContent = `
                 #gobo-offers-table::-webkit-scrollbar {
@@ -66,6 +66,14 @@
                 @keyframes spin {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
+                }
+                .sort-asc::after {
+                    content: ' ↑';
+                    display: inline;
+                }
+                .sort-desc::after {
+                    content: ' ↓';
+                    display: inline;
                 }
             `;
             document.head.appendChild(style);
@@ -262,7 +270,6 @@
             container.remove();
             backdrop.remove();
             document.body.style.overflow = '';
-            // Note: overlappingElements restoration skipped as it's error case
             document.removeEventListener('keydown', handleEscapeKey);
         }
     }
@@ -325,20 +332,138 @@
                 }
             });
 
+            // Prepare data for sorting
+            let originalOffers = [];
+            let sortedOffers = [];
+            if (data.offers && data.offers.length > 0) {
+                data.offers.forEach(offer => {
+                    if (offer.campaignOffer && offer.campaignOffer.sailings) {
+                        offer.campaignOffer.sailings.forEach(sailing => {
+                            originalOffers.push({ offer, sailing });
+                        });
+                    }
+                });
+                sortedOffers = [...originalOffers];
+            }
+
+            let currentSortColumn = null;
+            let currentSortOrder = 'original'; // 'asc', 'desc', 'original'
+
             // Table header
             const thead = document.createElement('thead');
             thead.className = 'sticky top-0 bg-white z-[10]';
-            thead.innerHTML = `
-                <tr class="bg-gray-100">
-                    <th class="border p-2 text-left font-semibold">Offer Code</th>
-                    <th class="border p-2 text-left font-semibold">Offer Name</th>
-                    <th class="border p-2 text-left font-semibold">Ship</th>
-                    <th class="border p-2 text-left font-semibold">Sail Date</th>
-                    <th class="border p-2 text-left font-semibold">Departure Port</th>
-                    <th class="border p-2 text-left font-semibold">Itinerary</th>
-                    <th class="border p-2 text-left font-semibold">GOBO</th>
-                </tr>
-            `;
+            const headers = [
+                { key: 'offerCode', label: 'Offer Code' },
+                { key: 'offerName', label: 'Offer Name' },
+                { key: 'ship', label: 'Ship' },
+                { key: 'sailDate', label: 'Sail Date' },
+                { key: 'departurePort', label: 'Departure Port' },
+                { key: 'itinerary', label: 'Itinerary' },
+                { key: 'gobo', label: 'GOBO' }
+            ];
+
+            const tr = document.createElement('tr');
+            tr.className = 'bg-gray-100';
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.className = 'border p-2 text-left font-semibold cursor-pointer';
+                th.dataset.key = header.key;
+                th.textContent = header.label;
+                th.addEventListener('click', () => {
+                    console.log(`Sorting by ${header.key}`);
+                    if (currentSortColumn === header.key) {
+                        currentSortOrder = currentSortOrder === 'asc' ? 'desc' : currentSortOrder === 'desc' ? 'original' : 'asc';
+                    } else {
+                        currentSortColumn = header.key;
+                        currentSortOrder = 'asc';
+                    }
+                    updateTableSort();
+                });
+                tr.appendChild(th);
+            });
+            thead.appendChild(tr);
+
+            // Update table sort
+            function updateTableSort() {
+                // Update header styles
+                headers.forEach(header => {
+                    const th = thead.querySelector(`th[data-key="${header.key}"]`);
+                    th.classList.remove('sort-asc', 'sort-desc');
+                    if (header.key === currentSortColumn) {
+                        if (currentSortOrder === 'asc') th.classList.add('sort-asc');
+                        else if (currentSortOrder === 'desc') th.classList.add('sort-desc');
+                    }
+                });
+
+                // Sort data
+                if (currentSortOrder === 'original') {
+                    sortedOffers = [...originalOffers];
+                } else {
+                    sortedOffers.sort((a, b) => {
+                        let aValue, bValue;
+                        switch (currentSortColumn) {
+                            case 'offerCode':
+                                aValue = a.offer.campaignOffer?.offerCode || '';
+                                bValue = b.offer.campaignOffer?.offerCode || '';
+                                break;
+                            case 'offerName':
+                                aValue = a.offer.campaignOffer?.name || '';
+                                bValue = b.offer.campaignOffer?.name || '';
+                                break;
+                            case 'ship':
+                                aValue = a.sailing.shipName || '';
+                                bValue = b.sailing.shipName || '';
+                                break;
+                            case 'sailDate':
+                                aValue = new Date(a.sailing.sailDate).getTime();
+                                bValue = new Date(b.sailing.sailDate).getTime();
+                                break;
+                            case 'departurePort':
+                                aValue = a.sailing.departurePort?.name || '';
+                                bValue = b.sailing.departurePort?.name || '';
+                                break;
+                            case 'itinerary':
+                                aValue = a.sailing.itineraryDescription || a.sailing.sailingType?.name || '';
+                                bValue = b.sailing.itineraryDescription || b.sailing.sailingType?.name || '';
+                                break;
+                            case 'gobo':
+                                aValue = a.sailing.isGOBO ? 'Yes' : 'No';
+                                bValue = b.sailing.isGOBO ? 'Yes' : 'No';
+                                break;
+                        }
+                        if (aValue < bValue) return currentSortOrder === 'asc' ? -1 : 1;
+                        if (aValue > bValue) return currentSortOrder === 'asc' ? 1 : -1;
+                        return 0;
+                    });
+                }
+
+                // Update table body
+                tbody.innerHTML = '';
+                if (sortedOffers.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td colspan="7" class="border p-2 text-center">No offers available</td>`;
+                    tbody.appendChild(row);
+                } else {
+                    sortedOffers.forEach(({ offer, sailing }) => {
+                        const row = document.createElement('tr');
+                        row.className = 'hover:bg-gray-50';
+                        row.innerHTML = `
+                            <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
+                            <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
+                            <td class="border p-2">${sailing.shipName || '-'}</td>
+                            <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</td>
+                            <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
+                            <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                            <td class="border p-2">
+                                <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
+                                    ${sailing.isGOBO ? 'Yes' : 'No'}
+                                </span>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            }
 
             // Table body
             const tbody = document.createElement('tbody');
@@ -347,27 +472,23 @@
                 row.innerHTML = `<td colspan="7" class="border p-2 text-center">No offers available</td>`;
                 tbody.appendChild(row);
             } else {
-                data.offers.forEach(offer => {
-                    if (offer.campaignOffer && offer.campaignOffer.sailings) {
-                        offer.campaignOffer.sailings.forEach(sailing => {
-                            const row = document.createElement('tr');
-                            row.className = 'hover:bg-gray-50';
-                            row.innerHTML = `
-                                <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                                <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
-                                <td class="border p-2">${sailing.shipName || '-'}</td>
-                                <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</td>
-                                <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-                                <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
-                                <td class="border p-2">
-                                    <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
-                                        ${sailing.isGOBO ? 'Yes' : 'No'}
-                                    </span>
-                                </td>
-                            `;
-                            tbody.appendChild(row);
-                        });
-                    }
+                sortedOffers.forEach(({ offer, sailing }) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
+                        <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
+                        <td class="border p-2">${sailing.shipName || '-'}</td>
+                        <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}</td>
+                        <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
+                        <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                        <td class="border p-2">
+                            <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
+                                ${sailing.isGOBO ? 'Yes' : 'No'}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
                 });
             }
 
