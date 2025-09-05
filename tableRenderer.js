@@ -109,10 +109,16 @@ const TableRenderer = {
             } else {
                 state.sortedOffers = [...originalOffers];
             }
-            App.TableBuilder.renderTable(tbody, state.sortedOffers);
+            App.TableBuilder.renderTable(tbody, state);
             table.appendChild(thead);
         } else {
-            const groupedData = App.AccordionBuilder.createGroupedData(sortedOffers, state.currentGroupColumn);
+            // Always sort before grouping in accordion view
+            if (currentSortOrder !== 'original') {
+                state.sortedOffers = App.SortUtils.sortOffers(sortedOffers, currentSortColumn, currentSortOrder);
+            } else {
+                state.sortedOffers = [...originalOffers];
+            }
+            const groupedData = App.AccordionBuilder.createGroupedData(state.sortedOffers, state.currentGroupColumn);
             App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, state);
         }
     }

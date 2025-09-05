@@ -40,7 +40,7 @@ const AccordionBuilder = {
                     groupKey = room || '-';
                     break;
                 case 'quality':
-                    groupKey = sailing.isGOBO ? '2 Guests' : '1 Guest';
+                    groupKey = sailing.isGOBO ? '1 Guest' : '2 Guests';
                     if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
                         groupKey += ` + $${sailing.DOLLARSOFF_AMT} off`;
                     }
@@ -110,7 +110,7 @@ const AccordionBuilder = {
             groupRows.forEach(({ offer, sailing }) => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
-                let qualityText = sailing.isGOBO ? '2 Guests' : '1 Guest';
+                let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
                 if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
                     qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
                 }

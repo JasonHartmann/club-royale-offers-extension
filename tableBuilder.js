@@ -30,32 +30,31 @@ const TableBuilder = {
             });
             th.querySelector('.group-icon').addEventListener('click', () => {
                 console.log(`Grouping by ${header.key}`);
+                // Force sort on this column to Ascending before grouping
+                state.currentSortColumn = header.key;
+                state.currentSortOrder = 'asc';
                 state.currentGroupColumn = header.key;
                 state.viewMode = 'accordion';
                 state.groupSortStates = {};
                 state.openGroups = new Set();
                 App.TableRenderer.updateView(state);
             });
-            if (header.key === currentSortColumn && viewMode === 'table') {
-                if (currentSortOrder === 'asc') th.classList.add('sort-asc');
-                else if (currentSortOrder === 'desc') th.classList.add('sort-desc');
-            }
             tr.appendChild(th);
         });
         thead.appendChild(tr);
         return thead;
     },
-    renderTable(tbody, sortedOffers) {
+    renderTable(tbody, state) {
         tbody.innerHTML = '';
-        if (sortedOffers.length === 0) {
+        if (state.sortedOffers.length === 0) {
             const row = document.createElement('tr');
             row.innerHTML = `<td colspan="10" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
         } else {
-            sortedOffers.forEach(({ offer, sailing }) => {
+            state.sortedOffers.forEach(({ offer, sailing }) => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
-                let qualityText = sailing.isGOBO ? '2 Guests' : '1 Guest';
+                let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
                 if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
                     qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
                 }
@@ -85,5 +84,14 @@ const TableBuilder = {
                 tbody.appendChild(row);
             });
         }
+
+        state.headers.forEach(header => {
+            const th = state.thead.querySelector(`th[data-key="${header.key}"]`);
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (state.currentSortColumn === header.key) {
+                if (state.currentSortOrder === 'asc') th.classList.add('sort-asc');
+                else if (state.currentSortOrder === 'desc') th.classList.add('sort-desc');
+            }
+        });
     }
 };

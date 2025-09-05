@@ -51,14 +51,14 @@ const SortUtils = {
                     bValue = bRoom || '';
                     break;
                 case 'quality':
-                    aValue = a.sailing.isGOBO ? '2 Guests' : '1 Guest';
+                    aValue = a.sailing.isGOBO ? '1 Guest' : '2 Guests';
                     if (a.sailing.isDOLLARSOFF && a.sailing.DOLLARSOFF_AMT > 0) {
                         aValue += ` + $${a.sailing.DOLLARSOFF_AMT} off`;
                     }
                     if (a.sailing.isFREEPLAY && a.sailing.FREEPLAY_AMT > 0) {
                         aValue += ` + $${a.sailing.FREEPLAY_AMT} freeplay`;
                     }
-                    bValue = b.sailing.isGOBO ? '2 Guests' : '1 Guest';
+                    bValue = b.sailing.isGOBO ?  '1 Guest' : '2 Guests';
                     if (b.sailing.isDOLLARSOFF && b.sailing.DOLLARSOFF_AMT > 0) {
                         bValue += ` + $${b.sailing.DOLLARSOFF_AMT} off`;
                     }

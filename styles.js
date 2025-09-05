@@ -119,6 +119,19 @@ const Styles = {
                 .close-button:hover {
                     background-color: #b91c1c;
                 }
+                .export-csv-button {
+                    background-color: #22c55e;
+                    color: white;
+                    font-weight: 600;
+                    padding: 8px 16px;
+                    border-radius: 0.5rem;
+                    cursor: pointer;
+                    margin-right: 12px;
+                    transition: background 0.2s;
+                }
+                .export-csv-button:hover {
+                    background-color: #16a34a;
+                }
                 .breadcrumb-container {
                     display: flex;
                     align-items: center;
