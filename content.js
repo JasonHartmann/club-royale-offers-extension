@@ -96,6 +96,9 @@
                 .accordion-content.open {
                     display: block;
                 }
+                .accordion-table th {
+                    cursor: pointer;
+                }
             `;
             document.head.appendChild(style);
             console.log('Custom styles injected');
@@ -356,6 +359,7 @@
             let currentSortOrder = 'original'; // 'asc', 'desc', 'original'
             let currentGroupColumn = null;
             let viewMode = 'table'; // 'table' or 'accordion'
+            let groupSortStates = {}; // Track sort state for each accordion group
 
             // Table header
             const table = document.createElement('table');
@@ -399,6 +403,7 @@
                     console.log(`Grouping by ${header.key}`);
                     currentGroupColumn = header.key;
                     viewMode = 'accordion';
+                    groupSortStates = {}; // Reset group sort states
                     updateView();
                 });
                 tr.appendChild(th);
@@ -419,6 +424,7 @@
                 console.log('Switching back to table view');
                 viewMode = 'table';
                 currentGroupColumn = null;
+                groupSortStates = {};
                 updateView();
             });
 
@@ -568,41 +574,115 @@
                         const content = document.createElement('div');
                         content.className = 'accordion-content';
                         const groupTable = document.createElement('table');
-                        groupTable.className = 'w-full border-collapse table-auto';
-                        groupTable.innerHTML = `
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border p-2 text-left font-semibold">Offer Code</th>
-                                    <th class="border p-2 text-left font-semibold">Offer Date</th>
-                                    <th class="border p-2 text-left font-semibold">Expiration</th>
-                                    <th class="border p-2 text-left font-semibold">Offer Name</th>
-                                    <th class="border p-2 text-left font-semibold">Ship</th>
-                                    <th class="border p-2 text-left font-semibold">Sail Date</th>
-                                    <th class="border p-2 text-left font-semibold">Departure Port</th>
-                                    <th class="border p-2 text-left font-semibold">Itinerary</th>
-                                    <th class="border p-2 text-left font-semibold">GOBO</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${groupedData[groupKey].map(({ offer, sailing }) => `
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                                        <td class="border p-2">${new Date(offer.campaignOffer?.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
-                                        <td class="border p-2">${new Date(offer.campaignOffer?.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
-                                        <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
-                                        <td class="border p-2">${sailing.shipName || '-'}</td>
-                                        <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
-                                        <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-                                        <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
-                                        <td class="border p-2">
-                                            <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
-                                                ${sailing.isGOBO ? 'Yes' : 'No'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        `;
+                        groupTable.className = 'w-full border-collapse table-auto accordion-table';
+                        groupTable.dataset.groupKey = groupKey;
+
+                        // Accordion table header
+                        const groupThead = document.createElement('thead');
+                        groupThead.className = 'bg-gray-100';
+                        const groupTr = document.createElement('tr');
+                        headers.forEach(header => {
+                            const th = document.createElement('th');
+                            th.className = 'border p-2 text-left font-semibold cursor-pointer';
+                            th.dataset.key = header.key;
+                            th.textContent = header.label;
+                            th.addEventListener('click', () => {
+                                console.log(`Sorting accordion group ${groupKey} by ${header.key}`);
+                                if (!groupSortStates[groupKey]) groupSortStates[groupKey] = { column: null, order: 'original' };
+                                if (groupSortStates[groupKey].column === header.key) {
+                                    groupSortStates[groupKey].order = groupSortStates[groupKey].order === 'asc' ? 'desc' : groupSortStates[groupKey].order === 'desc' ? 'original' : 'asc';
+                                } else {
+                                    groupSortStates[groupKey].column = header.key;
+                                    groupSortStates[groupKey].order = 'asc';
+                                }
+                                updateView();
+                            });
+                            groupTr.appendChild(th);
+                        });
+                        groupThead.appendChild(groupTr);
+
+                        // Accordion table body
+                        const groupTbody = document.createElement('tbody');
+                        let groupRows = [...groupedData[groupKey]];
+                        if (groupSortStates[groupKey] && groupSortStates[groupKey].order !== 'original') {
+                            groupRows.sort((a, b) => {
+                                let aValue, bValue;
+                                switch (groupSortStates[groupKey].column) {
+                                    case 'offerCode':
+                                        aValue = a.offer.campaignOffer?.offerCode || '';
+                                        bValue = b.offer.campaignOffer?.offerCode || '';
+                                        break;
+                                    case 'offerDate':
+                                        aValue = new Date(a.offer.campaignOffer?.startDate).getTime();
+                                        bValue = new Date(b.offer.campaignOffer?.startDate).getTime();
+                                        break;
+                                    case 'expiration':
+                                        aValue = new Date(a.offer.campaignOffer?.reserveByDate).getTime();
+                                        bValue = new Date(b.offer.campaignOffer?.reserveByDate).getTime();
+                                        break;
+                                    case 'offerName':
+                                        aValue = a.offer.campaignOffer?.name || '';
+                                        bValue = b.offer.campaignOffer?.name || '';
+                                        break;
+                                    case 'ship':
+                                        aValue = a.sailing.shipName || '';
+                                        bValue = b.sailing.shipName || '';
+                                        break;
+                                    case 'sailDate':
+                                        aValue = new Date(a.sailing.sailDate).getTime();
+                                        bValue = new Date(b.sailing.sailDate).getTime();
+                                        break;
+                                    case 'departurePort':
+                                        aValue = a.sailing.departurePort?.name || '';
+                                        bValue = b.sailing.departurePort?.name || '';
+                                        break;
+                                    case 'itinerary':
+                                        aValue = a.sailing.itineraryDescription || a.sailing.sailingType?.name || '';
+                                        bValue = b.sailing.itineraryDescription || b.sailing.sailingType?.name || '';
+                                        break;
+                                    case 'gobo':
+                                        aValue = a.sailing.isGOBO ? 'Yes' : 'No';
+                                        bValue = b.sailing.isGOBO ? 'Yes' : 'No';
+                                        break;
+                                }
+                                if (aValue < bValue) return groupSortStates[groupKey].order === 'asc' ? -1 : 1;
+                                if (aValue > bValue) return groupSortStates[groupKey].order === 'asc' ? 1 : -1;
+                                return 0;
+                            });
+                        }
+                        groupRows.forEach(({ offer, sailing }) => {
+                            const row = document.createElement('tr');
+                            row.className = 'hover:bg-gray-50';
+                            row.innerHTML = `
+                                <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
+                                <td class="border p-2">${new Date(offer.campaignOffer?.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
+                                <td class="border p-2">${new Date(offer.campaignOffer?.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
+                                <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
+                                <td class="border p-2">${sailing.shipName || '-'}</td>
+                                <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
+                                <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
+                                <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                                <td class="border p-2">
+                                    <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
+                                        ${sailing.isGOBO ? 'Yes' : 'No'}
+                                    </span>
+                                </td>
+                            `;
+                            groupTbody.appendChild(row);
+                        });
+
+                        // Update accordion sort styles
+                        headers.forEach(header => {
+                            const th = groupThead.querySelector(`th[data-key="${header.key}"]`);
+                            th.classList.remove('sort-asc', 'sort-desc');
+                            if (groupSortStates[groupKey] && groupSortStates[groupKey].column === header.key) {
+                                if (groupSortStates[groupKey].order === 'asc') th.classList.add('sort-asc');
+                                else if (groupSortStates[groupKey].order === 'desc') th.classList.add('sort-desc');
+                            }
+                        });
+
+                        groupTable.appendChild(groupThead);
+                        groupTable.appendChild(groupTbody);
                         content.appendChild(groupTable);
                         accordion.appendChild(header);
                         accordion.appendChild(content);
