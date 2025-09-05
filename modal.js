@@ -2,11 +2,7 @@ const Modal = {
     createModalContainer() {
         const container = document.createElement('div');
         container.id = 'gobo-offers-table';
-        container.className = 'fixed inset-0 m-auto max-w-[90vw] max-h-[90vh] bg-white p-6 rounded-lg shadow-xl overflow-y-auto z-[2147483647]';
-        container.style.cssText = 'width: 90vw; overflow-y: auto !important;';
-        container.addEventListener('scroll', () => {
-            console.log('Table scrolled, scrollTop:', container.scrollTop);
-        });
+        container.className = 'fixed inset-0 m-auto z-[2147483647]';
         return container;
     },
     createBackdrop() {
@@ -17,8 +13,13 @@ const Modal = {
         return backdrop;
     },
     setupModal(container, backdrop, table, tbody, accordionContainer, backButton, overlappingElements) {
+        const scrollContainer = document.createElement('div');
+        scrollContainer.className = 'table-scroll-container';
+        const footerContainer = document.createElement('div');
+        footerContainer.className = 'table-footer-container';
+
         const closeButton = document.createElement('button');
-        closeButton.className = 'absolute top-2 right-2 bg-red-600 text-white font-semibold py-1 px-2 rounded hover:bg-red-700 z-[2147483647]';
+        closeButton.className = 'close-button';
         closeButton.textContent = 'Close';
         closeButton.addEventListener('click', () => this.closeModal(container, backdrop, overlappingElements));
 
@@ -27,12 +28,19 @@ const Modal = {
         document.addEventListener('keydown', this.handleEscapeKey);
 
         table.appendChild(tbody);
-        container.appendChild(backButton);
-        container.appendChild(table);
-        container.appendChild(accordionContainer);
-        container.appendChild(closeButton);
+        scrollContainer.appendChild(table);
+        scrollContainer.appendChild(backButton);
+        scrollContainer.appendChild(accordionContainer);
+        footerContainer.appendChild(closeButton);
+        container.appendChild(scrollContainer);
+        container.appendChild(footerContainer);
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
+
+        // Log scroll events for debugging
+        scrollContainer.addEventListener('scroll', () => {
+            console.log('Table scrolled, scrollTop:', scrollContainer.scrollTop);
+        });
     },
     closeModal(container, backdrop, overlappingElements) {
         container.remove();

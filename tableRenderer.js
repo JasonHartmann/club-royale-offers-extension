@@ -89,7 +89,6 @@ const TableRenderer = {
                 console.log(`Hid ${overlappingElements.length} overlapping elements`);
             }
 
-            table.appendChild(thead);
             App.Modal.setupModal(container, backdrop, table, tbody, accordionContainer, backButton, overlappingElements);
             this.updateView({ sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, groupSortStates, table, thead, tbody, accordionContainer, backButton, headers, container, backdrop });
 
@@ -114,9 +113,10 @@ const TableRenderer = {
                 sortedOffers = [...originalOffers];
             }
             App.TableBuilder.renderTable(tbody, sortedOffers);
+            table.appendChild(thead); // Ensure headers are reattached
         } else {
             const groupedData = App.AccordionBuilder.createGroupedData(sortedOffers, currentGroupColumn);
-            App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, headers, sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, table, thead, tbody, backButton, container, backdrop);
+            App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, headers, sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, table, thead, tbody, accordionContainer, backButton, container, backdrop);
         }
     }
 };

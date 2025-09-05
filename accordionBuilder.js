@@ -61,7 +61,9 @@ const AccordionBuilder = {
                 const th = document.createElement('th');
                 th.className = 'border p-2 text-left font-semibold cursor-pointer';
                 th.dataset.key = header.key;
-                th.textContent = header.label;
+                th.innerHTML = `
+                    <span class="sort-label">${header.label}</span>
+                `;
                 th.addEventListener('click', () => {
                     console.log(`Sorting accordion group ${groupKey} by ${header.key}`);
                     if (!groupSortStates[groupKey]) groupSortStates[groupKey] = { column: null, order: 'original' };

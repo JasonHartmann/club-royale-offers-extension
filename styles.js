@@ -9,19 +9,42 @@ const Styles = {
 
             const style = document.createElement('style');
             style.textContent = `
-                #gobo-offers-table::-webkit-scrollbar {
+                #gobo-offers-table {
+                    max-width: 90vw;
+                    max-height: 90vh;
+                    background-color: #fff;
+                    border-radius: 0.5rem;
+                    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+                    display: flex;
+                    flex-direction: column;
+                }
+                .table-scroll-container {
+                    flex: 1 1 auto;
+                    overflow-y: auto;
+                    max-height: calc(90vh - 60px); /* Account for footer height */
+                    padding: 8px;
+                }
+                .table-scroll-container::-webkit-scrollbar {
                     width: 12px;
                 }
-                #gobo-offers-table::-webkit-scrollbar-track {
+                .table-scroll-container::-webkit-scrollbar-track {
                     background: #f1f1f1;
                     border-radius: 10px;
                 }
-                #gobo-offers-table::-webkit-scrollbar-thumb {
+                .table-scroll-container::-webkit-scrollbar-thumb {
                     background: #888;
                     border-radius: 10px;
                 }
-                #gobo-offers-table::-webkit-scrollbar-thumb:hover {
+                .table-scroll-container::-webkit-scrollbar-thumb:hover {
                     background: #555;
+                }
+                .table-footer-container {
+                    flex: 0 0 auto;
+                    padding: 10px;
+                    background-color: #fff;
+                    text-align: right;
+                    border-top: 1px solid #e5e7eb;
+                    z-index: 10;
                 }
                 #gobo-loading-spinner {
                     border: 4px solid #f3f3f3;
@@ -76,6 +99,25 @@ const Styles = {
                 }
                 .table-header tr, .accordion-table-header tr {
                     background-color: #f3f4f6;
+                }
+                .table-auto {
+                    table-layout: fixed;
+                    width: 100%;
+                }
+                .table-auto th, .table-auto td {
+                    width: 11.11%; /* Equal width for 9 columns */
+                    box-sizing: border-box;
+                }
+                .close-button {
+                    background-color: #dc2626;
+                    color: white;
+                    font-weight: 600;
+                    padding: 8px 16px;
+                    border-radius: 0.5rem;
+                    cursor: pointer;
+                }
+                .close-button:hover {
+                    background-color: #b91c1c;
                 }
             `;
             document.head.appendChild(style);
