@@ -4,7 +4,8 @@ const TableBuilder = {
         table.className = 'w-full border-collapse table-auto';
         return table;
     },
-    createTableHeader(headers, currentSortColumn, currentSortOrder, viewMode, sortedOffers, originalOffers, currentGroupColumn, groupSortStates, table, tbody, accordionContainer, backButton, container, backdrop) {
+    createTableHeader(state) {
+        const { headers, currentSortColumn, currentSortOrder, viewMode, sortedOffers, originalOffers, currentGroupColumn, groupSortStates, table, tbody, accordionContainer, backButton, container, backdrop, openGroups } = state;
         const thead = document.createElement('thead');
         thead.className = 'table-header';
         const tr = document.createElement('tr');
@@ -22,43 +23,18 @@ const TableBuilder = {
                 if (currentSortColumn === header.key) {
                     newSortOrder = currentSortOrder === 'asc' ? 'desc' : currentSortOrder === 'desc' ? 'original' : 'asc';
                 }
-                App.TableRenderer.updateView({
-                    sortedOffers,
-                    originalOffers,
-                    currentSortColumn: header.key,
-                    currentSortOrder: newSortOrder,
-                    currentGroupColumn,
-                    viewMode: 'table',
-                    groupSortStates,
-                    table,
-                    thead,
-                    tbody,
-                    accordionContainer,
-                    backButton,
-                    headers,
-                    container,
-                    backdrop
-                });
+                state.currentSortColumn = header.key;
+                state.currentSortOrder = newSortOrder;
+                state.viewMode = 'table';
+                App.TableRenderer.updateView(state);
             });
             th.querySelector('.group-icon').addEventListener('click', () => {
                 console.log(`Grouping by ${header.key}`);
-                App.TableRenderer.updateView({
-                    sortedOffers,
-                    originalOffers,
-                    currentSortColumn,
-                    currentSortOrder,
-                    currentGroupColumn: header.key,
-                    viewMode: 'accordion',
-                    groupSortStates: {},
-                    table,
-                    thead,
-                    tbody,
-                    accordionContainer,
-                    backButton,
-                    headers,
-                    container,
-                    backdrop
-                });
+                state.currentGroupColumn = header.key;
+                state.viewMode = 'accordion';
+                state.groupSortStates = {};
+                state.openGroups = new Set();
+                App.TableRenderer.updateView(state);
             });
             if (header.key === currentSortColumn && viewMode === 'table') {
                 if (currentSortOrder === 'asc') th.classList.add('sort-asc');
@@ -73,7 +49,7 @@ const TableBuilder = {
         tbody.innerHTML = '';
         if (sortedOffers.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="9" class="border p-2 text-center">No offers available</td>`;
+            row.innerHTML = `<td colspan="10" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
         } else {
             sortedOffers.forEach(({ offer, sailing }) => {
@@ -88,6 +64,7 @@ const TableBuilder = {
                     <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
                     <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
                     <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                    <td class="border p-2">${sailing.roomType || '-'}</td>
                     <td class="border p-2">
                         <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
                             ${sailing.isGOBO ? 'Yes' : 'No'}

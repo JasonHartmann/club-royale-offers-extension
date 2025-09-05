@@ -23,56 +23,45 @@ const TableRenderer = {
 
             document.body.style.overflow = 'hidden';
 
-            const backdrop = App.Modal.createBackdrop();
-            const container = App.Modal.createModalContainer();
-            const table = App.TableBuilder.createMainTable();
-            const tbody = document.createElement('tbody');
-            const accordionContainer = document.createElement('div');
-            accordionContainer.className = 'w-full';
-
-            const backButton = document.createElement('button');
-            backButton.style.display = 'none';
-            backButton.onclick = () => {
+            const state = {
+                backdrop: App.Modal.createBackdrop(),
+                container: App.Modal.createModalContainer(),
+                table: App.TableBuilder.createMainTable(),
+                tbody: document.createElement('tbody'),
+                accordionContainer: document.createElement('div'),
+                backButton: document.createElement('button'),
+                headers: [
+                    { key: 'offerCode', label: 'Offer Code' },
+                    { key: 'offerDate', label: 'Offer Date' },
+                    { key: 'expiration', label: 'Expiration' },
+                    { key: 'offerName', label: 'Offer Name' },
+                    { key: 'ship', label: 'Ship' },
+                    { key: 'sailDate', label: 'Sail Date' },
+                    { key: 'departurePort', label: 'Departure Port' },
+                    { key: 'itinerary', label: 'Itinerary' },
+                    { key: 'category', label: 'Category' },
+                    { key: 'gobo', label: 'GOBO' }
+                ],
+                currentSortColumn: null,
+                currentSortOrder: 'original',
+                currentGroupColumn: null,
+                viewMode: 'table',
+                groupSortStates: {},
+                openGroups: new Set(),
+                ...this.prepareOfferData(data)
+            };
+            state.accordionContainer.className = 'w-full';
+            state.backButton.style.display = 'none';
+            state.backButton.onclick = () => {
                 console.log('Switching back to table view');
-                this.updateView({
-                    sortedOffers,
-                    originalOffers,
-                    currentSortColumn,
-                    currentSortOrder,
-                    currentGroupColumn: null,
-                    viewMode: 'table',
-                    groupSortStates: {},
-                    table,
-                    thead,
-                    tbody,
-                    accordionContainer,
-                    backButton,
-                    headers,
-                    container,
-                    backdrop
-                });
+                state.currentGroupColumn = null;
+                state.viewMode = 'table';
+                state.groupSortStates = {};
+                state.openGroups = new Set();
+                this.updateView(state);
             };
 
-            const { originalOffers, sortedOffers } = this.prepareOfferData(data);
-            let currentSortColumn = null;
-            let currentSortOrder = 'original';
-            let currentGroupColumn = null;
-            let viewMode = 'table';
-            let groupSortStates = {};
-
-            const headers = [
-                { key: 'offerCode', label: 'Offer Code' },
-                { key: 'offerDate', label: 'Offer Date' },
-                { key: 'expiration', label: 'Expiration' },
-                { key: 'offerName', label: 'Offer Name' },
-                { key: 'ship', label: 'Ship' },
-                { key: 'sailDate', label: 'Sail Date' },
-                { key: 'departurePort', label: 'Departure Port' },
-                { key: 'itinerary', label: 'Itinerary' },
-                { key: 'gobo', label: 'GOBO' }
-            ];
-
-            const thead = App.TableBuilder.createTableHeader(headers, currentSortColumn, currentSortOrder, viewMode, sortedOffers, originalOffers, currentGroupColumn, groupSortStates, table, tbody, accordionContainer, backButton, container, backdrop);
+            state.thead = App.TableBuilder.createTableHeader(state);
 
             const overlappingElements = [];
             document.querySelectorAll('[style*="position: fixed"], [style*="position: absolute"], [style*="z-index"], .fixed, .absolute, iframe:not(#gobo-offers-table):not(#gobo-backdrop), .sign-modal-overlay, .email-capture, .bg-purple-overlay, .heading1, [class*="relative"][class*="overflow-hidden"][class*="flex-col"]').forEach(el => {
@@ -87,8 +76,8 @@ const TableRenderer = {
                 console.log(`Hid ${overlappingElements.length} overlapping elements`);
             }
 
-            App.Modal.setupModal(container, backdrop, table, tbody, accordionContainer, backButton, overlappingElements);
-            this.updateView({ sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, groupSortStates, table, thead, tbody, accordionContainer, backButton, headers, container, backdrop });
+            App.Modal.setupModal(state, overlappingElements);
+            this.updateView(state);
 
             console.log('Table displayed');
         } catch (error) {
@@ -99,7 +88,8 @@ const TableRenderer = {
             if (existingBackdrop) existingBackdrop.remove();
         }
     },
-    updateView({ sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, groupSortStates, table, thead, tbody, accordionContainer, backButton, headers, container, backdrop }) {
+    updateView(state) {
+        const { table, accordionContainer, backButton, currentSortOrder, currentSortColumn, viewMode, sortedOffers, originalOffers, groupSortStates, openGroups, thead, tbody, headers, container, backdrop } = state;
         table.style.display = viewMode === 'table' ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
 
@@ -110,20 +100,20 @@ const TableRenderer = {
 
         const groupTitle = document.getElementById('group-title');
         if (groupTitle) {
-            groupTitle.textContent = viewMode === 'accordion' && currentGroupColumn ? headers.find(h => h.key === currentGroupColumn)?.label || '' : '';
+            groupTitle.textContent = viewMode === 'accordion' && state.currentGroupColumn ? headers.find(h => h.key === state.currentGroupColumn)?.label || '' : '';
         }
 
         if (viewMode === 'table') {
             if (currentSortOrder !== 'original') {
-                sortedOffers = App.SortUtils.sortOffers(sortedOffers, currentSortColumn, currentSortOrder);
+                state.sortedOffers = App.SortUtils.sortOffers(sortedOffers, currentSortColumn, currentSortOrder);
             } else {
-                sortedOffers = [...originalOffers];
+                state.sortedOffers = [...originalOffers];
             }
-            App.TableBuilder.renderTable(tbody, sortedOffers);
+            App.TableBuilder.renderTable(tbody, state.sortedOffers);
             table.appendChild(thead);
         } else {
-            const groupedData = App.AccordionBuilder.createGroupedData(sortedOffers, currentGroupColumn);
-            App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, headers, sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, table, thead, tbody, accordionContainer, backButton, container, backdrop);
+            const groupedData = App.AccordionBuilder.createGroupedData(sortedOffers, state.currentGroupColumn);
+            App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, state);
         }
     }
 };

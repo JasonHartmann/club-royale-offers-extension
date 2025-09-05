@@ -38,6 +38,10 @@ const SortUtils = {
                     aValue = a.sailing.itineraryDescription || a.sailing.sailingType?.name || '';
                     bValue = b.sailing.itineraryDescription || b.sailing.sailingType?.name || '';
                     break;
+                case 'category':
+                    aValue = a.sailing.roomType || '';
+                    bValue = b.sailing.roomType || '';
+                    break;
                 case 'gobo':
                     aValue = a.sailing.isGOBO ? 'Yes' : 'No';
                     bValue = b.sailing.isGOBO ? 'Yes' : 'No';

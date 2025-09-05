@@ -12,7 +12,8 @@ const Modal = {
         backdrop.style.cssText = 'pointer-events: auto !important;';
         return backdrop;
     },
-    setupModal(container, backdrop, table, tbody, accordionContainer, backButton, overlappingElements) {
+    setupModal(state, overlappingElements) {
+        const { container, backdrop, table, tbody, accordionContainer, backButton } = state;
         const scrollContainer = document.createElement('div');
         scrollContainer.className = 'table-scroll-container';
         const footerContainer = document.createElement('div');
@@ -51,10 +52,6 @@ const Modal = {
         container.appendChild(footerContainer);
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
-
-        scrollContainer.addEventListener('scroll', () => {
-            console.log('Table scrolled, scrollTop:', scrollContainer.scrollTop);
-        });
     },
     closeModal(container, backdrop, overlappingElements) {
         container.remove();

@@ -28,6 +28,9 @@ const AccordionBuilder = {
                 case 'itinerary':
                     groupKey = sailing.itineraryDescription || sailing.sailingType?.name || '-';
                     break;
+                case 'category':
+                    groupKey = sailing.roomType || '-';
+                    break;
                 case 'gobo':
                     groupKey = sailing.isGOBO ? 'Yes' : 'No';
                     break;
@@ -37,7 +40,8 @@ const AccordionBuilder = {
         });
         return groupedData;
     },
-    renderAccordion(accordionContainer, groupedData, groupSortStates, headers, sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, table, thead, tbody, backButton, container, backdrop) {
+    renderAccordion(accordionContainer, groupedData, groupSortStates, state) {
+        const { headers, sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, table, thead, tbody, backButton, container, backdrop, openGroups } = state;
         accordionContainer.innerHTML = '';
         Object.keys(groupedData).forEach((groupKey) => {
             const accordion = document.createElement('div');
@@ -49,11 +53,13 @@ const AccordionBuilder = {
             `;
             const content = document.createElement('div');
             content.className = 'accordion-content';
+            if (openGroups instanceof Set && openGroups.has(groupKey)) {
+                content.classList.add('open');
+            }
             const groupTable = document.createElement('table');
             groupTable.className = 'w-full border-collapse table-auto accordion-table';
             groupTable.dataset.groupKey = groupKey;
 
-            // Accordion table header
             const groupThead = document.createElement('thead');
             groupThead.className = 'accordion-table-header';
             const groupTr = document.createElement('tr');
@@ -64,7 +70,8 @@ const AccordionBuilder = {
                 th.innerHTML = `
                     <span class="sort-label">${header.label}</span>
                 `;
-                th.addEventListener('click', () => {
+                th.addEventListener('click', (event) => {
+                    event.stopPropagation();
                     console.log(`Sorting accordion group ${groupKey} by ${header.key}`);
                     if (!groupSortStates[groupKey]) groupSortStates[groupKey] = { column: null, order: 'original' };
                     if (groupSortStates[groupKey].column === header.key) {
@@ -73,13 +80,14 @@ const AccordionBuilder = {
                         groupSortStates[groupKey].column = header.key;
                         groupSortStates[groupKey].order = 'asc';
                     }
-                    App.TableRenderer.updateView({ sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, groupSortStates, table, thead, tbody, accordionContainer, backButton, headers, container, backdrop });
+                    content.classList.add('open');
+                    state.groupSortStates = groupSortStates;
+                    App.TableRenderer.updateView(state);
                 });
                 groupTr.appendChild(th);
             });
             groupThead.appendChild(groupTr);
 
-            // Accordion table body
             const groupTbody = document.createElement('tbody');
             let groupRows = [...groupedData[groupKey]];
             if (groupSortStates[groupKey] && groupSortStates[groupKey].order !== 'original') {
@@ -97,6 +105,7 @@ const AccordionBuilder = {
                     <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
                     <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
                     <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                    <td class="border p-2">${sailing.roomType || '-'}</td>
                     <td class="border p-2">
                         <span class="${sailing.isGOBO ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'} inline-block px-2 py-1 rounded text-sm">
                             ${sailing.isGOBO ? 'Yes' : 'No'}
@@ -106,7 +115,6 @@ const AccordionBuilder = {
                 groupTbody.appendChild(row);
             });
 
-            // Update accordion sort styles
             headers.forEach(header => {
                 const th = groupThead.querySelector(`th[data-key="${header.key}"]`);
                 th.classList.remove('sort-asc', 'sort-desc');
@@ -129,7 +137,13 @@ const AccordionBuilder = {
                 document.querySelectorAll('.accordion-content.open').forEach(c => {
                     c.classList.remove('open');
                 });
-                if (!isOpen) content.classList.add('open');
+                if (!isOpen) {
+                    content.classList.add('open');
+                    state.openGroups.add(groupKey);
+                } else {
+                    content.classList.remove('open');
+                    state.openGroups.delete(groupKey);
+                }
             });
         });
     }

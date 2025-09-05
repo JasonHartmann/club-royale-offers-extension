@@ -105,7 +105,7 @@ const Styles = {
                     width: 100%;
                 }
                 .table-auto th, .table-auto td {
-                    width: 11.11%;
+                    width: 10%; /* Adjusted for 10 columns */
                     box-sizing: border-box;
                 }
                 .close-button {
