@@ -1,17 +1,34 @@
 const AccordionBuilder = {
     createGroupedData(sortedOffers, currentGroupColumn) {
         const groupedData = {};
+        // Map to normalize destination keys (case-insensitive)
+        const normalizedDestMap = {};
         sortedOffers.forEach(({ offer, sailing }) => {
             let groupKey;
             switch (currentGroupColumn) {
+                case 'nights': {
+                    const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
+                    groupKey = App.Utils.parseItinerary(itinerary).nights;
+                    break;
+                }
+                case 'destination': {
+                    const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
+                    // Normalize destination to merge identical names regardless of case or whitespace
+                    const rawDest = App.Utils.parseItinerary(itinerary).destination || '-';
+                    const trimmedDest = rawDest.trim();
+                    const keyLower = trimmedDest.toLowerCase();
+                    if (!normalizedDestMap[keyLower]) normalizedDestMap[keyLower] = trimmedDest;
+                    groupKey = normalizedDestMap[keyLower];
+                    break;
+                }
                 case 'offerCode':
                     groupKey = offer.campaignOffer?.offerCode || '-';
                     break;
                 case 'offerDate':
-                    groupKey = new Date(offer.campaignOffer?.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-';
+                    groupKey = App.Utils.formatDate(offer.campaignOffer?.startDate);
                     break;
                 case 'expiration':
-                    groupKey = new Date(offer.campaignOffer?.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-';
+                    groupKey = App.Utils.formatDate(offer.campaignOffer?.reserveByDate);
                     break;
                 case 'offerName':
                     groupKey = offer.campaignOffer?.name || '-';
@@ -20,7 +37,7 @@ const AccordionBuilder = {
                     groupKey = sailing.shipName || '-';
                     break;
                 case 'sailDate':
-                    groupKey = new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-';
+                    groupKey = App.Utils.formatDate(sailing.sailDate);
                     break;
                 case 'departurePort':
                     groupKey = sailing.departurePort?.name || '-';
@@ -28,18 +45,15 @@ const AccordionBuilder = {
                 case 'itinerary':
                     groupKey = sailing.itineraryDescription || sailing.sailingType?.name || '-';
                     break;
-                case 'category':
+                case 'category': {
                     let room = sailing.roomType;
                     if (sailing.isGTY) {
-                        if (room) {
-                            room += ' GTY';
-                        } else {
-                            room = 'GTY';
-                        }
+                        room = room ? room + ' GTY' : 'GTY';
                     }
                     groupKey = room || '-';
                     break;
-                case 'quality':
+                }
+                case 'quality': {
                     groupKey = sailing.isGOBO ? '1 Guest' : '2 Guests';
                     if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
                         groupKey += ` + $${sailing.DOLLARSOFF_AMT} off`;
@@ -48,6 +62,7 @@ const AccordionBuilder = {
                         groupKey += ` + $${sailing.FREEPLAY_AMT} freeplay`;
                     }
                     break;
+                }
             }
             if (!groupedData[groupKey]) groupedData[groupKey] = [];
             groupedData[groupKey].push({ offer, sailing });
@@ -137,15 +152,18 @@ const AccordionBuilder = {
                             room = 'GTY';
                         }
                     }
+                    const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
+                    const { nights, destination } = App.Utils.parseItinerary(itinerary);
                     row.innerHTML = `
                         <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                        <td class="border p-2">${AccordionBuilder.formatDate(offer.campaignOffer?.startDate)}</td>
-                        <td class="border p-2">${AccordionBuilder.formatDate(offer.campaignOffer?.reserveByDate)}</td>
+                        <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
+                        <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
                         <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
                         <td class="border p-2">${sailing.shipName || '-'}</td>
-                        <td class="border p-2">${AccordionBuilder.formatDate(sailing.sailDate)}</td>
+                        <td class="border p-2">${App.Utils.formatDate(sailing.sailDate)}</td>
                         <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-                        <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                        <td class="border p-2">${nights}</td>
+                        <td class="border p-2">${destination}</td>
                         <td class="border p-2">${room || '-'}</td>
                         <td class="border p-2">${qualityText}</td>
                     `;

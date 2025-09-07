@@ -54,7 +54,7 @@ const TableBuilder = {
         tbody.innerHTML = '';
         if (state.sortedOffers.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="10" class="border p-2 text-center">No offers available</td>`;
+            row.innerHTML = `<td colspan="11" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
         } else {
             state.sortedOffers.forEach(({ offer, sailing }) => {
@@ -75,15 +75,18 @@ const TableBuilder = {
                         room = 'GTY';
                     }
                 }
+                const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
+                const { nights, destination } = App.Utils.parseItinerary(itinerary);
                 row.innerHTML = `
                     <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                    <td class="border p-2">${TableBuilder.formatDate(offer.campaignOffer?.startDate)}</td>
-                    <td class="border p-2">${TableBuilder.formatDate(offer.campaignOffer?.reserveByDate)}</td>
+                    <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
+                    <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
                     <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
                     <td class="border p-2">${sailing.shipName || '-'}</td>
-                    <td class="border p-2">${TableBuilder.formatDate(sailing.sailDate)}</td>
+                    <td class="border p-2">${App.Utils.formatDate(sailing.sailDate)}</td>
                     <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-                    <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                    <td class="border p-2">${nights}</td>
+                    <td class="border p-2">${destination}</td>
                     <td class="border p-2">${room || '-'}</td>
                     <td class="border p-2">${qualityText}</td>
                 `;

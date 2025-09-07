@@ -38,7 +38,8 @@ const TableRenderer = {
                     { key: 'ship', label: 'Ship' },
                     { key: 'sailDate', label: 'Sail Date' },
                     { key: 'departurePort', label: 'Departure Port' },
-                    { key: 'itinerary', label: 'Itinerary' },
+                    { key: 'nights', label: 'Nights' },
+                    { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
                     { key: 'quality', label: 'Quality' }
                 ],
