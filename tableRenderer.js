@@ -89,6 +89,7 @@ const TableRenderer = {
         }
     },
     updateView(state) {
+        App.TableRenderer.lastState = state;
         const { table, accordionContainer, backButton, currentSortOrder, currentSortColumn, viewMode, sortedOffers, originalOffers, groupSortStates, openGroups, thead, tbody, headers, container, backdrop } = state;
         table.style.display = viewMode === 'table' ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
@@ -121,5 +122,45 @@ const TableRenderer = {
             const groupedData = App.AccordionBuilder.createGroupedData(state.sortedOffers, state.currentGroupColumn);
             App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, state);
         }
+    },
+    updateBreadcrumb(groupingStack, groupKeysStack) {
+        const breadcrumbContainer = document.querySelector('.breadcrumb-container');
+        if (!breadcrumbContainer) return;
+        breadcrumbContainer.innerHTML = '';
+        // Always start with 'All Offers'
+        const allOffersLink = document.createElement('span');
+        allOffersLink.className = 'breadcrumb-link';
+        allOffersLink.textContent = 'All Offers';
+        allOffersLink.addEventListener('click', () => {
+            // Reset to top-level grouping
+            App.TableRenderer.updateView(App.TableRenderer.lastState);
+        });
+        breadcrumbContainer.appendChild(allOffersLink);
+        let path = '';
+        groupingStack.forEach((col, idx) => {
+            const arrow = document.createElement('span');
+            arrow.className = 'breadcrumb-arrow';
+            arrow.textContent = '→';
+            breadcrumbContainer.appendChild(arrow);
+            const crumb = document.createElement('span');
+            crumb.className = 'breadcrumb-link';
+            crumb.textContent = `${App.TableRenderer.lastState.headers.find(h => h.key === col)?.label || col}: ${groupKeysStack[idx]}`;
+            crumb.addEventListener('click', () => {
+                // Re-render up to this grouping level
+                const newGroupingStack = groupingStack.slice(0, idx + 1);
+                const newGroupKeysStack = groupKeysStack.slice(0, idx + 1);
+                // Find offers for this path
+                let offers = App.TableRenderer.lastState.sortedOffers;
+                for (let i = 0; i <= idx; i++) {
+                    const grouped = App.AccordionBuilder.createGroupedData(offers, groupingStack[i]);
+                    offers = grouped[groupKeysStack[i]] || [];
+                }
+                const groupedData = App.AccordionBuilder.createGroupedData(offers, groupingStack[idx]);
+                const accordionContainer = App.TableRenderer.lastState.accordionContainer;
+                App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, App.TableRenderer.lastState.groupSortStates, App.TableRenderer.lastState, newGroupingStack, newGroupKeysStack);
+                App.TableRenderer.updateBreadcrumb(newGroupingStack, newGroupKeysStack);
+            });
+            breadcrumbContainer.appendChild(crumb);
+        });
     }
 };

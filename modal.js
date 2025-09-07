@@ -54,8 +54,18 @@ const Modal = {
         scrollContainer.appendChild(breadcrumbContainer);
         scrollContainer.appendChild(table);
         scrollContainer.appendChild(accordionContainer);
+
+        // Add Buy Me a Coffee button (left-justified)
+        const coffeeButton = document.createElement('a');
+        coffeeButton.className = 'buy-coffee-link';
+        coffeeButton.href = 'https://www.buymeacoffee.com/comproyale';
+        coffeeButton.target = '_blank';
+        coffeeButton.rel = 'noopener noreferrer';
+        coffeeButton.innerHTML = `<img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=comproyale&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff" alt="Buy Me A Coffee" style="height: 32px;">`;
+        footerContainer.appendChild(coffeeButton);
         footerContainer.appendChild(exportButton);
         footerContainer.appendChild(closeButton);
+
         container.appendChild(scrollContainer);
         container.appendChild(footerContainer);
         document.body.appendChild(backdrop);

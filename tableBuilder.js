@@ -20,8 +20,8 @@ const TableBuilder = {
             th.querySelector('.sort-label').addEventListener('click', () => {
                 console.log(`Sorting by ${header.key}`);
                 let newSortOrder = 'asc';
-                if (currentSortColumn === header.key) {
-                    newSortOrder = currentSortOrder === 'asc' ? 'desc' : currentSortOrder === 'desc' ? 'original' : 'asc';
+                if (state.currentSortColumn === header.key) {
+                    newSortOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
                 }
                 state.currentSortColumn = header.key;
                 state.currentSortOrder = newSortOrder;
@@ -43,6 +43,12 @@ const TableBuilder = {
         });
         thead.appendChild(tr);
         return thead;
+    },
+    // Helper to format date string as MM/DD/YY without timezone shift
+    formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const [year, month, day] = dateStr.split('T')[0].split('-');
+        return `${month}/${day}/${year.slice(-2)}`;
     },
     renderTable(tbody, state) {
         tbody.innerHTML = '';
@@ -71,11 +77,11 @@ const TableBuilder = {
                 }
                 row.innerHTML = `
                     <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                    <td class="border p-2">${new Date(offer.campaignOffer?.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
-                    <td class="border p-2">${new Date(offer.campaignOffer?.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
+                    <td class="border p-2">${TableBuilder.formatDate(offer.campaignOffer?.startDate)}</td>
+                    <td class="border p-2">${TableBuilder.formatDate(offer.campaignOffer?.reserveByDate)}</td>
                     <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
                     <td class="border p-2">${sailing.shipName || '-'}</td>
-                    <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
+                    <td class="border p-2">${TableBuilder.formatDate(sailing.sailDate)}</td>
                     <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
                     <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
                     <td class="border p-2">${room || '-'}</td>

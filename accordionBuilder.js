@@ -54,8 +54,15 @@ const AccordionBuilder = {
         });
         return groupedData;
     },
-    renderAccordion(accordionContainer, groupedData, groupSortStates, state) {
-        const { headers, sortedOffers, originalOffers, currentSortColumn, currentSortOrder, currentGroupColumn, viewMode, table, thead, tbody, backButton, container, backdrop, openGroups } = state;
+    // Helper to format date string as MM/DD/YY without timezone shift
+    formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const [year, month, day] = dateStr.split('T')[0].split('-');
+        return `${month}/${day}/${year.slice(-2)}`;
+    },
+    // Recursive function to render nested accordions
+    renderAccordion(accordionContainer, groupedData, groupSortStates, state, groupingStack = [], groupKeysStack = []) {
+        const { headers, openGroups } = state;
         accordionContainer.innerHTML = '';
         Object.keys(groupedData).forEach((groupKey) => {
             const accordion = document.createElement('div');
@@ -67,7 +74,7 @@ const AccordionBuilder = {
             `;
             const content = document.createElement('div');
             content.className = 'accordion-content';
-            if (openGroups instanceof Set && openGroups.has(groupKey)) {
+            if (openGroups instanceof Set && openGroups.has([...groupKeysStack, groupKey].join('>'))) {
                 content.classList.add('open');
             }
             const groupTable = document.createElement('table');
@@ -77,78 +84,74 @@ const AccordionBuilder = {
             const groupThead = document.createElement('thead');
             groupThead.className = 'accordion-table-header';
             const groupTr = document.createElement('tr');
-            headers.forEach(header => {
+            headers.forEach(headerObj => {
                 const th = document.createElement('th');
                 th.className = 'border p-2 text-left font-semibold cursor-pointer';
-                th.dataset.key = header.key;
+                th.dataset.key = headerObj.key;
                 th.innerHTML = `
-                    <span class="sort-label">${header.label}</span>
+                    <span class="group-icon" title="Group by ${headerObj.label}">🗂️</span>
+                    <span class="sort-label">${headerObj.label}</span>
                 `;
-                th.addEventListener('click', (event) => {
+                // Group icon click for nested grouping
+                th.querySelector('.group-icon').addEventListener('click', (event) => {
                     event.stopPropagation();
-                    console.log(`Sorting accordion group ${groupKey} by ${header.key}`);
-                    if (!groupSortStates[groupKey]) groupSortStates[groupKey] = { column: null, order: 'original' };
-                    if (groupSortStates[groupKey].column === header.key) {
-                        groupSortStates[groupKey].order = groupSortStates[groupKey].order === 'asc' ? 'desc' : groupSortStates[groupKey].order === 'desc' ? 'original' : 'asc';
-                    } else {
-                        groupSortStates[groupKey].column = header.key;
-                        groupSortStates[groupKey].order = 'asc';
+                    // Prevent grouping by the same column twice in a row
+                    if (groupingStack[groupingStack.length - 1] === headerObj.key) return;
+                    // Push new grouping
+                    const newGroupingStack = [...groupingStack, headerObj.key];
+                    const newGroupKeysStack = [...groupKeysStack, groupKey];
+                    // Get offers for this group
+                    let offers = groupedData[groupKey];
+                    // Group by new column
+                    const nestedGroupedData = AccordionBuilder.createGroupedData(offers, headerObj.key);
+                    // Render nested accordion
+                    content.innerHTML = '';
+                    AccordionBuilder.renderAccordion(content, nestedGroupedData, groupSortStates, state, newGroupingStack, newGroupKeysStack);
+                    // Update breadcrumb
+                    if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.updateBreadcrumb) {
+                        App.TableRenderer.updateBreadcrumb(newGroupingStack, newGroupKeysStack);
                     }
-                    content.classList.add('open');
-                    state.groupSortStates = groupSortStates;
-                    App.TableRenderer.updateView(state);
                 });
                 groupTr.appendChild(th);
             });
             groupThead.appendChild(groupTr);
 
             const groupTbody = document.createElement('tbody');
-            let groupRows = [...groupedData[groupKey]];
-            if (groupSortStates[groupKey] && groupSortStates[groupKey].order !== 'original') {
-                groupRows = App.SortUtils.sortOffers(groupRows, groupSortStates[groupKey].column, groupSortStates[groupKey].order);
-            }
-            groupRows.forEach(({ offer, sailing }) => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50';
-                let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-                if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
-                    qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-                }
-                if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
-                    qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
-                }
-                let room = sailing.roomType;
-                if (sailing.isGTY) {
-                    if (room) {
-                        room += ' GTY';
-                    } else {
-                        room = 'GTY';
+            // Only show rows if not further grouped
+            if (groupingStack.length === 0 || groupKeysStack.length < groupingStack.length) {
+                groupedData[groupKey].forEach(({ offer, sailing }) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
+                    if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
+                        qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
                     }
-                }
-                row.innerHTML = `
-                    <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                    <td class="border p-2">${new Date(offer.campaignOffer?.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
-                    <td class="border p-2">${new Date(offer.campaignOffer?.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
-                    <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
-                    <td class="border p-2">${sailing.shipName || '-'}</td>
-                    <td class="border p-2">${new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-'}</td>
-                    <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-                    <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
-                    <td class="border p-2">${room || '-'}</td>
-                    <td class="border p-2">${qualityText}</td>
-                `;
-                groupTbody.appendChild(row);
-            });
-
-            headers.forEach(header => {
-                const th = groupThead.querySelector(`th[data-key="${header.key}"]`);
-                th.classList.remove('sort-asc', 'sort-desc');
-                if (groupSortStates[groupKey] && groupSortStates[groupKey].column === header.key) {
-                    if (groupSortStates[groupKey].order === 'asc') th.classList.add('sort-asc');
-                    else if (groupSortStates[groupKey].order === 'desc') th.classList.add('sort-desc');
-                }
-            });
-
+                    if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
+                        qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
+                    }
+                    let room = sailing.roomType;
+                    if (sailing.isGTY) {
+                        if (room) {
+                            room += ' GTY';
+                        } else {
+                            room = 'GTY';
+                        }
+                    }
+                    row.innerHTML = `
+                        <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
+                        <td class="border p-2">${AccordionBuilder.formatDate(offer.campaignOffer?.startDate)}</td>
+                        <td class="border p-2">${AccordionBuilder.formatDate(offer.campaignOffer?.reserveByDate)}</td>
+                        <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
+                        <td class="border p-2">${sailing.shipName || '-'}</td>
+                        <td class="border p-2">${AccordionBuilder.formatDate(sailing.sailDate)}</td>
+                        <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
+                        <td class="border p-2">${sailing.itineraryDescription || sailing.sailingType?.name || '-'}</td>
+                        <td class="border p-2">${room || '-'}</td>
+                        <td class="border p-2">${qualityText}</td>
+                    `;
+                    groupTbody.appendChild(row);
+                });
+            }
             groupTable.appendChild(groupThead);
             groupTable.appendChild(groupTbody);
             content.appendChild(groupTable);
@@ -157,17 +160,17 @@ const AccordionBuilder = {
             accordionContainer.appendChild(accordion);
 
             header.addEventListener('click', () => {
-                console.log(`Toggling accordion for group: ${groupKey}`);
+                const keyPath = [...groupKeysStack, groupKey].join('>');
                 const isOpen = content.classList.contains('open');
                 document.querySelectorAll('.accordion-content.open').forEach(c => {
                     c.classList.remove('open');
                 });
                 if (!isOpen) {
                     content.classList.add('open');
-                    state.openGroups.add(groupKey);
+                    state.openGroups.add(keyPath);
                 } else {
                     content.classList.remove('open');
-                    state.openGroups.delete(groupKey);
+                    state.openGroups.delete(keyPath);
                 }
             });
         });

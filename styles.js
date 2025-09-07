@@ -42,9 +42,11 @@ const Styles = {
                     flex: 0 0 auto;
                     padding: 10px;
                     background-color: #fff;
-                    text-align: right;
                     border-top: 1px solid #e5e7eb;
                     z-index: 10;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
                 }
                 #gobo-loading-spinner {
                     border: 4px solid #f3f3f3;
@@ -118,6 +120,13 @@ const Styles = {
                 }
                 .close-button:hover {
                     background-color: #b91c1c;
+                }
+                .buy-coffee-link {
+                    padding: 0px 0px;
+                    cursor: pointer;
+                    margin-right: 12px;
+                    display: flex;
+                    align-items: center;
                 }
                 .export-csv-button {
                     background-color: #22c55e;
