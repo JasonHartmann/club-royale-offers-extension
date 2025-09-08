@@ -105,13 +105,23 @@ const TableRenderer = {
             groupTitle.textContent = viewMode === 'accordion' && state.currentGroupColumn ? headers.find(h => h.key === state.currentGroupColumn)?.label || '' : '';
         }
 
+        // Compute global max offer date
+        let globalMaxOfferDate = null;
+        (sortedOffers || []).forEach(({ offer }) => {
+            const dateStr = offer.campaignOffer?.startDate;
+            if (dateStr) {
+                const date = new Date(dateStr).getTime();
+                if (!globalMaxOfferDate || date > globalMaxOfferDate) globalMaxOfferDate = date;
+            }
+        });
+
         if (viewMode === 'table') {
             if (currentSortOrder !== 'original') {
                 state.sortedOffers = App.SortUtils.sortOffers(sortedOffers, currentSortColumn, currentSortOrder);
             } else {
                 state.sortedOffers = [...originalOffers];
             }
-            App.TableBuilder.renderTable(tbody, state);
+            App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             table.appendChild(thead);
         } else {
             // Always sort before grouping in accordion view
@@ -121,7 +131,7 @@ const TableRenderer = {
                 state.sortedOffers = [...originalOffers];
             }
             const groupedData = App.AccordionBuilder.createGroupedData(state.sortedOffers, state.currentGroupColumn);
-            App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, state);
+            App.AccordionBuilder.renderAccordion(accordionContainer, groupedData, groupSortStates, state, [], [], globalMaxOfferDate);
         }
     },
     updateBreadcrumb(groupingStack, groupKeysStack) {
@@ -133,13 +143,8 @@ const TableRenderer = {
         allOffersLink.className = 'breadcrumb-link';
         allOffersLink.textContent = 'All Offers';
         allOffersLink.addEventListener('click', () => {
-            // Reset to top-level table view
-            const state = App.TableRenderer.lastState;
-            state.currentGroupColumn = null;
-            state.viewMode = 'table';
-            state.groupSortStates = {};
-            state.openGroups = new Set();
-            App.TableRenderer.updateView(state);
+            // Reset to top-level grouping
+            App.TableRenderer.updateView(App.TableRenderer.lastState);
         });
         breadcrumbContainer.appendChild(allOffersLink);
         let path = '';

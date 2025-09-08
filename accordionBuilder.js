@@ -76,7 +76,7 @@ const AccordionBuilder = {
         return `${month}/${day}/${year.slice(-2)}`;
     },
     // Recursive function to render nested accordions
-    renderAccordion(accordionContainer, groupedData, groupSortStates, state, groupingStack = [], groupKeysStack = []) {
+    renderAccordion(accordionContainer, groupedData, groupSortStates, state, groupingStack = [], groupKeysStack = [], globalMaxOfferDate = null) {
         const { headers, openGroups } = state;
         accordionContainer.innerHTML = '';
         Object.keys(groupedData).forEach((groupKey) => {
@@ -106,26 +106,25 @@ const AccordionBuilder = {
                 th.className = 'border p-2 text-left font-semibold cursor-pointer';
                 th.dataset.key = headerObj.key;
                 th.innerHTML = `
-                    <span class="group-icon" title="Group by ${headerObj.label}">🗂️</span>
                     <span class="sort-label">${headerObj.label}</span>
                 `;
-                // Group icon click for nested grouping
-                th.querySelector('.group-icon').addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    if (groupingStack[groupingStack.length - 1] === headerObj.key) return;
-                    const newGroupingStack = [...groupingStack, headerObj.key];
-                    const newGroupKeysStack = [...groupKeysStack, groupKey];
-                    const offers = groupedData[groupKey];
-                    const nestedGroupedData = AccordionBuilder.createGroupedData(offers, headerObj.key);
-                    content.innerHTML = '';
-                    AccordionBuilder.renderAccordion(content, nestedGroupedData, groupSortStates, state, newGroupingStack, newGroupKeysStack);
-                    // auto-expand this group container
-                    content.classList.add('open');
-                    state.openGroups.add([...groupKeysStack, groupKey].join('>'));
-                    if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.updateBreadcrumb) {
-                        App.TableRenderer.updateBreadcrumb(newGroupingStack, newGroupKeysStack);
-                    }
-                });
+                // // Group icon click for nested grouping
+                // th.querySelector('.group-icon').addEventListener('click', (event) => {
+                //     event.stopPropagation();
+                //     if (groupingStack[groupingStack.length - 1] === headerObj.key) return;
+                //     const newGroupingStack = [...groupingStack, headerObj.key];
+                //     const newGroupKeysStack = [...groupKeysStack, groupKey];
+                //     const offers = groupedData[groupKey];
+                //     const nestedGroupedData = AccordionBuilder.createGroupedData(offers, headerObj.key);
+                //     content.innerHTML = '';
+                //     AccordionBuilder.renderAccordion(content, nestedGroupedData, groupSortStates, state, newGroupingStack, newGroupKeysStack);
+                //     // auto-expand this group container
+                //     content.classList.add('open');
+                //     state.openGroups.add([...groupKeysStack, groupKey].join('>'));
+                //     if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.updateBreadcrumb) {
+                //         App.TableRenderer.updateBreadcrumb(newGroupingStack, newGroupKeysStack);
+                //     }
+                // });
                 // Sort label click for this group's rows
                 th.querySelector('.sort-label').addEventListener('click', event => {
                     event.stopPropagation();
@@ -142,20 +141,48 @@ const AccordionBuilder = {
                     const sorted = newOrder !== 'original' ? App.SortUtils.sortOffers([...offers], headerObj.key, newOrder) : offers;
                     groupTbody.innerHTML = '';
                     sorted.forEach(({ offer, sailing }) => {
+                        const offerDate = offer.campaignOffer?.startDate;
+                        const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
+                        const expDate = offer.campaignOffer?.reserveByDate;
+                        const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                         // delegate row rendering to Utils
-                        const row = App.Utils.createOfferRow({ offer, sailing });
+                        const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
                         groupTbody.appendChild(row);
                     });
+                    // Remove sort classes from all ths in this header row
+                    groupTr.querySelectorAll('th').forEach(thEl => {
+                        thEl.classList.remove('sort-asc', 'sort-desc');
+                    });
+                    // Add sort class to the clicked th
+                    if (newOrder === 'asc') th.classList.add('sort-asc');
+                    else if (newOrder === 'desc') th.classList.add('sort-desc');
                 });
                 groupTr.appendChild(th);
             });
             groupThead.appendChild(groupTr);
 
+            // Find the soonest expiring offer in this group (for expiring soon logic)
+            let soonestExpDate = null;
+            const now = Date.now();
+            const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+            groupedData[groupKey].forEach(({ offer }) => {
+                const expStr = offer.campaignOffer?.reserveByDate;
+                if (expStr) {
+                    const expDate = new Date(expStr).getTime();
+                    if (expDate >= now && expDate - now <= threeDaysMs) {
+                        if (!soonestExpDate || expDate < soonestExpDate) soonestExpDate = expDate;
+                    }
+                }
+            });
             // Only show rows if not further grouped
             if (groupingStack.length === 0 || groupKeysStack.length < groupingStack.length) {
                 groupedData[groupKey].forEach(({ offer, sailing }) => {
+                    const offerDate = offer.campaignOffer?.startDate;
+                    const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
+                    const expDate = offer.campaignOffer?.reserveByDate;
+                    const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                     // delegate row rendering
-                    const row = App.Utils.createOfferRow({ offer, sailing });
+                    const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
                     groupTbody.appendChild(row);
                 });
             }

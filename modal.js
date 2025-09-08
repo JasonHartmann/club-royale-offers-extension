@@ -68,6 +68,39 @@ const Modal = {
 
         container.appendChild(scrollContainer);
         container.appendChild(footerContainer);
+
+        // Add legend and copyright below the buttons
+        const legendCopyrightWrapper = document.createElement('div');
+        legendCopyrightWrapper.style.cssText = 'width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 2px;';
+
+        // Legend
+        const legend = document.createElement('div');
+        legend.style.cssText = 'display: flex; align-items: center; gap: 12px; font-size: 10px; margin-left: 8px;';
+        // Expiring Soon
+        const expiringBox = document.createElement('span');
+        expiringBox.style.cssText = 'display: inline-block; width: 14px; height: 14px; background: #FDD; border: 1px solid #ccc; margin-right: 4px; vertical-align: middle;';
+        const expiringLabel = document.createElement('span');
+        expiringLabel.textContent = 'Expiring Soon';
+        legend.appendChild(expiringBox);
+        legend.appendChild(expiringLabel);
+        // New Offer
+        const newBox = document.createElement('span');
+        newBox.style.cssText = 'display: inline-block; width: 14px; height: 14px; background: #DFD; border: 1px solid #ccc; margin-right: 4px; vertical-align: middle;';
+        const newLabel = document.createElement('span');
+        newLabel.style.cssText = 'color: #14532d;';
+        newLabel.textContent = 'New Offer';
+        legend.appendChild(newBox);
+        legend.appendChild(newLabel);
+
+        // Copyright
+        const copyright = document.createElement('div');
+        copyright.style.cssText = 'text-align: right; font-size: 10px; color: #bbb; margin-right: 8px;';
+        copyright.textContent = '© 2025 Percex Technologies, LLC';
+
+        legendCopyrightWrapper.appendChild(legend);
+        legendCopyrightWrapper.appendChild(copyright);
+        container.appendChild(legendCopyrightWrapper);
+
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
     },

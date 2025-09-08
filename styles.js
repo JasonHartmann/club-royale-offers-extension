@@ -175,6 +175,12 @@ const Styles = {
                     font-weight: 600;
                     color: #1f2937;
                 }
+                .newest-offer-row {
+                    background-color: #DFD !important; /* light green */
+                }
+                .expiring-soon-row {
+                    background-color: #FDD !important; /* light red/pink */
+                }
             `;
             document.head.appendChild(style);
             console.log('Custom styles injected');

@@ -1,7 +1,9 @@
 const Utils = {
-    createOfferRow({ offer, sailing }) {
+    createOfferRow({ offer, sailing }, isNewest = false, isExpiringSoon = false) {
         const row = document.createElement('tr');
         row.className = 'hover:bg-gray-50';
+        if (isNewest) row.classList.add('newest-offer-row');
+        if (isExpiringSoon) row.classList.add('expiring-soon-row');
         let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
         if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
             qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;

@@ -50,16 +50,33 @@ const TableBuilder = {
         const [year, month, day] = dateStr.split('T')[0].split('-');
         return `${month}/${day}/${year.slice(-2)}`;
     },
-    renderTable(tbody, state) {
+    renderTable(tbody, state, globalMaxOfferDate = null) {
         tbody.innerHTML = '';
         if (state.sortedOffers.length === 0) {
             const row = document.createElement('tr');
             row.innerHTML = `<td colspan="11" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
         } else {
+            // Find the soonest expiring offer in the next 3 days
+            let soonestExpDate = null;
+            const now = Date.now();
+            const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+            state.sortedOffers.forEach(({ offer }) => {
+                const expStr = offer.campaignOffer?.reserveByDate;
+                if (expStr) {
+                    const expDate = new Date(expStr).getTime();
+                    if (expDate >= now && expDate - now <= threeDaysMs) {
+                        if (!soonestExpDate || expDate < soonestExpDate) soonestExpDate = expDate;
+                    }
+                }
+            });
             state.sortedOffers.forEach(({ offer, sailing }) => {
+                const offerDate = offer.campaignOffer?.startDate;
+                const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
+                const expDate = offer.campaignOffer?.reserveByDate;
+                const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                 // delegate row creation to Utils
-                const row = App.Utils.createOfferRow({ offer, sailing });
+                const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
                 tbody.appendChild(row);
             });
         }
