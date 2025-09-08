@@ -164,12 +164,12 @@ const AccordionBuilder = {
             // Find the soonest expiring offer in this group (for expiring soon logic)
             let soonestExpDate = null;
             const now = Date.now();
-            const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+            const twoDays = 2 * 24 * 60 * 60 * 1000;
             groupedData[groupKey].forEach(({ offer }) => {
                 const expStr = offer.campaignOffer?.reserveByDate;
                 if (expStr) {
                     const expDate = new Date(expStr).getTime();
-                    if (expDate >= now && expDate - now <= threeDaysMs) {
+                    if (expDate >= now && expDate - now <= twoDays) {
                         if (!soonestExpDate || expDate < soonestExpDate) soonestExpDate = expDate;
                     }
                 }

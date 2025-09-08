@@ -60,12 +60,12 @@ const TableBuilder = {
             // Find the soonest expiring offer in the next 3 days
             let soonestExpDate = null;
             const now = Date.now();
-            const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+            const twoDays = 2 * 24 * 60 * 60 * 1000;
             state.sortedOffers.forEach(({ offer }) => {
                 const expStr = offer.campaignOffer?.reserveByDate;
                 if (expStr) {
                     const expDate = new Date(expStr).getTime();
-                    if (expDate >= now && expDate - now <= threeDaysMs) {
+                    if (expDate >= now && expDate - now <= twoDays) {
                         if (!soonestExpDate || expDate < soonestExpDate) soonestExpDate = expDate;
                     }
                 }

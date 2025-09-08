@@ -52,20 +52,32 @@ const Utils = {
     toTitleCase(str) {
         return str.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     },
+    // Helper to title-case only words longer than two characters
+    toPortTitleCase(str) {
+        if (!str) return str;
+        return str.split(/(\W+)/).map(word => {
+            if (/^[A-Za-z]{3,}$/.test(word)) {
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            }
+            return word;
+        }).join('');
+    },
     // Normalize fetched offers data: trim and standardize capitalization
     normalizeOffers(data) {
         if (data && Array.isArray(data.offers)) {
-            data.offers.forEach(({ offer, sailing }) => {
-                if (offer?.campaignOffer) {
-                    const co = offer.campaignOffer;
+            data.offers.forEach((offerObj) => {
+                const co = offerObj.campaignOffer;
+                if (co) {
                     if (typeof co.offerCode === 'string') co.offerCode = co.offerCode.trim().toUpperCase();
                     if (typeof co.name === 'string') co.name = Utils.toTitleCase(co.name.trim());
-                }
-                if (sailing) {
-                    if (typeof sailing.shipName === 'string') sailing.shipName = Utils.toTitleCase(sailing.shipName.trim());
-                    if (sailing.departurePort?.name) sailing.departurePort.name = Utils.toTitleCase(sailing.departurePort.name.trim());
-                    if (typeof sailing.itineraryDescription === 'string') sailing.itineraryDescription = Utils.toTitleCase(sailing.itineraryDescription.trim());
-                    if (sailing.sailingType?.name) sailing.sailingType.name = Utils.toTitleCase(sailing.sailingType.name.trim());
+                    if (Array.isArray(co.sailings)) {
+                        co.sailings.forEach((sailing) => {
+                            if (typeof sailing.shipName === 'string') sailing.shipName = Utils.toTitleCase(sailing.shipName.trim());
+                            if (sailing.departurePort?.name) sailing.departurePort.name = Utils.toPortTitleCase(sailing.departurePort.name.trim());
+                            if (typeof sailing.itineraryDescription === 'string') sailing.itineraryDescription = Utils.toTitleCase(sailing.itineraryDescription.trim());
+                            if (sailing.sailingType?.name) sailing.sailingType.name = Utils.toTitleCase(sailing.sailingType.name.trim());
+                        });
+                    }
                 }
             });
         }
