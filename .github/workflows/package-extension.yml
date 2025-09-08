@@ -1,0 +1,31 @@
+name: Package Chrome Extension
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [published]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Create zip package
+        run: |
+          zip -r club-royale-offers-extension.zip . \
+            -x '*.git*' '*.github*' '*node_modules*' '*.DS_Store' '*.iml' '*.md' '*.yml' '*.zip'
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: club-royale-offers-extension
+          path: club-royale-offers-extension.zip
+
