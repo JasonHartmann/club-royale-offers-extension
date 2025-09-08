@@ -109,6 +109,10 @@ const Styles = {
                 .table-auto th, .table-auto td {
                     width: 10%;
                     box-sizing: border-box;
+                    font-size: 0.75rem;
+                }
+                .accordion-table th, .accordion-table td {
+                    font-size: 0.75rem;
                 }
                 .close-button {
                     background-color: #dc2626;
