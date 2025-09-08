@@ -8,7 +8,7 @@ const Modal = {
     createBackdrop() {
         const backdrop = document.createElement('div');
         backdrop.id = 'gobo-backdrop';
-        backdrop.className = 'fixed inset-0 bg-black bg-opacity-70 z-[2147483646]';
+        backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-[2147483646]';
         backdrop.style.cssText = 'pointer-events: auto !important;';
         return backdrop;
     },
