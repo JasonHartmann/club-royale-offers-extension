@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/club-royale-gobo-extension.iml" filepath="$PROJECT_DIR$/club-royale-gobo-extension.iml" />
+      <module fileurl="file://$PROJECT_DIR$/club-royale-offers-extension.iml" filepath="$PROJECT_DIR$/club-royale-offers-extension.iml" />
     </modules>
   </component>
 </project>

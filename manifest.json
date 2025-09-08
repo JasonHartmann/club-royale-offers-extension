@@ -1,16 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Club Royale GOBO Indicator",
+  "name": "Club Royale Casino Offers Viewer",
   "version": "1.0",
-  "description": "Displays a button to show a table of casino offers with GOBO status on Royal Caribbean Club Royale page",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://www.royalcaribbean.com/*"
-  ],
+  "description": "Adds a 'Show Casino Offers' button to Royal Caribbean Club Royale Offers page, presenting a sortable, groupable table and accordion view of casino offers",
   "content_scripts": [
     {
       "matches": ["https://www.royalcaribbean.com/club-royale/offers*"],
@@ -26,15 +18,10 @@
         "accordionBuilder.js",
         "sortUtils.js",
         "tableRenderer.js",
+        "utils.js",
         "app.js"
       ],
       "run_at": "document_start"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["gobo-icon.png"],
-      "matches": ["https://www.royalcaribbean.com/*"]
     }
   ]
 }

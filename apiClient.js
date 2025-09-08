@@ -76,7 +76,9 @@ const ApiClient = {
             }
             const data = await response.json();
             console.log('API response:', data);
-            App.TableRenderer.displayTable(data);
+            // normalize data (trim, adjust capitalization, etc.)
+            const normalizedData = App.Utils.normalizeOffers(data);
+            App.TableRenderer.displayTable(normalizedData);
         } catch (error) {
             console.error('Fetch failed:', error.message);
             if (retryCount > 0) {

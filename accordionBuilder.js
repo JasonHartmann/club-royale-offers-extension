@@ -95,6 +95,8 @@ const AccordionBuilder = {
             const groupTable = document.createElement('table');
             groupTable.className = 'w-full border-collapse table-auto accordion-table';
             groupTable.dataset.groupKey = groupKey;
+            // tbody for group rows, declared before header loop so sort callback can reference it
+            const groupTbody = document.createElement('tbody');
 
             const groupThead = document.createElement('thead');
             groupThead.className = 'accordion-table-header';
@@ -110,63 +112,50 @@ const AccordionBuilder = {
                 // Group icon click for nested grouping
                 th.querySelector('.group-icon').addEventListener('click', (event) => {
                     event.stopPropagation();
-                    // Prevent grouping by the same column twice in a row
                     if (groupingStack[groupingStack.length - 1] === headerObj.key) return;
-                    // Push new grouping
                     const newGroupingStack = [...groupingStack, headerObj.key];
                     const newGroupKeysStack = [...groupKeysStack, groupKey];
-                    // Get offers for this group
-                    let offers = groupedData[groupKey];
-                    // Group by new column
+                    const offers = groupedData[groupKey];
                     const nestedGroupedData = AccordionBuilder.createGroupedData(offers, headerObj.key);
-                    // Render nested accordion
                     content.innerHTML = '';
                     AccordionBuilder.renderAccordion(content, nestedGroupedData, groupSortStates, state, newGroupingStack, newGroupKeysStack);
-                    // Update breadcrumb
+                    // auto-expand this group container
+                    content.classList.add('open');
+                    state.openGroups.add([...groupKeysStack, groupKey].join('>'));
                     if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.updateBreadcrumb) {
                         App.TableRenderer.updateBreadcrumb(newGroupingStack, newGroupKeysStack);
                     }
+                });
+                // Sort label click for this group's rows
+                th.querySelector('.sort-label').addEventListener('click', event => {
+                    event.stopPropagation();
+                    const groupPath = [...groupKeysStack, groupKey].join('>');
+                    const gs = groupSortStates[groupPath] || { currentSortColumn: null, currentSortOrder: 'original' };
+                    let newOrder = 'asc';
+                    if (gs.currentSortColumn === headerObj.key) {
+                        newOrder = gs.currentSortOrder === 'asc' ? 'desc' : (gs.currentSortOrder === 'desc' ? 'original' : 'asc');
+                    }
+                    gs.currentSortColumn = headerObj.key;
+                    gs.currentSortOrder = newOrder;
+                    groupSortStates[groupPath] = gs;
+                    const offers = groupedData[groupKey];
+                    const sorted = newOrder !== 'original' ? App.SortUtils.sortOffers([...offers], headerObj.key, newOrder) : offers;
+                    groupTbody.innerHTML = '';
+                    sorted.forEach(({ offer, sailing }) => {
+                        // delegate row rendering to Utils
+                        const row = App.Utils.createOfferRow({ offer, sailing });
+                        groupTbody.appendChild(row);
+                    });
                 });
                 groupTr.appendChild(th);
             });
             groupThead.appendChild(groupTr);
 
-            const groupTbody = document.createElement('tbody');
             // Only show rows if not further grouped
             if (groupingStack.length === 0 || groupKeysStack.length < groupingStack.length) {
                 groupedData[groupKey].forEach(({ offer, sailing }) => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-gray-50';
-                    let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-                    if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
-                        qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-                    }
-                    if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
-                        qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
-                    }
-                    let room = sailing.roomType;
-                    if (sailing.isGTY) {
-                        if (room) {
-                            room += ' GTY';
-                        } else {
-                            room = 'GTY';
-                        }
-                    }
-                    const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
-                    const { nights, destination } = App.Utils.parseItinerary(itinerary);
-                    row.innerHTML = `
-                        <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                        <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
-                        <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
-                        <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
-                        <td class="border p-2">${sailing.shipName || '-'}</td>
-                        <td class="border p-2">${App.Utils.formatDate(sailing.sailDate)}</td>
-                        <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-                        <td class="border p-2">${nights}</td>
-                        <td class="border p-2">${destination}</td>
-                        <td class="border p-2">${room || '-'}</td>
-                        <td class="border p-2">${qualityText}</td>
-                    `;
+                    // delegate row rendering
+                    const row = App.Utils.createOfferRow({ offer, sailing });
                     groupTbody.appendChild(row);
                 });
             }

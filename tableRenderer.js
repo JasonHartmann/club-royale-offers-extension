@@ -133,8 +133,13 @@ const TableRenderer = {
         allOffersLink.className = 'breadcrumb-link';
         allOffersLink.textContent = 'All Offers';
         allOffersLink.addEventListener('click', () => {
-            // Reset to top-level grouping
-            App.TableRenderer.updateView(App.TableRenderer.lastState);
+            // Reset to top-level table view
+            const state = App.TableRenderer.lastState;
+            state.currentGroupColumn = null;
+            state.viewMode = 'table';
+            state.groupSortStates = {};
+            state.openGroups = new Set();
+            App.TableRenderer.updateView(state);
         });
         breadcrumbContainer.appendChild(allOffersLink);
         let path = '';

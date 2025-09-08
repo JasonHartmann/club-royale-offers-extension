@@ -58,38 +58,8 @@ const TableBuilder = {
             tbody.appendChild(row);
         } else {
             state.sortedOffers.forEach(({ offer, sailing }) => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50';
-                let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-                if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
-                    qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-                }
-                if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
-                    qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
-                }
-                let room = sailing.roomType;
-                if (sailing.isGTY) {
-                    if (room) {
-                        room += ' GTY';
-                    } else {
-                        room = 'GTY';
-                    }
-                }
-                const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
-                const { nights, destination } = App.Utils.parseItinerary(itinerary);
-                row.innerHTML = `
-                    <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
-                    <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
-                    <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
-                    <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
-                    <td class="border p-2">${sailing.shipName || '-'}</td>
-                    <td class="border p-2">${App.Utils.formatDate(sailing.sailDate)}</td>
-                    <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-                    <td class="border p-2">${nights}</td>
-                    <td class="border p-2">${destination}</td>
-                    <td class="border p-2">${room || '-'}</td>
-                    <td class="border p-2">${qualityText}</td>
-                `;
+                // delegate row creation to Utils
+                const row = App.Utils.createOfferRow({ offer, sailing });
                 tbody.appendChild(row);
             });
         }

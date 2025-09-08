@@ -6,6 +6,20 @@ const SortUtils = {
         return offers.sort((a, b) => {
             let aValue, bValue;
             switch (sortColumn) {
+                case 'destination': {
+                    const aItin = a.sailing.itineraryDescription || a.sailing.sailingType?.name || '';
+                    const bItin = b.sailing.itineraryDescription || b.sailing.sailingType?.name || '';
+                    aValue = App.Utils.parseItinerary(aItin).destination || '';
+                    bValue = App.Utils.parseItinerary(bItin).destination || '';
+                    break;
+                }
+                case 'nights': {
+                    const aItin = a.sailing.itineraryDescription || a.sailing.sailingType?.name || '';
+                    const bItin = b.sailing.itineraryDescription || b.sailing.sailingType?.name || '';
+                    aValue = parseInt(App.Utils.parseItinerary(aItin).nights) || 0;
+                    bValue = parseInt(App.Utils.parseItinerary(bItin).nights) || 0;
+                    break;
+                }
                 case 'offerCode':
                     aValue = a.offer.campaignOffer?.offerCode || '';
                     bValue = b.offer.campaignOffer?.offerCode || '';
