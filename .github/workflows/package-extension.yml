@@ -18,14 +18,22 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Create zip package
-        run: |
-          zip -r club-royale-offers-extension.zip . \
-            -x '*.git*' '*.github*' '*node_modules*' '*.DS_Store' '*.iml' '*.md' '*.yml' '*.zip'
-
-      - name: Upload zip artifact
+      - name: Upload extension files as artifact
         uses: actions/upload-artifact@v4
         with:
           name: club-royale-offers-extension
-          path: club-royale-offers-extension.zip
-
+          path: |
+            accordionBuilder.js
+            apiClient.js
+            app.js
+            buttonManager.js
+            domUtils.js
+            errorHandler.js
+            manifest.json
+            modal.js
+            sortUtils.js
+            spinner.js
+            styles.js
+            tableBuilder.js
+            tableRenderer.js
+            utils.js
