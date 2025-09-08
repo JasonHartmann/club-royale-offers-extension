@@ -107,9 +107,64 @@ const Styles = {
                     width: 100%;
                 }
                 .table-auto th, .table-auto td {
-                    width: 10%;
+                    width: 25%;
                     box-sizing: border-box;
                     font-size: 0.75rem;
+                }
+                .table-auto th[data-key="offerCode"],
+                .table-auto td:nth-child(1),
+                .accordion-table th[data-key="offerCode"],
+                .accordion-table td:nth-child(1) {
+                    width: 100px !important;
+                    min-width: 100px !important;
+                    max-width: 100px !important;
+                }
+                .table-auto th[data-key="offerDate"],
+                .table-auto td:nth-child(2),
+                .accordion-table th[data-key="offerDate"],
+                .accordion-table td:nth-child(2) {
+                    width: 100px !important;
+                    min-width: 100px !important;
+                    max-width: 100px !important;
+                }
+                .table-auto th[data-key="expiration"],
+                .table-auto td:nth-child(3),
+                .accordion-table th[data-key="expiration"],
+                .accordion-table td:nth-child(3) {
+                    width: 100px !important;
+                    min-width: 100px !important;
+                    max-width: 100px !important;
+                }
+                .table-auto th[data-key="sailDate"],
+                .table-auto td:nth-child(6),
+                .accordion-table th[data-key="sailDate"],
+                .accordion-table td:nth-child(6) {
+                    width: 100px !important;
+                    min-width: 100px !important;
+                    max-width: 100px !important;
+                }
+                .table-auto th[data-key="nights"],
+                .table-auto td:nth-child(8),
+                .accordion-table th[data-key="nights"],
+                .accordion-table td:nth-child(8) {
+                    width: 80px !important;
+                    min-width: 80px !important;
+                    max-width: 80px !important;
+                    text-align: center;
+                }
+                .table-auto th[data-key="category"],
+                .table-auto td:nth-child(10),
+                .accordion-table th[data-key="category"],
+                .accordion-table td:nth-child(10) {
+                    width: 120px !important;
+                    min-width: 120px !important;
+                }
+                .table-auto th[data-key="quality"],
+                .table-auto td:nth-child(11),
+                .accordion-table th[data-key="quality"],
+                .accordion-table td:nth-child(11) {
+                    width: 120px !important;
+                    min-width: 120px !important;
                 }
                 .accordion-table th, .accordion-table td {
                     font-size: 0.75rem;

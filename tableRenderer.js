@@ -31,10 +31,10 @@ const TableRenderer = {
                 accordionContainer: document.createElement('div'),
                 backButton: document.createElement('button'),
                 headers: [
-                    { key: 'offerCode', label: 'Offer Code' },
-                    { key: 'offerDate', label: 'Offer Date' },
+                    { key: 'offerCode', label: 'Code' },
+                    { key: 'offerDate', label: 'Received' },
                     { key: 'expiration', label: 'Expiration' },
-                    { key: 'offerName', label: 'Offer Name' },
+                    { key: 'offerName', label: 'Name' },
                     { key: 'ship', label: 'Ship' },
                     { key: 'sailDate', label: 'Sail Date' },
                     { key: 'departurePort', label: 'Departure Port' },
