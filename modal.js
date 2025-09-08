@@ -88,7 +88,7 @@ const Modal = {
         newBox.style.cssText = 'display: inline-block; width: 14px; height: 14px; background: #DFD; border: 1px solid #ccc; margin-right: 4px; vertical-align: middle;';
         const newLabel = document.createElement('span');
         newLabel.style.cssText = 'color: #14532d;';
-        newLabel.textContent = 'New Offer';
+        newLabel.textContent = 'Newest Offer';
         legend.appendChild(newBox);
         legend.appendChild(newLabel);
 

@@ -14,31 +14,42 @@ const ButtonManager = {
 
             const banner = document.querySelector('div[class*="flex"][class*="items-center"][class*="justify-between"]');
             if (!banner && attempt <= maxAttempts) {
-                console.log(`Banner div not found, retrying (${attempt}/${maxAttempts})`);
                 setTimeout(() => this.addButton(maxAttempts, attempt + 1), 500);
                 return;
             }
             if (!banner) {
-                console.error('Banner div not found after max attempts, falling back to fixed position');
+                console.log('Banner div not found after max attempts, falling back to fixed position');
                 button.className = 'fixed top-4 right-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
                 document.body.appendChild(button);
             } else {
                 console.log('Banner div found, adding button');
-                const signOutButton = Array.from(banner.querySelectorAll('button, a')).find(child =>
-                    child.textContent.toLowerCase().includes('sign out') ||
-                    child.getAttribute('aria-label')?.toLowerCase().includes('sign out')
-                );
-                if (signOutButton) {
-                    signOutButton.insertAdjacentElement('afterend', button);
-                    console.log('Button added after Sign Out button');
-                } else {
-                    banner.appendChild(button);
-                    console.log('Button added to banner div');
+                // Create a container for centering
+                let centerContainer = document.getElementById('gobo-offers-center-container');
+                if (!centerContainer) {
+                    centerContainer = document.createElement('div');
+                    centerContainer.id = 'gobo-offers-center-container';
+                    centerContainer.style.display = 'flex';
+                    centerContainer.style.justifyContent = 'center';
+                    centerContainer.style.alignItems = 'center';
+                    centerContainer.style.width = '100%';
+                    centerContainer.style.position = 'absolute';
+                    centerContainer.style.left = '0';
+                    centerContainer.style.top = '0';
+                    centerContainer.style.pointerEvents = 'none'; // allow clicks to pass through except for button
+                    banner.style.position = 'relative'; // ensure banner is positioned
+                    banner.appendChild(centerContainer);
                 }
+                button.style.pointerEvents = 'auto'; // allow button to be clickable
+                centerContainer.innerHTML = '';
+                centerContainer.appendChild(button);
+                button.style.margin = '0 auto';
+                button.style.position = 'relative';
+                button.style.zIndex = '10';
+                console.log('Button centered in banner div');
             }
             console.log('Button added to DOM');
         } catch (error) {
-            console.error('Failed to add button:', error.message);
+            console.log('Failed to add button:', error.message);
             App.ErrorHandler.showError('Failed to add button. Please reload the page.');
         }
     }

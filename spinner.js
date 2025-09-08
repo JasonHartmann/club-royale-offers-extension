@@ -10,7 +10,7 @@ const Spinner = {
             document.body.appendChild(spinnerContainer);
             console.log('Loading spinner displayed');
         } catch (error) {
-            console.error('Failed to show loading spinner:', error.message);
+            console.log('Failed to show loading spinner:', error.message);
         }
     },
     hideSpinner() {
@@ -21,7 +21,7 @@ const Spinner = {
                 console.log('Loading spinner hidden');
             }
         } catch (error) {
-            console.error('Failed to hide loading spinner:', error.message);
+            console.log('Failed to hide loading spinner:', error.message);
         }
     }
 };

@@ -107,7 +107,7 @@ const Styles = {
                     width: 100%;
                 }
                 .table-auto th, .table-auto td {
-                    width: 25%;
+                    width: 35%;
                     box-sizing: border-box;
                     font-size: 0.75rem;
                 }
@@ -115,56 +115,84 @@ const Styles = {
                 .table-auto td:nth-child(1),
                 .accordion-table th[data-key="offerCode"],
                 .accordion-table td:nth-child(1) {
-                    width: 100px !important;
-                    min-width: 100px !important;
-                    max-width: 100px !important;
+                    width: 110px;
+                    min-width: 60px !important;
+                    max-width: 110px !important;
                 }
                 .table-auto th[data-key="offerDate"],
                 .table-auto td:nth-child(2),
                 .accordion-table th[data-key="offerDate"],
                 .accordion-table td:nth-child(2) {
-                    width: 100px !important;
-                    min-width: 100px !important;
-                    max-width: 100px !important;
+                    width: 110px;
+                    min-width: 60px !important;
+                    max-width: 110px !important;
                 }
                 .table-auto th[data-key="expiration"],
                 .table-auto td:nth-child(3),
                 .accordion-table th[data-key="expiration"],
                 .accordion-table td:nth-child(3) {
-                    width: 100px !important;
-                    min-width: 100px !important;
-                    max-width: 100px !important;
+                    width: 110px;
+                    min-width: 60px !important;
+                    max-width: 110px !important;
+                }
+                .table-auto th[data-key="offerName"],
+                .table-auto td:nth-child(4),
+                .accordion-table th[data-key="offerName"],
+                .accordion-table td:nth-child(4) {
+                    width: 15% !important;
+                    min-width: 120px !important;
+                }
+                .table-auto th[data-key="ship"],
+                .table-auto td:nth-child(5),
+                .accordion-table th[data-key="ship"],
+                .accordion-table td:nth-child(5) {
+                    width: 15% !important;
+                    min-width: 120px !important;
                 }
                 .table-auto th[data-key="sailDate"],
                 .table-auto td:nth-child(6),
                 .accordion-table th[data-key="sailDate"],
                 .accordion-table td:nth-child(6) {
-                    width: 100px !important;
-                    min-width: 100px !important;
-                    max-width: 100px !important;
+                    width: 110px;
+                    min-width: 60px !important;
+                    max-width: 110px !important;
+                }
+                .table-auto th[data-key="destination"],
+                .table-auto td:nth-child(7),
+                .accordion-table th[data-key="destination"],
+                .accordion-table td:nth-child(7) {
+                    width: 35% !important;
+                    min-width: 120px !important;
                 }
                 .table-auto th[data-key="nights"],
                 .table-auto td:nth-child(8),
                 .accordion-table th[data-key="nights"],
                 .accordion-table td:nth-child(8) {
-                    width: 80px !important;
+                    width: 80px;
                     min-width: 80px !important;
                     max-width: 80px !important;
                     text-align: center;
+                }
+                .table-auto th[data-key="departurePort"],
+                .table-auto td:nth-child(9),
+                .accordion-table th[data-key="departurePort"],
+                .accordion-table td:nth-child(9) {
+                    width: 15% !important;
+                    min-width: 120px !important;
                 }
                 .table-auto th[data-key="category"],
                 .table-auto td:nth-child(10),
                 .accordion-table th[data-key="category"],
                 .accordion-table td:nth-child(10) {
-                    width: 120px !important;
-                    min-width: 120px !important;
+                    width: 120px;
+                    min-width: 50px !important;
                 }
                 .table-auto th[data-key="quality"],
                 .table-auto td:nth-child(11),
                 .accordion-table th[data-key="quality"],
                 .accordion-table td:nth-child(11) {
-                    width: 120px !important;
-                    min-width: 120px !important;
+                    width: 120px;
+                    min-width: 50px !important;
                 }
                 .accordion-table th, .accordion-table td {
                     font-size: 0.75rem;
@@ -240,7 +268,7 @@ const Styles = {
             document.head.appendChild(style);
             console.log('Custom styles injected');
         } catch (error) {
-            console.error('Failed to inject styles:', error.message);
+            console.log('Failed to inject styles:', error.message);
             App.ErrorHandler.showError('Failed to load styles. Table may appear unstyled.');
         }
     }

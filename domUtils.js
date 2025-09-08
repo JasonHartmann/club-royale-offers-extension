@@ -9,7 +9,7 @@ const DOMUtils = {
             console.log(`DOM not ready, retrying (${attempt}/${maxAttempts})`);
             setTimeout(() => this.waitForDom(maxAttempts, attempt + 1), 500);
         } else {
-            console.error('Failed to load DOM after max attempts');
+            console.log('Failed to load DOM after max attempts');
             App.ErrorHandler.showError('Failed to initialize extension. Please reload the page.');
         }
     },

@@ -82,7 +82,7 @@ const TableRenderer = {
 
             console.log('Table displayed');
         } catch (error) {
-            console.error('Failed to display table:', error.message);
+            console.log('Failed to display table:', error.message);
             App.ErrorHandler.showError('Failed to display table. Please try again.');
             document.body.style.overflow = '';
             const existingBackdrop = document.getElementById('gobo-backdrop');

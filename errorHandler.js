@@ -10,7 +10,7 @@ const ErrorHandler = {
             document.body.appendChild(errorDiv);
             setTimeout(() => errorDiv.remove(), 10000);
         } catch (error) {
-            console.error('Failed to show error:', error.message);
+            console.log('Failed to show error:', error.message);
         }
     },
     closeModalIfOpen() {

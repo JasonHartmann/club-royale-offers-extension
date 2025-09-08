@@ -5,7 +5,7 @@ const ApiClient = {
         try {
             const sessionData = localStorage.getItem('persist:session');
             if (!sessionData) {
-                console.error('No session data found in localStorage');
+                console.log('No session data found in localStorage');
                 App.ErrorHandler.showError('Failed to load offers: No session data. Please log in again.');
                 return;
             }
@@ -16,20 +16,20 @@ const ApiClient = {
             accountId = user && user.accountId ? user.accountId : null;
             loyaltyId = user && user.cruiseLoyaltyId ? user.cruiseLoyaltyId : null;
             if (!authToken || !tokenExpiration || !accountId) {
-                console.error('Invalid session data: token, expiration, or account ID missing');
+                console.log('Invalid session data: token, expiration, or account ID missing');
                 App.ErrorHandler.showError('Failed to load offers: Invalid session data. Please log in again.');
                 return;
             }
             const currentTime = Date.now();
             if (tokenExpiration < currentTime) {
-                console.error('Token expired:', new Date(tokenExpiration).toISOString());
+                console.log('Token expired:', new Date(tokenExpiration).toISOString());
                 localStorage.removeItem('persist:session');
                 App.ErrorHandler.showError('Session expired. Please log in again.');
                 App.ErrorHandler.closeModalIfOpen();
                 return;
             }
         } catch (error) {
-            console.error('Failed to parse session data:', error.message);
+            console.log('Failed to parse session data:', error.message);
             App.ErrorHandler.showError('Failed to load session data. Please log in again.');
             return;
         }
@@ -80,7 +80,7 @@ const ApiClient = {
             const normalizedData = App.Utils.normalizeOffers(data);
             App.TableRenderer.displayTable(normalizedData);
         } catch (error) {
-            console.error('Fetch failed:', error.message);
+            console.log('Fetch failed:', error.message);
             if (retryCount > 0) {
                 console.log(`Retrying fetch (${retryCount} attempts left)`);
                 setTimeout(() => this.fetchOffers(retryCount - 1), 2000);
