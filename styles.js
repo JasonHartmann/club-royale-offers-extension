@@ -22,6 +22,12 @@ const Styles = {
                 .sort-desc::after { content:' ↑'; }
                 .group-icon { cursor:pointer; margin-right:8px; display:inline-block; }
                 .accordion-header { background:#e2e8f0; padding:8px; cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; align-items:center; }
+                .accordion-header[data-depth="0"] { background:#e2e8f0; }
+                .accordion-header[data-depth="1"] { background:#edf1f5; }
+                .accordion-header[data-depth="2"] { background:#f3f6f9; }
+                .accordion-header[data-depth="3"],
+                .accordion-header[data-depth="4"],
+                .accordion-header[data-depth="5"] { background:#f8fafc; }
                 .accordion-content { display:none; padding:8px; }
                 .accordion-content.open { display:block; }
                 .accordion-table th { cursor:pointer; }

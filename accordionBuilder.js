@@ -1,7 +1,6 @@
 const AccordionBuilder = {
     createGroupedData(sortedOffers, currentGroupColumn) {
         const groupedData = {};
-        // Map to normalize destination keys (case-insensitive)
         const normalizedDestMap = {};
         sortedOffers.forEach(({ offer, sailing }) => {
             let groupKey;
@@ -13,7 +12,6 @@ const AccordionBuilder = {
                 }
                 case 'destination': {
                     const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
-                    // Normalize destination to merge identical names regardless of case or whitespace
                     const rawDest = App.Utils.parseItinerary(itinerary).destination || '-';
                     const trimmedDest = rawDest.trim();
                     const keyLower = trimmedDest.toLowerCase();
@@ -47,87 +45,129 @@ const AccordionBuilder = {
                     break;
                 case 'category': {
                     let room = sailing.roomType;
-                    if (sailing.isGTY) {
-                        room = room ? room + ' GTY' : 'GTY';
-                    }
+                    if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
                     groupKey = room || '-';
                     break;
                 }
                 case 'quality': {
                     groupKey = sailing.isGOBO ? '1 Guest' : '2 Guests';
-                    if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
-                        groupKey += ` + $${sailing.DOLLARSOFF_AMT} off`;
-                    }
-                    if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
-                        groupKey += ` + $${sailing.FREEPLAY_AMT} freeplay`;
-                    }
+                    if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) groupKey += ` + $${sailing.DOLLARSOFF_AMT} off`;
+                    if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) groupKey += ` + $${sailing.FREEPLAY_AMT} freeplay`;
                     break;
                 }
+                default:
+                    groupKey = '-';
             }
             if (!groupedData[groupKey]) groupedData[groupKey] = [];
             groupedData[groupKey].push({ offer, sailing });
         });
         return groupedData;
     },
-    // Helper to format date string as MM/DD/YY without timezone shift
-    formatDate(dateStr) {
-        if (!dateStr) return '-';
-        const [year, month, day] = dateStr.split('T')[0].split('-');
-        return `${month}/${day}/${year.slice(-2)}`;
+    // Append grouping header (column) names, not selection values, to parent headers along the currently open path
+    updateHeaderTitles(rootContainer, state) {
+        if (!rootContainer || !state) return;
+        const valuePath = state.groupKeysStack || []; // selected values path
+        const groupingCols = state.groupingStack || []; // grouping column keys in order
+        const headers = rootContainer.querySelectorAll('.accordion-header');
+        headers.forEach(h => {
+            const baseKey = h.dataset.baseKey;
+            if (!baseKey) return;
+            const count = parseInt(h.dataset.offerCount || '0', 10);
+            const keyPathValues = (h.dataset.keyPath || '').split('>').filter(Boolean); // values representing this header path
+            // Only decorate if this header is a prefix of current open value path
+            let isPrefix = true;
+            if (keyPathValues.length > valuePath.length) isPrefix = false;
+            else {
+                for (let i = 0; i < keyPathValues.length; i++) {
+                    if (keyPathValues[i] !== valuePath[i]) { isPrefix = false; break; }
+                }
+            }
+            let displayKey = baseKey;
+            if (isPrefix) {
+                // For each deeper level that has a selected value, append its grouping column header label
+                // keyPathValues length corresponds to number of selected values up to this header (depth+1)
+                const headerLabelMap = state.headerLabelMap || {};
+                const appendedLabels = [];
+                for (let i = keyPathValues.length; i < valuePath.length; i++) {
+                    const groupingColKey = groupingCols[i]; // grouping column key at this depth
+                    if (groupingColKey) {
+                        const lbl = headerLabelMap[groupingColKey] || groupingColKey;
+                        appendedLabels.push(lbl);
+                    }
+                }
+                if (appendedLabels.length) displayKey = baseKey + ' > ' + appendedLabels.join(' > ');
+            }
+            h.innerHTML = `${displayKey} <span>${count} offer${count === 1 ? '' : 's'}</span>`;
+        });
     },
-    // Recursive function to render nested accordions
     renderAccordion(accordionContainer, groupedData, groupSortStates, state, groupingStack = [], groupKeysStack = [], globalMaxOfferDate = null) {
+        state.groupingStack = [...groupingStack];
+        state.groupKeysStack = [...groupKeysStack];
+        if (!state.openGroups) state.openGroups = new Set();
+        if (!state.rootAccordionContainer) state.rootAccordionContainer = accordionContainer;
         const { headers, openGroups } = state;
+        // build header label map once
+        if (!state.headerLabelMap && headers) {
+            state.headerLabelMap = headers.reduce((m, h) => { m[h.key] = h.label; return m; }, {});
+        }
         accordionContainer.innerHTML = '';
-        Object.keys(groupedData).forEach((groupKey) => {
+
+        Object.keys(groupedData).forEach(groupKey => {
             const accordion = document.createElement('div');
             accordion.className = 'border mb-2';
+
             const header = document.createElement('div');
+            const depth = groupingStack.length - 1; // keep legacy depth logic
             header.className = 'accordion-header';
-            header.innerHTML = `
-                ${groupKey} <span>${groupedData[groupKey].length} offer${groupedData[groupKey].length > 1 ? 's' : ''}</span>
-            `;
+            header.dataset.depth = depth;
+            header.dataset.baseKey = groupKey; // store original group value for restoration
+            header.dataset.keyPath = [...groupKeysStack, groupKey].join('>');
+            header.dataset.offerCount = groupedData[groupKey].length;
+            header.innerHTML = `${groupKey} <span>${groupedData[groupKey].length} offer${groupedData[groupKey].length > 1 ? 's' : ''}</span>`;
+
             const content = document.createElement('div');
             content.className = 'accordion-content';
-            if (openGroups instanceof Set && openGroups.has([...groupKeysStack, groupKey].join('>'))) {
-                content.classList.add('open');
-            }
-            const groupTable = document.createElement('table');
-            groupTable.className = 'w-full border-collapse table-auto accordion-table';
-            groupTable.dataset.groupKey = groupKey;
-            // tbody for group rows, declared before header loop so sort callback can reference it
-            const groupTbody = document.createElement('tbody');
+            const fullPath = [...groupKeysStack, groupKey].join('>');
+            if (openGroups instanceof Set && openGroups.has(fullPath)) content.classList.add('open');
 
-            const groupThead = document.createElement('thead');
-            groupThead.className = 'accordion-table-header';
-            const groupTr = document.createElement('tr');
+            const table = document.createElement('table');
+            table.className = 'w-full border-collapse table-auto accordion-table';
+            table.dataset.groupKey = groupKey;
+
+            const thead = document.createElement('thead');
+            thead.className = 'accordion-table-header';
+            const tr = document.createElement('tr');
+
             headers.forEach(headerObj => {
                 const th = document.createElement('th');
-                th.className = 'border p-2 text-left font-semibold cursor-pointer';
+                th.className = 'border p-2 text-left font-semibold';
                 th.dataset.key = headerObj.key;
-                th.innerHTML = `
-                    <span class="sort-label">${headerObj.label}</span>
-                `;
-                // // Group icon click for nested grouping
-                // th.querySelector('.group-icon').addEventListener('click', (event) => {
-                //     event.stopPropagation();
-                //     if (groupingStack[groupingStack.length - 1] === headerObj.key) return;
-                //     const newGroupingStack = [...groupingStack, headerObj.key];
-                //     const newGroupKeysStack = [...groupKeysStack, groupKey];
-                //     const offers = groupedData[groupKey];
-                //     const nestedGroupedData = AccordionBuilder.createGroupedData(offers, headerObj.key);
-                //     content.innerHTML = '';
-                //     AccordionBuilder.renderAccordion(content, nestedGroupedData, groupSortStates, state, newGroupingStack, newGroupKeysStack);
-                //     // auto-expand this group container
-                //     content.classList.add('open');
-                //     state.openGroups.add([...groupKeysStack, groupKey].join('>'));
-                //     if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.updateBreadcrumb) {
-                //         App.TableRenderer.updateBreadcrumb(newGroupingStack, newGroupKeysStack);
-                //     }
-                // });
-                // Sort label click for this group's rows
-                th.querySelector('.sort-label').addEventListener('click', event => {
-                    event.stopPropagation();
+                th.innerHTML = `<span class="group-icon" title="Group by ${headerObj.label}">🗂️</span> <span class="sort-label cursor-pointer">${headerObj.label}</span>`;
+
+                // Group (nested) click
+                th.querySelector('.group-icon').addEventListener('click', e => {
+                    e.stopPropagation();
+                    if (groupingStack[groupingStack.length - 1] === headerObj.key) return; // avoid redundant grouping
+                    if (state.groupKeysStack.length < groupingStack.length) {
+                        state.groupKeysStack = [...groupKeysStack, groupKey];
+                    }
+                    const newGroupingStack = [...state.groupingStack, headerObj.key];
+                    const newGroupKeysStack = [...state.groupKeysStack];
+                    state.groupingStack = newGroupingStack;
+                    state.groupKeysStack = newGroupKeysStack;
+                    const offers = groupedData[groupKey];
+                    const nestedGrouped = AccordionBuilder.createGroupedData(offers, headerObj.key);
+                    content.innerHTML = '';
+                    AccordionBuilder.renderAccordion(content, nestedGrouped, groupSortStates, state, newGroupingStack, newGroupKeysStack, globalMaxOfferDate);
+                    content.classList.add('open');
+                    state.openGroups.add(fullPath);
+                    if (App?.TableRenderer?.updateBreadcrumb) App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+                    AccordionBuilder.updateHeaderTitles(state.rootAccordionContainer, state);
+                });
+
+                // Sort click
+                th.querySelector('.sort-label').addEventListener('click', e => {
+                    e.stopPropagation();
                     const groupPath = [...groupKeysStack, groupKey].join('>');
                     const gs = groupSortStates[groupPath] || { currentSortColumn: null, currentSortOrder: 'original' };
                     let newOrder = 'asc';
@@ -137,58 +177,45 @@ const AccordionBuilder = {
                     gs.currentSortColumn = headerObj.key;
                     gs.currentSortOrder = newOrder;
                     groupSortStates[groupPath] = gs;
-                    const offers = groupedData[groupKey];
-                    const sorted = newOrder !== 'original' ? App.SortUtils.sortOffers([...offers], headerObj.key, newOrder) : offers;
-                    groupTbody.innerHTML = '';
-                    sorted.forEach(({ offer, sailing }) => {
-                        const offerDate = offer.campaignOffer?.startDate;
-                        const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
-                        const expDate = offer.campaignOffer?.reserveByDate;
-                        const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
-                        // delegate row rendering to Utils
-                        const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
-                        groupTbody.appendChild(row);
-                    });
-                    // Remove sort classes from all ths in this header row
-                    groupTr.querySelectorAll('th').forEach(thEl => {
-                        thEl.classList.remove('sort-asc', 'sort-desc');
-                    });
-                    // Add sort class to the clicked th
-                    if (newOrder === 'asc') th.classList.add('sort-asc');
-                    else if (newOrder === 'desc') th.classList.add('sort-desc');
-                });
-                groupTr.appendChild(th);
-            });
-            groupThead.appendChild(groupTr);
 
-            // Find the soonest expiring offer in this group (for expiring soon logic)
-            let soonestExpDate = null;
-            const now = Date.now();
-            const twoDays = 2 * 24 * 60 * 60 * 1000;
-            groupedData[groupKey].forEach(({ offer }) => {
-                const expStr = offer.campaignOffer?.reserveByDate;
-                if (expStr) {
-                    const expDate = new Date(expStr).getTime();
-                    if (expDate >= now && expDate - now <= twoDays) {
-                        if (!soonestExpDate || expDate < soonestExpDate) soonestExpDate = expDate;
-                    }
-                }
+                    const offers = groupedData[groupKey];
+                    let soonest = null; const now = Date.now(); const twoDays = 2*24*60*60*1000;
+                    offers.forEach(({ offer }) => { const exp=offer.campaignOffer?.reserveByDate; if(exp){ const ms=new Date(exp).getTime(); if(ms>=now && ms-now<=twoDays){ if(!soonest|| ms<soonest) soonest=ms; } } });
+                    const sorted = newOrder !== 'original' ? App.SortUtils.sortOffers([...offers], headerObj.key, newOrder) : offers;
+                    const tbodyRef = table.querySelector('tbody');
+                    if (tbodyRef) tbodyRef.innerHTML='';
+                    sorted.forEach(({ offer, sailing }) => {
+                        const isNewest = globalMaxOfferDate && offer.campaignOffer?.startDate && new Date(offer.campaignOffer.startDate).getTime() === globalMaxOfferDate;
+                        const expDate = offer.campaignOffer?.reserveByDate;
+                        const isExpiringSoon = expDate && new Date(expDate).getTime() === soonest;
+                        const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
+                        tbodyRef.appendChild(row);
+                    });
+                    tr.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
+                    if (newOrder==='asc') th.classList.add('sort-asc'); else if(newOrder==='desc') th.classList.add('sort-desc');
+                });
+
+                tr.appendChild(th);
             });
-            // Only show rows if not further grouped
+            thead.appendChild(tr);
+
+            // Baseline soonest expiring for initial (unsorted) render rows
+            let soonestExpDate = null; const now = Date.now(); const twoDays = 2*24*60*60*1000;
+            groupedData[groupKey].forEach(({ offer }) => { const exp=offer.campaignOffer?.reserveByDate; if(exp){ const ms=new Date(exp).getTime(); if(ms>=now && ms-now<=twoDays){ if(!soonestExpDate || ms<soonestExpDate) soonestExpDate=ms; } }});
+            const tbody = document.createElement('tbody');
             if (groupingStack.length === 0 || groupKeysStack.length < groupingStack.length) {
                 groupedData[groupKey].forEach(({ offer, sailing }) => {
                     const offerDate = offer.campaignOffer?.startDate;
                     const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
                     const expDate = offer.campaignOffer?.reserveByDate;
                     const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
-                    // delegate row rendering
                     const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
-                    groupTbody.appendChild(row);
+                    tbody.appendChild(row);
                 });
             }
-            groupTable.appendChild(groupThead);
-            groupTable.appendChild(groupTbody);
-            content.appendChild(groupTable);
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            content.appendChild(table);
             accordion.appendChild(header);
             accordion.appendChild(content);
             accordionContainer.appendChild(accordion);
@@ -196,17 +223,42 @@ const AccordionBuilder = {
             header.addEventListener('click', () => {
                 const keyPath = [...groupKeysStack, groupKey].join('>');
                 const isOpen = content.classList.contains('open');
-                document.querySelectorAll('.accordion-content.open').forEach(c => {
-                    c.classList.remove('open');
-                });
+                const currentDepth = groupKeysStack.length; // depth index for this header's grouping column
+
+                // Close sibling groups at same level
+                accordionContainer.querySelectorAll(':scope > .border > .accordion-content.open').forEach(c => { if (c !== content) c.classList.remove('open'); });
+
+                // Always prune deeper open group paths (values) beneath this one
+                const deeperPrefix = keyPath + '>';
+                Array.from(state.openGroups).forEach(p => { if (p.startsWith(deeperPrefix)) state.openGroups.delete(p); });
+
                 if (!isOpen) {
+                    // Restore flat table view (remove any nested accordions under this content)
+                    if (content.querySelector('.accordion-header')) {
+                        content.innerHTML = '';
+                        content.appendChild(table);
+                    }
                     content.classList.add('open');
                     state.openGroups.add(keyPath);
+
+                    // Trim groupingStack to this depth + 1 (keep this column only, drop deeper columns)
+                    state.groupingStack = state.groupingStack.slice(0, currentDepth + 1);
+                    // Set groupKeysStack to include this group's value only up to this depth
+                    state.groupKeysStack = state.groupKeysStack.slice(0, currentDepth).concat(groupKey);
                 } else {
+                    // Collapse: remove this open state and its value selection
                     content.classList.remove('open');
                     state.openGroups.delete(keyPath);
+                    // Keep grouping columns up to this depth (no deeper ones)
+                    state.groupingStack = state.groupingStack.slice(0, currentDepth + 1);
+                    // Remove the value at this depth so user is back at parent list
+                    state.groupKeysStack = state.groupKeysStack.slice(0, currentDepth);
                 }
+
+                if (App?.TableRenderer?.updateBreadcrumb) App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+                AccordionBuilder.updateHeaderTitles(state.rootAccordionContainer, state);
             });
         });
+        AccordionBuilder.updateHeaderTitles(state.rootAccordionContainer, state);
     }
 };

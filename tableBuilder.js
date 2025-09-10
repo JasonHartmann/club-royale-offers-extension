@@ -5,7 +5,7 @@ const TableBuilder = {
         return table;
     },
     createTableHeader(state) {
-        const { headers, currentSortColumn, currentSortOrder, viewMode, sortedOffers, originalOffers, currentGroupColumn, groupSortStates, table, tbody, accordionContainer, backButton, container, backdrop, openGroups } = state;
+        const { headers } = state;
         const thead = document.createElement('thead');
         thead.className = 'table-header';
         const tr = document.createElement('tr');
@@ -18,7 +18,6 @@ const TableBuilder = {
                 <span class="sort-label">${header.label}</span>
             `;
             th.querySelector('.sort-label').addEventListener('click', () => {
-                console.log(`Sorting by ${header.key}`);
                 let newSortOrder = 'asc';
                 if (state.currentSortColumn === header.key) {
                     newSortOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
@@ -26,18 +25,24 @@ const TableBuilder = {
                 state.currentSortColumn = header.key;
                 state.currentSortOrder = newSortOrder;
                 state.viewMode = 'table';
+                // Reset grouping stacks when returning to table sort
+                state.currentGroupColumn = null;
+                state.groupingStack = [];
+                state.groupKeysStack = [];
                 App.TableRenderer.updateView(state);
             });
             th.querySelector('.group-icon').addEventListener('click', () => {
-                console.log(`Grouping by ${header.key}`);
-                // Force sort on this column to Ascending before grouping
+                // Initial (top-level) grouping by this column
                 state.currentSortColumn = header.key;
                 state.currentSortOrder = 'asc';
                 state.currentGroupColumn = header.key;
                 state.viewMode = 'accordion';
                 state.groupSortStates = {};
                 state.openGroups = new Set();
+                state.groupingStack = [header.key];
+                state.groupKeysStack = []; // no selected key yet at top-level
                 App.TableRenderer.updateView(state);
+                App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
             });
             tr.appendChild(th);
         });
@@ -57,7 +62,7 @@ const TableBuilder = {
             row.innerHTML = `<td colspan="11" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
         } else {
-            // Find the soonest expiring offer in the next 3 days
+            // Find the soonest expiring offer in the next 2 days
             let soonestExpDate = null;
             const now = Date.now();
             const twoDays = 2 * 24 * 60 * 60 * 1000;
@@ -75,7 +80,6 @@ const TableBuilder = {
                 const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
                 const expDate = offer.campaignOffer?.reserveByDate;
                 const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
-                // delegate row creation to Utils
                 const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
                 tbody.appendChild(row);
             });
