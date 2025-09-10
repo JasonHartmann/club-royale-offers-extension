@@ -4,6 +4,7 @@ const DOMUtils = {
             console.log('DOM is ready');
             App.Styles.injectStylesheet();
             App.ButtonManager.addButton();
+            if (App.OfferCodeLookup && typeof App.OfferCodeLookup.init === 'function') App.OfferCodeLookup.init();
             this.observeDomChanges();
         } else if (attempt <= maxAttempts) {
             console.log(`DOM not ready, retrying (${attempt}/${maxAttempts})`);

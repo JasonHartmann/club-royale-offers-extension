@@ -19,6 +19,7 @@
         "sortUtils.js",
         "tableRenderer.js",
         "utils.js",
+        "offerCodeLookup.js",
         "app.js"
       ],
       "run_at": "document_start"

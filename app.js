@@ -15,6 +15,7 @@
         SortUtils,
         TableRenderer,
         Utils,
+        OfferCodeLookup, // added
         init() {
             this.DOMUtils.waitForDom();
         }

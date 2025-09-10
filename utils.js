@@ -21,21 +21,17 @@ const Utils = {
         if (isNewest) row.classList.add('newest-offer-row');
         if (isExpiringSoon) row.classList.add('expiring-soon-row');
         let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-        if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) {
-            qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-        }
-        if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) {
-            qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
-        }
+        if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
+        if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
         let room = sailing.roomType;
-        if (sailing.isGTY) {
-            room = room ? room + ' GTY' : 'GTY';
-        }
+        if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
         const { nights, destination } = App.Utils.parseItinerary(itinerary);
         const perksStr = Utils.computePerks(offer, sailing);
+        const rawCode = offer.campaignOffer?.offerCode || '-';
+        const codeCell = rawCode === '-' ? '-' : `<a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>`;
         row.innerHTML = `
-            <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
+            <td class="border p-2">${codeCell}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
             <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
