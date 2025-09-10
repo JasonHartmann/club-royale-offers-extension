@@ -80,6 +80,10 @@ const SortUtils = {
                         bValue += ` + $${b.sailing.FREEPLAY_AMT} freeplay`;
                     }
                     break;
+                case 'perks':
+                    aValue = App.Utils.computePerks(a.offer, a.sailing) || '';
+                    bValue = App.Utils.computePerks(b.offer, b.sailing) || '';
+                    break;
             }
             if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;

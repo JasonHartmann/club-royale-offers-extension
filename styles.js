@@ -59,6 +59,7 @@ const Styles = {
                 /* Category & Quality: short fixed */
                 .table-auto th[data-key="category"], .accordion-table th[data-key="category"], .table-auto td:nth-child(10), .accordion-table td:nth-child(10),
                 .table-auto th[data-key="quality"], .accordion-table th[data-key="quality"], .table-auto td:nth-child(11), .accordion-table td:nth-child(11) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
+                .table-auto th[data-key="perks"], .accordion-table th[data-key="perks"], .table-auto td:nth-child(12), .accordion-table td:nth-child(12) { width:140px; min-width:90px; max-width:200px; }
 
                 /* Zebra stripes for readability (optional minor enhancement) */
                 .table-auto tbody tr:nth-child(odd) { background:#fafafa; }

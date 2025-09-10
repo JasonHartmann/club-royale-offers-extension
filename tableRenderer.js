@@ -41,7 +41,8 @@ const TableRenderer = {
                     { key: 'nights', label: 'Nights' },
                     { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
-                    { key: 'quality', label: 'Quality' }
+                    { key: 'quality', label: 'Quality' },
+                    { key: 'perks', label: 'Perks' }
                 ],
                 currentSortColumn: null,
                 currentSortOrder: 'original',

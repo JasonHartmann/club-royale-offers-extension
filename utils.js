@@ -1,4 +1,20 @@
 const Utils = {
+    computePerks(offer, sailing) {
+        const names = new Set();
+        const perkCodes = offer?.campaignOffer?.perkCodes;
+        if (Array.isArray(perkCodes)) {
+            perkCodes.forEach(p => {
+                const name = p?.perkName || p?.perkCode;
+                if (name) names.add(name.trim());
+            });
+        }
+        const bonus = sailing?.nextCruiseBonusPerkCode;
+        if (bonus) {
+            const name = bonus.perkName || bonus.perkCode;
+            if (name) names.add(name.trim());
+        }
+        return names.size ? Array.from(names).join(' | ') : '-';
+    },
     createOfferRow({ offer, sailing }, isNewest = false, isExpiringSoon = false) {
         const row = document.createElement('tr');
         row.className = 'hover:bg-gray-50';
@@ -17,6 +33,7 @@ const Utils = {
         }
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
         const { nights, destination } = App.Utils.parseItinerary(itinerary);
+        const perksStr = Utils.computePerks(offer, sailing);
         row.innerHTML = `
             <td class="border p-2">${offer.campaignOffer?.offerCode || '-'}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
@@ -29,6 +46,7 @@ const Utils = {
             <td class="border p-2">${destination}</td>
             <td class="border p-2">${room || '-'}</td>
             <td class="border p-2">${qualityText}</td>
+            <td class="border p-2">${perksStr}</td>
         `;
         return row;
     },

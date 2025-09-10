@@ -59,7 +59,7 @@ const TableBuilder = {
         tbody.innerHTML = '';
         if (state.sortedOffers.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="11" class="border p-2 text-center">No offers available</td>`;
+            row.innerHTML = `<td colspan="12" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
         } else {
             // Find the soonest expiring offer in the next 2 days

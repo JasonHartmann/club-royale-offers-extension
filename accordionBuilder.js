@@ -55,6 +55,10 @@ const AccordionBuilder = {
                     if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) groupKey += ` + $${sailing.FREEPLAY_AMT} freeplay`;
                     break;
                 }
+                case 'perks': {
+                    groupKey = App.Utils.computePerks(offer, sailing);
+                    break;
+                }
                 default:
                     groupKey = '-';
             }

@@ -159,18 +159,27 @@ const Modal = {
         }
 
         const csvHeaders = headers.map(h => h.label);
-        const csvRows = rows.map(({ offer, sailing }) => [
-            offer.campaignOffer?.offerCode || '-',
-            offer.campaignOffer?.startDate ? new Date(offer.campaignOffer.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
-            offer.campaignOffer?.reserveByDate ? new Date(offer.campaignOffer.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
-            offer.campaignOffer?.name || '-',
-            sailing.shipName || '-',
-            sailing.sailDate ? new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
-            sailing.departurePort?.name || '-',
-            sailing.itineraryDescription || sailing.sailingType?.name || '-',
-            (() => { let room = sailing.roomType; if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY'; return room || '-'; })(),
-            (() => { let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests'; if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`; if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`; return qualityText; })()
-        ]);
+        const csvRows = rows.map(({ offer, sailing }) => {
+            const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
+            const parsed = App.Utils.parseItinerary(itinerary);
+            const nights = parsed.nights;
+            const destination = parsed.destination;
+            const perksStr = App.Utils.computePerks(offer, sailing);
+            return [
+                offer.campaignOffer?.offerCode || '-',
+                offer.campaignOffer?.startDate ? new Date(offer.campaignOffer.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
+                offer.campaignOffer?.reserveByDate ? new Date(offer.campaignOffer.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
+                offer.campaignOffer?.name || '-',
+                sailing.shipName || '-',
+                sailing.sailDate ? new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
+                sailing.departurePort?.name || '-',
+                nights,
+                destination,
+                (() => { let room = sailing.roomType; if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY'; return room || '-'; })(),
+                (() => { let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests'; if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`; if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`; return qualityText; })(),
+                perksStr
+            ];
+        });
 
         let csvContent = [csvHeaders, ...csvRows]
             .map(row => row.map(field => '"' + String(field).replace(/"/g, '""') + '"').join(','))
