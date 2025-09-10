@@ -21,13 +21,15 @@ const Styles = {
                 .sort-asc::after { content:' ↓'; }
                 .sort-desc::after { content:' ↑'; }
                 .group-icon { cursor:pointer; margin-right:8px; display:inline-block; }
-                .accordion-header { background:#e2e8f0; padding:8px; cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; align-items:center; }
-                .accordion-header[data-depth="0"] { background:#e2e8f0; }
-                .accordion-header[data-depth="1"] { background:#edf1f5; }
-                .accordion-header[data-depth="2"] { background:#f3f6f9; }
+                /* Enhanced contrast + depth accent for accordion headers */
+                .accordion-header { background:#cbd5e1; padding:8px; cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; align-items:center; border-left:4px solid #64748b; transition:background .15s, filter .15s; }
+                .accordion-header[data-depth="0"] { background:#cbd5e1; border-left-color:#475569; }
+                .accordion-header[data-depth="1"] { background:#d8e2eb; border-left-color:#64748b; }
+                .accordion-header[data-depth="2"] { background:#e6eef4; border-left-color:#7b8794; }
                 .accordion-header[data-depth="3"],
                 .accordion-header[data-depth="4"],
-                .accordion-header[data-depth="5"] { background:#f8fafc; }
+                .accordion-header[data-depth="5"] { background:#f2f7fa; border-left-color:#94a3af; }
+                .accordion-header:hover { filter:brightness(0.96); }
                 .accordion-content { display:none; padding:8px; }
                 .accordion-content.open { display:block; }
                 .accordion-table th { cursor:pointer; }
