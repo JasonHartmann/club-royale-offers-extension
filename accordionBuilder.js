@@ -63,6 +63,33 @@ const AccordionBuilder = {
         });
         return groupedData;
     },
+    sortGroupKeys(keys, column) {
+        if (!Array.isArray(keys)) return [];
+        const isDateCol = ['offerDate','expiration','sailDate','departureDate','offerDate','offerStart','offerEnd'].includes(column) || /date/i.test(column || '');
+        const numericCols = ['nights'];
+        return [...keys].sort((a,b) => {
+            if (a === b) return 0;
+            // Always push placeholder '-' to end
+            if (a === '-') return 1;
+            if (b === '-') return -1;
+            if (numericCols.includes(column)) {
+                const na = parseInt(a,10); const nb = parseInt(b,10);
+                const aValid = !isNaN(na); const bValid = !isNaN(nb);
+                if (aValid && bValid) return na-nb;
+                if (aValid) return -1;
+                if (bValid) return 1;
+            }
+            if (isDateCol) {
+                const da = new Date(a); const db = new Date(b);
+                const aValid = !isNaN(da.getTime()); const bValid = !isNaN(db.getTime());
+                if (aValid && bValid) return da - db;
+                if (aValid) return -1;
+                if (bValid) return 1;
+            }
+            // Fallback: case-insensitive alphabetical
+            return a.toString().localeCompare(b.toString(), undefined, { sensitivity:'base' });
+        });
+    },
     // Append grouping header (column) names, not selection values, to parent headers along the currently open path
     updateHeaderTitles(rootContainer, state) {
         if (!rootContainer || !state) return;
@@ -112,7 +139,9 @@ const AccordionBuilder = {
         }
         accordionContainer.innerHTML = '';
 
-        Object.keys(groupedData).forEach(groupKey => {
+        const currentGroupColumn = groupingStack.length ? groupingStack[groupingStack.length -1] : null;
+        const sortedKeys = AccordionBuilder.sortGroupKeys(Object.keys(groupedData), currentGroupColumn);
+        sortedKeys.forEach(groupKey => {
             const accordion = document.createElement('div');
             accordion.className = 'border mb-2';
 

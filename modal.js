@@ -132,44 +132,63 @@ const Modal = {
         }
     },
     exportToCSV(state) {
-        const { headers, sortedOffers, viewMode, currentGroupColumn, groupSortStates, openGroups } = state;
+        const { headers } = state;
         let rows = [];
-        if (viewMode === 'accordion' && currentGroupColumn) {
-            // Flatten grouped data for export
-            const groupedData = App.AccordionBuilder.createGroupedData(sortedOffers, currentGroupColumn);
-            Object.keys(groupedData).forEach(groupKey => {
-                groupedData[groupKey].forEach(({ offer, sailing }) => {
-                    rows.push({ offer, sailing });
-                });
-            });
-        } else {
-            rows = sortedOffers;
+        let usedSubset = false; // flag to know if we exported a nested subset
+
+        // Determine if a nested (focused) subset is being viewed: presence of a selected path
+        if (state.viewMode === 'accordion' && Array.isArray(state.groupKeysStack) && state.groupKeysStack.length > 0) {
+            // Derive subset by drilling down through groupingStack using selected keys
+            let subset = state.sortedOffers || [];
+            for (let depth = 0; depth < state.groupKeysStack.length && depth < state.groupingStack.length; depth++) {
+                const colKey = state.groupingStack[depth];
+                const groupVal = state.groupKeysStack[depth];
+                const grouped = App.AccordionBuilder.createGroupedData(subset, colKey);
+                subset = grouped[groupVal] || [];
+                if (!subset.length) break; // abort if path invalid
+            }
+            if (subset.length) {
+                rows = subset; // Only export the focused nested group's flat rows
+                usedSubset = true;
+            }
         }
+
+        // Fallback: export all currently sorted offers if no focused subset was determined
+        if (rows.length === 0) {
+            rows = state.sortedOffers || [];
+        }
+
         const csvHeaders = headers.map(h => h.label);
         const csvRows = rows.map(({ offer, sailing }) => [
             offer.campaignOffer?.offerCode || '-',
-            new Date(offer.campaignOffer?.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-',
-            new Date(offer.campaignOffer?.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-',
+            offer.campaignOffer?.startDate ? new Date(offer.campaignOffer.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
+            offer.campaignOffer?.reserveByDate ? new Date(offer.campaignOffer.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
             offer.campaignOffer?.name || '-',
             sailing.shipName || '-',
-            new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) || '-',
+            sailing.sailDate ? new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
             sailing.departurePort?.name || '-',
             sailing.itineraryDescription || sailing.sailingType?.name || '-',
-            (() => {
-                let room = sailing.roomType;
-                if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
-                return room || '-';
-            })(),
-            (() => {
-                let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-                if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-                if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
-                return qualityText;
-            })()
+            (() => { let room = sailing.roomType; if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY'; return room || '-'; })(),
+            (() => { let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests'; if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`; if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`; return qualityText; })()
         ]);
-        const csvContent = [csvHeaders, ...csvRows]
+
+        let csvContent = [csvHeaders, ...csvRows]
             .map(row => row.map(field => '"' + String(field).replace(/"/g, '""') + '"').join(','))
             .join('\r\n');
+
+        // Append filter breadcrumb line if subset exported
+        if (usedSubset) {
+            const parts = ['All Offers'];
+            for (let i = 0; i < state.groupKeysStack.length && i < state.groupingStack.length; i++) {
+                const colKey = state.groupingStack[i];
+                const label = (state.headers.find(h => h.key === colKey)?.label) || colKey;
+                const val = state.groupKeysStack[i];
+                parts.push(label, val);
+            }
+            const filterLine = 'Filters: ' + parts.join(' -> ');
+            csvContent += '\r\n\r\n' + filterLine;
+        }
+
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
