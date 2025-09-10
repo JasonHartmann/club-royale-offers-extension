@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comp Royale – Club Royale Casino Offers Viewer Extension</title>
+  <meta name="description" content="Chrome extension that transforms Royal Caribbean Club Royale casino offers into a sortable, groupable, power-user interface." />
+  <meta name="theme-color" content="#0a4d8c" />
+  <meta property="og:title" content="Club Royale Casino Offers Viewer" />
+  <meta property="og:description" content="View, sort, group, and explore Royal Caribbean Club Royale casino offers effortlessly." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://comproyale.com/" />
+  <meta property="og:image" content="https://comproyale.com/offer-screen.png" />
+  <link rel="icon" type="image/png" href="offer-screen.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Club Royale Casino Offers Viewer",
+    "applicationCategory": "BrowserExtension",
+    "operatingSystem": "Chrome",
+    "description": "Enhances the Royal Caribbean Club Royale Offers page with sortable tables, grouping, accordion drilldowns, highlights, and streamlined navigation.",
+    "image": "https://comproyale.com/offer-screen.png",
+    "url": "https://comproyale.com/",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+  }
+  </script>
+  <style>body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;background:#f8fafc;color:#0f172a;}h1,h2{font-weight:600;}</style>
+</head>
+<body>
+  <header class="gradient-hero">
+    <div class="hero-inner">
+      <div>
+        <h1>Club Royale Casino Offers Viewer</h1>
+        <p class="lead">Supercharge Royal Caribbean Club Royale offer browsing. Instantly view all casino offers in a fast, sortable table or drillable accordion—group, filter, highlight, and plan smarter.</p>
+        <div class="cta-row">
+          <a class="btn" href="#install">Install Extension</a>
+          <a class="btn alt" href="#screens">See Screens</a>
+        </div>
+        <div class="pill-row" aria-label="Key benefits">
+          <span class="pill">Zero Tracking</span>
+          <span class="pill">Readable Data</span>
+          <span class="pill">Grouping</span>
+          <span class="pill">Fast Sorting</span>
+          <span class="pill">Highlight Expiring</span>
+          <span class="pill">Low Friction</span>
+        </div>
+        <p style="font-size:.7rem;opacity:.8;margin-top:1.25rem;">Support: <a href="mailto:admin@comproyale.com" style="color:#fff;text-decoration:underline;">admin@comproyale.com</a></p>
+      </div>
+      <div class="screen-card hero-peek">
+        <h4>At a Glance</h4>
+        <img class="resp" src="offer-screen.png" alt="Offers table screenshot" />
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="features">
+      <div class="wrapper">
+        <h2>Why it helps</h2>
+        <p class="intro-text">Scrolling raw offer cards is slow. This extension structures everything into actionable data so you can focus on planning—not parsing. Quick sorting, multi-layer grouping, clean highlighting, and frictionless reading all save time.</p>
+        <div class="features-grid">
+          <div class="feature"><h3>Instant Launch</h3><p>One button injected into the official Offers page. No extra navigation.</p></div>
+          <div class="feature"><h3>Smart Table</h3><p>Sortable by any column with 3-state cycle: asc, desc, original order.</p></div>
+          <div class="feature"><h3>Accordion Groups</h3><p>Group by code, ship, port, destination, category, or quality.</p></div>
+            <div class="feature"><h3>Visual Highlights</h3><p>Newest offers + soon expiring flagged for fast triage.</p></div>
+          <div class="feature"><h3>Readable Ports</h3><p>Cleans inconsistent capitalization while respecting abbreviations.</p></div>
+          <div class="feature"><h3>Privacy First</h3><p>No remote calls beyond the site itself; no tracking or analytics.</p></div>
+          <div class="feature"><h3>Resilient</h3><p>Auto re-injects if the page re-renders or elements shift.</p></div>
+          <div class="feature"><h3>Low Overhead</h3><p>Lightweight content script, fast DOM operations, minimal styles.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="screens">
+      <div class="wrapper">
+        <h2>Interface Views</h2>
+        <div class="screens">
+          <div class="screen-card"><h4>Offers Table</h4><img class="resp" src="offer-screen.png" alt="Screenshot of sortable offers table" /></div>
+          <div class="screen-card"><h4>Accordion Mode</h4><img class="resp" src="accordion-screen.png" alt="Screenshot of grouped accordion casino offers" /></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="wrapper two-col">
+        <div>
+          <h2>Install & Use</h2>
+          <ol class="steps">
+            <li>Install from the Chrome Web Store (link coming soon).</li>
+            <li>Log into your Royal Caribbean account and open the Club Royale Offers page.</li>
+            <li>Click the added <strong>Show Casino Offers</strong> button in the top bar.</li>
+            <li>Sort columns or switch to grouped accordion mode.</li>
+            <li>Highlight expiring offers and scan newest instantly.</li>
+            <li>Close with the X or press ESC.</li>
+          </ol>
+          <p class="note">No data leaves the page. Processing is local and ephemeral.</p>
+        </div>
+        <div>
+          <h2>Key Details</h2>
+          <ul class="details">
+            <li>Manifest V3, content script only.</li>
+            <li>No persistent background network activity.</li>
+            <li>Graceful fallback if layout shifts.</li>
+            <li>Adaptive column sizing for clarity.</li>
+            <li>Accessible focus & keyboard close.</li>
+            <li>Designed for desktop + large tablet.</li>
+          </ul>
+          <p class="note">Future ideas: quick filters, CSV export, ship tagging, session renew hints.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <section id="privacy">
+      <div class="wrapper">
+        <h2>Privacy & Scope</h2>
+        <p class="privacy-copy">The extension only reads the existing HTML and API response already delivered to the page while you are authenticated. It does not transmit credentials, tokens, or analytics. You may disable it anytime; it is idle when not on the Offers page.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-grid">
+      <div>
+        <h3 class="footer-title">Club Royale Casino Offers Viewer</h3>
+        <p class="footer-desc">Unofficial enhancement tool for organizing and exploring Royal Caribbean Club Royale casino offers with better clarity and control.</p>
+      </div>
+      <div>
+        <h4 class="footer-head">Links</h4>
+        <ul class="footer-list">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#screens">Screens</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#privacy">Privacy</a></li>
+          <li><a href="mailto:admin@comproyale.com">Support</a></li>
+        </ul>
+        <p style="font-size:.65rem;margin-top:.75rem;opacity:.8;">Email: <a href="mailto:admin@comproyale.com" style="color:#fff;">admin@comproyale.com</a></p>
+      </div>
+      <div>
+        <h4 class="footer-head">Status</h4>
+        <p class="status">In active iteration. Feedback welcome via repository issues once public store link is live.</p>
+      </div>
+    </div>
+    <p class="legal small-print">Not affiliated with Royal Caribbean International or its loyalty programs. All trademarks belong to their respective owners.</p>
+    <p style="text-align:center;font-size:.6rem;opacity:.55;margin:.5rem 0 0;">© 2025 Percex Technologies, LLCSupercharge your Club Royale browsing with the new Club Royale Casino Offers Viewer — a tiny Chrome extension that turns messy offer cards into a fast, sortable table and grouped accordion views. View, sort, group, and highlight expiring offers locally with zero tracking. Install now: https://chromewebstore.google.com/detail/club-royale-casino-offers/aggjibokgkckjppkalkgnegheoldlimd. All rights reserved.</p>
+  </footer>
+  <noscript><div style="padding:1rem;text-align:center;font-size:.75rem;color:#555">JavaScript is disabled; some interactive enhancements may not appear.</div></noscript>
+</body>
+</html>
