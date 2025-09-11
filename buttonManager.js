@@ -28,14 +28,16 @@ const ButtonManager = {
                 if (!centerContainer) {
                     centerContainer = document.createElement('div');
                     centerContainer.id = 'gobo-offers-center-container';
+                    // Position container at center top of banner and center content via flex
+                    centerContainer.style.position = 'absolute';
+                    centerContainer.style.top = '0';
+                    centerContainer.style.left = '50%';
+                    centerContainer.style.transform = 'translateX(-50%)';
+                    centerContainer.style.height = '100%';
                     centerContainer.style.display = 'flex';
                     centerContainer.style.justifyContent = 'center';
                     centerContainer.style.alignItems = 'center';
-                    centerContainer.style.width = '100%';
-                    centerContainer.style.position = 'absolute';
-                    centerContainer.style.left = '0';
-                    centerContainer.style.top = '0';
-                    centerContainer.style.pointerEvents = 'none'; // allow clicks to pass through except for button
+                    centerContainer.style.pointerEvents = 'none';
                     banner.style.position = 'relative'; // ensure banner is positioned
                     banner.appendChild(centerContainer);
                 }

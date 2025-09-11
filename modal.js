@@ -167,11 +167,11 @@ const Modal = {
             const perksStr = App.Utils.computePerks(offer, sailing);
             return [
                 offer.campaignOffer?.offerCode || '-',
-                offer.campaignOffer?.startDate ? new Date(offer.campaignOffer.startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
-                offer.campaignOffer?.reserveByDate ? new Date(offer.campaignOffer.reserveByDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
+                offer.campaignOffer?.startDate ? App.Utils.formatDate(offer.campaignOffer.startDate) : '-',
+                offer.campaignOffer?.reserveByDate ? App.Utils.formatDate(offer.campaignOffer.reserveByDate) : '-',
                 offer.campaignOffer?.name || '-',
                 sailing.shipName || '-',
-                sailing.sailDate ? new Date(sailing.sailDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }) : '-',
+                sailing.sailDate ? App.Utils.formatDate(sailing.sailDate) : '-',
                 sailing.departurePort?.name || '-',
                 nights,
                 destination,

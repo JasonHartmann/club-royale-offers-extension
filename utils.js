@@ -29,7 +29,17 @@ const Utils = {
         const { nights, destination } = App.Utils.parseItinerary(itinerary);
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
-        const codeCell = rawCode === '-' ? '-' : `<a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>`;
+        // Add redeem button before code link
+        const codeCell = rawCode === '-' ? '-' : `
+          <a
+            href="https://www.royalcaribbean.com/club-royale/redemptions/?offerCode=${rawCode}"
+            class="redeem-button bg-green-500 hover:bg-green-600 text-white text-[6px] px-0 py-[4px] rounded-sm mr-0.5"
+            title="Redeem ${rawCode}"
+          >
+            Redeem
+          </a>
+          <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>
+        `;
         row.innerHTML = `
             <td class="border p-2">${codeCell}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
