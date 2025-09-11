@@ -79,6 +79,10 @@ const ApiClient = {
             // normalize data (trim, adjust capitalization, etc.)
             const normalizedData = App.Utils.normalizeOffers(data);
             App.TableRenderer.displayTable(normalizedData);
+            // Trigger PDF head checks for Name column links
+            if (App.OfferNamePdfLinker && typeof App.OfferNamePdfLinker.queueHeadChecks === 'function') {
+                try { App.OfferNamePdfLinker.queueHeadChecks(normalizedData); } catch (e) { console.warn('OfferNamePdfLinker queue failed', e); }
+            }
         } catch (error) {
             console.log('Fetch failed:', error.message);
             if (retryCount > 0) {

@@ -16,6 +16,7 @@
         TableRenderer,
         Utils,
         OfferCodeLookup, // added
+        OfferNamePdfLinker, // new module for Name->PDF links
         init() {
             this.DOMUtils.waitForDom();
         }
