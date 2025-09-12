@@ -42,18 +42,24 @@ const ApiClient = {
                 'account-id': accountId,
                 'authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`,
                 'content-type': 'application/json',
-                'origin': 'https://www.royalcaribbean.com',
-                'referer': 'https://www.royalcaribbean.com/club-royale/offers/',
             };
             console.log('Request headers:', headers);
-            const response = await fetch('https://www.royalcaribbean.com/api/casino/casino-offers/v1', {
+            // Centralized brand detection
+            const host = (location && location.hostname) ? location.hostname : '';
+            const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : (host.includes('celebritycruises.com') ? 'C' : 'R');
+            const relativePath = '/api/casino/casino-offers/v1';
+            const onSupportedDomain = host.includes('royalcaribbean.com') || host.includes('celebritycruises.com');
+            const defaultDomain = brandCode === 'C' ? 'https://www.celebritycruises.com' : 'https://www.royalcaribbean.com';
+            const endpoint = onSupportedDomain ? relativePath : `${defaultDomain}${relativePath}`;
+            console.log('Resolved endpoint:', endpoint, 'brand:', brandCode);
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: headers,
                 credentials: 'omit',
                 body: JSON.stringify({
                     cruiseLoyaltyId: loyaltyId,
                     offerCode: '',
-                    brand: 'R'
+                    brand: brandCode
                 })
             });
             console.log(`Network request status: ${response.status}`);

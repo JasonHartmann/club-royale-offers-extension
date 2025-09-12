@@ -49,12 +49,6 @@ const TableBuilder = {
         thead.appendChild(tr);
         return thead;
     },
-    // Helper to format date string as MM/DD/YY without timezone shift
-    formatDate(dateStr) {
-        if (!dateStr) return '-';
-        const [year, month, day] = dateStr.split('T')[0].split('-');
-        return `${month}/${day}/${year.slice(-2)}`;
-    },
     renderTable(tbody, state, globalMaxOfferDate = null) {
         tbody.innerHTML = '';
         if (state.sortedOffers.length === 0) {

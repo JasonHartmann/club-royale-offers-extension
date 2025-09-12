@@ -1,4 +1,19 @@
 const Utils = {
+    // Centralized brand detection (R = Royal, C = Celebrity)
+    detectBrand() {
+        const host = (location && location.hostname) ? location.hostname : '';
+        let brand = (host.includes('celebritycruises.com') || host.includes('bluechipcluboffers.com')) ? 'C' : 'R';
+        try {
+            const override = localStorage.getItem('casinoBrand');
+            if (override === 'R' || override === 'C') brand = override;
+            if (override === 'X') brand = 'C';
+        } catch(e) {}
+        return brand;
+    },
+    isCelebrity() { return this.detectBrand() === 'C'; },
+    getRedemptionBase() {
+        return this.isCelebrity() ? 'https://www.celebritycruises.com/blue-chip-club/redemptions/' : 'https://www.royalcaribbean.com/club-royale/redemptions/';
+    },
     computePerks(offer, sailing) {
         const names = new Set();
         const perkCodes = offer?.campaignOffer?.perkCodes;
@@ -29,15 +44,27 @@ const Utils = {
         const { nights, destination } = App.Utils.parseItinerary(itinerary);
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
-        // Add redeem button before code link
+        // Dynamic redemption base determination
+        const redemptionBase = App.Utils.getRedemptionBase();
+        // Optional RR file URL (first offer file)
+        const rrFileUrl = offer?.campaignOffer?.offerFiles?.[0]?.fileUrl;
+        // Add redeem button before code link, RR button (if exists) after Redeem (before code link)
         const codeCell = rawCode === '-' ? '-' : `
           <a
-            href="https://www.royalcaribbean.com/club-royale/redemptions/?offerCode=${rawCode}"
-            class="redeem-button bg-green-500 hover:bg-green-600 text-white text-[6px] px-0 py-[4px] rounded-sm mr-0.5"
+            href="${redemptionBase}?offerCode=${rawCode}"
+            class="redeem-button bg-green-500 hover:bg-green-600 text-white px-[2px] py-[1px] rounded-sm mr-0.5"
+            style="font-size:8px; line-height:1; letter-spacing:0.5px;"
             title="Redeem ${rawCode}"
           >
             Redeem
           </a>
+          ${rrFileUrl ? `<a
+            href="${rrFileUrl}"
+            class="rr-button text-black px-[2px] py-[1px] rounded-sm mr-0.5"
+            style="font-size:8px; line-height:1; letter-spacing:0.5px; background-color:beige;"
+            title="RR file for ${rawCode}"
+            target="_blank" rel="noopener noreferrer"
+          >RR</a>` : ''}
           <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>
         `;
         row.innerHTML = `

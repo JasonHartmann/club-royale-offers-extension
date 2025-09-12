@@ -41,7 +41,7 @@ const Styles = {
                 /* Column order in data rows: 1 Code, 2 Received, 3 Expiration, 4 Name, 5 Ship, 6 Sail Date, 7 Departure Port, 8 Nights, 9 Destination, 10 Category, 11 Quality */
 
                 /* Compact short columns (codes & dates & nights) */
-                .table-auto th[data-key="offerCode"], .accordion-table th[data-key="offerCode"], .table-auto td:nth-child(1), .accordion-table td:nth-child(1),
+                .table-auto th[data-key="offerCode"], .accordion-table th[data-key="offerCode"], .table-auto td:nth-child(1), .accordion-table td:nth-child(1) { width:120px; min-width:100px; max-width:140px; white-space:nowrap; }
                 .table-auto th[data-key="offerDate"], .accordion-table th[data-key="offerDate"], .table-auto td:nth-child(2), .accordion-table td:nth-child(2),
                 .table-auto th[data-key="expiration"], .accordion-table th[data-key="expiration"], .table-auto td:nth-child(3), .accordion-table td:nth-child(3),
                 .table-auto th[data-key="sailDate"], .accordion-table th[data-key="sailDate"], .table-auto td:nth-child(6), .accordion-table td:nth-child(6) { width:90px; min-width:80px; max-width:110px; white-space:nowrap; }

@@ -40,9 +40,6 @@ const AccordionBuilder = {
                 case 'departurePort':
                     groupKey = sailing.departurePort?.name || '-';
                     break;
-                case 'itinerary':
-                    groupKey = sailing.itineraryDescription || sailing.sailingType?.name || '-';
-                    break;
                 case 'category': {
                     let room = sailing.roomType;
                     if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';

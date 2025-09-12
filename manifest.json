@@ -1,11 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Club Royale Casino Offers Viewer",
-  "version": "1.1",
-  "description": "Adds a 'Show Casino Offers' button to Club Royale Offers page, showing a sortable, groupable table and accordion of casino offers.",
+  "name": "Club Royale and Blue Chip Casino Offers Viewer",
+  "version": "1.2",
+  "description": "Adds a 'Show Casino Offers' button to Royal Caribbean and Celebrity Casino Offers pages, showing a sortable, groupable table and accordion of casino offers.",
   "content_scripts": [
     {
-      "matches": ["https://www.royalcaribbean.com/club-royale/offers*"],
+      "matches": [
+        "https://*.royalcaribbean.com/club-royale/*",
+        "https://*.celebritycruises.com/blue-chip-club/*"
+      ],
+      "exclude_matches": [
+        "https://*.royalcaribbean.com/club-royale/signin*",
+        "https://*.celebritycruises.com/blue-chip-club/signin*"
+      ],
       "js": [
         "domUtils.js",
         "styles.js",

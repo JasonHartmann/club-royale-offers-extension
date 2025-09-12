@@ -2,7 +2,21 @@ const OfferNamePdfLinker = {
   _headCache: new Map(),        // code -> { status: 'pending' | 'ok' | 'fail', promise?: Promise }
   _observerStarted: false,
   _pendingApply: false,
-  BASE_URL: 'https://www.royalcaribbean.com/content/dam/royal/resources/pdf/casino/offers/',
+  _chosenBase: null,            // once we find a working base for this brand we keep it
+
+  // Candidate PDF base paths (first existing will be chosen). Allows flexibility if folder names differ per brand.
+  _getCandidateBases() {
+    const brand = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : 'R';
+    try {
+      const custom = localStorage.getItem('casinoPdfBase');
+      if (custom && /^https?:\/\//i.test(custom)) return [custom.replace(/\/$/, '') + '/'];
+    } catch(e) {}
+    if (brand === 'C') {
+      return ['https://www.celebritycruises.com/content/dam/celebrity/resources/pdf/casino/offers/'];
+    } else {
+      return ['https://www.royalcaribbean.com/content/dam/royal/resources/pdf/casino/offers/'];
+    }
+  },
 
   // Public entry called after offers data is first displayed
   queueHeadChecks(data) {
@@ -33,49 +47,58 @@ const OfferNamePdfLinker = {
     this._observerStarted = true;
   },
 
-  // HEAD request initiation with caching
+  // Attempt HEAD with caching
   _initiateHead(code) {
     if (!code) return;
     const cached = this._headCache.get(code);
     if (cached) {
       if (cached.status === 'ok') this._enableLinksForCode(code);
-      return; // pending or final state already
+      return; // pending or final
     }
-    const url = this._buildUrl(code);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    const promise = fetch(url, { method: 'HEAD', signal: controller.signal })
-      .then(resp => {
-        if (resp.ok) {
+    const promise = this._attemptBasesSequentially(code)
+      .then(success => {
+        if (success) {
           this._headCache.set(code, { status: 'ok' });
           this._enableLinksForCode(code);
         } else {
           this._headCache.set(code, { status: 'fail' });
         }
-      })
-      .catch(() => {
-        this._headCache.set(code, { status: 'fail' });
-      })
-      .finally(() => clearTimeout(timeout));
+      });
     this._headCache.set(code, { status: 'pending', promise });
   },
 
-  _buildUrl(code) {
+  async _attemptBasesSequentially(code) {
+    const bases = this._chosenBase ? [this._chosenBase] : this._getCandidateBases();
     const safe = encodeURIComponent(code.trim().toUpperCase());
-    return `${this.BASE_URL}${safe}.pdf`;
+    for (const base of bases) {
+      const url = base + safe + '.pdf';
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        const resp = await fetch(url, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(timeout);
+        if (resp.ok) {
+            this._chosenBase = base; // cache working base for subsequent codes
+            return true;
+        }
+      } catch(e) {
+        // ignore and continue
+      }
+    }
+    // If we had no chosen base yet and first pass failed, don't retry all every time; bases list likely invalid
+    return false;
   },
 
-  // Apply links for every code whose pdf was found
   applyAllKnownLinks() {
     this._headCache.forEach((val, code) => {
       if (val.status === 'ok') this._enableLinksForCode(code);
     });
   },
 
-  // Turn Name cells into links for a single code
   _enableLinksForCode(code) {
     if (!code) return;
     const url = this._buildUrl(code);
+    if (!url) return;
     const anchors = document.querySelectorAll(`a.offer-code-link[data-offer-code="${CSS.escape(code)}"]`);
     anchors.forEach(a => {
       const row = a.closest('tr');
@@ -84,11 +107,9 @@ const OfferNamePdfLinker = {
       if (cells.length < 4) return; // defensive
       const nameCell = cells[3]; // Name column
       if (!nameCell) return;
-      // Skip if already processed
-      if (nameCell.querySelector('a.offer-name-pdf-link')) return;
+      if (nameCell.querySelector('a.offer-name-pdf-link')) return; // already processed
       const nameText = nameCell.textContent.trim();
       if (!nameText || nameText === '-') return;
-      // Replace content with link
       const link = document.createElement('a');
       link.href = url;
       link.target = '_blank';
@@ -99,6 +120,12 @@ const OfferNamePdfLinker = {
       nameCell.innerHTML = '';
       nameCell.appendChild(link);
     });
+  },
+
+  _buildUrl(code) {
+    const base = this._chosenBase || this._getCandidateBases()[0];
+    if (!base) return null;
+    const safe = encodeURIComponent(code.trim().toUpperCase());
+    return base + safe + '.pdf';
   }
 };
-
