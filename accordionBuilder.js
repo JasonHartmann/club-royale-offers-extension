@@ -31,6 +31,9 @@ const AccordionBuilder = {
                 case 'offerName':
                     groupKey = offer.campaignOffer?.name || '-';
                     break;
+                case 'shipClass':
+                    groupKey = App.Utils.getShipClass(sailing.shipName) || '-';
+                    break;
                 case 'ship':
                     groupKey = sailing.shipName || '-';
                     break;

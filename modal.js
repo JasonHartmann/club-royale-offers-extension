@@ -165,11 +165,13 @@ const Modal = {
             const nights = parsed.nights;
             const destination = parsed.destination;
             const perksStr = App.Utils.computePerks(offer, sailing);
+            const shipClass = App.Utils.getShipClass(sailing.shipName);
             return [
                 offer.campaignOffer?.offerCode || '-',
                 offer.campaignOffer?.startDate ? App.Utils.formatDate(offer.campaignOffer.startDate) : '-',
                 offer.campaignOffer?.reserveByDate ? App.Utils.formatDate(offer.campaignOffer.reserveByDate) : '-',
                 offer.campaignOffer?.name || '-',
+                shipClass,
                 sailing.shipName || '-',
                 sailing.sailDate ? App.Utils.formatDate(sailing.sailDate) : '-',
                 sailing.departurePort?.name || '-',

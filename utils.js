@@ -67,11 +67,13 @@ const Utils = {
           >RR</a>` : ''}
           <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>
         `;
+        const shipClass = App.Utils.getShipClass(sailing.shipName);
         row.innerHTML = `
             <td class="border p-2">${codeCell}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
             <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
+            <td class="border p-2">${shipClass}</td>
             <td class="border p-2">${sailing.shipName || '-'}</td>
             <td class="border p-2">${App.Utils.formatDate(sailing.sailDate)}</td>
             <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
@@ -133,5 +135,77 @@ const Utils = {
             });
         }
         return data;
+    },
+    // Ship class lookup
+    getShipClass(shipName) {
+        if (!shipName) return '-';
+        const key = shipName.trim().toLowerCase();
+        const map = {
+            // Royal Caribbean International
+            'icon of the seas': 'Icon',
+            'star of the seas': 'Icon',
+            'utopia of the seas': 'Oasis',
+            'oasis of the seas': 'Oasis',
+            'allure of the seas': 'Oasis',
+            'harmony of the seas': 'Oasis',
+            'symphony of the seas': 'Oasis',
+            'wonder of the seas': 'Oasis',
+            'freedom of the seas': 'Freedom',
+            'liberty of the seas': 'Freedom',
+            'independence of the seas': 'Freedom',
+            'quantum of the seas': 'Quantum',
+            'anthem of the seas': 'Quantum',
+            'ovation of the seas': 'Quantum',
+            'spectrum of the seas': 'Quantum Ultra',
+            'odyssey of the seas': 'Quantum Ultra',
+            'voyager of the seas': 'Voyager',
+            'navigator of the seas': 'Voyager',
+            'mariner of the seas': 'Voyager',
+            'adventure of the seas': 'Voyager',
+            'explorer of the seas': 'Voyager',
+            'radiance of the seas': 'Radiance',
+            'brilliance of the seas': 'Radiance',
+            'serenade of the seas': 'Radiance',
+            'jewel of the seas': 'Radiance',
+            'vision of the seas': 'Vision',
+            'enchantment of the seas': 'Vision',
+            'grandeur of the seas': 'Vision',
+            'rhapsody of the seas': 'Vision',
+            'majesty of the seas': 'Sovereign',
+            'sovereign of the seas': 'Sovereign',
+            'empress of the seas': 'Empress',
+            // Celebrity Cruises
+            'celebrity xcel': 'Edge',
+            'celebrity ascent': 'Edge',
+            'celebrity beyond': 'Edge',
+            'celebrity apex': 'Edge',
+            'celebrity edge': 'Edge',
+            'celebrity reflection': 'Solstice',
+            'celebrity silhouette': 'Solstice',
+            'celebrity equinox': 'Solstice',
+            'celebrity eclipse': 'Solstice',
+            'celebrity solstice': 'Solstice',
+            'celebrity constellation': 'Millennium',
+            'celebrity summit': 'Millennium',
+            'celebrity infinity': 'Millennium',
+            'celebrity millennium': 'Millennium',
+            'celebrity flora': 'Expedition',
+            'xcel': 'Edge',
+            'ascent': 'Edge',
+            'beyond': 'Edge',
+            'apex': 'Edge',
+            'edge': 'Edge',
+            'reflection': 'Solstice',
+            'silhouette': 'Solstice',
+            'equinox': 'Solstice',
+            'eclipse': 'Solstice',
+            'solstice': 'Solstice',
+            'constellation': 'Millennium',
+            'summit': 'Millennium',
+            'infinity': 'Millennium',
+            'millennium': 'Millennium',
+            'flora': 'Expedition',
+        };
+        return map[key] || '-';
     }
 };

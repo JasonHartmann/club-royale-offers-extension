@@ -35,6 +35,7 @@ const TableRenderer = {
                     { key: 'offerDate', label: 'Received' },
                     { key: 'expiration', label: 'Expiration' },
                     { key: 'offerName', label: 'Name' },
+                    { key: 'shipClass', label: 'Class' }, // new ship class column
                     { key: 'ship', label: 'Ship' },
                     { key: 'sailDate', label: 'Sail Date' },
                     { key: 'departurePort', label: 'Departure Port' },
