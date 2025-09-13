@@ -1,6 +1,14 @@
 const ButtonManager = {
     addButton(maxAttempts = 10, attempt = 1) {
         try {
+            const path = (location && location.pathname ? location.pathname : '').toLowerCase();
+            const onSignIn = /\/signin[^/]*\/?$/.test(path); // matches /signin, /signin-something, optional trailing slash
+            if (onSignIn) {
+                const existingOnSignin = document.getElementById('gobo-offers-button');
+                if (existingOnSignin) existingOnSignin.remove();
+                return;
+            }
+
             const existingButton = document.getElementById('gobo-offers-button');
             if (existingButton) existingButton.remove();
             const button = document.createElement('button');
@@ -18,8 +26,11 @@ const ButtonManager = {
                 return;
             }
             if (!banner) {
-                console.log('Banner div not found after max attempts, falling back to fixed position');
-                button.className = 'fixed top-4 right-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
+                console.log('Banner div not found after max attempts, using centered fixed position');
+                button.className = 'fixed top-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
+                // Center horizontally
+                button.style.left = '50%';
+                button.style.transform = 'translateX(-50%)';
                 document.body.appendChild(button);
             } else {
                 console.log('Banner div found, adding button');

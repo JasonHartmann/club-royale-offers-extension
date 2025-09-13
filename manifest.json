@@ -9,10 +9,6 @@
         "https://*.royalcaribbean.com/club-royale/*",
         "https://*.celebritycruises.com/blue-chip-club/*"
       ],
-      "exclude_matches": [
-        "https://*.royalcaribbean.com/club-royale/signin*",
-        "https://*.celebritycruises.com/blue-chip-club/signin*"
-      ],
       "js": [
         "domUtils.js",
         "styles.js",

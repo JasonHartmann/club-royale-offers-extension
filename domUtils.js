@@ -17,7 +17,6 @@ const DOMUtils = {
     observeDomChanges() {
         const observer = new MutationObserver(() => {
             if (!document.getElementById('gobo-offers-button')) {
-                console.log('Button missing, re-adding button');
                 App.ButtonManager.addButton();
             }
         });
