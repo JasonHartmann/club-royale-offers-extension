@@ -58,15 +58,18 @@ const Utils = {
           >
             Redeem
           </a>
-          ${rrFileUrl ? `<a
-            href="${rrFileUrl}"
-            class="rr-button text-black px-[2px] py-[1px] rounded-sm mr-0.5"
-            style="font-size:8px; line-height:1; letter-spacing:0.5px; background-color:beige;"
-            title="RR file for ${rawCode}"
-            target="_blank" rel="noopener noreferrer"
-          >RR</a>` : ''}
           <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>
         `;
+
+        // Append between anchors above
+        // ${rrFileUrl ? `<a
+        //     href="${rrFileUrl}"
+        //     class="rr-button text-black px-[2px] py-[1px] rounded-sm mr-0.5"
+        //     style="font-size:8px; line-height:1; letter-spacing:0.5px; background-color:beige;"
+        //     title="RR file for ${rawCode}"
+        //     target="_blank" rel="noopener noreferrer"
+        //   >RR</a>` : ''}
+
         const shipClass = App.Utils.getShipClass(sailing.shipName);
         row.innerHTML = `
             <td class="border p-2">${codeCell}</td>
