@@ -98,9 +98,12 @@ const Utils = {
     // Helper to extract nights and destination from itinerary string
     parseItinerary(itinerary) {
         if (!itinerary) return { nights: '-', destination: '-' };
-        const match = itinerary.match(/^\s*(\d+)\s+NIGHT\s+(.*)$/i);
+        // Support NIGHT, NIGHTS, NT, NTS (case-insensitive). Allow optional hyphen after the night token.
+        const match = itinerary.match(/^\s*(\d+)\s+(?:N(?:IGHT|T)?S?)\b[\s-]*(.*)$/i);
         if (match) {
-            return { nights: match[1], destination: match[2] };
+            const nights = match[1];
+            const destination = match[2] ? match[2].trim() : '-';
+            return { nights, destination: destination || '-' };
         }
         return { nights: '-', destination: itinerary };
     },
