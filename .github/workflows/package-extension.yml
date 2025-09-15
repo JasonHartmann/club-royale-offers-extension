@@ -23,19 +23,5 @@ jobs:
         with:
           name: club-royale-offers-extension
           path: |
-            domUtils.js,
-            styles.js,
-            buttonManager.js,
-            errorHandler.js,
-            apiClient.js,
-            spinner.js,
-            modal.js,
-            tableBuilder.js,
-            accordionBuilder.js,
-            sortUtils.js,
-            tableRenderer.js,
-            utils.js,
-            offerCodeLookup.js,
-            offerNamePdfLinker.js,
-            app.js,
+            **/*.js
             manifest.json
