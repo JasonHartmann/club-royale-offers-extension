@@ -53,8 +53,12 @@ const TableRenderer = {
                 openGroups: new Set(),
                 groupingStack: [],
                 groupKeysStack: [],
+                hideTierSailings: false, // NEW state flag
                 ...this.prepareOfferData(data)
             };
+            // NEW master copy to enable reversible filtering
+            state.fullOriginalOffers = [...state.originalOffers];
+
             state.accordionContainer.className = 'w-full';
             state.backButton.style.display = 'none';
             state.backButton.onclick = () => {
@@ -91,68 +95,72 @@ const TableRenderer = {
     },
     updateView(state) {
         App.TableRenderer.lastState = state;
-        const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, sortedOffers, originalOffers, groupSortStates, thead, tbody, headers } = state;
+        // Ensure master copy exists
+        if (!state.fullOriginalOffers) state.fullOriginalOffers = [...state.originalOffers];
+        // Apply filter
+        const base = state.fullOriginalOffers;
+        const filtered = state.hideTierSailings ? base.filter(({ offer }) => !((offer.campaignOffer?.offerCode || '').toUpperCase().includes('TIER'))) : base;
+        state.originalOffers = filtered;
+        const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         table.style.display = viewMode === 'table' ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
 
         const breadcrumbContainer = document.querySelector('.breadcrumb-container');
-        if (breadcrumbContainer) {
-            // Always show All Offers link; crumbs managed by updateBreadcrumb
-            breadcrumbContainer.style.display = '';
+        if (breadcrumbContainer) breadcrumbContainer.style.display = '';
+
+        // Prune grouping path if now invalid
+        if (state.groupingStack.length && state.groupKeysStack.length) {
+            let subset = filtered;
+            let validDepth = 0;
+            for (let d = 0; d < state.groupingStack.length && d < state.groupKeysStack.length; d++) {
+                const col = state.groupingStack[d];
+                const grouped = App.AccordionBuilder.createGroupedData(subset, col);
+                const key = state.groupKeysStack[d];
+                if (grouped && Object.prototype.hasOwnProperty.call(grouped, key)) {
+                    subset = grouped[key];
+                    validDepth++;
+                } else break;
+            }
+            if (validDepth < state.groupKeysStack.length) state.groupKeysStack = state.groupKeysStack.slice(0, validDepth);
         }
 
         const groupTitle = document.getElementById('group-title');
         if (groupTitle) {
-            const activeGroupCol = state.groupingStack.length > 0 ? state.groupingStack[state.groupingStack.length - 1] : state.currentGroupColumn;
+            const activeGroupCol = state.groupingStack.length ? state.groupingStack[state.groupingStack.length - 1] : state.currentGroupColumn;
             groupTitle.textContent = viewMode === 'accordion' && activeGroupCol ? (headers.find(h => h.key === activeGroupCol)?.label || '') : '';
         }
 
         let globalMaxOfferDate = null;
-        (sortedOffers || []).forEach(({ offer }) => {
-            const ds = offer.campaignOffer?.startDate;
-            if (ds) {
-                const t = new Date(ds).getTime();
-                if (!globalMaxOfferDate || t > globalMaxOfferDate) globalMaxOfferDate = t;
-            }
+        (filtered || []).forEach(({ offer }) => {
+            const ds = offer.campaignOffer?.startDate; if (ds) { const t = new Date(ds).getTime(); if (!globalMaxOfferDate || t > globalMaxOfferDate) globalMaxOfferDate = t; }
         });
-
+        state.sortedOffers = currentSortOrder !== 'original' ? App.SortUtils.sortOffers(filtered, currentSortColumn, currentSortOrder) : [...filtered];
         if (viewMode === 'table') {
-            state.sortedOffers = currentSortOrder !== 'original' ? App.SortUtils.sortOffers(sortedOffers, currentSortColumn, currentSortOrder) : [...originalOffers];
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             if (!table.contains(thead)) table.appendChild(thead);
         } else {
-            state.sortedOffers = currentSortOrder !== 'original' ? App.SortUtils.sortOffers(sortedOffers, currentSortColumn, currentSortOrder) : [...originalOffers];
-            if (state.groupingStack.length === 0) {
-                state.viewMode = 'table';
-                this.updateView(state);
-                return;
-            }
-            // Rebuild nested accordions along grouping path
+            if (!state.groupingStack.length) { state.viewMode = 'table'; this.updateView(state); return; }
             accordionContainer.innerHTML = '';
-            let offersSubset = state.sortedOffers;
+            let subset = state.sortedOffers;
             let currentContainer = accordionContainer;
             for (let depth = 0; depth < state.groupingStack.length; depth++) {
                 const col = state.groupingStack[depth];
-                const groupedData = App.AccordionBuilder.createGroupedData(offersSubset, col);
+                const groupedData = App.AccordionBuilder.createGroupedData(subset, col);
                 const partialGroupingStack = state.groupingStack.slice(0, depth + 1);
                 const partialKeysStack = state.groupKeysStack.slice(0, depth);
                 App.AccordionBuilder.renderAccordion(currentContainer, groupedData, groupSortStates, state, partialGroupingStack, partialKeysStack, globalMaxOfferDate);
                 if (depth < state.groupKeysStack.length) {
                     const key = state.groupKeysStack[depth];
-                    offersSubset = groupedData[key] || [];
+                    subset = groupedData[key] || [];
                     const escKey = (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(key) : key.replace(/([ #.;?+*~':"!^$\\\[\]()=>|\/])/g, '\\$1');
                     const tableEl = currentContainer.querySelector(`.accordion-table[data-group-key="${escKey}"]`);
                     if (tableEl) {
                         const contentEl = tableEl.closest('.accordion-content');
-                        if (contentEl) {
-                            contentEl.classList.add('open');
-                            currentContainer = contentEl;
-                        } else break;
+                        if (contentEl) { contentEl.classList.add('open'); currentContainer = contentEl; } else break;
                     } else break;
                 } else break;
             }
         }
-        // Always rebuild breadcrumb so All Offers remains and crumbs clear when no grouping
         this.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
     },
     updateBreadcrumb(groupingStack, groupKeysStack) {

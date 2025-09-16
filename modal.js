@@ -101,6 +101,23 @@ const Modal = {
         legendCopyrightWrapper.appendChild(copyright);
         container.appendChild(legendCopyrightWrapper);
 
+        // Insert TIER toggle (top-right)
+        const tierToggle = document.createElement('label');
+        tierToggle.className = 'tier-filter-toggle';
+        tierToggle.title = 'Hide/Show TIER sailings';
+        const tierCheckbox = document.createElement('input');
+        tierCheckbox.type = 'checkbox';
+        tierCheckbox.checked = !!state.hideTierSailings;
+        const tierText = document.createElement('span');
+        tierText.textContent = 'Hide TIER';
+        tierCheckbox.addEventListener('change', () => {
+            state.hideTierSailings = tierCheckbox.checked;
+            App.TableRenderer.updateView(state);
+        });
+        tierToggle.appendChild(tierCheckbox);
+        tierToggle.appendChild(tierText);
+        container.appendChild(tierToggle);
+
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
     },
