@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Club Royale and Blue Chip Casino Offers Viewer",
-  "version": "1.2",
+  "version": "1.3",
   "description": "View Royal Caribbean & Celebrity casino offers in a sortable, groupable table and accordion.",
   "content_scripts": [
     {

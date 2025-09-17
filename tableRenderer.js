@@ -20,9 +20,7 @@ const TableRenderer = {
             if (existingTable) existingTable.remove();
             const existingBackdrop = document.getElementById('gobo-backdrop');
             if (existingBackdrop) existingBackdrop.remove();
-
             document.body.style.overflow = 'hidden';
-
             const state = {
                 backdrop: App.Modal.createBackdrop(),
                 container: App.Modal.createModalContainer(),
@@ -35,7 +33,7 @@ const TableRenderer = {
                     { key: 'offerDate', label: 'Received' },
                     { key: 'expiration', label: 'Expiration' },
                     { key: 'offerName', label: 'Name' },
-                    { key: 'shipClass', label: 'Class' }, // new ship class column
+                    { key: 'shipClass', label: 'Class' },
                     { key: 'ship', label: 'Ship' },
                     { key: 'sailDate', label: 'Sail Date' },
                     { key: 'departurePort', label: 'Departure Port' },
@@ -53,10 +51,14 @@ const TableRenderer = {
                 openGroups: new Set(),
                 groupingStack: [],
                 groupKeysStack: [],
-                hideTierSailings: false, // NEW state flag
+                hideTierSailings: false,
                 ...this.prepareOfferData(data)
             };
-            // NEW master copy to enable reversible filtering
+            // Load persisted preference for Hide TIER
+            try {
+                const savedPref = localStorage.getItem('goboHideTier');
+                if (savedPref !== null) state.hideTierSailings = savedPref === 'true';
+            } catch (e) { /* ignore storage errors */ }
             state.fullOriginalOffers = [...state.originalOffers];
 
             state.accordionContainer.className = 'w-full';
@@ -70,9 +72,7 @@ const TableRenderer = {
                 state.groupKeysStack = [];
                 this.updateView(state);
             };
-
             state.thead = App.TableBuilder.createTableHeader(state);
-
             const overlappingElements = [];
             document.querySelectorAll('[style*="position: fixed"], [style*="position: absolute"], [style*="z-index"], .fixed, .absolute, iframe:not(#gobo-offers-table):not(#gobo-backdrop), .sign-modal-overlay, .email-capture, .bg-purple-overlay, .heading1, [class*="relative"][class*="overflow-hidden"][class*="flex-col"]').forEach(el => {
                 const computedStyle = window.getComputedStyle(el);
@@ -82,7 +82,6 @@ const TableRenderer = {
                     overlappingElements.push(el);
                 }
             });
-
             App.Modal.setupModal(state, overlappingElements);
             this.updateView(state);
         } catch (error) {
@@ -215,5 +214,24 @@ const TableRenderer = {
                 container.appendChild(valCrumb);
             }
         }
+
+        // Persisted Hide TIER toggle
+        const tierToggle = document.createElement('label');
+        tierToggle.className = 'tier-filter-toggle';
+        tierToggle.style.marginLeft = 'auto';
+        tierToggle.title = 'Hide/Show TIER sailings';
+        const tierCheckbox = document.createElement('input');
+        tierCheckbox.type = 'checkbox';
+        tierCheckbox.checked = !!state.hideTierSailings;
+        const tierText = document.createElement('span');
+        tierText.textContent = 'Hide TIER';
+        tierCheckbox.addEventListener('change', () => {
+            state.hideTierSailings = tierCheckbox.checked;
+            try { localStorage.setItem('goboHideTier', String(state.hideTierSailings)); } catch (e) { /* ignore */ }
+            App.TableRenderer.updateView(state);
+        });
+        tierToggle.appendChild(tierCheckbox);
+        tierToggle.appendChild(tierText);
+        container.appendChild(tierToggle);
     }
 };

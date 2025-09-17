@@ -80,7 +80,8 @@ const Styles = {
                 .group-title { font-weight:600; color:#1f2937; }
                 .newest-offer-row { background:#DFD !important; }
                 .expiring-soon-row { background:#FDD !important; }
-                .tier-filter-toggle { position:absolute; top:6px; right:10px; font-size:12px; background:rgba(255,255,255,0.95); padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:flex; align-items:center; gap:6px; cursor:pointer; }
+                /* Updated: tier filter now inline inside breadcrumb */
+                .tier-filter-toggle { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,0.9); padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.08); font-weight:500; }
                 .tier-filter-toggle input { cursor:pointer; }
             `;
             document.head.appendChild(style);
