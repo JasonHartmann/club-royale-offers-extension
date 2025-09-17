@@ -3,6 +3,12 @@
   "name": "Club Royale and Blue Chip Casino Offers Viewer",
   "version": "1.3",
   "description": "View Royal Caribbean & Celebrity casino offers in a sortable, groupable table and accordion.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "club-royale-offers@percex.local",
+      "strict_min_version": "109.0"
+    }
+  },
   "content_scripts": [
     {
       "matches": [

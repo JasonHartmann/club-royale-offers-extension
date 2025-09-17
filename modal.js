@@ -48,7 +48,13 @@ const Modal = {
 
         backdrop.addEventListener('click', () => this.closeModal(container, backdrop, overlappingElements));
 
-        document.addEventListener('keydown', this.handleEscapeKey);
+        // Store references for ESC handling & cleanup
+        this._container = container;
+        this._backdrop = backdrop;
+        this._overlappingElements = overlappingElements;
+        // Create a bound handler so we can remove it later
+        this._escapeHandler = this.handleEscapeKey.bind(this);
+        document.addEventListener('keydown', this._escapeHandler);
 
         table.appendChild(tbody);
         scrollContainer.appendChild(breadcrumbContainer);
@@ -101,27 +107,15 @@ const Modal = {
         legendCopyrightWrapper.appendChild(copyright);
         container.appendChild(legendCopyrightWrapper);
 
-        // Insert TIER toggle (top-right)
-        const tierToggle = document.createElement('label');
-        tierToggle.className = 'tier-filter-toggle';
-        tierToggle.title = 'Hide/Show TIER sailings';
-        const tierCheckbox = document.createElement('input');
-        tierCheckbox.type = 'checkbox';
-        tierCheckbox.checked = !!state.hideTierSailings;
-        const tierText = document.createElement('span');
-        tierText.textContent = 'Hide TIER';
-        tierCheckbox.addEventListener('change', () => {
-            state.hideTierSailings = tierCheckbox.checked;
-            App.TableRenderer.updateView(state);
-        });
-        tierToggle.appendChild(tierCheckbox);
-        tierToggle.appendChild(tierText);
-        container.appendChild(tierToggle);
-
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
     },
     closeModal(container, backdrop, overlappingElements) {
+        // Allow calling with stored references when no args provided
+        container = container || this._container;
+        backdrop = backdrop || this._backdrop;
+        overlappingElements = overlappingElements || this._overlappingElements || [];
+        if (!container || !backdrop) return; // Already closed
         container.remove();
         backdrop.remove();
         document.body.style.overflow = '';
@@ -129,21 +123,18 @@ const Modal = {
             el.style.display = el.dataset.originalDisplay || '';
             delete el.dataset.originalDisplay;
         });
-        document.removeEventListener('keydown', this.handleEscapeKey);
+        if (this._escapeHandler) {
+            document.removeEventListener('keydown', this._escapeHandler);
+        }
+        // Cleanup stored refs
+        this._container = null;
+        this._backdrop = null;
+        this._overlappingElements = null;
+        this._escapeHandler = null;
     },
     handleEscapeKey(event) {
         if (event.key === 'Escape') {
-            console.log('Escape key pressed, closing modal');
-            if (container && backdrop) {
-                container.remove();
-                backdrop.remove();
-                document.body.style.overflow = '';
-                document.querySelectorAll('[data-original-display]').forEach(el => {
-                    el.style.display = el.dataset.originalDisplay || '';
-                    delete el.dataset.originalDisplay;
-                });
-                document.removeEventListener('keydown', this.handleEscapeKey);
-            }
+            this.closeModal();
         }
     },
     exportToCSV(state) {
