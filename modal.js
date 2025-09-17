@@ -134,8 +134,6 @@ const Modal = {
     handleEscapeKey(event) {
         if (event.key === 'Escape') {
             console.log('Escape key pressed, closing modal');
-            const container = document.getElementById('gobo-offers-table');
-            const backdrop = document.getElementById('gobo-backdrop');
             if (container && backdrop) {
                 container.remove();
                 backdrop.remove();
