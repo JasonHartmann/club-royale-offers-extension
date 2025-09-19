@@ -1,7 +1,7 @@
 const ApiClient = {
     async fetchOffers(retryCount = 3) {
         console.log('Fetching casino offers');
-        let authToken, accountId, loyaltyId;
+        let authToken, accountId, loyaltyId, user;
         try {
             const sessionData = localStorage.getItem('persist:session');
             if (!sessionData) {
@@ -12,7 +12,7 @@ const ApiClient = {
             const parsedData = JSON.parse(sessionData);
             authToken = parsedData.token ? JSON.parse(parsedData.token) : null;
             const tokenExpiration = parsedData.tokenExpiration ? parseInt(parsedData.tokenExpiration) * 1000 : null;
-            let user =  parsedData.user ? JSON.parse(parsedData.user) : null;
+            user = parsedData.user ? JSON.parse(parsedData.user) : null;
             accountId = user && user.accountId ? user.accountId : null;
             loyaltyId = user && user.cruiseLoyaltyId ? user.cruiseLoyaltyId : null;
             if (!authToken || !tokenExpiration || !accountId) {
@@ -176,6 +176,17 @@ const ApiClient = {
 
             // normalize data (trim, adjust capitalization, etc.) AFTER potential merges so added sailings are normalized too
             const normalizedData = App.Utils.normalizeOffers(data);
+            // Persist normalized data so it can be accessed across logins by key: gobo-<username>
+            try {
+                const rawKey = (user && (user.username || user.userName || user.email || user.name || user.accountId)) ? String(user.username || user.userName || user.email || user.name || user.accountId) : 'unknown';
+                const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
+                const storageKey = `gobo-${usernameKey}`;
+                const payload = { savedAt: Date.now(), data: normalizedData };
+                localStorage.setItem(storageKey, JSON.stringify(payload));
+                console.log(`Saved normalized offers to localStorage key: ${storageKey}`);
+            } catch (e) {
+                console.warn('Failed to persist normalized offers to localStorage', e);
+            }
             App.TableRenderer.displayTable(normalizedData);
             // Trigger PDF head checks for Name column links
             if (App.OfferNamePdfLinker && typeof App.OfferNamePdfLinker.queueHeadChecks === 'function') {
