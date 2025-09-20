@@ -85,23 +85,28 @@ const Styles = {
                 .tier-filter-toggle input { cursor:pointer; }
 
                 /* Profile tabs */
-                .profile-tabs { display:flex; gap:6px; align-items:flex-end; max-width:60%; overflow-x:auto; padding-right:6px; margin-right:8px; }
+                .profile-tabs { display:flex; gap:6px; align-items:center; width:100%; overflow-x:auto; padding-right:6px; margin-right:0; }
                 .profile-tabs::-webkit-scrollbar { height:8px; }
                 /* Base tab look */
                 .profile-tabs .profile-tab {
-                    appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; padding:8px 12px; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, transform .12s, box-shadow .12s; margin-bottom:0;
+                    appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; height:36px; line-height:36px; padding:0 12px; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, box-shadow .12s; margin-bottom:0; display:inline-block; vertical-align:middle;
                 }
-                .profile-tabs .profile-tab:hover { background:#eef2ff; transform:translateY(-2px); }
-                /* Active tab visually connected to content: white background, border, no bottom border so it appears attached */
-                .profile-tabs .profile-tab.active {
-                    background:#ffffff; color:#0b1220; border:1px solid #e5e7eb; border-bottom-color:transparent; font-weight:700; box-shadow:0 8px 20px rgba(2,6,23,0.06);
-                }
-                /* When tabs overflow, ensure they don't shrink the breadcrumb layout */
-                .breadcrumb-container { align-items:center; }
-                @media (max-width:600px) {
-                    .profile-tabs { max-width:45%; }
-                    .profile-tabs .profile-tab { padding:6px 10px; font-size:12px; }
-                }
+                .profile-tabs .profile-tab:hover { background:#eef2ff; }
+                 /* Active tab visually connected to content: white background, border, no bottom border so it appears attached */
+                 .profile-tabs .profile-tab.active {
+                     background:#ffffff; color:#0b1220; border:1px solid #e5e7eb; border-bottom-color:transparent; font-weight:700; box-shadow:0 8px 20px rgba(2,6,23,0.06);
+                    position:relative; z-index:2;
+                 }
+                /* Breadcrumb container stacked: tabs row above crumbs row */
+                .breadcrumb-container { display:flex; flex-direction:column; align-items:flex-start; gap:0; padding:8px; margin-bottom:8px; width:100%; }
+                .breadcrumb-tabs-row { width:100%; margin-bottom:0; }
+                .breadcrumb-crumb-row { display:flex; align-items:center; gap:8px; width:100%; padding-top:12px; border-top:1px solid #e5e7eb; background:transparent; }
+                 @media (max-width:600px) {
+-                    .profile-tabs { max-width:45%; }
+-                    .profile-tabs .profile-tab { padding:6px 10px; font-size:12px; }
++                    .profile-tabs { max-width:100%; }
++                    .profile-tabs .profile-tab { padding:0 8px; font-size:12px; height:32px; line-height:32px; }
+                 }
 
             `;
             document.head.appendChild(style);

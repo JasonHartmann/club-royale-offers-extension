@@ -21,7 +21,20 @@ const TableRenderer = {
             const existingBackdrop = document.getElementById('gobo-backdrop');
             if (existingBackdrop) existingBackdrop.remove();
             document.body.style.overflow = 'hidden';
-            const persistedSelected = (function(){ try { return localStorage.getItem('goboActiveProfile'); } catch(e){ return null; } })();
+            // Always show current user's tab as active on initial open
+            let currentKey = null;
+            try {
+                const sessionRaw = localStorage.getItem('persist:session');
+                if (sessionRaw) {
+                    const parsed = JSON.parse(sessionRaw);
+                    const user = parsed.user ? JSON.parse(parsed.user) : null;
+                    if (user) {
+                        const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
+                        const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
+                        currentKey = `gobo-${usernameKey}`;
+                    }
+                }
+            } catch (e) { /* ignore */ }
             const state = {
                 backdrop: App.Modal.createBackdrop(),
                 container: App.Modal.createModalContainer(),
@@ -53,8 +66,8 @@ const TableRenderer = {
                 groupingStack: [],
                 groupKeysStack: [],
                 hideTierSailings: false,
-                // Remember which profile tab should be active (explicit param -> persisted -> none)
-                selectedProfileKey: selectedProfileKey || persistedSelected || null,
+                // Always use current user as active tab unless a tab is explicitly selected
+                selectedProfileKey: selectedProfileKey || currentKey || null,
                 ...this.prepareOfferData(data)
             };
             // Load persisted preference for Hide TIER
@@ -171,6 +184,15 @@ const TableRenderer = {
         const container = document.querySelector('.breadcrumb-container');
         if (!container) return;
         container.innerHTML = '';
+        // Create two rows: one for tabs (top), one for breadcrumbs (below)
+        const tabsRow = document.createElement('div');
+        tabsRow.className = 'breadcrumb-tabs-row';
+        tabsRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px;';
+        const crumbsRow = document.createElement('div');
+        crumbsRow.className = 'breadcrumb-crumb-row';
+        crumbsRow.style.cssText = 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;';
+        container.appendChild(tabsRow);
+        container.appendChild(crumbsRow);
 
         // Render profile tabs (saved profiles from localStorage prefixed with 'gobo-')
         try {
@@ -253,15 +275,15 @@ const TableRenderer = {
                     tabs.appendChild(btn);
                 });
 
-                // Insert tabs at the start of the breadcrumb container
-                container.appendChild(tabs);
+                // Insert tabs into the tabs row (above the breadcrumb row)
+                tabsRow.appendChild(tabs);
             }
         } catch (e) {
             // don't break breadcrumb rendering if storage access fails
             console.warn('Failed to render profile tabs', e);
         }
 
-        // All Offers root crumb
+        // All Offers root crumb - placed in crumbsRow (below tabs)
         const all = document.createElement('span');
         all.className = 'breadcrumb-link';
         all.textContent = 'All Offers';
@@ -276,34 +298,34 @@ const TableRenderer = {
             state.currentGroupColumn = null;
             this.updateView(state);
         });
-        container.appendChild(all);
+        crumbsRow.appendChild(all);
 
         container.classList.toggle('accordion-view', groupingStack.length > 0);
 
-        // Build crumbs: for each grouping column, add its label; if a value is selected at that depth add value after it
+        // Build crumbs into crumbsRow: for each grouping column, add its label; if a value is selected at this depth add value after it
         for (let i = 0; i < groupingStack.length; i++) {
             // Arrow before column label
             const arrowToCol = document.createElement('span');
             arrowToCol.className = 'breadcrumb-arrow';
-            container.appendChild(arrowToCol);
+            crumbsRow.appendChild(arrowToCol);
 
             const colKey = groupingStack[i];
             const colLabel = state.headers.find(h => h.key === colKey)?.label || colKey;
             const colCrumb = document.createElement('span');
             colCrumb.className = 'breadcrumb-crumb breadcrumb-col';
             colCrumb.textContent = colLabel;
-            container.appendChild(colCrumb);
+            crumbsRow.appendChild(colCrumb);
 
             // If user has selected a specific group value at this depth, add it
             if (i < groupKeysStack.length) {
                 const arrowToVal = document.createElement('span');
                 arrowToVal.className = 'breadcrumb-arrow';
-                container.appendChild(arrowToVal);
+                crumbsRow.appendChild(arrowToVal);
 
                 const valCrumb = document.createElement('span');
                 valCrumb.className = 'breadcrumb-crumb breadcrumb-val';
                 valCrumb.textContent = groupKeysStack[i];
-                container.appendChild(valCrumb);
+                crumbsRow.appendChild(valCrumb);
             }
         }
 
@@ -324,6 +346,7 @@ const TableRenderer = {
         });
         tierToggle.appendChild(tierCheckbox);
         tierToggle.appendChild(tierText);
-        container.appendChild(tierToggle);
+        // Place the tier toggle at the end of the crumbs row
+        crumbsRow.appendChild(tierToggle);
     }
 };
