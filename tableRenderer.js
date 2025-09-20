@@ -14,7 +14,7 @@ const TableRenderer = {
         }
         return { originalOffers, sortedOffers };
     },
-    displayTable(data, selectedProfileKey) {
+    displayTable(data, selectedProfileKey, overlappingElements) {
         try {
             const existingTable = document.getElementById('gobo-offers-table');
             if (existingTable) existingTable.remove();
@@ -66,7 +66,6 @@ const TableRenderer = {
                 groupingStack: [],
                 groupKeysStack: [],
                 hideTierSailings: false,
-                // Always use current user as active tab unless a tab is explicitly selected
                 selectedProfileKey: selectedProfileKey || currentKey || null,
                 ...this.prepareOfferData(data)
             };
@@ -89,16 +88,22 @@ const TableRenderer = {
                 this.updateView(state);
             };
             state.thead = App.TableBuilder.createTableHeader(state);
-            const overlappingElements = [];
-            document.querySelectorAll('[style*="position: fixed"], [style*="position: absolute"], [style*="z-index"], .fixed, .absolute, iframe:not(#gobo-offers-table):not(#gobo-backdrop), .sign-modal-overlay, .email-capture, .bg-purple-overlay, .heading1, [class*="relative"][class*="overflow-hidden"][class*="flex-col"]').forEach(el => {
-                const computedStyle = window.getComputedStyle(el);
-                if ((parseInt(computedStyle.zIndex) > 0 || computedStyle.position === 'fixed' || computedStyle.position === 'absolute' || el.classList.contains('sign-modal-overlay') || el.classList.contains('email-capture') || el.classList.contains('bg-purple-overlay') || el.classList.contains('heading1') || el.classList.contains('relative')) && el.id !== 'gobo-offers-table' && el.id !== 'gobo-backdrop') {
-                    el.dataset.originalDisplay = el.style.display;
-                    el.style.display = 'none';
-                    overlappingElements.push(el);
-                }
-            });
-            App.Modal.setupModal(state, overlappingElements);
+            // Only collect overlappingElements if not provided (first open)
+            let overlapping = overlappingElements;
+            if (!overlapping) {
+                overlapping = [];
+                document.querySelectorAll('[style*="position: fixed"], [style*="position: absolute"], [style*="z-index"], .fixed, .absolute, iframe:not(#gobo-offers-table):not(#gobo-backdrop), .sign-modal-overlay, .email-capture, .bg-purple-overlay, .heading1, [class*="relative"][class*="overflow-hidden"][class*="flex-col"]').forEach(el => {
+                    const computedStyle = window.getComputedStyle(el);
+                    if ((parseInt(computedStyle.zIndex) > 0 || computedStyle.position === 'fixed' || computedStyle.position === 'absolute' || el.classList.contains('sign-modal-overlay') || el.classList.contains('email-capture') || el.classList.contains('bg-purple-overlay') || el.classList.contains('heading1') || el.classList.contains('relative')) && el.id !== 'gobo-offers-table' && el.id !== 'gobo-backdrop') {
+                        el.dataset.originalDisplay = el.style.display;
+                        el.style.display = 'none';
+                        overlapping.push(el);
+                    }
+                });
+            }
+            // Store globally for reuse on tab switch
+            App.Modal._overlappingElements = overlapping;
+            App.Modal.setupModal(state, overlapping);
             this.updateView(state);
         } catch (error) {
             console.log('Failed to display table:', error.message);
@@ -263,7 +268,8 @@ const TableRenderer = {
                             if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
                             const payload = JSON.parse(raw);
                             if (payload && payload.data) {
-                                App.TableRenderer.displayTable(payload.data, p.key);
+                                // Pass overlappingElements to preserve base screen state
+                                App.TableRenderer.displayTable(payload.data, p.key, App.Modal._overlappingElements);
                             } else {
                                 App.ErrorHandler.showError('Saved profile data is malformed.');
                             }
