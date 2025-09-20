@@ -14,13 +14,14 @@ const TableRenderer = {
         }
         return { originalOffers, sortedOffers };
     },
-    displayTable(data) {
+    displayTable(data, selectedProfileKey) {
         try {
             const existingTable = document.getElementById('gobo-offers-table');
             if (existingTable) existingTable.remove();
             const existingBackdrop = document.getElementById('gobo-backdrop');
             if (existingBackdrop) existingBackdrop.remove();
             document.body.style.overflow = 'hidden';
+            const persistedSelected = (function(){ try { return localStorage.getItem('goboActiveProfile'); } catch(e){ return null; } })();
             const state = {
                 backdrop: App.Modal.createBackdrop(),
                 container: App.Modal.createModalContainer(),
@@ -52,6 +53,8 @@ const TableRenderer = {
                 groupingStack: [],
                 groupKeysStack: [],
                 hideTierSailings: false,
+                // Remember which profile tab should be active (explicit param -> persisted -> none)
+                selectedProfileKey: selectedProfileKey || persistedSelected || null,
                 ...this.prepareOfferData(data)
             };
             // Load persisted preference for Hide TIER
@@ -168,6 +171,95 @@ const TableRenderer = {
         const container = document.querySelector('.breadcrumb-container');
         if (!container) return;
         container.innerHTML = '';
+
+        // Render profile tabs (saved profiles from localStorage prefixed with 'gobo-')
+        try {
+            const profiles = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (!k) continue;
+                if (k.startsWith('gobo-')) {
+                    let payload = null;
+                    try { payload = JSON.parse(localStorage.getItem(k)); } catch (e) { /* ignore */ }
+                    profiles.push({ key: k, label: k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: (payload && payload.savedAt) ? payload.savedAt : 0 });
+                }
+            }
+
+            if (profiles.length) {
+                // Determine current user's storage key (same logic as ApiClient)
+                let currentKey = null;
+                try {
+                    const sessionRaw = localStorage.getItem('persist:session');
+                    if (sessionRaw) {
+                        const parsed = JSON.parse(sessionRaw);
+                        const user = parsed.user ? JSON.parse(parsed.user) : null;
+                        if (user) {
+                            const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
+                            const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
+                            currentKey = `gobo-${usernameKey}`;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+
+                // Sort by savedAt desc (most recent first)
+                profiles.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+                // If currentKey exists, move it to front
+                if (currentKey) {
+                    const idx = profiles.findIndex(p => p.key === currentKey);
+                    if (idx > 0) profiles.unshift(profiles.splice(idx, 1)[0]);
+                }
+
+                const tabs = document.createElement('div');
+                tabs.className = 'profile-tabs';
+
+                // prefer state.selectedProfileKey (set when displayTable called or from persisted last choice)
+                const activeKey = state.selectedProfileKey || currentKey;
+
+                profiles.forEach(p => {
+                    const btn = document.createElement('button');
+                    btn.className = 'profile-tab';
+                    btn.textContent = p.label || p.key;
+                    if (p.key === activeKey) {
+                        btn.classList.add('active');
+                        btn.setAttribute('aria-pressed', 'true');
+                    } else {
+                        btn.setAttribute('aria-pressed', 'false');
+                    }
+                    if (p.savedAt) {
+                        try { btn.title = new Date(p.savedAt).toLocaleString(); } catch(e) { /* ignore */ }
+                    }
+
+                    btn.addEventListener('click', () => {
+                        // Persist last-selected profile so it remains active across modal reopenings
+                        try { localStorage.setItem('goboActiveProfile', p.key); } catch (e) { /* ignore */ }
+                        // Update visual active state
+                        tabs.querySelectorAll('.profile-tab').forEach(tb => { tb.classList.remove('active'); tb.setAttribute('aria-pressed', 'false'); });
+                        btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
+                        // Load the saved profile and re-render modal, passing selected key so active tab remains
+                        try {
+                            const raw = localStorage.getItem(p.key);
+                            if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
+                            const payload = JSON.parse(raw);
+                            if (payload && payload.data) {
+                                App.TableRenderer.displayTable(payload.data, p.key);
+                            } else {
+                                App.ErrorHandler.showError('Saved profile data is malformed.');
+                            }
+                        } catch (err) {
+                            App.ErrorHandler.showError('Failed to load saved profile.');
+                        }
+                    });
+
+                    tabs.appendChild(btn);
+                });
+
+                // Insert tabs at the start of the breadcrumb container
+                container.appendChild(tabs);
+            }
+        } catch (e) {
+            // don't break breadcrumb rendering if storage access fails
+            console.warn('Failed to render profile tabs', e);
+        }
 
         // All Offers root crumb
         const all = document.createElement('span');

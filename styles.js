@@ -83,6 +83,26 @@ const Styles = {
                 /* Updated: tier filter now inline inside breadcrumb */
                 .tier-filter-toggle { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,0.9); padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.08); font-weight:500; }
                 .tier-filter-toggle input { cursor:pointer; }
+
+                /* Profile tabs */
+                .profile-tabs { display:flex; gap:6px; align-items:flex-end; max-width:60%; overflow-x:auto; padding-right:6px; margin-right:8px; }
+                .profile-tabs::-webkit-scrollbar { height:8px; }
+                /* Base tab look */
+                .profile-tabs .profile-tab {
+                    appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; padding:8px 12px; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, transform .12s, box-shadow .12s; margin-bottom:0;
+                }
+                .profile-tabs .profile-tab:hover { background:#eef2ff; transform:translateY(-2px); }
+                /* Active tab visually connected to content: white background, border, no bottom border so it appears attached */
+                .profile-tabs .profile-tab.active {
+                    background:#ffffff; color:#0b1220; border:1px solid #e5e7eb; border-bottom-color:transparent; font-weight:700; box-shadow:0 8px 20px rgba(2,6,23,0.06);
+                }
+                /* When tabs overflow, ensure they don't shrink the breadcrumb layout */
+                .breadcrumb-container { align-items:center; }
+                @media (max-width:600px) {
+                    .profile-tabs { max-width:45%; }
+                    .profile-tabs .profile-tab { padding:6px 10px; font-size:12px; }
+                }
+
             `;
             document.head.appendChild(style);
             console.log('Custom styles injected');
