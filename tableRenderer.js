@@ -83,8 +83,8 @@ const TableRenderer = {
                     { key: 'quality', label: 'Quality' },
                     { key: 'perks', label: 'Perks' }
                 ],
-                currentSortColumn: null,
-                currentSortOrder: 'original',
+                currentSortColumn: 'offerDate', // Default sort by Received
+                currentSortOrder: 'desc', // Descending (newest first)
                 currentGroupColumn: null,
                 viewMode: 'table',
                 groupSortStates: {},
@@ -252,8 +252,8 @@ const TableRenderer = {
                     { key: 'quality', label: 'Quality' },
                     { key: 'perks', label: 'Perks' }
                 ],
-                currentSortColumn: null,
-                currentSortOrder: 'original',
+                currentSortColumn: 'offerDate', // Default sort by Received
+                currentSortOrder: 'desc', // Descending (newest first)
                 currentGroupColumn: null,
                 viewMode: 'table',
                 groupSortStates: {},
@@ -446,9 +446,9 @@ const TableRenderer = {
                     const btn = document.createElement('button');
                     btn.className = 'profile-tab';
                     btn.style.display = 'flex';
-                    btn.style.flexDirection = 'column';
-                    btn.style.alignItems = 'center';
-                    btn.style.justifyContent = 'center';
+                    btn.style.flexDirection = 'row'; // Changed from 'column' to 'row'
+                    btn.style.alignItems = 'center'; // Center vertically
+                    btn.style.justifyContent = 'space-between'; // Space between label and icon
                     btn.style.padding = '6px 10px';
                     btn.style.minWidth = '80px';
                     btn.style.minHeight = '40px';
@@ -466,9 +466,40 @@ const TableRenderer = {
                         refreshedDiv.style.marginTop = '2px';
                         try { btn.title = new Date(p.savedAt).toLocaleString(); } catch(e) { /* ignore */ }
                     }
+                    const labelContainer = document.createElement('div');
+                    labelContainer.style.display = 'flex';
+                    labelContainer.style.flexDirection = 'column';
+                    labelContainer.style.justifyContent = 'center';
+                    labelContainer.style.alignItems = 'flex-start';
+                    labelContainer.appendChild(labelDiv);
+                    if (refreshedDiv) labelContainer.appendChild(refreshedDiv);
                     btn.innerHTML = '';
-                    btn.appendChild(labelDiv);
-                    if (refreshedDiv) btn.appendChild(refreshedDiv);
+                    btn.appendChild(labelContainer);
+                    // Add trash can icon to the right of the tab label
+                    const trashIcon = document.createElement('span');
+                    trashIcon.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+                    trashIcon.style.cursor = 'pointer';
+                    trashIcon.style.marginLeft = '8px';
+                    trashIcon.title = 'Delete profile';
+                    trashIcon.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent tab switch
+                        if (confirm('Are you sure you want to delete this saved profile? This action cannot be undone.')) {
+                            try {
+                                localStorage.removeItem(p.key);
+                                btn.remove(); // Remove tab from DOM
+                                // Optionally, remove from App.ProfileCache
+                                if (App.ProfileCache) delete App.ProfileCache[p.key];
+                                // If the deleted tab was active, switch to another tab if available
+                                const remainingTabs = tabs.querySelectorAll('.profile-tab');
+                                if (btn.classList.contains('active') && remainingTabs.length > 0) {
+                                    remainingTabs[0].click();
+                                }
+                            } catch (err) {
+                                App.ErrorHandler.showError('Failed to delete profile.');
+                            }
+                        }
+                    });
+                    btn.appendChild(trashIcon);
                     if (p.key === activeKey) {
                         btn.classList.add('active');
                         btn.setAttribute('aria-pressed', 'true');
@@ -522,10 +553,16 @@ const TableRenderer = {
             state.groupKeysStack = [];
             state.groupSortStates = {};
             state.openGroups = new Set();
-            state.currentSortColumn = null;
-            state.currentSortOrder = 'original';
+            // Restore previous base sort if available
+            if (state.baseSortColumn) {
+                state.currentSortColumn = state.baseSortColumn;
+                state.currentSortOrder = state.baseSortOrder;
+            } else {
+                state.currentSortColumn = 'offerDate';
+                state.currentSortOrder = 'desc';
+            }
             state.currentGroupColumn = null;
-            this.updateView(state);
+            App.TableRenderer.updateView(state);
         });
         crumbsRow.appendChild(all);
 

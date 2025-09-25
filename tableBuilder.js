@@ -24,6 +24,11 @@ const TableBuilder = {
                 }
                 state.currentSortColumn = header.key;
                 state.currentSortOrder = newSortOrder;
+                // If not grouped, remember base sort
+                if (!state.groupingStack || state.groupingStack.length === 0) {
+                    state.baseSortColumn = state.currentSortColumn;
+                    state.baseSortOrder = state.currentSortOrder;
+                }
                 state.viewMode = 'table';
                 // Reset grouping stacks when returning to table sort
                 state.currentGroupColumn = null;
