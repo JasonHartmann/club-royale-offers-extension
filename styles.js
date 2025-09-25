@@ -89,7 +89,26 @@ const Styles = {
                 .profile-tabs::-webkit-scrollbar { height:8px; }
                 /* Base tab look */
                 .profile-tabs .profile-tab {
-                    appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; height:36px; line-height:36px; padding:0 12px; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, box-shadow .12s; margin-bottom:0; display:inline-block; vertical-align:middle;
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 6px 10px;
+                    min-width: 80px;
+                    min-height: 50px;
+                    line-height: 1.2;
+                    appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, box-shadow .12s; margin-bottom:0; vertical-align:middle;
+                }
+                .profile-tabs .profile-tab {
+                    background: #d1d5db; /* darker gray for inactive tabs */
+                    color: #0b1220;
+                    border: 1px solid #e5e7eb;
+                    border-bottom-color: transparent;
+                    font-weight: 500;
+                    box-shadow: none;
+                    position: relative;
+                    z-index: 1;
+                    transition: background 0.2s;
                 }
                 .profile-tabs .profile-tab:hover { background:#eef2ff; }
                  /* Active tab visually connected to content: white background, border, no bottom border so it appears attached */
@@ -97,6 +116,35 @@ const Styles = {
                      background:#ffffff; color:#0b1220; border:1px solid #e5e7eb; border-bottom-color:transparent; font-weight:700; box-shadow:0 8px 20px rgba(2,6,23,0.06);
                     position:relative; z-index:2;
                  }
+                .profile-tabs .profile-tab:focus, .profile-tabs .profile-tab:focus-visible {
+                    outline: 2px solid #2563eb;
+                    outline-offset: 2px;
+                    z-index: 3;
+                }
+                .profile-tab-label-container {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: flex-start;
+                }
+                .profile-tab-label {
+                    font-size: 14px;
+                    font-weight: normal;
+                }
+                .profile-tab.active .profile-tab-label {
+                    font-weight: bold;
+                }
+                .profile-tab-loyalty {
+                    font-size: 12px;
+                    color: #555;
+                    margin-top: 2px;
+                    margin-bottom: 2px;
+                }
+                .profile-tab-refreshed {
+                    font-size: 10px;
+                    color: #888;
+                    margin-top: 2px;
+                }
                 /* Breadcrumb container stacked: tabs row above crumbs row */
                 .breadcrumb-container { display:flex; flex-direction:column; align-items:flex-start; gap:0; padding:8px; margin-bottom:8px; width:100%; }
                 .breadcrumb-tabs-row { width:100%; margin-bottom:0; }

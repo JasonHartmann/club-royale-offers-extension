@@ -179,8 +179,7 @@ const TableRenderer = {
 
         // Update active tab visuals (since breadcrumb is rebuilt in updateView if needed)
         document.querySelectorAll('.profile-tab').forEach(tb => {
-            const label = key.replace(/^gobo-/, '').replace(/_/g, '@');
-            tb.classList.toggle('active', tb.textContent === label);
+            tb.classList.toggle('active', tb.getAttribute('data-key') === key);
             tb.setAttribute('aria-pressed', tb.classList.contains('active') ? 'true' : 'false');
         });
     },
@@ -445,33 +444,33 @@ const TableRenderer = {
                 profiles.forEach(p => {
                     const btn = document.createElement('button');
                     btn.className = 'profile-tab';
-                    btn.style.display = 'flex';
-                    btn.style.flexDirection = 'row'; // Changed from 'column' to 'row'
-                    btn.style.alignItems = 'center'; // Center vertically
-                    btn.style.justifyContent = 'space-between'; // Space between label and icon
-                    btn.style.padding = '6px 10px';
-                    btn.style.minWidth = '80px';
-                    btn.style.minHeight = '40px';
-                    btn.style.lineHeight = '1.2';
+                    btn.setAttribute('data-key', p.key); // Add data-key for reliable identification
+                    // Fix: define loyaltyId for each profile
+                    let loyaltyId = null;
+                    try {
+                        const payload = JSON.parse(localStorage.getItem(p.key));
+                        if (payload && payload.data) {
+                            loyaltyId = payload.data.loyaltyId || null;
+                        }
+                    } catch (e) { /* ignore */ }
                     const labelDiv = document.createElement('div');
+                    labelDiv.className = 'profile-tab-label';
                     labelDiv.textContent = p.label || p.key;
-                    labelDiv.style.fontSize = '14px';
-                    labelDiv.style.fontWeight = (p.key === activeKey) ? 'bold' : 'normal';
+                    const loyaltyDiv = document.createElement('div');
+                    loyaltyDiv.className = 'profile-tab-loyalty';
+                    loyaltyDiv.textContent = loyaltyId ? `Loyalty ID: ${loyaltyId}` : '';
+
                     let refreshedDiv = null;
                     if (p.savedAt) {
                         refreshedDiv = document.createElement('div');
+                        refreshedDiv.className = 'profile-tab-refreshed';
                         refreshedDiv.textContent = `Last Refreshed: ${formatTimeAgo(p.savedAt)}`;
-                        refreshedDiv.style.fontSize = '10px';
-                        refreshedDiv.style.color = '#888';
-                        refreshedDiv.style.marginTop = '2px';
                         try { btn.title = new Date(p.savedAt).toLocaleString(); } catch(e) { /* ignore */ }
                     }
                     const labelContainer = document.createElement('div');
-                    labelContainer.style.display = 'flex';
-                    labelContainer.style.flexDirection = 'column';
-                    labelContainer.style.justifyContent = 'center';
-                    labelContainer.style.alignItems = 'flex-start';
+                    labelContainer.className = 'profile-tab-label-container';
                     labelContainer.appendChild(labelDiv);
+                    labelContainer.appendChild(loyaltyDiv);
                     if (refreshedDiv) labelContainer.appendChild(refreshedDiv);
                     btn.innerHTML = '';
                     btn.appendChild(labelContainer);
@@ -508,6 +507,8 @@ const TableRenderer = {
                     }
                     btn.addEventListener('click', () => {
                         try { localStorage.setItem('goboActiveProfile', p.key); } catch (e) { /* ignore */ }
+                        // Set selectedProfileKey to the clicked tab before re-render
+                        state.selectedProfileKey = p.key;
                         tabs.querySelectorAll('.profile-tab').forEach(tb => {
                             tb.classList.remove('active');
                             tb.setAttribute('aria-pressed', 'false');
