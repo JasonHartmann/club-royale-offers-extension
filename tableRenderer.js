@@ -1,4 +1,187 @@
 const TableRenderer = {
+    switchProfile(key) {
+        const cached = App.ProfileCache[key];
+        console.log('[DEBUG] switchProfile ENTRY', { key, cached });
+        if (!cached || App.CurrentProfile.key === key) {
+            console.log('[DEBUG] switchProfile: No cached profile or already active', { key });
+            return;
+        }
+        // Cache current profile's scrollContainer and state
+        const currentScroll = document.querySelector('.table-scroll-container');
+        console.log('[DEBUG] switchProfile: currentScroll', currentScroll);
+        if (currentScroll && App.CurrentProfile.key) {
+            App.ProfileCache[App.CurrentProfile.key] = {
+                scrollContainer: currentScroll,
+                state: App.TableRenderer.lastState
+            };
+            console.log('[DEBUG] switchProfile: Cached current profile', App.CurrentProfile.key);
+        }
+        // Inspect cached scrollContainer and state
+        console.log('[DEBUG] switchProfile: cached.scrollContainer', cached.scrollContainer);
+        console.log('[DEBUG] switchProfile: cached.state', cached.state);
+        // Swap scrollContainer
+        if (currentScroll && cached.scrollContainer) {
+            currentScroll.replaceWith(cached.scrollContainer);
+            console.log('[DEBUG] switchProfile: Replaced scrollContainer in DOM');
+        } else {
+            console.warn('[DEBUG] switchProfile: Missing scrollContainer for swap', { currentScroll, cachedScroll: cached.scrollContainer });
+        }
+        // Update lastState and current profile
+        App.TableRenderer.lastState = cached.state;
+        App.CurrentProfile = {
+            key,
+            scrollContainer: cached.scrollContainer,
+            state: cached.state
+        };
+        console.log('[DEBUG] switchProfile: Updated lastState and CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
+        // Check if table exists in DOM after swap
+        const tableInDom = cached.scrollContainer.querySelector('table');
+        console.log('[DEBUG] switchProfile: table in DOM after swap', tableInDom);
+        // If table is missing, force re-render
+        if (!tableInDom) {
+            console.warn('[DEBUG] switchProfile: Table missing after swap, forcing updateView');
+            this.updateView(cached.state);
+        }
+        // Update breadcrumb if needed (since DOM is swapped, it should be preserved, but force update to ensure consistency)
+        this.updateBreadcrumb(cached.state.groupingStack, cached.state.groupKeysStack);
+        console.log('[DEBUG] switchProfile EXIT', { key });
+    },
+    loadProfile(key, payload) {
+        console.log('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload });
+        console.log('[DEBUG] App.ProfileCache:', App.ProfileCache);
+        console.log('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
+        if (App.ProfileCache[key]) {
+            console.log('[DEBUG] Profile found in cache, switching profile', key);
+            this.switchProfile(key);
+            console.log('[DEBUG] loadProfile EXIT after switchProfile', { key });
+        } else {
+            console.log('[DEBUG] Building new profile for key', key);
+            let preparedData;
+            try {
+                preparedData = this.prepareOfferData(payload.data);
+                console.log('[DEBUG] prepareOfferData result:', preparedData);
+            } catch (e) {
+                console.error('[DEBUG] Error in prepareOfferData', e, payload);
+                preparedData = {};
+            }
+            // Build new profile content
+            const state = {
+                headers: [
+                    { key: 'offerCode', label: 'Code' },
+                    { key: 'offerDate', label: 'Received' },
+                    { key: 'expiration', label: 'Expiration' },
+                    { key: 'offerName', label: 'Name' },
+                    { key: 'shipClass', label: 'Class' },
+                    { key: 'ship', label: 'Ship' },
+                    { key: 'sailDate', label: 'Sail Date' },
+                    { key: 'departurePort', label: 'Departure Port' },
+                    { key: 'nights', label: 'Nights' },
+                    { key: 'destination', label: 'Destination' },
+                    { key: 'category', label: 'Category' },
+                    { key: 'quality', label: 'Quality' },
+                    { key: 'perks', label: 'Perks' }
+                ],
+                currentSortColumn: null,
+                currentSortOrder: 'original',
+                currentGroupColumn: null,
+                viewMode: 'table',
+                groupSortStates: {},
+                openGroups: new Set(),
+                groupingStack: [],
+                groupKeysStack: [],
+                hideTierSailings: false,
+                selectedProfileKey: key,
+                ...preparedData
+            };
+            // Load persisted preference for Hide TIER
+            try {
+                const savedPref = localStorage.getItem('goboHideTier');
+                console.log('[DEBUG] localStorage goboHideTier:', savedPref);
+                if (savedPref !== null) state.hideTierSailings = savedPref === 'true';
+            } catch (e) {
+                console.error('[DEBUG] Error accessing localStorage for goboHideTier', e);
+            }
+            state.fullOriginalOffers = [...(state.originalOffers || [])];
+            state.accordionContainer = document.createElement('div');
+            state.accordionContainer.className = 'w-full';
+            state.backButton = document.createElement('button');
+            state.backButton.style.display = 'none';
+            state.backButton.onclick = () => {
+                state.currentGroupColumn = null;
+                state.viewMode = 'table';
+                state.groupSortStates = {};
+                state.openGroups = new Set();
+                state.groupingStack = [];
+                state.groupKeysStack = [];
+                this.updateView(state);
+            };
+            state.thead = App.TableBuilder.createTableHeader(state);
+            state.table = App.TableBuilder.createMainTable();
+            state.tbody = document.createElement('tbody');
+            console.log('[DEBUG] New profile state built', state);
+            // Create breadcrumbContainer
+            const breadcrumbContainer = document.createElement('div');
+            breadcrumbContainer.className = 'breadcrumb-container';
+            const allOffersLink = document.createElement('span');
+            allOffersLink.className = 'breadcrumb-link';
+            allOffersLink.textContent = 'All Offers';
+            allOffersLink.addEventListener('click', state.backButton.onclick);
+            const arrow = document.createElement('span');
+            arrow.className = 'breadcrumb-arrow';
+            const groupTitle = document.createElement('span');
+            groupTitle.id = 'group-title';
+            groupTitle.className = 'group-title';
+            breadcrumbContainer.appendChild(allOffersLink);
+            breadcrumbContainer.appendChild(arrow);
+            breadcrumbContainer.appendChild(groupTitle);
+            // Create scrollContainer
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'table-scroll-container';
+            scrollContainer.appendChild(breadcrumbContainer);
+            scrollContainer.appendChild(state.table);
+            scrollContainer.appendChild(state.accordionContainer);
+            // Cache current if exists
+            const currentScroll = document.querySelector('.table-scroll-container');
+            console.log('[DEBUG] currentScroll:', currentScroll);
+            if (currentScroll && App.CurrentProfile && App.CurrentProfile.key) {
+                App.ProfileCache[App.CurrentProfile.key] = {
+                    scrollContainer: currentScroll,
+                    state: App.TableRenderer.lastState
+                };
+                console.log('[DEBUG] Cached current profile', App.CurrentProfile.key);
+            }
+            // Replace scrollContainer
+            if (currentScroll) {
+                currentScroll.replaceWith(scrollContainer);
+                console.log('[DEBUG] Replaced scrollContainer in DOM');
+            }
+            // Update lastState and current profile
+            App.TableRenderer.lastState = state;
+            App.CurrentProfile = {
+                key,
+                scrollContainer: scrollContainer,
+                state: state
+            };
+            // Cache the newly built profile for future tab switches
+            App.ProfileCache[key] = {
+                scrollContainer: scrollContainer,
+                state: state
+            };
+            console.log('[DEBUG] Cached new profile', key);
+            console.log('[DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
+            // Render the view
+            console.log('[DEBUG] Calling updateView with state');
+            this.updateView(state);
+            console.log('[DEBUG] loadProfile EXIT after updateView', { key });
+        }
+
+        // Update active tab visuals (since breadcrumb is rebuilt in updateView if needed)
+        document.querySelectorAll('.profile-tab').forEach(tb => {
+            const label = key.replace(/^gobo-/, '').replace(/_/g, '@');
+            tb.classList.toggle('active', tb.textContent === label);
+            tb.setAttribute('aria-pressed', tb.classList.contains('active') ? 'true' : 'false');
+        });
+    },
     prepareOfferData(data) {
         let originalOffers = [];
         let sortedOffers = [];
@@ -16,12 +199,7 @@ const TableRenderer = {
     },
     displayTable(data, selectedProfileKey, overlappingElements) {
         try {
-            const existingTable = document.getElementById('gobo-offers-table');
-            if (existingTable) existingTable.remove();
-            const existingBackdrop = document.getElementById('gobo-backdrop');
-            if (existingBackdrop) existingBackdrop.remove();
-            document.body.style.overflow = 'hidden';
-            // Always show current user's tab as active on initial open
+            // Check for last active profile and load it if different from current
             let currentKey = null;
             try {
                 const sessionRaw = localStorage.getItem('persist:session');
@@ -35,6 +213,32 @@ const TableRenderer = {
                     }
                 }
             } catch (e) { /* ignore */ }
+
+            const lastActive = localStorage.getItem('goboActiveProfile');
+            if (lastActive && lastActive !== currentKey) {
+                try {
+                    const raw = localStorage.getItem(lastActive);
+                    if (raw) {
+                        const payload = JSON.parse(raw);
+                        if (payload && payload.data) {
+                            selectedProfileKey = lastActive;
+                            data = payload.data;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            const existingTable = document.getElementById('gobo-offers-table');
+            if (existingTable) {
+                // Modal is already open, treat as profile load/switch
+                this.loadProfile(selectedProfileKey, { data });
+                return;
+            }
+
+            const existingBackdrop = document.getElementById('gobo-backdrop');
+            if (existingBackdrop) existingBackdrop.remove();
+            document.body.style.overflow = 'hidden';
+            // Always show current user's tab as active on initial open
             const state = {
                 backdrop: App.Modal.createBackdrop(),
                 container: App.Modal.createModalContainer(),
@@ -171,7 +375,6 @@ const TableRenderer = {
                 App.AccordionBuilder.renderAccordion(currentContainer, groupedData, groupSortStates, state, partialGroupingStack, partialKeysStack, globalMaxOfferDate);
                 if (depth < state.groupKeysStack.length) {
                     const key = state.groupKeysStack[depth];
-                    subset = groupedData[key] || [];
                     const escKey = (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(key) : key.replace(/([ #.;?+*~':"!^$\\\[\]()=>|\/])/g, '\\$1');
                     const tableEl = currentContainer.querySelector(`.accordion-table[data-group-key="${escKey}"]`);
                     if (tableEl) {
@@ -207,8 +410,12 @@ const TableRenderer = {
                 if (!k) continue;
                 if (k.startsWith('gobo-')) {
                     let payload = null;
-                    try { payload = JSON.parse(localStorage.getItem(k)); } catch (e) { /* ignore */ }
-                    profiles.push({ key: k, label: k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: (payload && payload.savedAt) ? payload.savedAt : 0 });
+                    try {
+                        payload = JSON.parse(localStorage.getItem(k));
+                        if (payload && payload.data && payload.savedAt) {
+                            profiles.push({ key: k, label: k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: payload.savedAt });
+                        }
+                    } catch (e) { /* ignore invalid */ }
                 }
             }
 
@@ -268,8 +475,9 @@ const TableRenderer = {
                             if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
                             const payload = JSON.parse(raw);
                             if (payload && payload.data) {
-                                // Pass overlappingElements to preserve base screen state
-                                App.TableRenderer.displayTable(payload.data, p.key, App.Modal._overlappingElements);
+                                console.log('[DEBUG] Calling LoadProfile');
+                                // Use loadProfile instead of displayTable
+                                App.TableRenderer.loadProfile(p.key, payload);
                             } else {
                                 App.ErrorHandler.showError('Saved profile data is malformed.');
                             }

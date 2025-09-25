@@ -17,6 +17,7 @@
         Utils,
         OfferCodeLookup, // added
         OfferNamePdfLinker, // new module for Name->PDF links
+        ProfileCache: [],
         init() {
             this.DOMUtils.waitForDom();
         }

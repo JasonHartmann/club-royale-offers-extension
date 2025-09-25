@@ -50,11 +50,13 @@ const TableBuilder = {
         return thead;
     },
     renderTable(tbody, state, globalMaxOfferDate = null) {
+        console.log('[DEBUG] renderTable ENTRY', { sortedOffersLength: state.sortedOffers.length, tbody });
         tbody.innerHTML = '';
         if (state.sortedOffers.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="13" class="border p-2 text-center">No offers available</td>`; // updated colspan for new column
+            row.innerHTML = `<td colspan="13" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
+            console.log('[DEBUG] renderTable: No offers available row appended');
         } else {
             // Find the soonest expiring offer in the next 2 days
             let soonestExpDate = null;
@@ -69,14 +71,20 @@ const TableBuilder = {
                     }
                 }
             });
-            state.sortedOffers.forEach(({ offer, sailing }) => {
+            state.sortedOffers.forEach(({ offer, sailing }, idx) => {
                 const offerDate = offer.campaignOffer?.startDate;
                 const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
                 const expDate = offer.campaignOffer?.reserveByDate;
                 const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                 const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
-                tbody.appendChild(row);
+                console.log('[DEBUG] renderTable: createOfferRow result', { idx, offer, sailing, row });
+                if (row) {
+                    tbody.appendChild(row);
+                } else {
+                    console.warn('[DEBUG] renderTable: createOfferRow returned null/undefined', { idx, offer, sailing });
+                }
             });
+            console.log('[DEBUG] renderTable: Finished appending rows');
         }
 
         state.headers.forEach(header => {
