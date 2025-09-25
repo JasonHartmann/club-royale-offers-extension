@@ -77,14 +77,13 @@ const TableBuilder = {
                 const expDate = offer.campaignOffer?.reserveByDate;
                 const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                 const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
-                console.log('[DEBUG] renderTable: createOfferRow result', { idx, offer, sailing, row });
                 if (row) {
                     tbody.appendChild(row);
                 } else {
                     console.warn('[DEBUG] renderTable: createOfferRow returned null/undefined', { idx, offer, sailing });
                 }
             });
-            console.log('[DEBUG] renderTable: Finished appending rows');
+            console.log('[DEBUG] renderTable: Finished appending ' + state.sortedOffers.length + ' rows');
         }
 
         state.headers.forEach(header => {

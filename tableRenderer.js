@@ -34,12 +34,14 @@ const TableRenderer = {
             state: cached.state
         };
         console.log('[DEBUG] switchProfile: Updated lastState and CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
-        // Check if table exists in DOM after swap
+        // Check if table and breadcrumb exist in DOM after swap
         const tableInDom = cached.scrollContainer.querySelector('table');
+        const breadcrumbInDom = cached.scrollContainer.querySelector('.breadcrumb-container');
         console.log('[DEBUG] switchProfile: table in DOM after swap', tableInDom);
-        // If table is missing, force re-render
-        if (!tableInDom) {
-            console.warn('[DEBUG] switchProfile: Table missing after swap, forcing updateView');
+        console.log('[DEBUG] switchProfile: breadcrumb in DOM after swap', breadcrumbInDom);
+        // If table or breadcrumb is missing, force re-render
+        if (!tableInDom || !breadcrumbInDom) {
+            console.warn('[DEBUG] Table or breadcrumb missing after swap, forcing updateView');
             this.updateView(cached.state);
         }
         // Update breadcrumb if needed (since DOM is swapped, it should be preserved, but force update to ensure consistency)
@@ -199,7 +201,7 @@ const TableRenderer = {
     },
     displayTable(data, selectedProfileKey, overlappingElements) {
         try {
-            // Check for last active profile and load it if different from current
+            // Always determine current user's key
             let currentKey = null;
             try {
                 const sessionRaw = localStorage.getItem('persist:session');
@@ -214,19 +216,8 @@ const TableRenderer = {
                 }
             } catch (e) { /* ignore */ }
 
-            const lastActive = localStorage.getItem('goboActiveProfile');
-            if (lastActive && lastActive !== currentKey) {
-                try {
-                    const raw = localStorage.getItem(lastActive);
-                    if (raw) {
-                        const payload = JSON.parse(raw);
-                        if (payload && payload.data) {
-                            selectedProfileKey = lastActive;
-                            data = payload.data;
-                        }
-                    }
-                } catch (e) { /* ignore */ }
-            }
+            // Ignore goboActiveProfile for initial modal launch
+            selectedProfileKey = currentKey;
 
             const existingTable = document.getElementById('gobo-offers-table');
             if (existingTable) {
@@ -362,6 +353,8 @@ const TableRenderer = {
         if (viewMode === 'table') {
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             if (!table.contains(thead)) table.appendChild(thead);
+            if (!table.contains(tbody)) table.appendChild(tbody);
+            table.style.display = 'table';
         } else {
             if (!state.groupingStack.length) { state.viewMode = 'table'; this.updateView(state); return; }
             accordionContainer.innerHTML = '';
@@ -446,37 +439,60 @@ const TableRenderer = {
                 const tabs = document.createElement('div');
                 tabs.className = 'profile-tabs';
 
-                // prefer state.selectedProfileKey (set when displayTable called or from persisted last choice)
-                const activeKey = state.selectedProfileKey || currentKey;
+                // prefer state.selectedProfileKey (set when displayTable called)
+                let activeKey = state.selectedProfileKey;
 
                 profiles.forEach(p => {
                     const btn = document.createElement('button');
                     btn.className = 'profile-tab';
-                    btn.textContent = p.label || p.key;
+                    btn.style.display = 'flex';
+                    btn.style.flexDirection = 'column';
+                    btn.style.alignItems = 'center';
+                    btn.style.justifyContent = 'center';
+                    btn.style.padding = '6px 10px';
+                    btn.style.minWidth = '80px';
+                    btn.style.minHeight = '40px';
+                    btn.style.lineHeight = '1.2';
+                    const labelDiv = document.createElement('div');
+                    labelDiv.textContent = p.label || p.key;
+                    labelDiv.style.fontSize = '14px';
+                    labelDiv.style.fontWeight = (p.key === activeKey) ? 'bold' : 'normal';
+                    let refreshedDiv = null;
+                    if (p.savedAt) {
+                        refreshedDiv = document.createElement('div');
+                        refreshedDiv.textContent = `Last Refreshed: ${formatTimeAgo(p.savedAt)}`;
+                        refreshedDiv.style.fontSize = '10px';
+                        refreshedDiv.style.color = '#888';
+                        refreshedDiv.style.marginTop = '2px';
+                        try { btn.title = new Date(p.savedAt).toLocaleString(); } catch(e) { /* ignore */ }
+                    }
+                    btn.innerHTML = '';
+                    btn.appendChild(labelDiv);
+                    if (refreshedDiv) btn.appendChild(refreshedDiv);
                     if (p.key === activeKey) {
                         btn.classList.add('active');
                         btn.setAttribute('aria-pressed', 'true');
                     } else {
                         btn.setAttribute('aria-pressed', 'false');
                     }
-                    if (p.savedAt) {
-                        try { btn.title = new Date(p.savedAt).toLocaleString(); } catch(e) { /* ignore */ }
-                    }
-
                     btn.addEventListener('click', () => {
-                        // Persist last-selected profile so it remains active across modal reopenings
                         try { localStorage.setItem('goboActiveProfile', p.key); } catch (e) { /* ignore */ }
-                        // Update visual active state
-                        tabs.querySelectorAll('.profile-tab').forEach(tb => { tb.classList.remove('active'); tb.setAttribute('aria-pressed', 'false'); });
-                        btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
-                        // Load the saved profile and re-render modal, passing selected key so active tab remains
+                        tabs.querySelectorAll('.profile-tab').forEach(tb => {
+                            tb.classList.remove('active');
+                            tb.setAttribute('aria-pressed', 'false');
+                            const label = tb.querySelector('div');
+                            if (label) label.style.fontWeight = 'normal';
+                        });
+                        btn.classList.add('active');
+                        btn.setAttribute('aria-pressed', 'true');
+                        const label = btn.querySelector('div');
+                        if (label) label.style.fontWeight = 'bold';
                         try {
                             const raw = localStorage.getItem(p.key);
                             if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
                             const payload = JSON.parse(raw);
                             if (payload && payload.data) {
                                 console.log('[DEBUG] Calling LoadProfile');
-                                // Use loadProfile instead of displayTable
                                 App.TableRenderer.loadProfile(p.key, payload);
                             } else {
                                 App.ErrorHandler.showError('Saved profile data is malformed.');
@@ -485,7 +501,6 @@ const TableRenderer = {
                             App.ErrorHandler.showError('Failed to load saved profile.');
                         }
                     });
-
                     tabs.appendChild(btn);
                 });
 
@@ -564,3 +579,19 @@ const TableRenderer = {
         crumbsRow.appendChild(tierToggle);
     }
 };
+
+function formatTimeAgo(savedAt) {
+    const now = Date.now();
+    const diffMs = now - savedAt;
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    const week = 7 * day;
+    const month = 30 * day;
+    if (diffMs < minute) return 'just now';
+    if (diffMs < hour) return `${Math.floor(diffMs / minute)} minute${Math.floor(diffMs / minute) === 1 ? '' : 's'} ago`;
+    if (diffMs < day) return `${Math.floor(diffMs / hour)} hour${Math.floor(diffMs / hour) === 1 ? '' : 's'} ago`;
+    if (diffMs < week) return `${Math.floor(diffMs / day)} day${Math.floor(diffMs / day) === 1 ? '' : 's'} ago`;
+    if (diffMs < month) return `${Math.floor(diffMs / week)} week${Math.floor(diffMs / week) === 1 ? '' : 's'} ago`;
+    return `${Math.floor(diffMs / month)} month${Math.floor(diffMs / month) === 1 ? '' : 's'} ago`;
+}
