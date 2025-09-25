@@ -27,8 +27,9 @@ const Modal = {
         const exportButton = document.createElement('button');
         exportButton.className = 'export-csv-button';
         exportButton.textContent = 'Export to CSV';
+        // Always use the current tab's state for export
         exportButton.addEventListener('click', () => {
-            App.Modal.exportToCSV(state);
+            App.Modal.exportToCSV(App.TableRenderer.lastState);
         });
 
         const breadcrumbContainer = document.createElement('div');
