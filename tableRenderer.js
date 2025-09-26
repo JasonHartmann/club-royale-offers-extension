@@ -564,15 +564,22 @@ const TableRenderer = {
                         btn.appendChild(iconContainer);
                     }
                     // For combined tab, show linked emails below label
-                    if (p.isCombined && p.linkedEmails && p.linkedEmails.length) {
+                    if (p.isCombined) {
                         const emailsDiv = document.createElement('div');
                         emailsDiv.className = 'profile-tab-linked-emails';
                         emailsDiv.style.fontSize = '11px';
                         emailsDiv.style.marginTop = '2px';
                         emailsDiv.style.color = '#2a7';
-                        emailsDiv.style.textAlign = 'left'; // left-justify the emails
-                        emailsDiv.innerHTML = p.linkedEmails.map(email => `<div>${email}</div>`).join('');
-                        labelContainer.appendChild(emailsDiv); // append to labelContainer so it appears directly below the label
+                        emailsDiv.style.textAlign = 'left';
+                        let lines = [];
+                        if (p.linkedEmails && p.linkedEmails.length > 0) {
+                            lines = p.linkedEmails.slice(0, 2);
+                            while (lines.length < 2) lines.push('&nbsp;');
+                        } else {
+                            lines = ['&nbsp;', '&nbsp;'];
+                        }
+                        emailsDiv.innerHTML = lines.map(email => `<div>${email}</div>`).join('');
+                        labelContainer.appendChild(emailsDiv);
                     }
                     // Set active class only for the current user's tab (or first tab if only one)
                     if (p.key === activeKey) {
