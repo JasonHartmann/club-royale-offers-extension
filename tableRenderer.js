@@ -536,6 +536,17 @@ const TableRenderer = {
                                     if (payload && payload.data && payload.data.email) email = payload.data.email;
                                 } catch (e) { /* ignore */ }
                                 updated.push({ key: p.key, email });
+                                // If this is the second linked account, merge both profiles and save to 'gobo-combined'
+                                if (updated.length === 2) {
+                                    try {
+                                        const raw1 = localStorage.getItem(updated[0].key);
+                                        const raw2 = localStorage.getItem(updated[1].key);
+                                        const profile1 = raw1 ? JSON.parse(raw1) : null;
+                                        const profile2 = raw2 ? JSON.parse(raw2) : null;
+                                        const merged = mergeProfiles(profile1, profile2);
+                                        localStorage.setItem('gobo-combined', JSON.stringify(merged));
+                                    } catch (e) { /* ignore */ }
+                                }
                             }
                             setLinkedAccounts(updated);
                             App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState.groupingStack, App.TableRenderer.lastState.groupKeysStack);
@@ -703,6 +714,173 @@ const TableRenderer = {
         crumbsRow.appendChild(tierToggle);
     }
 };
+
+/**
+ * Merges two profile objects, combining their offers and preserving key fields.
+ * @param {object} profileA - First profile object
+ * @param {object} profileB - Second profile object
+ * @returns {object} Merged profile object
+ */
+function mergeProfiles(profileA, profileB) {
+    console.debug('[mergeProfiles] ENTRY', { profileA, profileB });
+    if (!profileA && !profileB) {
+        console.debug('[mergeProfiles] Both profiles are null/undefined');
+        return null;
+    }
+    if (!profileA) {
+        console.debug('[mergeProfiles] profileA is null/undefined, returning profileB');
+        return profileB;
+    }
+    if (!profileB) {
+        console.debug('[mergeProfiles] profileB is null/undefined, returning profileA');
+        return profileA;
+    }
+    // Category upgrade orders
+    const celebrityOrder = ["Interior", "Oceanview", "Veranda", "Aqua"];
+    const defaultOrder = ["Interior", "Oceanview", "Balcony", "Junior Suite"];
+    // Deep copy profileA
+    const deepCopy = JSON.parse(JSON.stringify(profileA));
+    const offersA = deepCopy.data?.offers || [];
+    const offersB = profileB.data?.offers || [];
+    console.debug('[mergeProfiles] offersA count:', offersA.length);
+    console.debug('[mergeProfiles] offersB count:', offersB.length);
+    // Build a map of sailing keys to offerB for fast lookup
+    const sailingMapB = new Map();
+    offersB.forEach(offerB => {
+        const codeB = offerB.campaignCode || '';
+        const offerCodeB = offerB.campaignOffer?.offerCode || '';
+        const categoryB = offerB.category || '';
+        const qualityB = offerB.quality || '';
+        const brandB = offerB.brand || offerB.campaignOffer?.brand || '';
+        const sailingsB = offerB.campaignOffer?.sailings || [];
+        sailingsB.forEach(sailingB => {
+            const key = codeB + '|' + (sailingB.shipName || '') + '|' + (sailingB.sailDate || '') + '|' + String(sailingB.isGOBO);
+            sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, qualityB, sailingB });
+        });
+    });
+    console.debug('[mergeProfiles] sailingMapB size:', sailingMapB.size);
+    // Filter sailings in profileA to only those that match in profileB
+    offersA.forEach((offerA, offerIdx) => {
+        const codeA = offerA.campaignCode || '';
+        const offerCodeA = offerA.campaignOffer?.offerCode || '';
+        const brandA = offerA.brand || offerA.campaignOffer?.brand || '';
+        const sailingsA = offerA.campaignOffer?.sailings || [];
+        const beforeCount = sailingsA.length;
+        // Remove non-matching sailings and combine offerCodes/upgrade category if needed
+        offerA.campaignOffer.sailings = sailingsA.filter(sailingA => {
+            const key = codeA + '|' + (sailingA.shipName || '') + '|' + (sailingA.sailDate || '') + '|' + String(sailingA.isGOBO);
+            const matchObj = sailingMapB.get(key);
+            if (!matchObj) {
+                console.debug(`[mergeProfiles] OfferA[${offerIdx}] sailing removed`, { key, sailingA });
+                return false;
+            }
+            const isGOBOA = sailingA.isGOBO === true;
+            const isGOBOB = matchObj.sailingB.isGOBO === true;
+            const roomTypeA = sailingA.roomType || '';
+            const roomTypeB = matchObj.sailingB.roomType || '';
+            // If either sailing has isGOBO=true, set merged isGOBO=false and Quality='2 guests'
+            if (isGOBOA || isGOBOB) {
+                sailingA.isGOBO = false;
+                offerA.quality = "2 guests";
+                // Set category to the lowest of the two roomTypes
+                let isCelebrity = false;
+                if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) {
+                    isCelebrity = true;
+                } else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) {
+                    isCelebrity = true;
+                }
+                const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
+                const idxA = categoryOrder.indexOf(roomTypeA);
+                const idxB = categoryOrder.indexOf(roomTypeB);
+                let lowestIdx = Math.min(idxA, idxB);
+                let lowestRoomType = categoryOrder[lowestIdx >= 0 ? lowestIdx : 0];
+                sailingA.roomType = lowestRoomType;
+                offerA.category = lowestRoomType;
+                console.debug(`[mergeProfiles] OfferA[${offerIdx}] isGOBO=true, roomType set to lowest`, { key, lowestRoomType, idxA, idxB, roomTypeA, roomTypeB });
+            } else {
+                // Determine brand for category upgrade
+                let isCelebrity = false;
+                if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) {
+                    isCelebrity = true;
+                } else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) {
+                    isCelebrity = true;
+                }
+                const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
+                if (isCelebrity) {
+                    console.debug(`[mergeProfiles] OfferA[${offerIdx}] using Celebrity category order`, { key });
+                } else {
+                    console.debug(`[mergeProfiles] OfferA[${offerIdx}] using Default category order`, { key });
+                }
+                // If offerCodes differ, combine them
+                if (offerCodeA !== matchObj.offerCodeB) {
+                    const combinedCode = offerCodeA + ' / ' + matchObj.offerCodeB;
+                    offerA.campaignOffer.offerCode = combinedCode;
+                    console.debug(`[mergeProfiles] OfferA[${offerIdx}] offerCode combined`, { key, combinedCode, offerCodeA, offerCodeB: matchObj.offerCodeB });
+                }
+                // Only upgrade category if both sailings are isGOBO=false
+                const canUpgrade = !isGOBOA && !isGOBOB;
+                const idxA = categoryOrder.indexOf(roomTypeA);
+                const idxB = categoryOrder.indexOf(roomTypeB);
+                let highestIdx = Math.max(idxA, idxB);
+                let upgradedRoomType = categoryOrder[highestIdx];
+                console.debug(`[mergeProfiles] OfferA[${offerIdx}] canUpgrade check`, {
+                    key,
+                    isGOBOA,
+                    isGOBOB,
+                    canUpgrade,
+                    idxA,
+                    idxB,
+                    highestIdx,
+                    categoryOrder,
+                    roomTypeA,
+                    roomTypeB
+                });
+                if (canUpgrade) {
+                    if (highestIdx >= 0 && highestIdx < categoryOrder.length - 1) {
+                        upgradedRoomType = categoryOrder[highestIdx + 1];
+                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] roomType upgraded`, { key, from: categoryOrder[highestIdx], to: upgradedRoomType });
+                    } else if (highestIdx === categoryOrder.length - 1) {
+                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] roomType is already highest ('${categoryOrder[highestIdx]}'), no upgrade`, { key, roomType: upgradedRoomType });
+                    } else {
+                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] canUpgrade=true but upgrade skipped: invalid highestIdx`, { key, idxA, idxB, highestIdx, categoryOrder, roomTypeA, roomTypeB });
+                    }
+                } else {
+                    if (highestIdx >= 0) {
+                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] roomType upgrade skipped (isGOBO conditions not met)`, { key, roomType: upgradedRoomType, isGOBOA, isGOBOB });
+                    }
+                }
+                sailingA.roomType = upgradedRoomType;
+                offerA.category = upgradedRoomType;
+                // Always set quality to '2 guests' for merged sailings
+                offerA.quality = "2 guests";
+            }
+            return true;
+        });
+        const afterCount = offerA.campaignOffer.sailings.length;
+        if (beforeCount !== afterCount) {
+            console.debug(`[mergeProfiles] OfferA[${offerIdx}] sailings filtered`, { beforeCount, afterCount });
+        }
+    });
+    // Remove offers with no sailings
+    const beforeOffersCount = offersA.length;
+    deepCopy.data.offers = offersA.filter((offerA, offerIdx) => {
+        const keep = offerA.campaignOffer?.sailings?.length > 0;
+        if (!keep) {
+            console.debug(`[mergeProfiles] OfferA[${offerIdx}] removed (no matching sailings)`, offerA);
+        }
+        return keep;
+    });
+    const afterOffersCount = deepCopy.data.offers.length;
+    if (beforeOffersCount !== afterOffersCount) {
+        console.debug('[mergeProfiles] Offers filtered', { beforeOffersCount, afterOffersCount });
+    }
+    // Mark as merged and add metadata
+    deepCopy.merged = true;
+    deepCopy.mergedFrom = [profileA.data?.email, profileB.data?.email].filter(Boolean);
+    deepCopy.savedAt = Date.now();
+    console.debug('[mergeProfiles] EXIT', { mergedProfile: deepCopy });
+    return deepCopy;
+}
 
 // Helper to always preserve selectedProfileKey
 function preserveSelectedProfileKey(state, prevState) {

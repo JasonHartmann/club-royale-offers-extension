@@ -44,12 +44,15 @@ const Utils = {
         const { nights, destination } = App.Utils.parseItinerary(itinerary);
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
+        console.debug('OfferCode: ', rawCode);
         // Dynamic redemption base determination
         const redemptionBase = App.Utils.getRedemptionBase();
         // Optional RR file URL (first offer file)
         const rrFileUrl = offer?.campaignOffer?.offerFiles?.[0]?.fileUrl;
         // Add redeem button before code link, RR button (if exists) after Redeem (before code link)
         const codeCell = rawCode === '-' ? '-' : `
+          <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>
+          <br>
           <a
             href="${redemptionBase}?offerCode=${rawCode}"
             class="redeem-button bg-green-500 hover:bg-green-600 text-white px-[2px] py-[1px] rounded-sm mr-0.5"
@@ -58,7 +61,6 @@ const Utils = {
           >
             Redeem
           </a>
-          <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>
         `;
 
         // Append between anchors above
