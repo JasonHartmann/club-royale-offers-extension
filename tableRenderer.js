@@ -267,7 +267,7 @@ const TableRenderer = {
             try {
                 const savedPref = localStorage.getItem('goboHideTier');
                 if (savedPref !== null) state.hideTierSailings = savedPref === 'true';
-            } catch (e) { /* ignore storage errors */ }
+            } catch (e) { /* ignore */ }
             state.fullOriginalOffers = [...state.originalOffers];
 
             state.accordionContainer.className = 'w-full';
@@ -462,6 +462,15 @@ const TableRenderer = {
                 }
                 state.selectedProfileKey = activeKey;
 
+                let linkedAccounts = getLinkedAccounts();
+                // Add Combined Linked Offers tab as the last tab if two or more accounts are linked
+                profiles.push({
+                    key: 'gobo-combined-linked',
+                    label: 'Linked Offers',
+                    isCombined: true,
+                    linkedEmails: linkedAccounts.map(acc => acc.email)
+                });
+
                 profiles.forEach(p => {
                     const btn = document.createElement('button');
                     btn.className = 'profile-tab';
@@ -495,31 +504,76 @@ const TableRenderer = {
                     if (refreshedDiv) labelContainer.appendChild(refreshedDiv);
                     btn.innerHTML = '';
                     btn.appendChild(labelContainer);
-                    // Add trash can icon to the right of the tab label
-                    const trashIcon = document.createElement('span');
-                    trashIcon.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-                    trashIcon.style.cursor = 'pointer';
-                    trashIcon.style.marginLeft = '8px';
-                    trashIcon.title = 'Delete profile';
-                    trashIcon.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent tab switch
-                        if (confirm('Are you sure you want to delete this saved profile? This action cannot be undone.')) {
-                            try {
-                                localStorage.removeItem(p.key);
-                                btn.remove(); // Remove tab from DOM
-                                // Optionally, remove from App.ProfileCache
-                                if (App.ProfileCache) delete App.ProfileCache[p.key];
-                                // If the deleted tab was active, switch to another tab if available
-                                const remainingTabs = tabs.querySelectorAll('.profile-tab');
-                                if (btn.classList.contains('active') && remainingTabs.length > 0) {
-                                    remainingTabs[0].click();
-                                }
-                            } catch (err) {
-                                App.ErrorHandler.showError('Failed to delete profile.');
+                    // Add icon container for link/unlink and trash can (skip for combined tab)
+                    if (!p.isCombined) {
+                        const iconContainer = document.createElement('div');
+                        iconContainer.style.display = 'flex';
+                        iconContainer.style.flexDirection = 'column';
+                        iconContainer.style.alignItems = 'center';
+                        iconContainer.style.gap = '2px';
+                        iconContainer.style.marginLeft = '4px'; // 4px gap between label and icons
+                        // Link/unlink icon
+                        const linkIcon = document.createElement('span');
+                        const isLinked = getLinkedAccounts().some(acc => acc.key === p.key);
+                        linkIcon.innerHTML = isLinked
+                            ? '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 8a3.5 3.5 0 013.5-3.5h1a3.5 3.5 0 110 7h-1" stroke="#2a7" stroke-width="1.5" fill="none"/><path d="M11.5 8a3.5 3.5 0 00-3.5-3.5h-1a3.5 3.5 0 100 7h1" stroke="#2a7" stroke-width="1.5" fill="none"/></svg>'
+                            : '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 8a3.5 3.5 0 013.5-3.5h1a3.5 3.5 0 110 7h-1" stroke="#888" stroke-width="1.5" fill="none"/><path d="M11.5 8a3.5 3.5 0 00-3.5-3.5h-1a3.5 3.5 0 100 7h1" stroke="#888" stroke-width="1.5" fill="none"/></svg>';
+                        linkIcon.style.cursor = 'pointer';
+                        linkIcon.title = isLinked ? 'Unlink account' : 'Link account';
+                        linkIcon.style.marginBottom = '2px';
+                        linkIcon.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            let updated = getLinkedAccounts();
+                            if (isLinked) {
+                                updated = updated.filter(acc => acc.key !== p.key);
+                            } else {
+                                let email = p.label;
+                                try {
+                                    const payload = JSON.parse(localStorage.getItem(p.key));
+                                    if (payload && payload.data && payload.data.email) email = payload.data.email;
+                                } catch (e) { /* ignore */ }
+                                updated.push({ key: p.key, email });
                             }
-                        }
-                    });
-                    btn.appendChild(trashIcon);
+                            setLinkedAccounts(updated);
+                            App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState.groupingStack, App.TableRenderer.lastState.groupKeysStack);
+                        });
+                        iconContainer.appendChild(linkIcon);
+                        // Trash can icon
+                        const trashIcon = document.createElement('span');
+                        trashIcon.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+                        trashIcon.style.cursor = 'pointer';
+                        trashIcon.style.marginTop = '4px';
+                        trashIcon.title = 'Delete profile';
+                        trashIcon.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (confirm('Are you sure you want to delete this saved profile? This action cannot be undone.')) {
+                                try {
+                                    localStorage.removeItem(p.key);
+                                    btn.remove();
+                                    if (App.ProfileCache) delete App.ProfileCache[p.key];
+                                    const remainingTabs = tabs.querySelectorAll('.profile-tab');
+                                    if (btn.classList.contains('active') && remainingTabs.length > 0) {
+                                        remainingTabs[0].click();
+                                    }
+                                } catch (err) {
+                                    App.ErrorHandler.showError('Failed to delete profile.');
+                                }
+                            }
+                        });
+                        iconContainer.appendChild(trashIcon);
+                        btn.appendChild(iconContainer);
+                    }
+                    // For combined tab, show linked emails below label
+                    if (p.isCombined && p.linkedEmails && p.linkedEmails.length) {
+                        const emailsDiv = document.createElement('div');
+                        emailsDiv.className = 'profile-tab-linked-emails';
+                        emailsDiv.style.fontSize = '11px';
+                        emailsDiv.style.marginTop = '2px';
+                        emailsDiv.style.color = '#2a7';
+                        emailsDiv.style.textAlign = 'left'; // left-justify the emails
+                        emailsDiv.innerHTML = p.linkedEmails.map(email => `<div>${email}</div>`).join('');
+                        labelContainer.appendChild(emailsDiv); // append to labelContainer so it appears directly below the label
+                    }
                     // Set active class only for the current user's tab (or first tab if only one)
                     if (p.key === activeKey) {
                         btn.classList.add('active');
@@ -652,6 +706,17 @@ function preserveSelectedProfileKey(state, prevState) {
         ...state,
         selectedProfileKey: selectedProfileKey || null
     };
+}
+
+// Helper to get/set linked accounts
+function getLinkedAccounts() {
+    try {
+        const raw = localStorage.getItem('goboLinkedAccounts');
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+}
+function setLinkedAccounts(arr) {
+    try { localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr)); } catch (e) { /* ignore */ }
 }
 
 function formatTimeAgo(savedAt) {
