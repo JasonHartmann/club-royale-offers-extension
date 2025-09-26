@@ -516,8 +516,10 @@ const TableRenderer = {
                         const linkIcon = document.createElement('span');
                         const isLinked = getLinkedAccounts().some(acc => acc.key === p.key);
                         linkIcon.innerHTML = isLinked
-                            ? '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 8a3.5 3.5 0 013.5-3.5h1a3.5 3.5 0 110 7h-1" stroke="#2a7" stroke-width="1.5" fill="none"/><path d="M11.5 8a3.5 3.5 0 00-3.5-3.5h-1a3.5 3.5 0 100 7h1" stroke="#2a7" stroke-width="1.5" fill="none"/></svg>'
-                            : '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 8a3.5 3.5 0 013.5-3.5h1a3.5 3.5 0 110 7h-1" stroke="#888" stroke-width="1.5" fill="none"/><path d="M11.5 8a3.5 3.5 0 00-3.5-3.5h-1a3.5 3.5 0 100 7h1" stroke="#888" stroke-width="1.5" fill="none"/></svg>';
+                            // Closed chain SVG (linked)
+                            ? '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 8a3.5 3.5 0 013.5-3.5h1a3.5 3.5 0 110 7h-1" stroke="#2a7" stroke-width="1.5" fill="none"/><path d="M11.5 8a3.5 3.5 0 00-3.5-3.5h-1a3.5 3.5 0 100 7h1" stroke="#2a7" stroke-width="1.5" fill="none" transform="translate(1 0)"/></svg>'
+                            // Broken chain SVG (unlinked)
+                            : '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 8a3.5 3.5 0 013.5-3.5h1a3.5 3.5 0 110 7h-1" stroke="#888" stroke-width="1.5" fill="none"/><path d="M11.5 8a3.5 3.5 0 00-3.5-3.5h-1a3.5 3.5 0 100 7h1" stroke="#888" stroke-width="1.5" fill="none"/><path d="M6.5 8h1.5" stroke="#888" stroke-width="1.5"/><path d="M8.5 8l1 1" stroke="#888" stroke-width="1.5"/></svg>';
                         linkIcon.style.cursor = 'pointer';
                         linkIcon.title = isLinked ? 'Unlink account' : 'Link account';
                         linkIcon.style.marginBottom = '2px';
@@ -527,6 +529,7 @@ const TableRenderer = {
                             if (isLinked) {
                                 updated = updated.filter(acc => acc.key !== p.key);
                             } else {
+                                if (updated.length >= 2) return; // Prevent linking a third account
                                 let email = p.label;
                                 try {
                                     const payload = JSON.parse(localStorage.getItem(p.key));

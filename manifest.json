@@ -29,7 +29,6 @@
         "tableRenderer.js",
         "utils.js",
         "offerCodeLookup.js",
-        "offerNamePdfLinker.js",
         "app.js"
       ],
       "run_at": "document_start"
