@@ -27,11 +27,11 @@ const TableRenderer = {
             console.warn('[DEBUG] switchProfile: Missing scrollContainer for swap', { currentScroll, cachedScroll: cached.scrollContainer });
         }
         // Update lastState and current profile
-        App.TableRenderer.lastState = cached.state;
+        App.TableRenderer.lastState = { ...cached.state, selectedProfileKey: key };
         App.CurrentProfile = {
             key,
             scrollContainer: cached.scrollContainer,
-            state: cached.state
+            state: { ...cached.state, selectedProfileKey: key }
         };
         console.log('[DEBUG] switchProfile: Updated lastState and CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
         // Check if table and breadcrumb exist in DOM after swap
@@ -308,6 +308,8 @@ const TableRenderer = {
         }
     },
     updateView(state) {
+        // Always preserve selectedProfileKey, even in recursive calls
+        state = preserveSelectedProfileKey(state, App.TableRenderer.lastState);
         App.TableRenderer.lastState = state;
         // Ensure master copy exists
         if (!state.fullOriginalOffers) state.fullOriginalOffers = [...state.originalOffers];
@@ -335,7 +337,20 @@ const TableRenderer = {
                     validDepth++;
                 } else break;
             }
-            if (validDepth < state.groupKeysStack.length) state.groupKeysStack = state.groupKeysStack.slice(0, validDepth);
+            if (validDepth < state.groupKeysStack.length) {
+                state.groupKeysStack = state.groupKeysStack.slice(0, validDepth);
+                // Accordion reset: ensure selectedProfileKey is still valid
+                const profileTabs = Array.from(document.querySelectorAll('.profile-tab'));
+                const validKeys = profileTabs.map(tab => tab.getAttribute('data-key'));
+                // Only change selectedProfileKey if it is not valid
+                if (!validKeys.includes(state.selectedProfileKey)) {
+                    console.log('[DEBUG] selectedProfileKey invalid after accordion reset:', state.selectedProfileKey, 'validKeys:', validKeys);
+                    state.selectedProfileKey = validKeys.includes(App.TableRenderer.lastState.selectedProfileKey) ? App.TableRenderer.lastState.selectedProfileKey : (validKeys[0] || null);
+                    console.log('[DEBUG] selectedProfileKey set to:', state.selectedProfileKey);
+                } else {
+                    console.log('[DEBUG] selectedProfileKey preserved after accordion reset:', state.selectedProfileKey);
+                }
+            }
         }
 
         const groupTitle = document.getElementById('group-title');
@@ -355,7 +370,12 @@ const TableRenderer = {
             if (!table.contains(tbody)) table.appendChild(tbody);
             table.style.display = 'table';
         } else {
-            if (!state.groupingStack.length) { state.viewMode = 'table'; this.updateView(state); return; }
+            if (!state.groupingStack.length) {
+                state.viewMode = 'table';
+                // Always preserve selectedProfileKey in recursive call
+                this.updateView(preserveSelectedProfileKey(state, App.TableRenderer.lastState));
+                return;
+            }
             accordionContainer.innerHTML = '';
             let subset = state.sortedOffers;
             let currentContainer = accordionContainer;
@@ -410,9 +430,8 @@ const TableRenderer = {
                     } catch (e) { /* ignore invalid */ }
                 }
             }
-
             if (profiles.length) {
-                // Determine current user's storage key (same logic as ApiClient)
+                // Restore: move current user's tab to the front
                 let currentKey = null;
                 try {
                     const sessionRaw = localStorage.getItem('persist:session');
@@ -426,25 +445,27 @@ const TableRenderer = {
                         }
                     }
                 } catch (e) { /* ignore */ }
-
                 // Sort by savedAt desc (most recent first)
                 profiles.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-                // If currentKey exists, move it to front
+                // Move current user's tab to the front if present
                 if (currentKey) {
                     const idx = profiles.findIndex(p => p.key === currentKey);
                     if (idx > 0) profiles.unshift(profiles.splice(idx, 1)[0]);
                 }
-
                 const tabs = document.createElement('div');
                 tabs.className = 'profile-tabs';
-
-                // prefer state.selectedProfileKey (set when displayTable called)
-                let activeKey = state.selectedProfileKey;
+                // Always use App.CurrentProfile.key as activeKey after a profile switch
+                let activeKey = App.CurrentProfile && App.CurrentProfile.key ? App.CurrentProfile.key : state.selectedProfileKey;
+                const profileKeys = profiles.map(p => p.key);
+                if (!profileKeys.includes(activeKey)) {
+                    activeKey = profileKeys.includes(state.selectedProfileKey) ? state.selectedProfileKey : (profileKeys[0] || null);
+                }
+                state.selectedProfileKey = activeKey;
 
                 profiles.forEach(p => {
                     const btn = document.createElement('button');
                     btn.className = 'profile-tab';
-                    btn.setAttribute('data-key', p.key); // Add data-key for reliable identification
+                    btn.setAttribute('data-key', p.key);
                     // Fix: define loyaltyId for each profile
                     let loyaltyId = null;
                     try {
@@ -499,6 +520,7 @@ const TableRenderer = {
                         }
                     });
                     btn.appendChild(trashIcon);
+                    // Set active class only for the current user's tab (or first tab if only one)
                     if (p.key === activeKey) {
                         btn.classList.add('active');
                         btn.setAttribute('aria-pressed', 'true');
@@ -506,8 +528,6 @@ const TableRenderer = {
                         btn.setAttribute('aria-pressed', 'false');
                     }
                     btn.addEventListener('click', () => {
-                        try { localStorage.setItem('goboActiveProfile', p.key); } catch (e) { /* ignore */ }
-                        // Set selectedProfileKey to the clicked tab before re-render
                         state.selectedProfileKey = p.key;
                         tabs.querySelectorAll('.profile-tab').forEach(tb => {
                             tb.classList.remove('active');
@@ -608,8 +628,10 @@ const TableRenderer = {
         tierText.textContent = 'Hide TIER';
         tierCheckbox.addEventListener('change', () => {
             state.hideTierSailings = tierCheckbox.checked;
+            // Preserve selectedProfileKey before updateView
+            const selectedKey = state.selectedProfileKey;
             try { localStorage.setItem('goboHideTier', String(state.hideTierSailings)); } catch (e) { /* ignore */ }
-            App.TableRenderer.updateView(state);
+            App.TableRenderer.updateView({ ...state, selectedProfileKey: selectedKey });
         });
         tierToggle.appendChild(tierCheckbox);
         tierToggle.appendChild(tierText);
@@ -617,6 +639,20 @@ const TableRenderer = {
         crumbsRow.appendChild(tierToggle);
     }
 };
+
+// Helper to always preserve selectedProfileKey
+function preserveSelectedProfileKey(state, prevState) {
+    let selectedProfileKey = state.selectedProfileKey || (prevState && prevState.selectedProfileKey);
+    if (!selectedProfileKey) {
+        // Try to get from DOM
+        const activeTab = document.querySelector('.profile-tab.active');
+        if (activeTab) selectedProfileKey = activeTab.getAttribute('data-key');
+    }
+    return {
+        ...state,
+        selectedProfileKey: selectedProfileKey || null
+    };
+}
 
 function formatTimeAgo(savedAt) {
     const now = Date.now();

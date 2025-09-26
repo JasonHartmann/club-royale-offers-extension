@@ -117,8 +117,9 @@ const Styles = {
                     position:relative; z-index:2;
                  }
                 .profile-tabs .profile-tab:focus, .profile-tabs .profile-tab:focus-visible {
-                    outline: 2px solid #2563eb;
-                    outline-offset: 2px;
+                    /* Remove blue outline on focus */
+                    outline: none;
+                    outline-offset: 0;
                     z-index: 3;
                 }
                 .profile-tab-label-container {
