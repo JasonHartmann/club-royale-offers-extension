@@ -128,7 +128,33 @@ const AccordionBuilder = {
                 }
                 if (appendedLabels.length) displayKey = baseKey + ' > ' + appendedLabels.join(' > ');
             }
-            h.innerHTML = `${displayKey} <span>${count} offer${count === 1 ? '' : 's'}</span>`;
+            h.innerHTML = `<span style="display:flex; align-items:center; gap:8px;"><span class="trash-icon" title="Delete group" style="cursor:pointer; vertical-align:middle;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="flex:1;">${displayKey}</span></span> <span>${count} offer${count === 1 ? '' : 's'}</span>`;
+            // Add trash icon click handler
+            const trashIcon = h.querySelector('.trash-icon');
+            if (trashIcon) {
+                trashIcon.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    // Build breadcrumb for this group
+                    const keyPathValues = (h.dataset.keyPath || '').split('>').filter(Boolean);
+                    const groupingCols = state.groupingStack || [];
+                    const headerLabelMap = state.headerLabelMap || {};
+                    let breadcrumb = '';
+                    for (let i = 0; i < keyPathValues.length; i++) {
+                        const colKey = groupingCols[i];
+                        const label = headerLabelMap[colKey] || colKey || '';
+                        breadcrumb += (i > 0 ? ' > ' : '') + label + ': ' + keyPathValues[i];
+                    }
+                    const groupHeader = h;
+                    const groupContainer = groupHeader.parentElement;
+                    const confirmMsg = `Are you sure you want to hide this group from all results?\n\n${breadcrumb}`;
+                    if (window.confirm(confirmMsg)) {
+                        // Hide header and its content (accordion-content)
+                        groupHeader.style.display = 'none';
+                        const content = groupContainer.querySelector('.accordion-content');
+                        if (content) content.style.display = 'none';
+                    }
+                });
+            }
         });
     },
     renderAccordion(accordionContainer, groupedData, groupSortStates, state, groupingStack = [], groupKeysStack = [], globalMaxOfferDate = null) {
