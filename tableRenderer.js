@@ -330,7 +330,7 @@ const TableRenderer = {
         if (!state.fullOriginalOffers) state.fullOriginalOffers = [...state.originalOffers];
         // Apply filter
         const base = state.fullOriginalOffers;
-        const filtered = Filtering.filterTierOffers(state, base);
+        const filtered = Filtering.filterOffers(state, base);
         state.originalOffers = filtered;
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         table.style.display = viewMode === 'table' ? 'table' : 'none';
@@ -843,6 +843,7 @@ const TableRenderer = {
         hiddenGroupsLabel.textContent = 'Hidden Groups:';
         hiddenGroupsLabel.style.marginLeft = '16px';
         const hiddenGroupsDisplay = document.createElement('div');
+        hiddenGroupsDisplay.id = 'hidden-groups-display';
         let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
         Filtering.updateHiddenGroupsDropdown(profileKey, hiddenGroupsDisplay);
         tierToggle.appendChild(hiddenGroupsLabel);
