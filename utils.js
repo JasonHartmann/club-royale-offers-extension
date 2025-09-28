@@ -30,7 +30,7 @@ const Utils = {
         }
         return names.size ? Array.from(names).join(' | ') : '-';
     },
-    createOfferRow({ offer, sailing }, isNewest = false, isExpiringSoon = false) {
+    createOfferRow: function ({offer, sailing}, isNewest = false, isExpiringSoon = false) {
         const row = document.createElement('tr');
         row.className = 'hover:bg-gray-50';
         if (isNewest) row.classList.add('newest-offer-row');
@@ -41,27 +41,24 @@ const Utils = {
         let room = sailing.roomType;
         if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
-        const { nights, destination } = App.Utils.parseItinerary(itinerary);
+        const {nights, destination} = App.Utils.parseItinerary(itinerary);
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
-        console.debug('OfferCode: ', rawCode);
         // Dynamic redemption base determination
         const redemptionBase = App.Utils.getRedemptionBase();
         // Optional RR file URL (first offer file)
         const rrFileUrl = offer?.campaignOffer?.offerFiles?.[0]?.fileUrl;
-        // Add redeem button before code link, RR button (if exists) after Redeem (before code link)
-        const codeCell = rawCode === '-' ? '-' : `
-          <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${rawCode}" title="Lookup ${rawCode}">${rawCode}</a>
-          <br>
-          <a
-            href="${redemptionBase}?offerCode=${rawCode}"
-            class="redeem-button bg-green-500 hover:bg-green-600 text-white px-[2px] py-[1px] rounded-sm mr-0.5"
-            style="font-size:8px; line-height:1; letter-spacing:0.5px;"
-            title="Redeem ${rawCode}"
-          >
-            Redeem
-          </a>
-        `;
+        // Generate separate links/buttons for each code if rawCode contains '/'
+        let codeCell = '-';
+        if (rawCode !== '-') {
+            let split = String(rawCode).split('/');
+            const codes = split.map(c => c.trim()).filter(Boolean);
+            const firstCode = split.at(0);
+            const links = codes.map(code => `
+                <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${code}" title="Lookup ${code}">${code}</a>
+            `).join(' / ');
+            codeCell = `${links}<br><a href="${redemptionBase}?offerCode=${encodeURIComponent(firstCode)}" class="redeem-button bg-green-500 hover:bg-green-600 text-white px-[2px] py-[1px] rounded-sm mr-0.5" style="font-size:8px; line-height:1; letter-spacing:0.5px;" title="Redeem ${firstCode}">Redeem</a>`;
+        }
 
         // Append between anchors above
         // ${rrFileUrl ? `<a

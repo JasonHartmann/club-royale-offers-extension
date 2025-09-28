@@ -33,5 +33,17 @@
       ],
       "run_at": "document_start"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "images/link.png",
+        "images/link_off.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "extension_pages": true
+    }
   ]
 }

@@ -184,6 +184,12 @@ const ApiClient = {
                 const payload = { savedAt: Date.now(), data: normalizedData };
                 localStorage.setItem(storageKey, JSON.stringify(payload));
                 console.log(`Saved normalized offers to localStorage key: ${storageKey}`);
+
+                // If this account is part of linked accounts, update combined offers and clear cache
+                if (typeof updateCombinedOffersCache === 'function') {
+                    updateCombinedOffersCache();
+                    console.log('[DEBUG] updateCombinedOffersCache called after account data update');
+                }
             } catch (e) {
                 console.warn('Failed to persist normalized offers to localStorage', e);
             }
