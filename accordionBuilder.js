@@ -152,6 +152,7 @@ const AccordionBuilder = {
                         groupHeader.style.display = 'none';
                         const content = groupContainer.querySelector('.accordion-content');
                         if (content) content.style.display = 'none';
+                        Filtering.addHiddenGroup(state, breadcrumb);
                     }
                 });
             }

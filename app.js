@@ -15,7 +15,8 @@
         SortUtils,
         TableRenderer,
         Utils,
-        OfferCodeLookup, // added
+        OfferCodeLookup,
+        Filtering,
         ProfileCache: [],
         init() {
             this.DOMUtils.waitForDom();

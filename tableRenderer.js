@@ -330,7 +330,7 @@ const TableRenderer = {
         if (!state.fullOriginalOffers) state.fullOriginalOffers = [...state.originalOffers];
         // Apply filter
         const base = state.fullOriginalOffers;
-        const filtered = state.hideTierSailings ? base.filter(({ offer }) => !((offer.campaignOffer?.offerCode || '').toUpperCase().includes('TIER'))) : base;
+        const filtered = Filtering.filterTierOffers(state, base);
         state.originalOffers = filtered;
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         table.style.display = viewMode === 'table' ? 'table' : 'none';
@@ -717,7 +717,7 @@ const TableRenderer = {
                                 const label = btn.querySelector('div');
                                 if (label) label.style.fontWeight = 'bold';
                                 if (Spinner.hideSpinner) {
-                                    setTimeout(() => Spinner.hideSpinner(), 500);
+                                    setTimeout(() => Spinner.hideSpinner(), 1);
                                 }
                             }, 0);
                         } else {
@@ -838,6 +838,15 @@ const TableRenderer = {
         });
         tierToggle.appendChild(tierCheckbox);
         tierToggle.appendChild(tierText);
+        // Add hidden groups display
+        const hiddenGroupsLabel = document.createElement('span');
+        hiddenGroupsLabel.textContent = 'Hidden Groups:';
+        hiddenGroupsLabel.style.marginLeft = '16px';
+        const hiddenGroupsDisplay = document.createElement('div');
+        let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
+        Filtering.updateHiddenGroupsDropdown(profileKey, hiddenGroupsDisplay);
+        tierToggle.appendChild(hiddenGroupsLabel);
+        tierToggle.appendChild(hiddenGroupsDisplay);
         // Place the tier toggle at the end of the crumbs row
         crumbsRow.appendChild(tierToggle);
     }

@@ -157,6 +157,19 @@ const Styles = {
 +                    .profile-tabs .profile-tab { padding:0 8px; font-size:12px; height:32px; line-height:32px; }
                  }
 
+                 #hidden-groups-display {
+                   margin-left: 4px;
+                   max-width: 350px;
+                   font-size: 12px;
+                   color: #555;
+                   white-space: pre-line;
+                   padding: 2px 6px;
+                   background: #f8f8f8;
+                   border-radius: 4px;
+                   border: 1px solid #eee;
+                   max-height: 180px;
+                   overflow-y: auto;
+                 }
             `;
             document.head.appendChild(style);
             console.log('Custom styles injected');
