@@ -24,4 +24,5 @@ jobs:
           name: club-royale-offers-extension
           path: |
             **/*.js
+            **/*.png
             manifest.json

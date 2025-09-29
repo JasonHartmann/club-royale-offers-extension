@@ -679,30 +679,41 @@ const TableRenderer = {
                                         const raw = localStorage.getItem('goob-combined');
                                         if (!raw) {
                                             App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.');
+                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                             return;
                                         }
                                         const payload = JSON.parse(raw);
                                         if (payload && payload.data) {
                                             App.TableRenderer.loadProfile('goob-combined-linked', payload);
+                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                         } else {
                                             App.ErrorHandler.showError('Combine Offers data is malformed.');
+                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                         }
                                     } catch (err) {
                                         App.ErrorHandler.showError('Failed to load Combine Offers.');
+                                        if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                     }
                                 } else {
                                     try {
                                         const raw = localStorage.getItem(p.key);
-                                        if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
+                                        if (!raw) {
+                                            App.ErrorHandler.showError('Selected profile is no longer available.');
+                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
+                                            return;
+                                        }
                                         const payload = JSON.parse(raw);
                                         if (payload && payload.data) {
                                             console.log('[DEBUG] Calling LoadProfile');
                                             App.TableRenderer.loadProfile(p.key, payload);
+                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                         } else {
-                                            App.ErrorHandler.showError('Saved profile data is malformed.');
+                                            App.ErrorHandler.showError('Profile data is malformed.');
+                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                         }
                                     } catch (err) {
-                                        App.ErrorHandler.showError('Failed to load saved profile.');
+                                        App.ErrorHandler.showError('Failed to load profile.');
+                                        if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                     }
                                 }
                                 state.selectedProfileKey = p.key;
@@ -823,21 +834,7 @@ const TableRenderer = {
         const tierToggle = document.createElement('label');
         tierToggle.className = 'tier-filter-toggle';
         tierToggle.style.marginLeft = 'auto';
-        tierToggle.title = 'Hide/Show TIER sailings';
-        const tierCheckbox = document.createElement('input');
-        tierCheckbox.type = 'checkbox';
-        tierCheckbox.checked = !!state.hideTierSailings;
-        const tierText = document.createElement('span');
-        tierText.textContent = 'Hide TIER';
-        tierCheckbox.addEventListener('change', () => {
-            state.hideTierSailings = tierCheckbox.checked;
-            // Preserve selectedProfileKey before updateView
-            const selectedKey = state.selectedProfileKey;
-            try { localStorage.setItem('goboHideTier', String(state.hideTierSailings)); } catch (e) { /* ignore */ }
-            App.TableRenderer.updateView({ ...state, selectedProfileKey: selectedKey });
-        });
-        tierToggle.appendChild(tierCheckbox);
-        tierToggle.appendChild(tierText);
+
         // Add hidden groups display
         const hiddenGroupsLabel = document.createElement('span');
         hiddenGroupsLabel.textContent = 'Hidden Groups:';
@@ -845,7 +842,7 @@ const TableRenderer = {
         const hiddenGroupsDisplay = document.createElement('div');
         hiddenGroupsDisplay.id = 'hidden-groups-display';
         let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
-        Filtering.updateHiddenGroupsDropdown(profileKey, hiddenGroupsDisplay);
+        Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
         tierToggle.appendChild(hiddenGroupsLabel);
         tierToggle.appendChild(hiddenGroupsDisplay);
         // Place the tier toggle at the end of the crumbs row

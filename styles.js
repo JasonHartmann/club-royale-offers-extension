@@ -160,6 +160,8 @@ const Styles = {
                  #hidden-groups-display {
                    margin-left: 4px;
                    max-width: 350px;
+                   max-height: 80px;
+                   overflow-y: auto;
                    font-size: 12px;
                    color: #555;
                    white-space: pre-line;
@@ -167,9 +169,26 @@ const Styles = {
                    background: #f8f8f8;
                    border-radius: 4px;
                    border: 1px solid #eee;
-                   max-height: 180px;
-                   overflow-y: auto;
                  }
+                }
+                .hidden-group-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 2px 0;
+                }
+                .hidden-group-label {
+                    flex: 1;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .hidden-group-remove {
+                    color: red;
+                    cursor: pointer;
+                    font-weight: bold;
+                    margin-left: 8px;
+                }
             `;
             document.head.appendChild(style);
             console.log('Custom styles injected');
