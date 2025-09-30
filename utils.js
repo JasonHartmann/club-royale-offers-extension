@@ -35,9 +35,9 @@ const Utils = {
         row.className = 'hover:bg-gray-50';
         if (isNewest) row.classList.add('newest-offer-row');
         if (isExpiringSoon) row.classList.add('expiring-soon-row');
-        let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-        if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-        if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
+        let guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests';
+        if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) guestsText += ` + $${sailing.DOLLARSOFF_AMT} off`;
+        if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) guestsText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
         let room = sailing.roomType;
         if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
@@ -82,7 +82,7 @@ const Utils = {
             <td class="border p-2">${nights}</td>
             <td class="border p-2">${destination}</td>
             <td class="border p-2">${room || '-'}</td>
-            <td class="border p-2">${qualityText}</td>
+            <td class="border p-2">${guestsText}</td>
             <td class="border p-2">${perksStr}</td>
         `;
         return row;

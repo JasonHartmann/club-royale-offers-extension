@@ -1,43 +1,47 @@
 const TableBuilder = {
     createMainTable() {
+        console.debug('[tableBuilder] createMainTable ENTRY');
         const table = document.createElement('table');
         table.className = 'w-full border-collapse table-auto';
+        console.debug('[tableBuilder] createMainTable EXIT');
         return table;
     },
     createTableHeader(state) {
+        console.debug('[tableBuilder] createTableHeader ENTRY', state);
         const { headers } = state;
         const thead = document.createElement('thead');
         thead.className = 'table-header';
         const tr = document.createElement('tr');
         headers.forEach(header => {
+            console.debug('[tableBuilder] createTableHeader header loop', header);
             const th = document.createElement('th');
             th.className = 'border p-2 text-left font-semibold cursor-pointer';
             th.dataset.key = header.key;
             th.innerHTML = `
-                <span class="group-icon" title="Group by ${header.label}">🗂️</span>
+                <span class="group-icon" title="Group by ${header.label}">📂</span>
                 <span class="sort-label">${header.label}</span>
             `;
             th.querySelector('.sort-label').addEventListener('click', () => {
+                console.debug('[tableBuilder] sort-label click', header.key);
                 let newSortOrder = 'asc';
                 if (state.currentSortColumn === header.key) {
                     newSortOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
                 }
                 state.currentSortColumn = header.key;
                 state.currentSortOrder = newSortOrder;
-                // If not grouped, remember base sort
                 if (!state.groupingStack || state.groupingStack.length === 0) {
                     state.baseSortColumn = state.currentSortColumn;
                     state.baseSortOrder = state.currentSortOrder;
                 }
                 state.viewMode = 'table';
-                // Reset grouping stacks when returning to table sort
                 state.currentGroupColumn = null;
                 state.groupingStack = [];
                 state.groupKeysStack = [];
+                console.debug('[tableBuilder] sort-label click: calling updateView');
                 App.TableRenderer.updateView(state);
             });
             th.querySelector('.group-icon').addEventListener('click', () => {
-                // Initial (top-level) grouping by this column
+                console.debug('[tableBuilder] group-icon click', header.key);
                 state.currentSortColumn = header.key;
                 state.currentSortOrder = 'asc';
                 state.currentGroupColumn = header.key;
@@ -45,23 +49,25 @@ const TableBuilder = {
                 state.groupSortStates = {};
                 state.openGroups = new Set();
                 state.groupingStack = [header.key];
-                state.groupKeysStack = []; // no selected key yet at top-level
+                state.groupKeysStack = [];
+                console.debug('[tableBuilder] group-icon click: calling updateView and updateBreadcrumb');
                 App.TableRenderer.updateView(state);
                 App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
             });
             tr.appendChild(th);
         });
         thead.appendChild(tr);
+        console.debug('[tableBuilder] createTableHeader EXIT');
         return thead;
     },
     renderTable(tbody, state, globalMaxOfferDate = null) {
-        console.log('[DEBUG] renderTable ENTRY', { sortedOffersLength: state.sortedOffers.length, tbody });
+        console.debug('[DEBUG] renderTable ENTRY', { sortedOffersLength: state.sortedOffers.length, tbody });
         tbody.innerHTML = '';
         if (state.sortedOffers.length === 0) {
             const row = document.createElement('tr');
             row.innerHTML = `<td colspan="13" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
-            console.log('[DEBUG] renderTable: No offers available row appended');
+            console.debug('[DEBUG] renderTable: No offers available row appended');
         } else {
             // Find the soonest expiring offer in the next 2 days
             let soonestExpDate = null;
@@ -88,7 +94,7 @@ const TableBuilder = {
                     console.warn('[DEBUG] renderTable: createOfferRow returned null/undefined', { idx, offer, sailing });
                 }
             });
-            console.log('[DEBUG] renderTable: Finished appending ' + state.sortedOffers.length + ' rows');
+            console.debug('[DEBUG] renderTable: Finished appending ' + state.sortedOffers.length + ' rows');
         }
 
         state.headers.forEach(header => {

@@ -49,7 +49,7 @@ const AccordionBuilder = {
                     groupKey = room || '-';
                     break;
                 }
-                case 'quality': {
+                case 'guests': {
                     groupKey = sailing.isGOBO ? '1 Guest' : '2 Guests';
                     if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) groupKey += ` + $${sailing.DOLLARSOFF_AMT} off`;
                     if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) groupKey += ` + $${sailing.FREEPLAY_AMT} freeplay`;

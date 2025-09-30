@@ -10,14 +10,14 @@ const ErrorHandler = {
             document.body.appendChild(errorDiv);
             setTimeout(() => errorDiv.remove(), 10000);
         } catch (error) {
-            console.log('Failed to show error:', error.message);
+            console.debug('Failed to show error:', error.message);
         }
     },
     closeModalIfOpen() {
         const container = document.getElementById('gobo-offers-table');
         const backdrop = document.getElementById('gobo-backdrop');
         if (container && backdrop) {
-            console.log('Closing open modal due to error');
+            console.debug('Closing open modal due to error');
             container.remove();
             backdrop.remove();
             document.body.style.overflow = '';

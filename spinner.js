@@ -8,9 +8,9 @@ const Spinner = {
             spinnerContainer.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[2147483646]';
             spinnerContainer.innerHTML = `<div id="gobo-loading-spinner"></div>`;
             document.body.appendChild(spinnerContainer);
-            console.log('Loading spinner displayed');
+            console.debug('Loading spinner displayed');
         } catch (error) {
-            console.log('Failed to show loading spinner:', error.message);
+            console.debug('Failed to show loading spinner:', error.message);
         }
     },
     hideSpinner() {
@@ -18,10 +18,10 @@ const Spinner = {
             const spinnerContainer = document.getElementById('gobo-loading-spinner-container');
             if (spinnerContainer) {
                 spinnerContainer.remove();
-                console.log('Loading spinner hidden');
+                console.debug('Loading spinner hidden');
             }
         } catch (error) {
-            console.log('Failed to hide loading spinner:', error.message);
+            console.debug('Failed to hide loading spinner:', error.message);
         }
     }
 };

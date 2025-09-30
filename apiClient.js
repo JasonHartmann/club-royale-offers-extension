@@ -1,11 +1,12 @@
 const ApiClient = {
     async fetchOffers(retryCount = 3) {
-        console.log('Fetching casino offers');
+        console.debug('[apiClient] fetchOffers called, retryCount:', retryCount);
         let authToken, accountId, loyaltyId, user;
         try {
+            console.debug('[apiClient] Parsing session data from localStorage');
             const sessionData = localStorage.getItem('persist:session');
             if (!sessionData) {
-                console.log('No session data found in localStorage');
+                console.debug('[apiClient] No session data found');
                 App.ErrorHandler.showError('Failed to load offers: No session data. Please log in again.');
                 return;
             }
@@ -16,26 +17,28 @@ const ApiClient = {
             accountId = user && user.accountId ? user.accountId : null;
             loyaltyId = user && user.cruiseLoyaltyId ? user.cruiseLoyaltyId : null;
             if (!authToken || !tokenExpiration || !accountId) {
-                console.log('Invalid session data: token, expiration, or account ID missing');
+                console.debug('[apiClient] Invalid session data');
                 App.ErrorHandler.showError('Failed to load offers: Invalid session data. Please log in again.');
                 return;
             }
             const currentTime = Date.now();
             if (tokenExpiration < currentTime) {
-                console.log('Token expired:', new Date(tokenExpiration).toISOString());
+                console.debug('[apiClient] Token expired:', new Date(tokenExpiration).toISOString());
                 localStorage.removeItem('persist:session');
                 App.ErrorHandler.showError('Session expired. Please log in again.');
                 App.ErrorHandler.closeModalIfOpen();
                 return;
             }
+            console.debug('[apiClient] Session data parsed successfully');
         } catch (error) {
-            console.log('Failed to parse session data:', error.message);
+            console.debug('[apiClient] Failed to parse session data:', error.message);
             App.ErrorHandler.showError('Failed to load session data. Please log in again.');
             return;
         }
 
         try {
             App.Spinner.showSpinner();
+            console.debug('[apiClient] Spinner shown');
             const headers = {
                 'accept': 'application/json',
                 'accept-language': 'en-US,en;q=0.9',
@@ -43,7 +46,7 @@ const ApiClient = {
                 'authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`,
                 'content-type': 'application/json',
             };
-            console.log('Request headers:', headers);
+            console.debug('[apiClient] Request headers built:', headers);
             // Centralized brand detection
             const host = (location && location.hostname) ? location.hostname : '';
             const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : (host.includes('celebritycruises.com') ? 'C' : 'R');
@@ -51,7 +54,7 @@ const ApiClient = {
             const onSupportedDomain = host.includes('royalcaribbean.com') || host.includes('celebritycruises.com');
             const defaultDomain = brandCode === 'C' ? 'https://www.celebritycruises.com' : 'https://www.royalcaribbean.com';
             const endpoint = onSupportedDomain ? relativePath : `${defaultDomain}${relativePath}`;
-            console.log('Resolved endpoint:', endpoint, 'brand:', brandCode);
+            console.debug('[apiClient] Endpoint resolved:', endpoint, 'brand:', brandCode);
             const baseRequestBody = {
                 cruiseLoyaltyId: loyaltyId,
                 offerCode: '',
@@ -72,7 +75,7 @@ const ApiClient = {
                     });
                 });
                 const after = co.sailings.length;
-                if (before !== after) console.log(`Pruned ${before - after} excluded sailing(s) from offer ${co.offerCode}`);
+                if (before !== after) console.debug(`[apiClient] Pruned ${before - after} excluded sailing(s) from offer ${co.offerCode}`);
             };
             // Helper to enforce night limit for *TIER* offers (remove sailings > 7 nights)
             const enforceTierNightLimit = (offer) => {
@@ -84,24 +87,25 @@ const ApiClient = {
                 co.sailings = co.sailings.filter(s => {
                     const text = (s.itineraryDescription || s.sailingType?.name || '').trim();
                     if (!text) return true; // keep if we cannot parse
-                    const m = text.match(/^\s*(\d+)\s+(?:N(?:IGHT|T)?S?)\b/i);
+                    const m = text.match(/^	*(\d+)\s+(?:N(?:IGHT|T)?S?)\b/i);
                     if (!m) return true; // keep if nights not parseable
                     const nights = parseInt(m[1], 10);
                     if (isNaN(nights)) return true;
                     return nights <= 7; // drop if >7
                 });
                 const after = co.sailings.length;
-                if (before !== after) console.log(`Trimmed ${before - after} long (>7) night sailing(s) from TIER offer ${code}`);
+                if (before !== after) console.debug(`[apiClient] Trimmed ${before - after} long (>7) night sailing(s) from TIER offer ${code}`);
             };
+            console.debug('[apiClient] Sending fetch request to offers API');
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: headers,
                 credentials: 'omit',
                 body: JSON.stringify(baseRequestBody)
             });
-            console.log(`Network request status: ${response.status}`);
+            console.debug('[apiClient] Network request completed, status:', response.status);
             if (response.status === 403) {
-                console.log('403 error detected, session expired');
+                console.debug('[apiClient] 403 error detected, session expired');
                 localStorage.removeItem('persist:session');
                 App.ErrorHandler.showError('Session expired. Please log in again.');
                 App.ErrorHandler.closeModalIfOpen();
@@ -109,19 +113,25 @@ const ApiClient = {
                 return;
             }
             if (response.status === 503 && retryCount > 0) {
-                console.log(`503 error, retrying (${retryCount} attempts left)`);
+                console.debug(`[apiClient] 503 error, retrying (${retryCount} attempts left)`);
                 setTimeout(() => this.fetchOffers(retryCount - 1), 2000);
                 return;
             }
             if (!response.ok) {
                 const errorText = await response.text();
+                console.debug('[apiClient] Non-OK response, throwing error:', errorText);
                 throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
             }
             const data = await response.json();
-            console.log('API response (initial):', data);
+            console.debug('[apiClient] API response received:', data);
             // Remove excluded sailings and enforce night limit for TIER offers
             if (data && Array.isArray(data.offers)) {
-                data.offers.forEach(o => { removeExcludedFromOffer(o); enforceTierNightLimit(o); });
+                console.debug('[apiClient] Processing offers array, length:', data.offers.length);
+                data.offers.forEach(o => {
+                    removeExcludedFromOffer(o);
+                    enforceTierNightLimit(o);
+                });
+                console.debug('[apiClient] Offers array processed');
             }
             // Identify offers that returned with empty sailings but have an offerCode we can refetch
             const offersToRefetch = (data && Array.isArray(data.offers)) ? data.offers
@@ -129,7 +139,7 @@ const ApiClient = {
                 .map(o => o.campaignOffer.offerCode.trim()) : [];
 
             if (offersToRefetch.length) {
-                console.log(`Refetching ${offersToRefetch.length} offers with empty sailings`, offersToRefetch);
+                console.debug(`[apiClient] Refetching ${offersToRefetch.length} offers with empty sailings`, offersToRefetch);
                 // Deduplicate just in case
                 const uniqueCodes = Array.from(new Set(offersToRefetch));
                 const refetchPromises = uniqueCodes.map(code => {
@@ -146,12 +156,14 @@ const ApiClient = {
                         })
                         .then(refetchData => ({ code, refetchData }))
                         .catch(err => {
-                            console.warn('Offer refetch failed', code, err.message);
+                            console.warn('[apiClient] Offer refetch failed', code, err.message);
                             return { code, refetchData: null };
                         });
                 });
 
+                console.debug('[apiClient] Awaiting Promise.all for refetches');
                 const refetchResults = await Promise.all(refetchPromises);
+                console.debug('[apiClient] Refetches completed');
                 // Merge sailings into original data
                 refetchResults.forEach(({ code, refetchData }) => {
                     if (!refetchData || !Array.isArray(refetchData.offers)) return;
@@ -168,43 +180,66 @@ const ApiClient = {
                             }
                             removeExcludedFromOffer(original);
                             enforceTierNightLimit(original);
-                            console.log(`Merged ${original.campaignOffer.sailings.length} (post-prune & TIER limit) sailings for offer ${code}`);
+                            console.debug(`[apiClient] Merged ${original.campaignOffer.sailings.length} sailings for offer ${code}`);
                         }
                     }
                 });
+                console.debug('[apiClient] Refetched offers merged');
             }
 
             // normalize data (trim, adjust capitalization, etc.) AFTER potential merges so added sailings are normalized too
+            console.debug('[apiClient] Normalizing offers data');
             const normalizedData = App.Utils.normalizeOffers(data);
+            console.debug('[apiClient] Offers data normalized');
             // Persist normalized data so it can be accessed across logins by key: gobo-<username>
             try {
+                console.debug('[apiClient] Persisting normalized offers to localStorage');
                 const rawKey = (user && (user.username || user.userName || user.email || user.name || user.accountId)) ? String(user.username || user.userName || user.email || user.name || user.accountId) : 'unknown';
                 const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
                 const storageKey = `gobo-${usernameKey}`;
                 const payload = { savedAt: Date.now(), data: normalizedData };
                 localStorage.setItem(storageKey, JSON.stringify(payload));
-                console.log(`Saved normalized offers to localStorage key: ${storageKey}`);
+                console.debug(`[apiClient] Saved normalized offers to localStorage key: ${storageKey}`);
 
                 // If this account is part of linked accounts, update combined offers and clear cache
                 if (typeof updateCombinedOffersCache === 'function') {
                     updateCombinedOffersCache();
-                    console.log('[DEBUG] updateCombinedOffersCache called after account data update');
+                    console.debug('[apiClient] updateCombinedOffersCache called after account data update');
                 }
             } catch (e) {
-                console.warn('Failed to persist normalized offers to localStorage', e);
+                console.warn('[apiClient] Failed to persist normalized offers to localStorage', e);
             }
+            console.debug('[apiClient] Rendering offers table');
             App.TableRenderer.displayTable(normalizedData);
+            console.debug('[apiClient] Offers table rendered');
         } catch (error) {
-            console.log('Fetch failed:', error.message);
+            console.debug('[apiClient] Fetch failed:', error.message);
             if (retryCount > 0) {
-                console.log(`Retrying fetch (${retryCount} attempts left)`);
+                console.debug(`[apiClient] Retrying fetch (${retryCount} attempts left)`);
                 setTimeout(() => this.fetchOffers(retryCount - 1), 2000);
             } else {
                 App.ErrorHandler.showError(`Failed to load casino offers: ${error.message}. Please try again later.`);
                 App.ErrorHandler.closeModalIfOpen();
             }
         } finally {
+            console.debug('[apiClient] Hiding spinner');
             App.Spinner.hideSpinner();
+            // Additional detailed logs after spinner is hidden
+            try {
+                const table = document.querySelector('table');
+                const rowCount = table ? table.rows.length : 0;
+                const visibleElements = Array.from(document.body.querySelectorAll('*')).filter(el => el.offsetParent !== null).length;
+                console.debug('[apiClient] Post-spinner: Table row count:', rowCount);
+                console.debug('[apiClient] Post-spinner: Visible DOM elements:', visibleElements);
+                if (window.performance && window.performance.memory) {
+                    console.debug('[apiClient] Post-spinner: JS Heap Size:', window.performance.memory.usedJSHeapSize, '/', window.performance.memory.totalJSHeapSize);
+                }
+                if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) {
+                    console.debug('[apiClient] Post-spinner: TableRenderer.lastState:', App.TableRenderer.lastState);
+                }
+            } catch (e) {
+                console.warn('[apiClient] Post-spinner: Error during extra logging', e);
+            }
         }
     }
 };

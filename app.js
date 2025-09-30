@@ -1,5 +1,5 @@
 (function() {
-    console.log('Club Royale GOBO Indicator extension loaded on:', window.location.href);
+    console.debug('Club Royale GOBO Indicator extension loaded on:', window.location.href);
 
     // Global App object to coordinate modules
     window.App = {

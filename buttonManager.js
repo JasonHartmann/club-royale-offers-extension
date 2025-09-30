@@ -16,7 +16,7 @@ const ButtonManager = {
             button.className = 'bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg hover:bg-blue-700 ml-2';
             button.textContent = 'Show Casino Offers';
             button.addEventListener('click', () => {
-                console.log('Show Casino Offers button clicked');
+                console.debug('Show Casino Offers button clicked');
                 App.ApiClient.fetchOffers();
             });
 
@@ -26,14 +26,14 @@ const ButtonManager = {
                 return;
             }
             if (!banner) {
-                console.log('Banner div not found after max attempts, using centered fixed position');
+                console.debug('Banner div not found after max attempts, using centered fixed position');
                 button.className = 'fixed top-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
                 // Center horizontally
                 button.style.left = '50%';
                 button.style.transform = 'translateX(-50%)';
                 document.body.appendChild(button);
             } else {
-                console.log('Banner div found, adding button');
+                console.debug('Banner div found, adding button');
                 // Create a container for centering
                 let centerContainer = document.getElementById('gobo-offers-center-container');
                 if (!centerContainer) {
@@ -58,11 +58,11 @@ const ButtonManager = {
                 button.style.margin = '0 auto';
                 button.style.position = 'relative';
                 button.style.zIndex = '10';
-                console.log('Button centered in banner div');
+                console.debug('Button centered in banner div');
             }
-            console.log('Button added to DOM');
+            console.debug('Button added to DOM');
         } catch (error) {
-            console.log('Failed to add button:', error.message);
+            console.debug('Failed to add button:', error.message);
             App.ErrorHandler.showError('Failed to add button. Please reload the page.');
         }
     }

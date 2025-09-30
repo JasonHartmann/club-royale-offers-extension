@@ -33,9 +33,9 @@ const Filtering = {
         return result;
     },
     getOfferColumnValue(offer, sailing, key) {
-        let qualityText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-        if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) qualityText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-        if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) qualityText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
+        let guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests';
+        if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) guestsText += ` + $${sailing.DOLLARSOFF_AMT} off`;
+        if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) guestsText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
         let room = sailing.roomType;
         if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
@@ -65,8 +65,8 @@ const Filtering = {
                 return destination;
             case 'category':
                 return room || '-';
-            case 'quality':
-                return qualityText;
+            case 'guests':
+                return guestsText;
             case 'perks':
                 return perksStr;
             default:
@@ -108,6 +108,7 @@ const Filtering = {
     },
     // Update the hidden groups display element for a profile
     updateHiddenGroupsList(profileKey, displayElement, state) {
+        console.debug('[Filtering] updateHiddenGroupsList ENTRY', { profileKey, displayElement, state });
         if (!displayElement) {
             console.warn('updateHiddenGroupsList: displayElement is null for profileKey', profileKey);
             return;
@@ -115,6 +116,7 @@ const Filtering = {
         displayElement.innerHTML = '';
         displayElement.className = 'hidden-groups-display';
         const hiddenGroups = Filtering.loadHiddenGroups(profileKey);
+        console.debug('[Filtering] updateHiddenGroupsList loaded hiddenGroups:', hiddenGroups);
         if (Array.isArray(hiddenGroups) && hiddenGroups.length > 0) {
             // Sort hidden groups alphabetically, case-insensitive
             const sortedGroups = hiddenGroups.slice().sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
@@ -130,20 +132,55 @@ const Filtering = {
 
                 const removeBtn = document.createElement('span');
                 removeBtn.className = 'hidden-group-remove';
-                removeBtn.innerHTML = '&#10006;'; // Unicode heavy X
-                removeBtn.title = 'Remove';
-                removeBtn.onclick = () => {
+                removeBtn.textContent = '✖';
+                removeBtn.title = 'Remove hidden group';
+                removeBtn.style.cursor = 'pointer';
+                removeBtn.addEventListener('click', () => {
+                    console.debug('[Filtering] Hidden Group removeBtn clicked', { profileKey, path });
                     Spinner.showSpinner();
-                    setTimeout(() => Filtering.deleteHiddenGroup({ selectedProfileKey: profileKey }, path), 500);
-                };
+                    let groups = Filtering.loadHiddenGroups(profileKey);
+                    groups = groups.filter(g => g !== path);
+                    try {
+                        localStorage.setItem('goboHiddenGroups-' + profileKey, JSON.stringify(groups));
+                        console.debug('[Filtering] Hidden Group removed from localStorage', { profileKey, path, groups });
+                    } catch (e) {
+                        console.warn('[Filtering] Error removing Hidden Group from localStorage', e);
+                    }
+                    Filtering.updateHiddenGroupsList(profileKey, document.getElementById('hidden-groups-display'), state);
+                    console.debug('[Filtering] updateHiddenGroupsList called after removal', { profileKey, groups });
+                    if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.updateView === 'function') {
+                        console.debug('[Filtering] Calling App.TableRenderer.updateView after hidden group removal');
+                        App.TableRenderer.updateView(state);
+                    }
+                    setTimeout(() => {
+                        Spinner.hideSpinner();
+                        console.debug('[Filtering] Spinner hidden after Hidden Group removal');
+                        setTimeout(() => {
+                            console.debug('[Filtering] Post-spinner: 500ms after spinner hidden');
+                            const table = document.querySelector('table');
+                            const rowCount = table ? table.rows.length : 0;
+                            const visibleElements = Array.from(document.body.querySelectorAll('*')).filter(el => el.offsetParent !== null).length;
+                            console.debug('[Filtering] Post-spinner: Table row count:', rowCount);
+                            console.debug('[Filtering] Post-spinner: Visible DOM elements:', visibleElements);
+                            if (window.performance && window.performance.memory) {
+                                console.debug('[Filtering] Post-spinner: JS Heap Size:', window.performance.memory.usedJSHeapSize, '/', window.performance.memory.totalJSHeapSize);
+                            }
+                            if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) {
+                                console.debug('[Filtering] Post-spinner: TableRenderer.lastState:', App.TableRenderer.lastState);
+                            }
+                        }, 500);
+                    }, 3000);
+                });
 
                 row.appendChild(label);
                 row.appendChild(removeBtn);
                 container.appendChild(row);
             });
             displayElement.appendChild(container);
+            console.debug('[Filtering] updateHiddenGroupsList DOM updated with hidden groups');
         } else {
-            displayElement.textContent = '(None hidden)';
+            console.debug('[Filtering] updateHiddenGroupsList: No hidden groups to display');
         }
+        console.debug('[Filtering] updateHiddenGroupsList EXIT');
     },
 };

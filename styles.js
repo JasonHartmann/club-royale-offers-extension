@@ -5,7 +5,7 @@ const Styles = {
             tailwindLink.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
             tailwindLink.rel = 'stylesheet';
             document.head.appendChild(tailwindLink);
-            console.log('Tailwind CSS injected');
+            console.debug('Tailwind CSS injected');
 
             const style = document.createElement('style');
             style.textContent = `
@@ -38,7 +38,7 @@ const Styles = {
                 .table-auto { table-layout:auto; width:100%; border-collapse:separate; }
                 .table-auto th, .table-auto td, .accordion-table th, .accordion-table td { box-sizing:border-box; font-size:0.75rem; padding:4px 6px; vertical-align:top; }
 
-                /* Column order in data rows: 1 Code, 2 Received, 3 Expiration, 4 Name, 5 Class, 6 Ship, 7 Sail Date, 8 Departure Port, 9 Nights, 10 Destination, 11 Category, 12 Quality, 13 Perks */
+                /* Column order in data rows: 1 Code, 2 Received, 3 Expiration, 4 Name, 5 Class, 6 Ship, 7 Sail Date, 8 Departure Port, 9 Nights, 10 Destination, 11 Category, 12 Guests, 13 Perks */
 
                 /* Compact short columns (codes & dates & class & nights) */
                 .table-auto th[data-key="offerCode"], .accordion-table th[data-key="offerCode"], .table-auto td:nth-child(1), .accordion-table td:nth-child(1) { width:120px; min-width:100px; max-width:140px; white-space:nowrap; }
@@ -57,9 +57,9 @@ const Styles = {
                 /* Destination: flexible & primary expanding column; allow wrapping for long multi-destination itineraries */
                 .table-auto th[data-key="destination"], .accordion-table th[data-key="destination"], .table-auto td:nth-child(10), .accordion-table td:nth-child(10) { min-width:260px; width:100%; word-break:break-word; white-space:normal; }
 
-                /* Category & Quality: short fixed */
+                /* Category & Guests: short fixed */
                 .table-auto th[data-key="category"], .accordion-table th[data-key="category"], .table-auto td:nth-child(11), .accordion-table td:nth-child(11),
-                .table-auto th[data-key="quality"], .accordion-table th[data-key="quality"], .table-auto td:nth-child(12), .accordion-table td:nth-child(12) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
+                .table-auto th[data-key="guests"], .accordion-table th[data-key="guests"], .table-auto td:nth-child(12), .accordion-table td:nth-child(12) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
                 .table-auto th[data-key="perks"], .accordion-table th[data-key="perks"], .table-auto td:nth-child(13), .accordion-table td:nth-child(13) { width:140px; min-width:90px; max-width:200px; }
 
                 /* Zebra stripes for readability (optional minor enhancement) */
@@ -191,9 +191,9 @@ const Styles = {
                 }
             `;
             document.head.appendChild(style);
-            console.log('Custom styles injected');
+            console.debug('Custom styles injected');
         } catch (error) {
-            console.log('Failed to inject styles:', error.message);
+            console.debug('Failed to inject styles:', error.message);
             App.ErrorHandler.showError('Failed to load styles. Table may appear unstyled.');
         }
     }

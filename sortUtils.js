@@ -64,7 +64,7 @@ const SortUtils = {
                     aValue = aRoom || '';
                     bValue = bRoom || '';
                     break;
-                case 'quality':
+                case 'guests':
                     aValue = a.sailing.isGOBO ? '1 Guest' : '2 Guests';
                     if (a.sailing.isDOLLARSOFF && a.sailing.DOLLARSOFF_AMT > 0) {
                         aValue += ` + $${a.sailing.DOLLARSOFF_AMT} off`;
