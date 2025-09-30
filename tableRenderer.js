@@ -2,26 +2,26 @@ const TableRenderer = {
     // Track if the default tab has been selected for the current popup display
     hasSelectedDefaultTab: false,
     switchProfile(key) {
-        console.debug('[tableRenderer] switchProfile ENTRY', { key });
+        console.log('[tableRenderer] switchProfile ENTRY', { key });
         const cached = App.ProfileCache[key];
         if (!cached || App.CurrentProfile.key === key) {
-            console.debug('[tableRenderer] switchProfile: No cached profile or already active', { key });
+            console.log('[tableRenderer] switchProfile: No cached profile or already active', { key });
             return;
         }
         const currentScroll = document.querySelector('.table-scroll-container');
-        console.debug('[tableRenderer] switchProfile: currentScroll', currentScroll);
+        console.log('[tableRenderer] switchProfile: currentScroll', currentScroll);
         if (currentScroll && App.CurrentProfile.key) {
             App.ProfileCache[App.CurrentProfile.key] = {
                 scrollContainer: currentScroll,
                 state: App.TableRenderer.lastState
             };
-            console.debug('[tableRenderer] switchProfile: Cached current profile', App.CurrentProfile.key);
+            console.log('[tableRenderer] switchProfile: Cached current profile', App.CurrentProfile.key);
         }
-        console.debug('[tableRenderer] switchProfile: cached.scrollContainer', cached.scrollContainer);
-        console.debug('[tableRenderer] switchProfile: cached.state', cached.state);
+        console.log('[tableRenderer] switchProfile: cached.scrollContainer', cached.scrollContainer);
+        console.log('[tableRenderer] switchProfile: cached.state', cached.state);
         if (currentScroll && cached.scrollContainer) {
             currentScroll.replaceWith(cached.scrollContainer);
-            console.debug('[tableRenderer] switchProfile: Replaced scrollContainer in DOM');
+            console.log('[tableRenderer] switchProfile: Replaced scrollContainer in DOM');
         } else {
             console.warn('[tableRenderer] switchProfile: Missing scrollContainer for swap', { currentScroll, cachedScroll: cached.scrollContainer });
         }
@@ -31,32 +31,32 @@ const TableRenderer = {
             scrollContainer: cached.scrollContainer,
             state: { ...cached.state, selectedProfileKey: key }
         };
-        console.debug('[tableRenderer] switchProfile: Updated lastState and CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
+        console.log('[tableRenderer] switchProfile: Updated lastState and CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
         const tableInDom = cached.scrollContainer.querySelector('table');
         const breadcrumbInDom = cached.scrollContainer.querySelector('.breadcrumb-container');
-        console.debug('[tableRenderer] switchProfile: table in DOM after swap', tableInDom);
-        console.debug('[tableRenderer] switchProfile: breadcrumb in DOM after swap', breadcrumbInDom);
+        console.log('[tableRenderer] switchProfile: table in DOM after swap', tableInDom);
+        console.log('[tableRenderer] switchProfile: breadcrumb in DOM after swap', breadcrumbInDom);
         if (!tableInDom || !breadcrumbInDom) {
             console.warn('[tableRenderer] Table or breadcrumb missing after swap, forcing updateView');
             this.updateView(cached.state);
         }
         this.updateBreadcrumb(cached.state.groupingStack, cached.state.groupKeysStack);
-        console.debug('[tableRenderer] switchProfile EXIT');
+        console.log('[tableRenderer] switchProfile EXIT');
     },
     loadProfile(key, payload) {
-        console.debug('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload });
-        console.debug('[DEBUG] App.ProfileCache:', App.ProfileCache);
-        console.debug('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
+        console.log('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload });
+        console.log('[DEBUG] App.ProfileCache:', App.ProfileCache);
+        console.log('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
         if (App.ProfileCache[key]) {
-            console.debug('[DEBUG] Profile found in cache, switching profile', key);
+            console.log('[DEBUG] Profile found in cache, switching profile', key);
             this.switchProfile(key);
-            console.debug('[DEBUG] loadProfile EXIT after switchProfile', { key });
+            console.log('[DEBUG] loadProfile EXIT after switchProfile', { key });
         } else {
-            console.debug('[DEBUG] Building new profile for key', key);
+            console.log('[DEBUG] Building new profile for key', key);
             let preparedData;
             try {
                 preparedData = this.prepareOfferData(payload.data);
-                console.debug('[DEBUG] prepareOfferData result:', preparedData);
+                console.log('[DEBUG] prepareOfferData result:', preparedData);
             } catch (e) {
                 console.error('[DEBUG] Error in prepareOfferData', e, payload);
                 preparedData = {};
@@ -75,7 +75,7 @@ const TableRenderer = {
                     { key: 'nights', label: 'Nights' },
                     { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
-                    { key: 'guests', label: 'Guests' },
+                    { key: 'quality', label: 'Quality' },
                     { key: 'perks', label: 'Perks' }
                 ],
                 currentSortColumn: 'offerDate', // Default sort by Received
@@ -93,7 +93,7 @@ const TableRenderer = {
             // Load persisted preference for Hide TIER
             try {
                 const savedPref = localStorage.getItem('goboHideTier');
-                console.debug('[DEBUG] localStorage goboHideTier:', savedPref);
+                console.log('[DEBUG] localStorage goboHideTier:', savedPref);
                 if (savedPref !== null) state.hideTierSailings = savedPref === 'true';
             } catch (e) {
                 console.error('[DEBUG] Error accessing localStorage for goboHideTier', e);
@@ -115,7 +115,7 @@ const TableRenderer = {
             state.thead = App.TableBuilder.createTableHeader(state);
             state.table = App.TableBuilder.createMainTable();
             state.tbody = document.createElement('tbody');
-            console.debug('[DEBUG] New profile state built', state);
+            console.log('[DEBUG] New profile state built', state);
             // Create breadcrumbContainer
             const breadcrumbContainer = document.createElement('div');
             breadcrumbContainer.className = 'breadcrumb-container';
@@ -139,18 +139,18 @@ const TableRenderer = {
             scrollContainer.appendChild(state.accordionContainer);
             // Cache current if exists
             const currentScroll = document.querySelector('.table-scroll-container');
-            console.debug('[DEBUG] currentScroll:', currentScroll);
+            console.log('[DEBUG] currentScroll:', currentScroll);
             if (currentScroll && App.CurrentProfile && App.CurrentProfile.key) {
                 App.ProfileCache[App.CurrentProfile.key] = {
                     scrollContainer: currentScroll,
                     state: App.TableRenderer.lastState
                 };
-                console.debug('[DEBUG] Cached current profile', App.CurrentProfile.key);
+                console.log('[DEBUG] Cached current profile', App.CurrentProfile.key);
             }
             // Replace scrollContainer
             if (currentScroll) {
                 currentScroll.replaceWith(scrollContainer);
-                console.debug('[DEBUG] Replaced scrollContainer in DOM');
+                console.log('[DEBUG] Replaced scrollContainer in DOM');
             }
             // Update lastState and current profile
             App.TableRenderer.lastState = state;
@@ -164,12 +164,12 @@ const TableRenderer = {
                 scrollContainer: scrollContainer,
                 state: state
             };
-            console.debug('[DEBUG] Cached new profile', key);
-            console.debug('[DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
+            console.log('[DEBUG] Cached new profile', key);
+            console.log('[DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
             // Render the view
-            console.debug('[DEBUG] Calling updateView with state');
+            console.log('[DEBUG] Calling updateView with state');
             this.updateView(state);
-            console.debug('[DEBUG] loadProfile EXIT after updateView', { key });
+            console.log('[DEBUG] loadProfile EXIT after updateView', { key });
         }
 
         // Update active tab visuals (since breadcrumb is rebuilt in updateView if needed)
@@ -178,7 +178,7 @@ const TableRenderer = {
             tb.classList.toggle('active', isActive);
             tb.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             if (isActive) {
-                console.debug('[DEBUG] .profile-tab.active set in loadProfile for key:', key, tb);
+                console.log('[DEBUG] .profile-tab.active set in loadProfile for key:', key, tb);
             }
         });
     },
@@ -256,7 +256,7 @@ const TableRenderer = {
                     { key: 'nights', label: 'Nights' },
                     { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
-                    { key: 'guests', label: 'Guests' },
+                    { key: 'quality', label: 'Quality' },
                     { key: 'perks', label: 'Perks' }
                 ],
                 currentSortColumn: 'offerDate', // Default sort by Received
@@ -308,7 +308,7 @@ const TableRenderer = {
             App.Modal.setupModal(state, overlapping);
             this.updateView(state);
         } catch (error) {
-            console.debug('Failed to display table:', error.message);
+            console.log('Failed to display table:', error.message);
             App.ErrorHandler.showError('Failed to display table. Please try again.');
             document.body.style.overflow = '';
             const existingBackdrop = document.getElementById('gobo-backdrop');
@@ -316,7 +316,7 @@ const TableRenderer = {
         }
     },
     updateView(state) {
-        console.debug('[tableRenderer] updateView ENTRY', state);
+        console.log('[tableRenderer] updateView ENTRY', state);
         // Always preserve selectedProfileKey, even in recursive calls
         state = preserveSelectedProfileKey(state, App.TableRenderer.lastState);
         App.TableRenderer.lastState = state;
@@ -353,11 +353,11 @@ const TableRenderer = {
                 const validKeys = profileTabs.map(tab => tab.getAttribute('data-key'));
                 // Only change selectedProfileKey if it is not valid
                 if (!validKeys.includes(state.selectedProfileKey)) {
-                    console.debug('[DEBUG] selectedProfileKey invalid after accordion reset:', state.selectedProfileKey, 'validKeys:', validKeys);
+                    console.log('[DEBUG] selectedProfileKey invalid after accordion reset:', state.selectedProfileKey, 'validKeys:', validKeys);
                     state.selectedProfileKey = validKeys.includes(App.TableRenderer.lastState.selectedProfileKey) ? App.TableRenderer.lastState.selectedProfileKey : (validKeys[0] || null);
-                    console.debug('[DEBUG] selectedProfileKey set to:', state.selectedProfileKey);
+                    console.log('[DEBUG] selectedProfileKey set to:', state.selectedProfileKey);
                 } else {
-                    console.debug('[DEBUG] selectedProfileKey preserved after accordion reset:', state.selectedProfileKey);
+                    console.log('[DEBUG] selectedProfileKey preserved after accordion reset:', state.selectedProfileKey);
                 }
             }
         }
@@ -406,10 +406,10 @@ const TableRenderer = {
             }
         }
         this.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
-        console.debug('[tableRenderer] updateView EXIT');
+        console.log('[tableRenderer] updateView EXIT');
     },
     updateBreadcrumb(groupingStack, groupKeysStack) {
-        console.debug('[tableRenderer] updateBreadcrumb ENTRY', { groupingStack, groupKeysStack });
+        console.log('[tableRenderer] updateBreadcrumb ENTRY', { groupingStack, groupKeysStack });
         const state = App.TableRenderer.lastState;
         if (!state) return;
         const container = document.querySelector('.breadcrumb-container');
@@ -554,7 +554,7 @@ const TableRenderer = {
                                         localStorage.removeItem('goob-combined');
                                         if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
                                             delete App.ProfileCache['goob-combined-linked'];
-                                            console.debug('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after goob-combined removal');
+                                            console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after goob-combined removal');
                                         }
                                     } catch (err) { /* ignore */ }
                                     console.debug('[LinkedAccounts] goob-combined removed from localStorage due to unlink');
@@ -606,7 +606,7 @@ const TableRenderer = {
                                                 localStorage.removeItem('goob-combined');
                                                 if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
                                                     delete App.ProfileCache['goob-combined-linked'];
-                                                    console.debug('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after combined removal');
+                                                    console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after combined removal');
                                                 }
                                             } catch (err) { /* ignore */ }
                                             console.debug('[LinkedAccounts] goob-combined removed from localStorage due to unlink on delete');
@@ -615,7 +615,7 @@ const TableRenderer = {
                                     localStorage.removeItem(p.key);
                                     if (p.key === 'goob-combined-linked' && App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
                                         delete App.ProfileCache['goob-combined-linked'];
-                                        console.debug('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after trash removal');
+                                        console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after trash removal');
                                     }
                                     const wasActive = btn.classList.contains('active');
                                     btn.remove();
@@ -660,7 +660,7 @@ const TableRenderer = {
                     // Set active class only for the current user's tab (or first tab if only one)
                     if (p.key === activeKey) {
                         btn.classList.add('active');
-                        console.debug('[DEBUG] .profile-tab.active set in tab click for activeKey:', p.key, btn);
+                        console.log('[DEBUG] .profile-tab.active set in tab click for activeKey:', p.key, btn);
                         btn.setAttribute('aria-pressed', 'true');
                     } else {
                         btn.setAttribute('aria-pressed', 'false');
@@ -700,7 +700,7 @@ const TableRenderer = {
                                         }
                                         const payload = JSON.parse(raw);
                                         if (payload && payload.data) {
-                                            console.debug('[DEBUG] Calling LoadProfile');
+                                            console.log('[DEBUG] Calling LoadProfile');
                                             App.TableRenderer.loadProfile(p.key, payload);
                                             if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
                                         } else {
@@ -752,7 +752,7 @@ const TableRenderer = {
                                     if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
                                     const payload = JSON.parse(raw);
                                     if (payload && payload.data) {
-                                        console.debug('[DEBUG] Calling LoadProfile');
+                                        console.log('[DEBUG] Calling LoadProfile');
                                         App.TableRenderer.loadProfile(p.key, payload);
                                     } else {
                                         App.ErrorHandler.showError('Saved profile data is malformed.');
@@ -867,8 +867,8 @@ function mergeProfiles(profileA, profileB) {
         return profileA;
     }
     // Category upgrade orders
-    const celebrityOrder = ["Interior", "Ocean View", "Veranda", "Concierge"];
-    const defaultOrder = ["Interior", "Ocean View", "Balcony", "Junior Suite"];
+    const celebrityOrder = ["Interior", "Oceanview", "Veranda", "Concierge"];
+    const defaultOrder = ["Interior", "Oceanview", "Balcony", "Junior Suite"];
     // Deep copy profileA
     const deepCopy = JSON.parse(JSON.stringify(profileA));
     const offersA = deepCopy.data?.offers || [];
@@ -881,12 +881,12 @@ function mergeProfiles(profileA, profileB) {
         const codeB = offerB.campaignCode || '';
         const offerCodeB = offerB.campaignOffer?.offerCode || '';
         const categoryB = offerB.category || '';
-        const guestsB = offerB.guests || '';
+        const qualityB = offerB.quality || '';
         const brandB = offerB.brand || offerB.campaignOffer?.brand || '';
         const sailingsB = offerB.campaignOffer?.sailings || [];
         sailingsB.forEach(sailingB => {
             const key = codeB + '|' + (sailingB.shipName || '') + '|' + (sailingB.sailDate || '') + '|' + String(sailingB.isGOBO);
-            sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, guestsB, sailingB });
+            sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, qualityB, sailingB });
         });
     });
     console.debug('[mergeProfiles] sailingMapB size:', sailingMapB.size);
@@ -909,10 +909,10 @@ function mergeProfiles(profileA, profileB) {
             const isGOBOB = matchObj.sailingB.isGOBO === true;
             const roomTypeA = sailingA.roomType || '';
             const roomTypeB = matchObj.sailingB.roomType || '';
-            // If either sailing has isGOBO=true, set merged isGOBO=false and Guests='2 guests'
+            // If either sailing has isGOBO=true, set merged isGOBO=false and Quality='2 guests'
             if (isGOBOA || isGOBOB) {
                 sailingA.isGOBO = false;
-                offerA.guests = "2 guests";
+                offerA.quality = "2 guests";
                 // Set category to the lowest of the two roomTypes
                 let isCelebrity = false;
                 if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) {
@@ -982,8 +982,8 @@ function mergeProfiles(profileA, profileB) {
                 }
                 sailingA.roomType = upgradedRoomType;
                 offerA.category = upgradedRoomType;
-                // Always set guests to '2 guests' for merged sailings
-                offerA.guests = "2 guests";
+                // Always set quality to '2 guests' for merged sailings
+                offerA.quality = "2 guests";
             }
             return true;
         });
@@ -1015,11 +1015,11 @@ function mergeProfiles(profileA, profileB) {
 
 // Helper to always preserve selectedProfileKey
 function preserveSelectedProfileKey(state, prevState) {
-    console.debug('[DEBUG] preserveSelectedProfileKey ENTRY', { state, prevState });
+    console.log('[DEBUG] preserveSelectedProfileKey ENTRY', { state, prevState });
     let selectedProfileKey = state.selectedProfileKey || (prevState && prevState.selectedProfileKey);
     // Explicitly handle the special 'Combine Offers' tab
     if (selectedProfileKey === 'goob-combined-linked') {
-        console.debug('[DEBUG] preserveSelectedProfileKey: returning Combine Offers tab', selectedProfileKey);
+        console.log('[DEBUG] preserveSelectedProfileKey: returning Combine Offers tab', selectedProfileKey);
         return {
             ...state,
             selectedProfileKey: 'goob-combined-linked'
@@ -1030,7 +1030,7 @@ function preserveSelectedProfileKey(state, prevState) {
     if (activeTab) {
         const key = activeTab.getAttribute('data-key');
         if (key === 'goob-combined-linked') {
-            console.debug('[DEBUG] preserveSelectedProfileKey: DOM active tab is Combine Offers', key);
+            console.log('[DEBUG] preserveSelectedProfileKey: DOM active tab is Combine Offers', key);
             return {
                 ...state,
                 selectedProfileKey: 'goob-combined-linked'
@@ -1038,7 +1038,7 @@ function preserveSelectedProfileKey(state, prevState) {
         }
         selectedProfileKey = key;
     }
-    console.debug('[DEBUG] preserveSelectedProfileKey: returning', selectedProfileKey || null);
+    console.log('[DEBUG] preserveSelectedProfileKey: returning', selectedProfileKey || null);
     return {
         ...state,
         selectedProfileKey: selectedProfileKey || null
@@ -1090,9 +1090,9 @@ function updateCombinedOffersCache() {
     // Delete cached DOM
     if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
         delete App.ProfileCache['goob-combined-linked'];
-        console.debug('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after combined offers regeneration');
+        console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after combined offers regeneration');
     }
-    console.debug('[DEBUG] Combined offers data regenerated and cache cleared');
+    console.log('[DEBUG] Combined offers data regenerated and cache cleared');
 }
 
 // Helper to get extension asset URL
