@@ -867,8 +867,8 @@ function mergeProfiles(profileA, profileB) {
         return profileA;
     }
     // Category upgrade orders
-    const celebrityOrder = ["Interior", "Oceanview", "Veranda", "Concierge"];
-    const defaultOrder = ["Interior", "Oceanview", "Balcony", "Junior Suite"];
+    const celebrityOrder = ["Interior", "Ocean View", "Veranda", "Concierge"];
+    const defaultOrder = ["Interior", "Ocean View", "Balcony", "Junior Suite"];
     // Deep copy profileA
     const deepCopy = JSON.parse(JSON.stringify(profileA));
     const offersA = deepCopy.data?.offers || [];
