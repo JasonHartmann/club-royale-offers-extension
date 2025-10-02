@@ -1,8 +1,24 @@
 const TableRenderer = {
     // Track if the default tab has been selected for the current popup display
     hasSelectedDefaultTab: false,
-    switchProfile(key) {
-        console.log('[tableRenderer] switchProfile ENTRY', { key });
+    // Token used to validate most recent profile switch/render cycle
+    currentSwitchToken: null,
+    // Centralized tab highlight helper (called only when token matches)
+    _applyActiveTabHighlight(activeKey) {
+        const tabs = document.querySelectorAll('.profile-tab');
+        tabs.forEach(tb => {
+            const isActive = tb.getAttribute('data-key') === activeKey;
+            tb.classList.toggle('active', isActive);
+            tb.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            const label = tb.querySelector('div');
+            if (label) label.style.fontWeight = isActive ? 'bold' : 'normal';
+        });
+    },
+    switchProfile(key, payload) {
+        // Begin guarded profile switch
+        const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
+        this.currentSwitchToken = switchToken;
+        console.log('[tableRenderer] switchProfile ENTRY', { key, switchToken });
         const cached = App.ProfileCache[key];
         if (!cached || App.CurrentProfile.key === key) {
             console.log('[tableRenderer] switchProfile: No cached profile or already active', { key });
@@ -11,45 +27,62 @@ const TableRenderer = {
         const currentScroll = document.querySelector('.table-scroll-container');
         console.log('[tableRenderer] switchProfile: currentScroll', currentScroll);
         if (currentScroll && App.CurrentProfile.key) {
+            if (!currentScroll._cachedAt) currentScroll._cachedAt = Date.now();
             App.ProfileCache[App.CurrentProfile.key] = {
                 scrollContainer: currentScroll,
                 state: App.TableRenderer.lastState
             };
             console.log('[tableRenderer] switchProfile: Cached current profile', App.CurrentProfile.key);
         }
-        console.log('[tableRenderer] switchProfile: cached.scrollContainer', cached.scrollContainer);
-        console.log('[tableRenderer] switchProfile: cached.state', cached.state);
+        const dataSavedAt = (payload && payload.savedAt) || cached.state?.savedAt || 0;
+        const domCachedAt = cached.scrollContainer?._cachedAt || 0;
+        console.debug('[tableRenderer] switchProfile timestamp check', { key, dataSavedAt, domCachedAt, isStale: !cached.scrollContainer || dataSavedAt > domCachedAt });
+        const needsRebuild = !cached.scrollContainer || dataSavedAt > domCachedAt;
+        if (needsRebuild) {
+            console.log('[tableRenderer] Rebuilding profile view due to', !cached.scrollContainer ? 'missing scrollContainer' : 'stale DOM');
+            if (payload && payload.savedAt && payload.savedAt !== cached.state.savedAt) {
+                cached.state.savedAt = payload.savedAt;
+            }
+            // Ensure token propagates to rebuild
+            cached.state._switchToken = switchToken;
+            this.rebuildProfileView(key, cached.state, payload, switchToken);
+            console.log('[tableRenderer] switchProfile EXIT (rebuild)');
+            return;
+        }
+        // Fast path swap
+        console.log('[tableRenderer] switchProfile: Using cached DOM');
         if (currentScroll && cached.scrollContainer) {
             currentScroll.replaceWith(cached.scrollContainer);
-            console.log('[tableRenderer] switchProfile: Replaced scrollContainer in DOM');
-        } else {
-            console.warn('[tableRenderer] switchProfile: Missing scrollContainer for swap', { currentScroll, cachedScroll: cached.scrollContainer });
         }
-        App.TableRenderer.lastState = { ...cached.state, selectedProfileKey: key };
+        // Propagate switch token into state
+        cached.state._switchToken = switchToken;
+        App.TableRenderer.lastState = { ...cached.state, selectedProfileKey: key, _switchToken: switchToken };
         App.CurrentProfile = {
             key,
             scrollContainer: cached.scrollContainer,
-            state: { ...cached.state, selectedProfileKey: key }
+            state: App.TableRenderer.lastState
         };
-        console.log('[tableRenderer] switchProfile: Updated lastState and CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
-        const tableInDom = cached.scrollContainer.querySelector('table');
-        const breadcrumbInDom = cached.scrollContainer.querySelector('.breadcrumb-container');
-        console.log('[tableRenderer] switchProfile: table in DOM after swap', tableInDom);
-        console.log('[tableRenderer] switchProfile: breadcrumb in DOM after swap', breadcrumbInDom);
-        if (!tableInDom || !breadcrumbInDom) {
-            console.warn('[tableRenderer] Table or breadcrumb missing after swap, forcing updateView');
-            this.updateView(cached.state);
-        }
+        this.updateView(App.TableRenderer.lastState);
         this.updateBreadcrumb(cached.state.groupingStack, cached.state.groupKeysStack);
+        // Apply highlight only if token still current
+        if (this.currentSwitchToken === switchToken) {
+            this._applyActiveTabHighlight(key);
+        } else {
+            console.debug('[tableRenderer] switchProfile: token mismatch after update, highlight skipped', { key, switchToken, currentSwitchToken: this.currentSwitchToken });
+        }
         console.log('[tableRenderer] switchProfile EXIT');
     },
     loadProfile(key, payload) {
-        console.log('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload });
+        const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
+        this.currentSwitchToken = switchToken;
+        console.log('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload, switchToken });
         console.log('[DEBUG] App.ProfileCache:', App.ProfileCache);
         console.log('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
         if (App.ProfileCache[key]) {
             console.log('[DEBUG] Profile found in cache, switching profile', key);
-            this.switchProfile(key);
+            // Ensure cached state carries token
+            if (App.ProfileCache[key].state) App.ProfileCache[key].state._switchToken = switchToken;
+            this.switchProfile(key, payload);
             console.log('[DEBUG] loadProfile EXIT after switchProfile', { key });
         } else {
             console.log('[DEBUG] Building new profile for key', key);
@@ -75,7 +108,7 @@ const TableRenderer = {
                     { key: 'nights', label: 'Nights' },
                     { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
-                    { key: 'quality', label: 'Quality' },
+                    { key: 'guests', label: 'Guests' },
                     { key: 'perks', label: 'Perks' }
                 ],
                 currentSortColumn: 'offerDate', // Default sort by Received
@@ -88,6 +121,7 @@ const TableRenderer = {
                 groupKeysStack: [],
                 hideTierSailings: false,
                 selectedProfileKey: key,
+                _switchToken: switchToken,
                 ...preparedData
             };
             // Load persisted preference for Hide TIER
@@ -134,6 +168,7 @@ const TableRenderer = {
             // Create scrollContainer
             const scrollContainer = document.createElement('div');
             scrollContainer.className = 'table-scroll-container';
+            scrollContainer._cachedAt = Date.now();
             scrollContainer.appendChild(breadcrumbContainer);
             scrollContainer.appendChild(state.table);
             scrollContainer.appendChild(state.accordionContainer);
@@ -169,18 +204,10 @@ const TableRenderer = {
             // Render the view
             console.log('[DEBUG] Calling updateView with state');
             this.updateView(state);
+            // Final highlight guard
+            if (this.currentSwitchToken === switchToken) this._applyActiveTabHighlight(key);
             console.log('[DEBUG] loadProfile EXIT after updateView', { key });
         }
-
-        // Update active tab visuals (since breadcrumb is rebuilt in updateView if needed)
-        document.querySelectorAll('.profile-tab').forEach(tb => {
-            const isActive = tb.getAttribute('data-key') === key;
-            tb.classList.toggle('active', isActive);
-            tb.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-            if (isActive) {
-                console.log('[DEBUG] .profile-tab.active set in loadProfile for key:', key, tb);
-            }
-        });
     },
     prepareOfferData(data) {
         let originalOffers = [];
@@ -256,7 +283,7 @@ const TableRenderer = {
                     { key: 'nights', label: 'Nights' },
                     { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
-                    { key: 'quality', label: 'Quality' },
+                    { key: 'guests', label: 'Guests' },
                     { key: 'perks', label: 'Perks' }
                 ],
                 currentSortColumn: 'offerDate', // Default sort by Received
@@ -269,6 +296,7 @@ const TableRenderer = {
                 groupKeysStack: [],
                 hideTierSailings: false,
                 selectedProfileKey: selectedProfileKey || currentKey || null,
+                _switchToken: null,
                 ...this.prepareOfferData(data)
             };
             // Load persisted preference for Hide TIER
@@ -315,8 +343,74 @@ const TableRenderer = {
             if (existingBackdrop) existingBackdrop.remove();
         }
     },
+    rebuildProfileView(key, existingState, payload, switchToken) {
+        console.debug('[tableRenderer] rebuildProfileView ENTRY', { key, hasExistingState: !!existingState, payloadProvided: !!payload, switchToken });
+        const baseState = existingState || {};
+        const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken };
+        // Ensure core structures
+        state.accordionContainer = document.createElement('div');
+        state.accordionContainer.className = 'w-full';
+        state.backButton = document.createElement('button');
+        state.backButton.style.display = 'none';
+        state.backButton.onclick = () => {
+            state.currentGroupColumn = null;
+            state.viewMode = 'table';
+            state.groupSortStates = {};
+            state.openGroups = new Set();
+            state.groupingStack = [];
+            state.groupKeysStack = [];
+            this.updateView(state);
+        };
+        state.table = App.TableBuilder.createMainTable();
+        state.thead = App.TableBuilder.createTableHeader(state);
+        state.tbody = document.createElement('tbody');
+        // Breadcrumb
+        const breadcrumbContainer = document.createElement('div');
+        breadcrumbContainer.className = 'breadcrumb-container';
+        const allOffersLink = document.createElement('span');
+        allOffersLink.className = 'breadcrumb-link';
+        allOffersLink.textContent = 'All Offers';
+        allOffersLink.addEventListener('click', state.backButton.onclick);
+        const arrow = document.createElement('span');
+        arrow.className = 'breadcrumb-arrow';
+        const groupTitle = document.createElement('span');
+        groupTitle.id = 'group-title';
+        groupTitle.className = 'group-title';
+        breadcrumbContainer.appendChild(allOffersLink);
+        breadcrumbContainer.appendChild(arrow);
+        breadcrumbContainer.appendChild(groupTitle);
+        const scrollContainer = document.createElement('div');
+        scrollContainer.className = 'table-scroll-container';
+        scrollContainer._cachedAt = Date.now();
+        scrollContainer.appendChild(breadcrumbContainer);
+        scrollContainer.appendChild(state.table);
+        scrollContainer.appendChild(state.accordionContainer);
+        // Replace current
+        const currentScroll = document.querySelector('.table-scroll-container');
+        if (currentScroll) currentScroll.replaceWith(scrollContainer);
+        App.TableRenderer.lastState = state;
+        App.CurrentProfile = { key, scrollContainer, state };
+        App.ProfileCache[key] = { scrollContainer, state };
+        console.debug('[tableRenderer] rebuildProfileView: Cached and set current profile', { key, switchToken: state._switchToken });
+        this.updateView(state);
+        if (this.currentSwitchToken === state._switchToken) this._applyActiveTabHighlight(key);
+    },
     updateView(state) {
         console.log('[tableRenderer] updateView ENTRY', state);
+        const switchToken = state._switchToken;
+        // Refined stale token handling: allow intra-profile interactions (like grouping to accordion)
+        if (switchToken && this.currentSwitchToken && this.currentSwitchToken !== switchToken) {
+            const currentProfileKey = App.CurrentProfile ? App.CurrentProfile.key : null;
+            const sameProfile = state.selectedProfileKey === currentProfileKey;
+            const isAccordionTransition = state.viewMode === 'accordion' && state.groupingStack && state.groupingStack.length > 0;
+            if (sameProfile && isAccordionTransition) {
+                console.debug('[tableRenderer] updateView: adopting token for intra-profile accordion interaction', { oldToken: this.currentSwitchToken, adoptedToken: switchToken, profile: currentProfileKey });
+                this.currentSwitchToken = switchToken; // adopt this interaction's token
+            } else {
+                console.debug('[tableRenderer] updateView: stale token detected, aborting DOM update', { switchToken, currentSwitchToken: this.currentSwitchToken, sameProfile, isAccordionTransition });
+                return; // Prevent outdated DOM from overwriting newer profile view
+            }
+        }
         // Always preserve selectedProfileKey, even in recursive calls
         state = preserveSelectedProfileKey(state, App.TableRenderer.lastState);
         App.TableRenderer.lastState = state;
@@ -386,26 +480,58 @@ const TableRenderer = {
                 return;
             }
             accordionContainer.innerHTML = '';
-            let subset = state.sortedOffers;
-            let currentContainer = accordionContainer;
-            for (let depth = 0; depth < state.groupingStack.length; depth++) {
-                const col = state.groupingStack[depth];
+            // Recursive function to render all open accordion levels
+            function renderNestedAccordion(container, subset, groupingStack, groupKeysStack, depth) {
+                if (depth >= groupingStack.length) return;
+                const col = groupingStack[depth];
                 const groupedData = App.AccordionBuilder.createGroupedData(subset, col);
-                const partialGroupingStack = state.groupingStack.slice(0, depth + 1);
-                const partialKeysStack = state.groupKeysStack.slice(0, depth);
-                App.AccordionBuilder.renderAccordion(currentContainer, groupedData, groupSortStates, state, partialGroupingStack, partialKeysStack, globalMaxOfferDate);
-                if (depth < state.groupKeysStack.length) {
-                    const key = state.groupKeysStack[depth];
-                    const escKey = (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(key) : key.replace(/([ #.;?+*~':"!^$\\\[\]()=>|\/])/g, '\\$1');
-                    const tableEl = currentContainer.querySelector(`.accordion-table[data-group-key="${escKey}"]`);
-                    if (tableEl) {
-                        const contentEl = tableEl.closest('.accordion-content');
-                        if (contentEl) { contentEl.classList.add('open'); currentContainer = contentEl; } else break;
-                    } else break;
-                } else break;
+                const partialGroupingStack = groupingStack.slice(0, depth + 1);
+                const partialKeysStack = groupKeysStack.slice(0, depth);
+                App.AccordionBuilder.renderAccordion(container, groupedData, groupSortStates, state, partialGroupingStack, partialKeysStack, globalMaxOfferDate);
+                if (depth < groupKeysStack.length) {
+                    const key = groupKeysStack[depth];
+                    if (groupedData && Object.prototype.hasOwnProperty.call(groupedData, key)) {
+                        // Find the correct nested container
+                        const escKey = (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(key) : key.replace(/([ #.;?+*~':"!^$\\\[\]()=>|\/])/g, '\\$1');
+                        const tableEl = container.querySelector(`.accordion-table[data-group-key="${escKey}"]`);
+                        if (tableEl) {
+                            const contentEl = tableEl.closest('.accordion-content');
+                            if (contentEl) {
+                                contentEl.classList.add('open');
+                                try {
+                                    const openedPath = groupKeysStack.slice(0, depth + 1).join('>');
+                                    if (openedPath) state.openGroups.add(openedPath);
+                                } catch(e){/* ignore */}
+                                // Recursively render the next level
+                                renderNestedAccordion(contentEl, groupedData[key], groupingStack, groupKeysStack, depth + 1);
+                            }
+                        }
+                    }
+                }
             }
+            renderNestedAccordion(accordionContainer, state.sortedOffers, state.groupingStack, state.groupKeysStack, 0);
         }
         this.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+        if (switchToken && this.currentSwitchToken !== switchToken) {
+            console.debug('[tableRenderer] updateView: token mismatch post-render, aborting highlight', { switchToken, currentSwitchToken: this.currentSwitchToken });
+        } else if (switchToken) {
+            this._applyActiveTabHighlight(state.selectedProfileKey);
+            // Post-render sanity diagnostics
+            try {
+                const activeTabEl = document.querySelector('.profile-tab.active');
+                const activeTabKey = activeTabEl ? activeTabEl.getAttribute('data-key') : null;
+                const currentProfileKey = App.CurrentProfile ? App.CurrentProfile.key : null;
+                if (activeTabKey && activeTabKey !== state.selectedProfileKey) {
+                    console.warn('[tableRenderer][DIAG] Active tab key differs from state.selectedProfileKey', { activeTabKey, selectedProfileKey: state.selectedProfileKey });
+                }
+                if (currentProfileKey && currentProfileKey !== state.selectedProfileKey) {
+                    console.warn('[tableRenderer][DIAG] CurrentProfile.key differs from state.selectedProfileKey', { currentProfileKey, selectedProfileKey: state.selectedProfileKey });
+                }
+                if (activeTabKey && currentProfileKey && activeTabKey !== currentProfileKey) {
+                    console.warn('[tableRenderer][DIAG] Active tab key differs from CurrentProfile.key', { activeTabKey, currentProfileKey });
+                }
+            } catch (diagErr) { /* ignore diagnostic errors */ }
+        }
         console.log('[tableRenderer] updateView EXIT');
     },
     updateBreadcrumb(groupingStack, groupKeysStack) {
@@ -466,7 +592,7 @@ const TableRenderer = {
                 const tabs = document.createElement('div');
                 tabs.className = 'profile-tabs';
                 // Always use App.CurrentProfile.key as activeKey after a profile switch
-                let activeKey = state.selectedProfileKey; //App.CurrentProfile && App.CurrentProfile.key ? App.CurrentProfile.key : state.selectedProfileKey;
+                let activeKey = (App.CurrentProfile && App.CurrentProfile.key) ? App.CurrentProfile.key : state.selectedProfileKey;
                 console.debug('[DEBUG] ActiveKey before validation: ', activeKey);
                 console.debug('CurrentProfile.key: ', App.CurrentProfile ? App.CurrentProfile.key : null);
                 console.debug('selectedProfileKey: ', state.selectedProfileKey);
@@ -713,19 +839,7 @@ const TableRenderer = {
                                     }
                                 }
                                 state.selectedProfileKey = p.key;
-                                tabs.querySelectorAll('.profile-tab').forEach(tb => {
-                                    tb.classList.remove('active');
-                                    tb.setAttribute('aria-pressed', 'false');
-                                    const label = tb.querySelector('div');
-                                    if (label) label.style.fontWeight = 'normal';
-                                });
-                                btn.classList.add('active');
-                                btn.setAttribute('aria-pressed', 'true');
-                                const label = btn.querySelector('div');
-                                if (label) label.style.fontWeight = 'bold';
-                                if (Spinner.hideSpinner) {
-                                    setTimeout(() => Spinner.hideSpinner(), 1);
-                                }
+                                // Defer highlight until load completes through centralized logic
                             }, 0);
                         } else {
                             // Fallback: no spinner, just process immediately
@@ -799,7 +913,7 @@ const TableRenderer = {
 
         container.classList.toggle('accordion-view', groupingStack.length > 0);
 
-        // Build crumbs into crumbsRow: for each grouping column, add its label; if a value is selected at this depth add value after it
+        // Build crumbs into crumbsRow: for each grouping column, add its label; if a value is selected at this depth add it
         for (let i = 0; i < groupingStack.length; i++) {
             // Arrow before column label
             const arrowToCol = document.createElement('span');
@@ -881,12 +995,12 @@ function mergeProfiles(profileA, profileB) {
         const codeB = offerB.campaignCode || '';
         const offerCodeB = offerB.campaignOffer?.offerCode || '';
         const categoryB = offerB.category || '';
-        const qualityB = offerB.quality || '';
+        const guestsB = offerB.guests || '';
         const brandB = offerB.brand || offerB.campaignOffer?.brand || '';
         const sailingsB = offerB.campaignOffer?.sailings || [];
         sailingsB.forEach(sailingB => {
             const key = codeB + '|' + (sailingB.shipName || '') + '|' + (sailingB.sailDate || '') + '|' + String(sailingB.isGOBO);
-            sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, qualityB, sailingB });
+            sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, guestsB, sailingB });
         });
     });
     console.debug('[mergeProfiles] sailingMapB size:', sailingMapB.size);
@@ -896,6 +1010,7 @@ function mergeProfiles(profileA, profileB) {
         const offerCodeA = offerA.campaignOffer?.offerCode || '';
         const brandA = offerA.brand || offerA.campaignOffer?.brand || '';
         const sailingsA = offerA.campaignOffer?.sailings || [];
+        const offerNameA = (offerA.campaignOffer?.name || '').toLowerCase();
         const beforeCount = sailingsA.length;
         // Remove non-matching sailings and combine offerCodes/upgrade category if needed
         offerA.campaignOffer.sailings = sailingsA.filter(sailingA => {
@@ -905,14 +1020,20 @@ function mergeProfiles(profileA, profileB) {
                 console.debug(`[mergeProfiles] OfferA[${offerIdx}] sailing removed`, { key, sailingA });
                 return false;
             }
+            // NEW RULE: Do not combine sailings if either offer name contains 'Two Room Offer'
+            const offerNameB = (matchObj.offerB?.campaignOffer?.name || '').toLowerCase();
+            if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) {
+                console.debug(`[mergeProfiles] OfferA[${offerIdx}] sailing skipped due to Two Room Offer restriction`, { key, offerNameA: offerA.campaignOffer?.name, offerNameB: matchObj.offerB?.campaignOffer?.name });
+                return false; // Exclude from merged overlapping sailings
+            }
             const isGOBOA = sailingA.isGOBO === true;
             const isGOBOB = matchObj.sailingB.isGOBO === true;
             const roomTypeA = sailingA.roomType || '';
             const roomTypeB = matchObj.sailingB.roomType || '';
-            // If either sailing has isGOBO=true, set merged isGOBO=false and Quality='2 guests'
+            // If either sailing has isGOBO=true, set merged isGOBO=false and Guests='2 guests'
             if (isGOBOA || isGOBOB) {
                 sailingA.isGOBO = false;
-                offerA.quality = "2 guests";
+                offerA.guests = "2 guests";
                 // Set category to the lowest of the two roomTypes
                 let isCelebrity = false;
                 if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) {
@@ -982,8 +1103,8 @@ function mergeProfiles(profileA, profileB) {
                 }
                 sailingA.roomType = upgradedRoomType;
                 offerA.category = upgradedRoomType;
-                // Always set quality to '2 guests' for merged sailings
-                offerA.quality = "2 guests";
+                // Always set guests to '2 guests' for merged sailings
+                offerA.guests = "2 guests";
             }
             return true;
         });
@@ -1015,34 +1136,13 @@ function mergeProfiles(profileA, profileB) {
 
 // Helper to always preserve selectedProfileKey
 function preserveSelectedProfileKey(state, prevState) {
-    console.log('[DEBUG] preserveSelectedProfileKey ENTRY', { state, prevState });
+    // Always trust the explicit key in state, unless not set
     let selectedProfileKey = state.selectedProfileKey || (prevState && prevState.selectedProfileKey);
-    // Explicitly handle the special 'Combine Offers' tab
-    if (selectedProfileKey === 'goob-combined-linked') {
-        console.log('[DEBUG] preserveSelectedProfileKey: returning Combine Offers tab', selectedProfileKey);
-        return {
-            ...state,
-            selectedProfileKey: 'goob-combined-linked'
-        };
+    if (!selectedProfileKey) {
+        const activeTab = document.querySelector('.profile-tab.active');
+        if (activeTab) selectedProfileKey = activeTab.getAttribute('data-key');
     }
-    // Try to get from DOM
-    const activeTab = document.querySelector('.profile-tab.active');
-    if (activeTab) {
-        const key = activeTab.getAttribute('data-key');
-        if (key === 'goob-combined-linked') {
-            console.log('[DEBUG] preserveSelectedProfileKey: DOM active tab is Combine Offers', key);
-            return {
-                ...state,
-                selectedProfileKey: 'goob-combined-linked'
-            };
-        }
-        selectedProfileKey = key;
-    }
-    console.log('[DEBUG] preserveSelectedProfileKey: returning', selectedProfileKey || null);
-    return {
-        ...state,
-        selectedProfileKey: selectedProfileKey || null
-    };
+    return { ...state, selectedProfileKey: selectedProfileKey || null };
 }
 
 // Helper to get/set linked accounts

@@ -37,7 +37,9 @@ const TableBuilder = {
                 state.currentGroupColumn = null;
                 state.groupingStack = [];
                 state.groupKeysStack = [];
-                console.debug('[tableBuilder] sort-label click: calling updateView');
+                // Ensure token matches current profile to avoid stale-guard abort
+                try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
+                console.debug('[tableBuilder] sort-label click: calling updateView', { token: state._switchToken });
                 App.TableRenderer.updateView(state);
             });
             th.querySelector('.group-icon').addEventListener('click', () => {
@@ -50,7 +52,9 @@ const TableBuilder = {
                 state.openGroups = new Set();
                 state.groupingStack = [header.key];
                 state.groupKeysStack = [];
-                console.debug('[tableBuilder] group-icon click: calling updateView and updateBreadcrumb');
+                // Propagate current switch token so updateView isn't aborted as stale
+                try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
+                console.debug('[tableBuilder] group-icon click: calling updateView and updateBreadcrumb', { token: state._switchToken });
                 App.TableRenderer.updateView(state);
                 App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
             });

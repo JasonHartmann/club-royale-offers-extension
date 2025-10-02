@@ -57,7 +57,9 @@ const Utils = {
             const links = codes.map(code => `
                 <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${code}" title="Lookup ${code}">${code}</a>
             `).join(' / ');
-            codeCell = `${links}<br><a href="${redemptionBase}?offerCode=${encodeURIComponent(firstCode)}" class="redeem-button bg-green-500 hover:bg-green-600 text-white px-[2px] py-[1px] rounded-sm mr-0.5" style="font-size:8px; line-height:1; letter-spacing:0.5px;" title="Redeem ${firstCode}">Redeem</a>`;
+            // Redeem button temporarily disabled – to re‑enable, restore the anchor below.
+            // const redemptionLink = `<br><a href="${redemptionBase}?offerCode=${encodeURIComponent(firstCode)}" class="redeem-button bg-green-500 hover:bg-green-600 text-white px-[2px] py-[1px] rounded-sm mr-0.5" style="font-size:8px; line-height:1; letter-spacing:0.5px;" title="Redeem ${firstCode}">Redeem</a>`;
+            codeCell = `${links}`; // + redemptionLink;
         }
 
         // Append between anchors above
