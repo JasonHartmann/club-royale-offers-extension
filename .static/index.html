@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Comp Royale – Club Royale Casino Offers Viewer Extension</title>
-  <meta name="description" content="Chrome extension that transforms Royal Caribbean Club Royale casino offers into a sortable, groupable, power-user interface." />
+  <title>Comp Royale – Club Royale & Blue Chip Casino Offers Viewer Extension</title>
+  <meta name="description" content="Chrome extension that transforms Royal Caribbean Club Royale and Celebrity Blue Chip Club casino offers into a sortable, groupable, power-user interface." />
   <meta name="theme-color" content="#0a4d8c" />
-  <meta property="og:title" content="Club Royale Casino Offers Viewer" />
-  <meta property="og:description" content="View, sort, group, and explore Royal Caribbean Club Royale casino offers effortlessly." />
+  <meta property="og:title" content="Club Royale & Blue Chip Casino Offers Viewer" />
+  <meta property="og:description" content="View, sort, group, and explore Royal Caribbean Club Royale and Celebrity Blue Chip Club casino offers effortlessly." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://comproyale.com/" />
   <meta property="og:image" content="https://comproyale.com/offer-screen.png" />
@@ -17,10 +17,10 @@
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Club Royale Casino Offers Viewer",
+    "name": "Club Royale & Blue Chip Casino Offers Viewer",
     "applicationCategory": "BrowserExtension",
     "operatingSystem": "Chrome",
-    "description": "Enhances the Royal Caribbean Club Royale Offers page with sortable tables, grouping, accordion drilldowns, highlights, and streamlined navigation.",
+    "description": "Enhances the Royal Caribbean Club Royale and Celebrity Blue Chip Club Offers pages with sortable tables, grouping, accordion drilldowns, highlights, and streamlined navigation.",
     "image": "https://comproyale.com/offer-screen.png",
     "url": "https://comproyale.com/",
     "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
@@ -32,19 +32,21 @@
   <header class="gradient-hero">
     <div class="hero-inner">
       <div>
-        <h1>Club Royale Casino Offers Viewer</h1>
-        <p class="lead">Supercharge Royal Caribbean Club Royale offer browsing. Instantly view all casino offers in a fast, sortable table or drillable accordion—group, filter, highlight, and plan smarter.</p>
+        <h1>Club Royale & Blue Chip Casino Offers Viewer</h1>
+        <p class="lead">Supercharge your Royal Caribbean Club Royale <strong>and</strong> Celebrity Blue Chip Club offer browsing. Instantly view all casino offers in a fast, sortable table or drillable accordion—group, filter, highlight, and plan smarter. <strong>Now with multi-profile support and combined offer upgrades!</strong></p>
         <div class="cta-row">
           <a class="btn" href="#install">Install Extension</a>
           <a class="btn alt" href="#screens">See Screens</a>
+          <a class="btn coffee" href="https://buymeacoffee.com/comproyale" target="_blank" rel="noopener" style="background:#ffdd00;color:#222;margin-left:8px;">☕ Buy Me a Coffee</a>
         </div>
         <div class="pill-row" aria-label="Key benefits">
+          <span class="pill">Multiple Profiles</span>
+          <span class="pill">Combined Offers</span>
+          <span class="pill">Celebrity & Royal Support</span>
           <span class="pill">Zero Tracking</span>
-          <span class="pill">Readable Data</span>
           <span class="pill">Grouping</span>
           <span class="pill">Fast Sorting</span>
           <span class="pill">Highlight Expiring</span>
-          <span class="pill">Low Friction</span>
         </div>
         <p style="font-size:.7rem;opacity:.8;margin-top:1.25rem;">Support: <a href="mailto:admin@comproyale.com" style="color:#fff;text-decoration:underline;">admin@comproyale.com</a></p>
       </div>
@@ -56,18 +58,38 @@
   </header>
 
   <main>
+    <section id="whatsnew">
+      <div class="wrapper">
+        <h2>What’s New in v1.3</h2>
+        <ul class="details">
+          <li><strong>Celebrity Blue Chip Club Support:</strong> View and manage offers from both Royal Caribbean Club Royale and Celebrity Blue Chip Club in one place.</li>
+          <li><strong>Multiple Profile Support:</strong> Add and switch between player profiles. Each account gets its own tab with email, loyalty number, and refresh time.</li>
+          <li><strong>Combined Offers:</strong> Link two profiles to see a new tab with their combined offers and upgrade opportunities.</li>
+          <li><strong>Offer Image Links:</strong> Offer codes now link to the original RCL email images (where available).</li>
+          <li><strong>Hide Offers by Group:</strong> Instantly hide all offers in a group using the new trash icon (per profile).</li>
+          <li><strong>Performance & UI:</strong> Faster table rendering and smoother UI updates.</li>
+        </ul>
+      </div>
+    </section>
+    <section id="latest-update">
+      <div class="wrapper">
+        <h2>Latest Update</h2>
+        <p>Read the latest behind-the-scenes and roadmap: <a href="https://buymeacoffee.com/comproyale/what-i-m-working-on-4060937" target="_blank" rel="noopener">What I'm Working On (Oct 2025)</a></p>
+      </div>
+    </section>
     <section id="features">
       <div class="wrapper">
         <h2>Why it helps</h2>
-        <p class="intro-text">Scrolling raw offer cards is slow. This extension structures everything into actionable data so you can focus on planning—not parsing. Quick sorting, multi-layer grouping, clean highlighting, and frictionless reading all save time.</p>
+        <p class="intro-text">Scrolling raw offer cards is slow. This extension structures everything into actionable data so you can focus on planning—not parsing. Quick sorting, multi-profile tabs, grouping, and frictionless reading all save time. <strong>Works for both Club Royale and Blue Chip Club offers.</strong></p>
         <div class="features-grid">
-          <div class="feature"><h3>Instant Launch</h3><p>One button injected into the official Offers page. No extra navigation.</p></div>
+          <div class="feature"><h3>Celebrity & Royal Support</h3><p>Works on both Royal Caribbean Club Royale and Celebrity Blue Chip Club offers pages.</p></div>
+          <div class="feature"><h3>Multiple Profiles</h3><p>Switch between player accounts with tabs. Each profile is saved and managed separately.</p></div>
+          <div class="feature"><h3>Combined Offers</h3><p>Link two profiles to see upgrade-eligible offers in a new combined tab.</p></div>
           <div class="feature"><h3>Smart Table</h3><p>Sortable by any column with 3-state cycle: asc, desc, original order.</p></div>
           <div class="feature"><h3>Accordion Groups</h3><p>Group by code, ship, port, destination, category, or guests.</p></div>
-            <div class="feature"><h3>Visual Highlights</h3><p>Newest offers + soon expiring flagged for fast triage.</p></div>
-          <div class="feature"><h3>Readable Ports</h3><p>Cleans inconsistent capitalization while respecting abbreviations.</p></div>
+          <div class="feature"><h3>Hide by Group</h3><p>Use the trash icon to hide all offers in a group (per profile).</p></div>
+          <div class="feature"><h3>Visual Highlights</h3><p>Newest offers + soon expiring flagged for fast triage.</p></div>
           <div class="feature"><h3>Privacy First</h3><p>No remote calls beyond the site itself; no tracking or analytics.</p></div>
-          <div class="feature"><h3>Resilient</h3><p>Auto re-injects if the page re-renders or elements shift.</p></div>
           <div class="feature"><h3>Low Overhead</h3><p>Lightweight content script, fast DOM operations, minimal styles.</p></div>
         </div>
       </div>
@@ -88,11 +110,13 @@
         <div>
           <h2>Install & Use</h2>
           <ol class="steps">
-            <li>Install from the Chrome Web Store (link coming soon).</li>
-            <li>Log into your Royal Caribbean account and open the Club Royale Offers page.</li>
+            <li>Install from the <a href="https://chromewebstore.google.com/detail/club-royale-casino-offers/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">Chrome Web Store</a>.</li>
+            <li>Log into your Royal Caribbean or Celebrity account and open the Club Royale or Blue Chip Club Offers page.</li>
             <li>Click the added <strong>Show Casino Offers</strong> button in the top bar.</li>
-            <li>Sort columns or switch to grouped accordion mode.</li>
-            <li>Highlight expiring offers and scan newest instantly.</li>
+            <li>Switch between profiles using the tabs at the top.</li>
+            <li>Link two profiles with the chain icon to see combined offers.</li>
+            <li>Sort columns, group, or filter as needed.</li>
+            <li>Hide groups with the trash icon (per profile).</li>
             <li>Close with the X or press ESC.</li>
           </ol>
           <p class="note">No data leaves the page. Processing is local and ephemeral.</p>
@@ -100,14 +124,16 @@
         <div>
           <h2>Key Details</h2>
           <ul class="details">
-            <li>Manifest V3, content script only.</li>
-            <li>No persistent background network activity.</li>
-            <li>Graceful fallback if layout shifts.</li>
-            <li>Adaptive column sizing for clarity.</li>
-            <li>Accessible focus & keyboard close.</li>
-            <li>Designed for desktop + large tablet.</li>
+            <li>Works on both Royal Caribbean and Celebrity offers pages</li>
+            <li>Switch between multiple player profiles with one click</li>
+            <li>Combine offers from two accounts to see upgrade opportunities</li>
+            <li>Instantly hide groups you don't care about</li>
+            <li>Sort, group, and filter to find the best deals fast</li>
+            <li>Designed for easy use on desktop</li>
+            <li>All your data stays private in your browser</li>
+            <li>Accessible: keyboard navigation and screen reader friendly</li>
           </ul>
-          <p class="note">Future ideas: quick filters, CSV export, ship tagging, session renew hints.</p>
+          <p class="note">Future ideas: Favorites!</p>
         </div>
       </div>
     </section>
@@ -117,7 +143,7 @@
     <section id="privacy">
       <div class="wrapper">
         <h2>Privacy & Scope</h2>
-        <p class="privacy-copy">The extension only reads the existing HTML and API response already delivered to the page while you are authenticated. It does not transmit credentials, tokens, or analytics. You may disable it anytime; it is idle when not on the Offers page.</p>
+        <p class="privacy-copy">The extension only reads the existing HTML and API response already delivered to the page while you are authenticated on Royal Caribbean or Celebrity. It does not transmit credentials, tokens, or analytics. You may disable it anytime; it is idle when not on the Offers page.</p>
       </div>
     </section>
   </main>
@@ -125,8 +151,8 @@
   <footer>
     <div class="footer-grid">
       <div>
-        <h3 class="footer-title">Club Royale Casino Offers Viewer</h3>
-        <p class="footer-desc">Unofficial enhancement tool for organizing and exploring Royal Caribbean Club Royale casino offers with better clarity and control.</p>
+        <h3 class="footer-title">Club Royale & Blue Chip Casino Offers Viewer</h3>
+        <p class="footer-desc">Unofficial enhancement tool for organizing and exploring Royal Caribbean Club Royale and Celebrity Blue Chip Club casino offers with better clarity and control.</p>
       </div>
       <div>
         <h4 class="footer-head">Links</h4>
@@ -136,16 +162,18 @@
           <li><a href="#install">Install</a></li>
           <li><a href="#privacy">Privacy</a></li>
           <li><a href="mailto:admin@comproyale.com">Support</a></li>
+          <li><a href="https://buymeacoffee.com/comproyale" target="_blank" rel="noopener">Buy Me a Coffee</a></li>
+          <li><a href="https://buymeacoffee.com/comproyale/what-i-m-working-on-4060937" target="_blank" rel="noopener">Latest Blog Post</a></li>
         </ul>
         <p style="font-size:.65rem;margin-top:.75rem;opacity:.8;">Email: <a href="mailto:admin@comproyale.com" style="color:#fff;">admin@comproyale.com</a></p>
       </div>
       <div>
         <h4 class="footer-head">Status</h4>
-        <p class="status">In active iteration. Feedback welcome via repository issues once public store link is live.</p>
+        <p class="status">In active iteration!</p>
       </div>
     </div>
-    <p class="legal small-print">Not affiliated with Royal Caribbean International or its loyalty programs. All trademarks belong to their respective owners.</p>
-    <p style="text-align:center;font-size:.6rem;opacity:.55;margin:.5rem 0 0;">© 2025 Percex Technologies, LLCSupercharge your Club Royale browsing with the new Club Royale Casino Offers Viewer — a tiny Chrome extension that turns messy offer cards into a fast, sortable table and grouped accordion views. View, sort, group, and highlight expiring offers locally with zero tracking. Install now: https://chromewebstore.google.com/detail/club-royale-casino-offers/aggjibokgkckjppkalkgnegheoldlimd. All rights reserved.</p>
+    <p class="legal small-print">Not affiliated with Royal Caribbean International, Celebrity Cruises, or their loyalty programs. All trademarks belong to their respective owners.</p>
+    <p style="text-align:center;font-size:.6rem;opacity:.55;margin:.5rem 0 0;">© 2025 Percex Technologies, LLC. Supercharge your Club Royale and Blue Chip Club browsing with the new Club Royale & Blue Chip Casino Offers Viewer — a tiny Chrome extension that turns messy offer cards into a fast, sortable table and grouped accordion views. View, sort, group, and highlight expiring offers locally with zero tracking. Install now: <a href="https://chromewebstore.google.com/detail/club-royale-casino-offers/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">https://chromewebstore.google.com/detail/club-royale-casino-offers/aggjibokgkckjppkalkgnegheoldlimd</a>. All rights reserved.</p>
   </footer>
   <noscript><div style="padding:1rem;text-align:center;font-size:.75rem;color:#555">JavaScript is disabled; some interactive enhancements may not appear.</div></noscript>
 </body>
