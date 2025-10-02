@@ -126,11 +126,11 @@ const TableRenderer = {
             };
             // Load persisted preference for Hide TIER
             try {
-                const savedPref = localStorage.getItem('goboHideTier');
-                console.log('[DEBUG] localStorage goboHideTier:', savedPref);
+                const savedPref = (typeof goboStorageGet === 'function' ? goboStorageGet('goboHideTier') : localStorage.getItem('goboHideTier'));
+                console.log('[DEBUG] gobo storage goboHideTier:', savedPref);
                 if (savedPref !== null) state.hideTierSailings = savedPref === 'true';
             } catch (e) {
-                console.error('[DEBUG] Error accessing localStorage for goboHideTier', e);
+                console.error('[DEBUG] Error accessing storage for goboHideTier', e);
             }
             state.fullOriginalOffers = [...(state.originalOffers || [])];
             state.accordionContainer = document.createElement('div');
@@ -301,7 +301,7 @@ const TableRenderer = {
             };
             // Load persisted preference for Hide TIER
             try {
-                const savedPref = localStorage.getItem('goboHideTier');
+                const savedPref = (typeof goboStorageGet === 'function' ? goboStorageGet('goboHideTier') : localStorage.getItem('goboHideTier'));
                 if (savedPref !== null) state.hideTierSailings = savedPref === 'true';
             } catch (e) { /* ignore */ }
             state.fullOriginalOffers = [...state.originalOffers];
@@ -536,6 +536,15 @@ const TableRenderer = {
     },
     updateBreadcrumb(groupingStack, groupKeysStack) {
         console.log('[tableRenderer] updateBreadcrumb ENTRY', { groupingStack, groupKeysStack });
+        // If extension storage hasn't finished hydration yet, wait and retry once
+        if (typeof GoboStore !== 'undefined' && GoboStore && !GoboStore.ready) {
+            console.debug('[tableRenderer] GoboStore not ready; deferring breadcrumb render until goboStorageReady');
+            const retry = () => {
+                try { App.TableRenderer.updateBreadcrumb(groupingStack, groupKeysStack); } catch(e) { /* ignore */ }
+            };
+            document.addEventListener('goboStorageReady', retry, { once: true });
+            return;
+        }
         const state = App.TableRenderer.lastState;
         if (!state) return;
         const container = document.querySelector('.breadcrumb-container');
@@ -554,19 +563,25 @@ const TableRenderer = {
         // Render profile tabs (saved profiles from localStorage prefixed with 'gobo-')
         try {
             const profiles = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                if (!k) continue;
-                if (k.startsWith('gobo-')) {
-                    let payload = null;
-                    try {
-                        payload = JSON.parse(localStorage.getItem(k));
-                        if (payload && payload.data && payload.savedAt) {
-                            profiles.push({ key: k, label: k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: payload.savedAt });
-                        }
-                    } catch (e) { /* ignore invalid */ }
+            // Prefer GoboStore enumeration if available
+            let profileKeys = [];
+            if (typeof GoboStore !== 'undefined' && GoboStore && typeof GoboStore.getAllProfileKeys === 'function') {
+                profileKeys = GoboStore.getAllProfileKeys();
+            } else {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('gobo-')) profileKeys.push(k);
                 }
             }
+            profileKeys.forEach(k => {
+                let payload = null;
+                try {
+                    payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k)));
+                    if (payload && payload.data && payload.savedAt) {
+                        profiles.push({ key: k, label: k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: payload.savedAt });
+                    }
+                } catch (e) { /* ignore invalid */ }
+            });
             if (profiles.length) {
                 // Restore: move current user's tab to the front
                 let currentKey = null;
@@ -626,7 +641,7 @@ const TableRenderer = {
                     // Fix: define loyaltyId for each profile
                     let loyaltyId = null;
                     try {
-                        const payload = JSON.parse(localStorage.getItem(p.key));
+                        const payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key)));
                         if (payload && payload.data) {
                             loyaltyId = payload.data.loyaltyId || null;
                         }
@@ -677,31 +692,31 @@ const TableRenderer = {
                                 // Remove goob-combined if less than 2 linked accounts
                                 if (updated.length < 2) {
                                     try {
-                                        localStorage.removeItem('goob-combined');
+                                        if (typeof goboStorageRemove === 'function') goboStorageRemove('goob-combined'); else localStorage.removeItem('goob-combined');
                                         if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
                                             delete App.ProfileCache['goob-combined-linked'];
                                             console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after goob-combined removal');
                                         }
                                     } catch (err) { /* ignore */ }
-                                    console.debug('[LinkedAccounts] goob-combined removed from localStorage due to unlink');
+                                    console.debug('[LinkedAccounts] goob-combined removed from storage due to unlink');
                                 }
                             } else {
                                 if (updated.length >= 2) return; // Prevent linking a third account
                                 let email = p.label;
                                 try {
-                                    const payload = JSON.parse(localStorage.getItem(p.key));
+                                    const payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key)));
                                     if (payload && payload.data && payload.data.email) email = payload.data.email;
                                 } catch (e) { /* ignore */ }
                                 updated.push({ key: p.key, email });
                                 // If this is the second linked account, merge both profiles and save to 'goob-combined'
                                 if (updated.length === 2) {
                                     try {
-                                        const raw1 = localStorage.getItem(updated[0].key);
-                                        const raw2 = localStorage.getItem(updated[1].key);
+                                        const raw1 = (typeof goboStorageGet === 'function' ? goboStorageGet(updated[0].key) : localStorage.getItem(updated[0].key));
+                                        const raw2 = (typeof goboStorageGet === 'function' ? goboStorageGet(updated[1].key) : localStorage.getItem(updated[1].key));
                                         const profile1 = raw1 ? JSON.parse(raw1) : null;
                                         const profile2 = raw2 ? JSON.parse(raw2) : null;
                                         const merged = mergeProfiles(profile1, profile2);
-                                        localStorage.setItem('goob-combined', JSON.stringify(merged));
+                                        if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged));
                                     } catch (e) { /* ignore */ }
                                 }
                             }
@@ -729,16 +744,16 @@ const TableRenderer = {
                                         // Remove combined offers if less than 2 linked accounts
                                         if (linkedAccounts.length < 2) {
                                             try {
-                                                localStorage.removeItem('goob-combined');
+                                                if (typeof goboStorageRemove === 'function') goboStorageRemove('goob-combined'); else localStorage.removeItem('goob-combined');
                                                 if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
                                                     delete App.ProfileCache['goob-combined-linked'];
                                                     console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after combined removal');
                                                 }
                                             } catch (err) { /* ignore */ }
-                                            console.debug('[LinkedAccounts] goob-combined removed from localStorage due to unlink on delete');
+                                            console.debug('[LinkedAccounts] goob-combined removed from storage due to unlink on delete');
                                         }
                                     }
-                                    localStorage.removeItem(p.key);
+                                    if (typeof goboStorageRemove === 'function') goboStorageRemove(p.key); else localStorage.removeItem(p.key);
                                     if (p.key === 'goob-combined-linked' && App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
                                         delete App.ProfileCache['goob-combined-linked'];
                                         console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after trash removal');
@@ -798,7 +813,7 @@ const TableRenderer = {
                             setTimeout(() => {
                                 if (p.key === 'goob-combined-linked') {
                                     try {
-                                        const raw = localStorage.getItem('goob-combined');
+                                        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
                                         if (!raw) {
                                             App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.');
                                             if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
@@ -818,7 +833,7 @@ const TableRenderer = {
                                     }
                                 } else {
                                     try {
-                                        const raw = localStorage.getItem(p.key);
+                                        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key));
                                         if (!raw) {
                                             App.ErrorHandler.showError('Selected profile is no longer available.');
                                             if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
@@ -846,7 +861,7 @@ const TableRenderer = {
                             if (p.key === 'goob-combined-linked') {
                                 // Load the merged profile from localStorage
                                 try {
-                                    const raw = localStorage.getItem('goob-combined');
+                                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
                                     if (!raw) {
                                         App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.');
                                         return;
@@ -862,7 +877,7 @@ const TableRenderer = {
                                 }
                             } else {
                                 try {
-                                    const raw = localStorage.getItem(p.key);
+                                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key));
                                     if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
                                     const payload = JSON.parse(raw);
                                     if (payload && payload.data) {
@@ -1148,13 +1163,13 @@ function preserveSelectedProfileKey(state, prevState) {
 // Helper to get/set linked accounts
 function getLinkedAccounts() {
     try {
-        const raw = localStorage.getItem('goboLinkedAccounts');
+        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLinkedAccounts') : localStorage.getItem('goboLinkedAccounts'));
         return raw ? JSON.parse(raw) : [];
     } catch (e) { return []; }
 }
 
 function setLinkedAccounts(arr) {
-    try { localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr)); } catch (e) { /* ignore */ }
+    try { if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(arr)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr)); } catch (e) { /* ignore */ }
 }
 
 function formatTimeAgo(savedAt) {
@@ -1177,16 +1192,16 @@ function updateCombinedOffersCache() {
     // Get all linked accounts
     const linkedAccounts = getLinkedAccounts();
     if (!linkedAccounts || linkedAccounts.length < 2) return;
-    // Fetch latest data for each linked account from localStorage
+    // Fetch latest data for each linked account from storage
     const profiles = linkedAccounts.map(acc => {
-        const raw = localStorage.getItem(acc.key);
+        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key));
         return raw ? JSON.parse(raw) : null;
     }).filter(Boolean);
     if (profiles.length < 2) return;
     // Merge profiles
     const merged = mergeProfiles(profiles[0], profiles[1]);
-    // Save to localStorage
-    localStorage.setItem('goob-combined', JSON.stringify(merged));
+    // Save to storage
+    if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged));
     // Delete cached DOM
     if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
         delete App.ProfileCache['goob-combined-linked'];

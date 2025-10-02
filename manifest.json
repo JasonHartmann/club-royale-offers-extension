@@ -9,6 +9,7 @@
       "strict_min_version": "109.0"
     }
   },
+  "permissions": ["storage"],
   "content_scripts": [
     {
       "matches": [
@@ -16,6 +17,7 @@
         "https://*.celebritycruises.com/blue-chip-club/*"
       ],
       "js": [
+        "storageShim.js",
         "domUtils.js",
         "styles.js",
         "buttonManager.js",

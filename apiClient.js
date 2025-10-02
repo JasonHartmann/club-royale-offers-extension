@@ -198,8 +198,8 @@ const ApiClient = {
                 const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
                 const storageKey = `gobo-${usernameKey}`;
                 const payload = { savedAt: Date.now(), data: normalizedData };
-                localStorage.setItem(storageKey, JSON.stringify(payload));
-                console.debug(`[apiClient] Saved normalized offers to localStorage key: ${storageKey}`);
+                if (typeof goboStorageSet === 'function') goboStorageSet(storageKey, JSON.stringify(payload)); else localStorage.setItem(storageKey, JSON.stringify(payload));
+                console.debug(`[apiClient] Saved normalized offers to storage key: ${storageKey}`);
 
                 // If this account is part of linked accounts, update combined offers and clear cache
                 if (typeof updateCombinedOffersCache === 'function') {

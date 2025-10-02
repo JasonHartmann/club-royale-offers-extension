@@ -76,7 +76,9 @@ const Filtering = {
     // Load hidden groups for a profile
     loadHiddenGroups(profileKey) {
         try {
-            return JSON.parse(localStorage.getItem('goboHiddenGroups-' + profileKey)) || [];
+            const key = 'goboHiddenGroups-' + profileKey;
+            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(key) : localStorage.getItem(key));
+            return raw ? JSON.parse(raw) : [];
         } catch (e) {
             return [];
         }
@@ -88,7 +90,8 @@ const Filtering = {
         if (!groups.includes(group)) {
             groups.push(group);
             try {
-                localStorage.setItem('goboHiddenGroups-' + profileKey, JSON.stringify(groups));
+                const key = 'goboHiddenGroups-' + profileKey;
+                if (typeof goboStorageSet === 'function') goboStorageSet(key, JSON.stringify(groups)); else localStorage.setItem(key, JSON.stringify(groups));
             } catch (e) { /* ignore */ }
         }
         this.updateHiddenGroupsList(profileKey, document.getElementById('hidden-groups-display'), state);
@@ -100,7 +103,8 @@ const Filtering = {
         let groups = Filtering.loadHiddenGroups(profileKey);
         groups = groups.filter(g => g !== group);
         try {
-            localStorage.setItem('goboHiddenGroups-' + profileKey, JSON.stringify(groups));
+            const key = 'goboHiddenGroups-' + profileKey;
+            if (typeof goboStorageSet === 'function') goboStorageSet(key, JSON.stringify(groups)); else localStorage.setItem(key, JSON.stringify(groups));
         } catch (e) { /* ignore */ }
         this.updateHiddenGroupsList(profileKey, document.getElementById('hidden-groups-display'), state);
         setTimeout(() => { Spinner.hideSpinner(); }, 3000);
@@ -141,10 +145,11 @@ const Filtering = {
                     let groups = Filtering.loadHiddenGroups(profileKey);
                     groups = groups.filter(g => g !== path);
                     try {
-                        localStorage.setItem('goboHiddenGroups-' + profileKey, JSON.stringify(groups));
-                        console.debug('[Filtering] Hidden Group removed from localStorage', { profileKey, path, groups });
+                        const key = 'goboHiddenGroups-' + profileKey;
+                        if (typeof goboStorageSet === 'function') goboStorageSet(key, JSON.stringify(groups)); else localStorage.setItem(key, JSON.stringify(groups));
+                        console.debug('[Filtering] Hidden Group removed from storage', { profileKey, path, groups });
                     } catch (e) {
-                        console.warn('[Filtering] Error removing Hidden Group from localStorage', e);
+                        console.warn('[Filtering] Error removing Hidden Group from storage', e);
                     }
                     Filtering.updateHiddenGroupsList(profileKey, document.getElementById('hidden-groups-display'), state);
                     console.debug('[Filtering] updateHiddenGroupsList called after removal', { profileKey, groups });
