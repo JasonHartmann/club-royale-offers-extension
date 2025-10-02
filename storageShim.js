@@ -98,6 +98,11 @@
         },
         getAllProfileKeys() {
             return Array.from(internal.keys()).filter(k => k.startsWith('gobo-'));
+        },
+        listKeys(prefix) {
+            const keys = Array.from(internal.keys());
+            if (prefix) return keys.filter(k => k.startsWith(prefix));
+            return keys.slice();
         }
     };
 

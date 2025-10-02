@@ -2,8 +2,8 @@ const Filtering = {
 
     filterOffers(state, offers) {
         console.time('Filtering.filterOffers');
-        let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
-        const hiddenGroups = Filtering.loadHiddenGroups(profileKey);
+        // Hidden groups are now GLOBAL (shared across all accounts)
+        const hiddenGroups = Filtering.loadHiddenGroups();
         if (!Array.isArray(hiddenGroups) || hiddenGroups.length === 0) {
             console.timeEnd('Filtering.filterOffers');
             return offers;
@@ -73,54 +73,82 @@ const Filtering = {
                 return offer[key];
         }
     },
-    // Load hidden groups for a profile
-    loadHiddenGroups(profileKey) {
+    // Load hidden groups (GLOBAL now). Performs one-time migration from per-profile keys.
+    loadHiddenGroups() {
+        const GLOBAL_KEY = 'goboHiddenGroups-global';
         try {
-            const key = 'goboHiddenGroups-' + profileKey;
-            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(key) : localStorage.getItem(key));
-            return raw ? JSON.parse(raw) : [];
+            const existing = (typeof goboStorageGet === 'function' ? goboStorageGet(GLOBAL_KEY) : localStorage.getItem(GLOBAL_KEY));
+            if (existing) {
+                try { return JSON.parse(existing) || []; } catch(e){ return []; }
+            }
+            const aggregated = new Set();
+            const collectFromValue = (raw) => {
+                if (!raw) return;
+                try {
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) arr.forEach(v => aggregated.add(v));
+                } catch(e) { /* ignore */ }
+            };
+            // Enumerate legacy keys from GoboStore if available
+            if (typeof GoboStore !== 'undefined' && GoboStore && typeof GoboStore.listKeys === 'function') {
+                try {
+                    GoboStore.listKeys('goboHiddenGroups-').forEach(k => {
+                        if (k !== GLOBAL_KEY) collectFromValue(goboStorageGet(k));
+                    });
+                } catch(e) { /* ignore */ }
+            }
+            // Also enumerate window.localStorage for any leftovers
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('goboHiddenGroups-') && k !== GLOBAL_KEY) {
+                    collectFromValue(localStorage.getItem(k));
+                }
+            }
+            const merged = Array.from(aggregated);
+            try {
+                if (typeof goboStorageSet === 'function') goboStorageSet(GLOBAL_KEY, JSON.stringify(merged)); else localStorage.setItem(GLOBAL_KEY, JSON.stringify(merged));
+            } catch(e) { /* ignore */ }
+            return merged;
         } catch (e) {
             return [];
         }
     },
-    // Add a hidden group for a profile
+    // Add a hidden group (GLOBAL)
     addHiddenGroup(state, group) {
-        let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
-        const groups = Filtering.loadHiddenGroups(profileKey);
+        const GLOBAL_KEY = 'goboHiddenGroups-global';
+        const groups = Filtering.loadHiddenGroups();
         if (!groups.includes(group)) {
             groups.push(group);
             try {
-                const key = 'goboHiddenGroups-' + profileKey;
-                if (typeof goboStorageSet === 'function') goboStorageSet(key, JSON.stringify(groups)); else localStorage.setItem(key, JSON.stringify(groups));
+                if (typeof goboStorageSet === 'function') goboStorageSet(GLOBAL_KEY, JSON.stringify(groups)); else localStorage.setItem(GLOBAL_KEY, JSON.stringify(groups));
             } catch (e) { /* ignore */ }
         }
-        this.updateHiddenGroupsList(profileKey, document.getElementById('hidden-groups-display'), state);
+        this.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state);
         return groups;
     },
-    // Delete a hidden group for a profile
+    // Delete a hidden group (GLOBAL)
     deleteHiddenGroup(state, group) {
-        let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
-        let groups = Filtering.loadHiddenGroups(profileKey);
+        const GLOBAL_KEY = 'goboHiddenGroups-global';
+        let groups = Filtering.loadHiddenGroups();
         groups = groups.filter(g => g !== group);
         try {
-            const key = 'goboHiddenGroups-' + profileKey;
-            if (typeof goboStorageSet === 'function') goboStorageSet(key, JSON.stringify(groups)); else localStorage.setItem(key, JSON.stringify(groups));
+            if (typeof goboStorageSet === 'function') goboStorageSet(GLOBAL_KEY, JSON.stringify(groups)); else localStorage.setItem(GLOBAL_KEY, JSON.stringify(groups));
         } catch (e) { /* ignore */ }
-        this.updateHiddenGroupsList(profileKey, document.getElementById('hidden-groups-display'), state);
+        this.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state);
         setTimeout(() => { Spinner.hideSpinner(); }, 3000);
         return groups;
     },
-    // Update the hidden groups display element for a profile
-    updateHiddenGroupsList(profileKey, displayElement, state) {
-        console.debug('[Filtering] updateHiddenGroupsList ENTRY', { profileKey, displayElement, state });
+    // Update the hidden groups display element (GLOBAL)
+    updateHiddenGroupsList(_ignoredProfileKey, displayElement, state) {
+        console.debug('[Filtering] updateHiddenGroupsList ENTRY (GLOBAL)', { displayElement, state });
         if (!displayElement) {
-            console.warn('updateHiddenGroupsList: displayElement is null for profileKey', profileKey);
+            console.warn('updateHiddenGroupsList: displayElement is null (GLOBAL)');
             return;
         }
         displayElement.innerHTML = '';
         displayElement.className = 'hidden-groups-display';
-        const hiddenGroups = Filtering.loadHiddenGroups(profileKey);
-        console.debug('[Filtering] updateHiddenGroupsList loaded hiddenGroups:', hiddenGroups);
+        const hiddenGroups = Filtering.loadHiddenGroups();
+        console.debug('[Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL):', hiddenGroups);
         if (Array.isArray(hiddenGroups) && hiddenGroups.length > 0) {
             // Sort hidden groups alphabetically, case-insensitive
             const sortedGroups = hiddenGroups.slice().sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
@@ -140,28 +168,28 @@ const Filtering = {
                 removeBtn.title = 'Remove hidden group';
                 removeBtn.style.cursor = 'pointer';
                 removeBtn.addEventListener('click', () => {
-                    console.debug('[Filtering] Hidden Group removeBtn clicked', { profileKey, path });
+                    console.debug('[Filtering] Hidden Group removeBtn clicked (GLOBAL)', { path });
                     Spinner.showSpinner();
-                    let groups = Filtering.loadHiddenGroups(profileKey);
+                    let groups = Filtering.loadHiddenGroups();
                     groups = groups.filter(g => g !== path);
                     try {
-                        const key = 'goboHiddenGroups-' + profileKey;
-                        if (typeof goboStorageSet === 'function') goboStorageSet(key, JSON.stringify(groups)); else localStorage.setItem(key, JSON.stringify(groups));
-                        console.debug('[Filtering] Hidden Group removed from storage', { profileKey, path, groups });
+                        const GLOBAL_KEY = 'goboHiddenGroups-global';
+                        if (typeof goboStorageSet === 'function') goboStorageSet(GLOBAL_KEY, JSON.stringify(groups)); else localStorage.setItem(GLOBAL_KEY, JSON.stringify(groups));
+                        console.debug('[Filtering] Hidden Group removed from storage (GLOBAL)', { path, groups });
                     } catch (e) {
-                        console.warn('[Filtering] Error removing Hidden Group from storage', e);
+                        console.warn('[Filtering] Error removing Hidden Group from storage (GLOBAL)', e);
                     }
-                    Filtering.updateHiddenGroupsList(profileKey, document.getElementById('hidden-groups-display'), state);
-                    console.debug('[Filtering] updateHiddenGroupsList called after removal', { profileKey, groups });
+                    Filtering.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state);
+                    console.debug('[Filtering] updateHiddenGroupsList called after removal (GLOBAL)', { groups });
                     if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.updateView === 'function') {
-                        console.debug('[Filtering] Calling App.TableRenderer.updateView after hidden group removal');
+                        console.debug('[Filtering] Calling App.TableRenderer.updateView after hidden group removal (GLOBAL)');
                         App.TableRenderer.updateView(state);
                     }
                     setTimeout(() => {
                         Spinner.hideSpinner();
-                        console.debug('[Filtering] Spinner hidden after Hidden Group removal');
+                        console.debug('[Filtering] Spinner hidden after Hidden Group removal (GLOBAL)');
                         setTimeout(() => {
-                            console.debug('[Filtering] Post-spinner: 500ms after spinner hidden');
+                            console.debug('[Filtering] Post-spinner (GLOBAL): 500ms after spinner hidden');
                             const table = document.querySelector('table');
                             const rowCount = table ? table.rows.length : 0;
                             const visibleElements = Array.from(document.body.querySelectorAll('*')).filter(el => el.offsetParent !== null).length;
@@ -182,10 +210,10 @@ const Filtering = {
                 container.appendChild(row);
             });
             displayElement.appendChild(container);
-            console.debug('[Filtering] updateHiddenGroupsList DOM updated with hidden groups');
+            console.debug('[Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)');
         } else {
-            console.debug('[Filtering] updateHiddenGroupsList: No hidden groups to display');
+            console.debug('[Filtering] updateHiddenGroupsList: No hidden groups to display (GLOBAL)');
         }
-        console.debug('[Filtering] updateHiddenGroupsList EXIT');
+        console.debug('[Filtering] updateHiddenGroupsList EXIT (GLOBAL)');
     },
 };
