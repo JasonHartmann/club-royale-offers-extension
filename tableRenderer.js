@@ -704,10 +704,22 @@ const TableRenderer = {
                     labelDiv.className = 'profile-tab-label';
                     labelDiv.textContent = p.label || p.key;
                     if (p.key === 'goob-favorites') {
-                        labelDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;line-height:1.15;">'
+                        labelDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;line-height:1.05;">'
                             + '<span style="font-weight:600;">Favorites</span>'
-                            + '<span aria-hidden="true" style="color:#f5c518;font-size:20px;margin-top:2px;">★</span>'
+                            + '<span aria-hidden="true" style="color:#f5c518;font-size:27px;margin-top:2px;">★</span>'
                             + '</div>';
+                    } else if (p.key === 'goob-combined-linked') {
+                        // Inject fixed green C badge for Combined Offers tab
+                        const wrapper = document.createElement('div');
+                        wrapper.style.display = 'flex';
+                        wrapper.style.alignItems = 'center';
+                        const badge = document.createElement('span');
+                        badge.className = 'profile-id-badge-combined';
+                        badge.textContent = 'C';
+                        badge.style.marginRight = '6px';
+                        wrapper.appendChild(badge);
+                        wrapper.appendChild(labelDiv);
+                        labelDiv = wrapper;
                     }
                     // Inject profileId badge if applicable
                     if (profileIdForTab) {

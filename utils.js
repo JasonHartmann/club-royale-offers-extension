@@ -59,10 +59,16 @@ const Utils = {
         const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
         let favCellHtml = '';
         if (isFavoritesView && idx !== null) {
-            // Show 1-based row index as ID icon, with Trash Icon below
-            favCellHtml = `<td class="border p-1 text-center" style="width:32px;vertical-align:middle;">
+            // Show saved profileId as ID icon, with Trash Icon below
+            let savedProfileId = (sailing && sailing.__profileId !== undefined && sailing.__profileId !== null)
+                ? sailing.__profileId
+                : (offer && offer.__favoriteMeta && offer.__favoriteMeta.profileId !== undefined && offer.__favoriteMeta.profileId !== null)
+                    ? offer.__favoriteMeta.profileId
+                    : '-';
+            const badgeClasses = savedProfileId === 'C' ? 'profile-id-badge-combined' : 'profile-id-badge';
+            favCellHtml = `<td class="border p-1 text-center">
                 <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-                    <span class="profile-id-badge" title="Row #${idx+1}" style="background:#2196f3;color:#fff;border-radius:4px;padding:2px 6px;display:inline-block;">${idx+1}</span>
+                    <span class="${badgeClasses}" title="Profile ID #${savedProfileId}">${savedProfileId}</span>
                     <span class="trash-favorite" title="Remove from Favorites" style="cursor:pointer;">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>

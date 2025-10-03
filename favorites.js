@@ -26,7 +26,7 @@
         const ship = sailing.shipName || '';
         const date = sailing.sailDate || '';
         const isGOBO = String(sailing.isGOBO === true);
-        const pid = profileId || '0';
+        const pid = profileId || 'C';
         return `${pid}|${code}|${ship}|${date}|${isGOBO}`;
     }
 
@@ -64,20 +64,23 @@
 
     function addFavorite(offer, sailing, profileId) {
         const profile = loadProfileObject();
+        // Determine effective profile id: 'C' when on combined offers tab, else provided or '0'
+        let effectivePid = profileId;
+        try { if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') effectivePid = 'C'; } catch(e){}
+        if (!effectivePid) effectivePid = '0';
         let idx = findOfferIndex(profile, offer);
         const clonedSailing = JSON.parse(JSON.stringify(sailing));
-        clonedSailing.__profileId = profileId || '0';
+        clonedSailing.__profileId = effectivePid;
         if (idx === -1) {
             const newOffer = cloneOfferForFavorite(offer, clonedSailing);
-            // Also annotate offer wrapper meta
-            newOffer.__favoriteMeta = { profileId: profileId || '0' };
+            newOffer.__favoriteMeta = { profileId: effectivePid };
             profile.data.offers.push(newOffer);
         } else {
             const targetOffer = profile.data.offers[idx];
             if (!targetOffer.campaignOffer) targetOffer.campaignOffer = {};
             if (!Array.isArray(targetOffer.campaignOffer.sailings)) targetOffer.campaignOffer.sailings = [];
-            const key = getSailingKey(offer, clonedSailing, profileId);
-            const exists = targetOffer.campaignOffer.sailings.some(s => getSailingKey(offer, s, s.__profileId || profileId) === key);
+            const key = getSailingKey(offer, clonedSailing, effectivePid);
+            const exists = targetOffer.campaignOffer.sailings.some(s => getSailingKey(offer, s, s.__profileId || effectivePid) === key);
             if (!exists) targetOffer.campaignOffer.sailings.push(clonedSailing);
         }
         saveProfileObject(profile);

@@ -143,9 +143,36 @@ const Modal = {
     exportToCSV(state) {
         const { headers } = state;
         let rows = [];
-        let usedSubset = false; // flag to know if we exported a nested subset
+        let usedSubset = false;
+        const activeKey = state.selectedProfileKey;
 
-        // Determine if a nested (focused) subset is being viewed: presence of a selected path
+        // Helper: shorten profile key or email to base name
+        function shorten(value) {
+            if (!value) return '';
+            let base = value;
+            if (base.startsWith('gobo-')) base = base.slice(5);
+            let cut = base.indexOf('_');
+            const at = base.indexOf('@');
+            if (cut === -1 || (at !== -1 && at < cut)) cut = at;
+            if (cut > -1) base = base.slice(0, cut);
+            return base;
+        }
+        // Helper: build combined names label
+        function combinedLabel() {
+            try {
+                const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLinkedAccounts') : localStorage.getItem('goboLinkedAccounts'));
+                if (!raw) return 'Combined';
+                const linked = JSON.parse(raw) || [];
+                const names = linked.slice(0,2).map(acc => shorten(acc.key) || shorten(acc.email)).filter(Boolean);
+                if (names.length === 2) return `${names[0]} + ${names[1]}`;
+                if (names.length === 1) return names[0];
+                return 'Combined';
+            } catch(e){ return 'Combined'; }
+        }
+        // Reverse map profileId -> key for favorites mapping
+        const reverseProfileMap = {}; try { if (App && App.ProfileIdMap) { Object.entries(App.ProfileIdMap).forEach(([k,v]) => reverseProfileMap[v] = k); } } catch(e){}
+
+        // Subset if accordion path active
         if (state.viewMode === 'accordion' && Array.isArray(state.groupKeysStack) && state.groupKeysStack.length > 0) {
             let subset = state.sortedOffers || [];
             for (let depth = 0; depth < state.groupKeysStack.length && depth < state.groupingStack.length; depth++) {
@@ -155,27 +182,49 @@ const Modal = {
                 subset = grouped[groupVal] || [];
                 if (!subset.length) break;
             }
-            if (subset.length) {
-                rows = subset;
-                usedSubset = true;
-            }
+            if (subset.length) { rows = subset; usedSubset = true; }
         }
         if (rows.length === 0) rows = state.sortedOffers || [];
 
-        // Build header labels directly from state.headers (now includes Favorite column at index 0)
+        // Prepare headers (override first to 'Profile')
         const csvHeaders = headers.map(h => h.label);
+        if (csvHeaders.length) csvHeaders[0] = 'Profile';
+
+        // Pre-calculate static label for non-favorites non-combined tabs
+        const staticProfileLabel = (activeKey && /^gobo-/.test(activeKey)) ? shorten(activeKey) : (activeKey === 'goob-combined-linked' ? combinedLabel() : null);
+        const combinedStatic = activeKey === 'goob-combined-linked' ? staticProfileLabel : null;
+
+        function labelForFavoriteRow(offer, sailing) {
+            let pid = (sailing && sailing.__profileId != null) ? sailing.__profileId : (offer && offer.__favoriteMeta && offer.__favoriteMeta.profileId != null ? offer.__favoriteMeta.profileId : null);
+            if (pid === 'C') return combinedLabel();
+            if (pid == null) return '';
+            // Map numeric/string pid to key
+            let key = reverseProfileMap[pid];
+            if (!key) { try { const n = parseInt(pid,10); if (!isNaN(n)) key = reverseProfileMap[n]; } catch(e){} }
+            if (!key) return String(pid);
+            return shorten(key);
+        }
 
         const csvRows = rows.map(({ offer, sailing }) => {
+            // Determine profile label per row
+            let profileLabel = '';
+            if (activeKey === 'goob-favorites') {
+                profileLabel = labelForFavoriteRow(offer, sailing) || 'Favorites';
+            } else if (activeKey === 'goob-combined-linked') {
+                profileLabel = combinedStatic;
+            } else if (staticProfileLabel) {
+                profileLabel = staticProfileLabel;
+            } else {
+                profileLabel = 'Profile';
+            }
             const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
             const parsed = App.Utils.parseItinerary(itinerary);
             const nights = parsed.nights;
             const destination = parsed.destination;
             const perksStr = App.Utils.computePerks(offer, sailing);
             const shipClass = App.Utils.getShipClass(sailing.shipName);
-            const isFav = (typeof Favorites !== 'undefined' && Favorites && typeof Favorites.isFavorite === 'function') ? Favorites.isFavorite(offer, sailing) : false;
-            const favMarker = isFav ? '★' : '';
             return [
-                favMarker, // Favorite column
+                profileLabel,
                 offer.campaignOffer?.offerCode || '-',
                 offer.campaignOffer?.startDate ? App.Utils.formatDate(offer.campaignOffer.startDate) : '-',
                 offer.campaignOffer?.reserveByDate ? App.Utils.formatDate(offer.campaignOffer.reserveByDate) : '-',
@@ -196,7 +245,6 @@ const Modal = {
             .map(row => row.map(field => '"' + String(field).replace(/"/g, '""') + '"').join(','))
             .join('\r\n');
 
-        // Append filter breadcrumb line if subset exported
         if (usedSubset) {
             const parts = ['All Offers'];
             for (let i = 0; i < state.groupKeysStack.length && i < state.groupingStack.length; i++) {
@@ -205,17 +253,13 @@ const Modal = {
                 const val = state.groupKeysStack[i];
                 parts.push(label, val);
             }
-            const filterLine = 'Filters: ' + parts.join(' -> ');
-            csvContent += '\r\n\r\n' + filterLine;
+            csvContent += '\r\n\r\n' + 'Filters: ' + parts.join(' -> ');
         }
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'offers.csv';
-        document.body.appendChild(a);
-        a.click();
+        const a = document.createElement('a'); a.href = url; a.download = 'offers.csv';
+        document.body.appendChild(a); a.click();
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
     },
     showBackToBackModal() {
@@ -260,12 +304,8 @@ const Modal = {
         content.style.cssText = 'flex:1; overflow:auto; padding:12px; font-size:12px; display:flex; flex-direction:column; gap:12px;';
         content.innerHTML = `
             <div style="font-size:13px; font-weight:600;">Back-to-Back Search</div>
-            <div style="font-size:11px; color:#444;">(Placeholder) Use this space to implement multi-offer or sequential sailing search logic. Close when done.</div>
+            <div style="font-size:24px; color:#444;">(Placeholder) COMING SOON for multi-offer or sequential sailing search logic. Check back soon!</div>
             <form id="b2b-form" style="display:flex; flex-direction:column; gap:8px; max-width:480px;">
-                <label style="display:flex; flex-direction:column; font-size:11px; gap:4px;">
-                    Offer Code(s)
-                    <input type="text" name="codes" placeholder="e.g. ABC123, DEF456" style="border:1px solid #bbb; padding:4px 6px; border-radius:4px; font-size:12px;" />
-                </label>
                 <label style="display:flex; flex-direction:column; font-size:11px; gap:4px;">
                     Earliest Sail Date
                     <input type="date" name="start" style="border:1px solid #bbb; padding:4px 6px; border-radius:4px; font-size:12px;" />

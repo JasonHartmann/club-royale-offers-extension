@@ -109,7 +109,8 @@ const Styles = {
                 .hidden-group-row { display:flex; align-items:center; justify-content:space-between; padding:2px 0; }
                 .hidden-group-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
                 .hidden-group-remove { color:red; cursor:pointer; font-weight:bold; margin-left:8px; }
-                .profile-id-badge { display:inline-flex; align-items:center; justify-content:center; background:#1d4ed8; color:#fff; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; line-height:1; box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
+                .profile-id-badge { display:inline-flex; align-items:center; justify-content:center; background:#05880A; color:#fff; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; line-height:1; box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
+                .profile-id-badge-combined { display:inline-flex; align-items:center; justify-content:center; background:#2196f3; color:#fff; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; line-height:1; box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
             `;
             document.head.appendChild(style);
             console.debug('Custom styles injected');
