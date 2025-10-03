@@ -28,6 +28,7 @@
         "tableBuilder.js",
         "accordionBuilder.js",
         "sortUtils.js",
+        "favorites.js",
         "tableRenderer.js",
         "utils.js",
         "offerCodeLookup.js",

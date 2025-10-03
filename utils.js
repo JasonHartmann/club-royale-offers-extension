@@ -30,7 +30,7 @@ const Utils = {
         }
         return names.size ? Array.from(names).join(' | ') : '-';
     },
-    createOfferRow: function ({offer, sailing}, isNewest = false, isExpiringSoon = false) {
+    createOfferRow: function ({offer, sailing}, isNewest = false, isExpiringSoon = false, idx = null) {
         const row = document.createElement('tr');
         row.className = 'hover:bg-gray-50';
         if (isNewest) row.classList.add('newest-offer-row');
@@ -44,35 +44,47 @@ const Utils = {
         const {nights, destination} = App.Utils.parseItinerary(itinerary);
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
-        // Dynamic redemption base determination
-        const redemptionBase = App.Utils.getRedemptionBase();
-        // Optional RR file URL (first offer file)
-        const rrFileUrl = offer?.campaignOffer?.offerFiles?.[0]?.fileUrl;
         // Generate separate links/buttons for each code if rawCode contains '/'
         let codeCell = '-';
         if (rawCode !== '-') {
             let split = String(rawCode).split('/');
             const codes = split.map(c => c.trim()).filter(Boolean);
-            const firstCode = split.at(0);
             const links = codes.map(code => `
                 <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${code}" title="Lookup ${code}">${code}</a>
             `).join(' / ');
-            // Redeem button temporarily disabled – to re‑enable, restore the anchor below.
-            // const redemptionLink = `<br><a href="${redemptionBase}?offerCode=${encodeURIComponent(firstCode)}" class="redeem-button bg-green-500 hover:bg-green-600 text-white px-[2px] py-[1px] rounded-sm mr-0.5" style="font-size:8px; line-height:1; letter-spacing:0.5px;" title="Redeem ${firstCode}">Redeem</a>`;
-            codeCell = `${links}`; // + redemptionLink;
+            codeCell = `${links}`; // Redeem button currently disabled
         }
-
-        // Append between anchors above
-        // ${rrFileUrl ? `<a
-        //     href="${rrFileUrl}"
-        //     class="rr-button text-black px-[2px] py-[1px] rounded-sm mr-0.5"
-        //     style="font-size:8px; line-height:1; letter-spacing:0.5px; background-color:beige;"
-        //     title="RR file for ${rawCode}"
-        //     target="_blank" rel="noopener noreferrer"
-        //   >RR</a>` : ''}
-
         const shipClass = App.Utils.getShipClass(sailing.shipName);
+        // Favorite / ID column setup
+        const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+        let favCellHtml = '';
+        if (isFavoritesView && idx !== null) {
+            // Show 1-based row index as ID icon, with Trash Icon below
+            favCellHtml = `<td class="border p-1 text-center" style="width:32px;vertical-align:middle;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                    <span class="profile-id-badge" title="Row #${idx+1}" style="background:#2196f3;color:#fff;border-radius:4px;padding:2px 6px;display:inline-block;">${idx+1}</span>
+                    <span class="trash-favorite" title="Remove from Favorites" style="cursor:pointer;">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </div>
+            </td>`;
+        } else {
+            let profileId = null;
+            try {
+                if (App && App.CurrentProfile && App.CurrentProfile.state && App.CurrentProfile.state.profileId !== undefined && App.CurrentProfile.state.profileId !== null) {
+                    profileId = App.CurrentProfile.state.profileId; // allow 0
+                }
+            } catch(e){}
+            let isFav = false;
+            try { if (window.Favorites && Favorites.isFavorite) isFav = Favorites.isFavorite(offer, sailing, profileId); } catch(e){ /* ignore */ }
+            favCellHtml = `<td class="border p-1 text-center" style="width:32px;">
+                <button type="button" class="favorite-toggle" aria-label="${isFav ? 'Unfavorite' : 'Favorite'} sailing" title="${isFav ? 'Remove from Favorites' : 'Add to Favorites'}" style="cursor:pointer; background:none; border:none; font-size:14px; line-height:1; color:${isFav ? '#f5c518' : '#bbb'};">${isFav ? '\u2605' : '\u2606'}</button>
+            </td>`;
+        }
         row.innerHTML = `
+            ${favCellHtml}
             <td class="border p-2">${codeCell}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="border p-2">${App.Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
@@ -87,6 +99,53 @@ const Utils = {
             <td class="border p-2">${guestsText}</td>
             <td class="border p-2">${perksStr}</td>
         `;
+        // Attach favorite toggle handler only when not in favorites overview
+        if (!isFavoritesView) {
+            try {
+                const btn = row.querySelector('.favorite-toggle');
+                if (btn && window.Favorites) {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        let profileId = null;
+                        try { if (App && App.CurrentProfile && App.CurrentProfile.state) profileId = App.CurrentProfile.state.profileId; } catch(err){}
+                        try { if (Favorites.ensureProfileExists) Favorites.ensureProfileExists(); } catch(err){}
+                        try { Favorites.toggleFavorite(offer, sailing, profileId); } catch(err){ console.debug('[favorite-toggle] toggle error', err); }
+                        // Re-evaluate favorite state
+                        let nowFav = false;
+                        try { nowFav = Favorites.isFavorite(offer, sailing, profileId); } catch(e2){ /* ignore */ }
+                        btn.textContent = nowFav ? '\u2605' : '\u2606';
+                        btn.style.color = nowFav ? '#f5c518' : '#bbb';
+                        btn.setAttribute('aria-label', nowFav ? 'Unfavorite sailing' : 'Favorite sailing');
+                        btn.title = nowFav ? 'Remove from Favorites' : 'Add to Favorites';
+                    });
+                }
+            } catch(e){ /* ignore */ }
+        } else {
+            // Attach trash icon handler in favorites view
+            try {
+                const trashBtn = row.querySelector('.trash-favorite');
+                if (trashBtn && window.Favorites) {
+                    trashBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Determine stored profileId (embedded in sailing)
+                        let embeddedPid = sailing && (sailing.__profileId !== undefined ? sailing.__profileId : (offer.__favoriteMeta && offer.__favoriteMeta.profileId));
+                        try { Favorites.removeFavorite(offer, sailing, embeddedPid); } catch(err){ console.debug('[trash-favorite] remove error', err); }
+                        try {
+                            // Fully refresh favorites view so numbering re-computes
+                            if (App && App.TableRenderer && typeof Favorites.loadProfileObject === 'function') {
+                                const refreshed = Favorites.loadProfileObject();
+                                App.TableRenderer.loadProfile('goob-favorites', refreshed);
+                            } else {
+                                // Fallback: remove row only
+                                row.remove();
+                            }
+                        } catch(err) { row.remove(); }
+                    });
+                }
+            } catch(e) { /* ignore */ }
+        }
         return row;
     },
     // Helper to format date string as MM/DD/YY without timezone shift

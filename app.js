@@ -17,6 +17,7 @@
         Utils,
         OfferCodeLookup,
         Filtering,
+        Favorites: window.Favorites, // ensure reference via window
         ProfileCache: [],
         init() {
             this.DOMUtils.waitForDom();

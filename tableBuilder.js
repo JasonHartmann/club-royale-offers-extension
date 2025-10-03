@@ -15,49 +15,58 @@ const TableBuilder = {
         headers.forEach(header => {
             console.debug('[tableBuilder] createTableHeader header loop', header);
             const th = document.createElement('th');
-            th.className = 'border p-2 text-left font-semibold cursor-pointer';
+            th.className = 'border p-2 text-left font-semibold';
             th.dataset.key = header.key;
-            th.innerHTML = `
+            if (header.key === 'favorite') {
+                th.style.width = '32px';
+                th.style.textAlign = 'center';
+                th.style.cursor = 'default';
+                th.title = 'Toggle Favorite';
+                th.innerHTML = '<span style="pointer-events:none;">★</span>';
+            } else {
+                th.classList.add('cursor-pointer');
+                th.innerHTML = `
                 <span class="group-icon" title="Group by ${header.label}">📂</span>
                 <span class="sort-label">${header.label}</span>
             `;
-            th.querySelector('.sort-label').addEventListener('click', () => {
-                console.debug('[tableBuilder] sort-label click', header.key);
-                let newSortOrder = 'asc';
-                if (state.currentSortColumn === header.key) {
-                    newSortOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
-                }
-                state.currentSortColumn = header.key;
-                state.currentSortOrder = newSortOrder;
-                if (!state.groupingStack || state.groupingStack.length === 0) {
-                    state.baseSortColumn = state.currentSortColumn;
-                    state.baseSortOrder = state.currentSortOrder;
-                }
-                state.viewMode = 'table';
-                state.currentGroupColumn = null;
-                state.groupingStack = [];
-                state.groupKeysStack = [];
-                // Ensure token matches current profile to avoid stale-guard abort
-                try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
-                console.debug('[tableBuilder] sort-label click: calling updateView', { token: state._switchToken });
-                App.TableRenderer.updateView(state);
-            });
-            th.querySelector('.group-icon').addEventListener('click', () => {
-                console.debug('[tableBuilder] group-icon click', header.key);
-                state.currentSortColumn = header.key;
-                state.currentSortOrder = 'asc';
-                state.currentGroupColumn = header.key;
-                state.viewMode = 'accordion';
-                state.groupSortStates = {};
-                state.openGroups = new Set();
-                state.groupingStack = [header.key];
-                state.groupKeysStack = [];
-                // Propagate current switch token so updateView isn't aborted as stale
-                try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
-                console.debug('[tableBuilder] group-icon click: calling updateView and updateBreadcrumb', { token: state._switchToken });
-                App.TableRenderer.updateView(state);
-                App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
-            });
+                th.querySelector('.sort-label').addEventListener('click', () => {
+                    console.debug('[tableBuilder] sort-label click', header.key);
+                    let newSortOrder = 'asc';
+                    if (state.currentSortColumn === header.key) {
+                        newSortOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
+                    }
+                    state.currentSortColumn = header.key;
+                    state.currentSortOrder = newSortOrder;
+                    if (!state.groupingStack || state.groupingStack.length === 0) {
+                        state.baseSortColumn = state.currentSortColumn;
+                        state.baseSortOrder = state.currentSortOrder;
+                    }
+                    state.viewMode = 'table';
+                    state.currentGroupColumn = null;
+                    state.groupingStack = [];
+                    state.groupKeysStack = [];
+                    // Ensure token matches current profile to avoid stale-guard abort
+                    try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
+                    console.debug('[tableBuilder] sort-label click: calling updateView', { token: state._switchToken });
+                    App.TableRenderer.updateView(state);
+                });
+                th.querySelector('.group-icon').addEventListener('click', () => {
+                    console.debug('[tableBuilder] group-icon click', header.key);
+                    state.currentSortColumn = header.key;
+                    state.currentSortOrder = 'asc';
+                    state.currentGroupColumn = header.key;
+                    state.viewMode = 'accordion';
+                    state.groupSortStates = {};
+                    state.openGroups = new Set();
+                    state.groupingStack = [header.key];
+                    state.groupKeysStack = [];
+                    // Propagate current switch token so updateView isn't aborted as stale
+                    try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
+                    console.debug('[tableBuilder] group-icon click: calling updateView and updateBreadcrumb', { token: state._switchToken });
+                    App.TableRenderer.updateView(state);
+                    App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+                });
+            }
             tr.appendChild(th);
         });
         thead.appendChild(tr);
@@ -69,7 +78,8 @@ const TableBuilder = {
         tbody.innerHTML = '';
         if (state.sortedOffers.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="13" class="border p-2 text-center">No offers available</td>`;
+            const colSpan = (state.headers && state.headers.length) ? state.headers.length : 14;
+            row.innerHTML = `<td colspan="${colSpan}" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
             console.debug('[DEBUG] renderTable: No offers available row appended');
         } else {
@@ -91,7 +101,8 @@ const TableBuilder = {
                 const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
                 const expDate = offer.campaignOffer?.reserveByDate;
                 const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
-                const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
+                // Pass idx to createOfferRow for 1-based ID in favorites
+                const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon, idx);
                 if (row) {
                     tbody.appendChild(row);
                 } else {
@@ -103,6 +114,7 @@ const TableBuilder = {
 
         state.headers.forEach(header => {
             const th = state.thead.querySelector(`th[data-key="${header.key}"]`);
+            if (!th || header.key === 'favorite') return; // skip favorite column for sorting indicators
             th.classList.remove('sort-asc', 'sort-desc');
             if (state.currentSortColumn === header.key) {
                 if (state.currentSortOrder === 'asc') th.classList.add('sort-asc');

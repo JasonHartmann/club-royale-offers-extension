@@ -75,6 +75,8 @@ const TableRenderer = {
     loadProfile(key, payload) {
         const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
         this.currentSwitchToken = switchToken;
+        // Ensure profileId map exists
+        if (!App.ProfileIdMap) App.ProfileIdMap = {};
         console.log('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload, switchToken });
         console.log('[DEBUG] App.ProfileCache:', App.ProfileCache);
         console.log('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
@@ -97,6 +99,7 @@ const TableRenderer = {
             // Build new profile content
             const state = {
                 headers: [
+                    { key: 'favorite', label: '★' },
                     { key: 'offerCode', label: 'Code' },
                     { key: 'offerDate', label: 'Received' },
                     { key: 'expiration', label: 'Expiration' },
@@ -111,6 +114,7 @@ const TableRenderer = {
                     { key: 'guests', label: 'Guests' },
                     { key: 'perks', label: 'Perks' }
                 ],
+                profileId: App.ProfileIdMap[key] || null,
                 currentSortColumn: 'offerDate', // Default sort by Received
                 currentSortOrder: 'desc', // Descending (newest first)
                 currentGroupColumn: null,
@@ -272,6 +276,7 @@ const TableRenderer = {
                 accordionContainer: document.createElement('div'),
                 backButton: document.createElement('button'),
                 headers: [
+                    { key: 'favorite', label: (selectedProfileKey === 'goob-favorites' ? 'ID' : '★') },
                     { key: 'offerCode', label: 'Code' },
                     { key: 'offerDate', label: 'Received' },
                     { key: 'expiration', label: 'Expiration' },
@@ -286,8 +291,9 @@ const TableRenderer = {
                     { key: 'guests', label: 'Guests' },
                     { key: 'perks', label: 'Perks' }
                 ],
-                currentSortColumn: 'offerDate', // Default sort by Received
-                currentSortOrder: 'desc', // Descending (newest first)
+                profileId: (App.ProfileIdMap && (App.ProfileIdMap[selectedProfileKey] || App.ProfileIdMap[currentKey])) || null,
+                currentSortColumn: 'offerDate',
+                currentSortOrder: 'desc',
                 currentGroupColumn: null,
                 viewMode: 'table',
                 groupSortStates: {},
@@ -346,7 +352,15 @@ const TableRenderer = {
     rebuildProfileView(key, existingState, payload, switchToken) {
         console.debug('[tableRenderer] rebuildProfileView ENTRY', { key, hasExistingState: !!existingState, payloadProvided: !!payload, switchToken });
         const baseState = existingState || {};
-        const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken };
+        // Ensure headers include favorite column
+        try {
+            if (!baseState.headers) baseState.headers = [];
+            const hasFav = baseState.headers.some(h => h.key === 'favorite');
+            if (!hasFav) {
+                baseState.headers = [ { key: 'favorite', label: '★' }, ...baseState.headers ];
+            }
+        } catch(e) { /* ignore */ }
+        const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken, profileId: App.ProfileIdMap ? App.ProfileIdMap[key] : null };
         // Ensure core structures
         state.accordionContainer = document.createElement('div');
         state.accordionContainer.className = 'w-full';
@@ -563,6 +577,8 @@ const TableRenderer = {
         // Render profile tabs (saved profiles from localStorage prefixed with 'gobo-')
         try {
             const profiles = [];
+            // Ensure favorites profile exists
+            try { if (window.Favorites && Favorites.ensureProfileExists) Favorites.ensureProfileExists(); } catch(e) { /* ignore */ }
             // Prefer GoboStore enumeration if available
             let profileKeys = [];
             if (typeof GoboStore !== 'undefined' && GoboStore && typeof GoboStore.getAllProfileKeys === 'function') {
@@ -573,16 +589,35 @@ const TableRenderer = {
                     if (k && k.startsWith('gobo-')) profileKeys.push(k);
                 }
             }
+            // Manually include favorites key if present
+            try {
+                const favRaw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites'));
+                if (favRaw) {
+                    profileKeys.push('goob-favorites');
+                }
+            } catch(e){ /* ignore */ }
+            // De-dupe
+            profileKeys = Array.from(new Set(profileKeys));
             profileKeys.forEach(k => {
                 let payload = null;
                 try {
                     payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k)));
                     if (payload && payload.data && payload.savedAt) {
-                        profiles.push({ key: k, label: k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: payload.savedAt });
+                        profiles.push({ key: k, label: k === 'goob-favorites' ? 'Favorites' : k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: k === 'goob-favorites' ? null : payload.savedAt });
                     }
                 } catch (e) { /* ignore invalid */ }
             });
             if (profiles.length) {
+                // Build/refresh profileId map based on visible ordering of gobo-* accounts only
+                App.ProfileIdMap = {};
+                let runningIndex = 1;
+                profiles.forEach(p => {
+                    if (/^gobo-/.test(p.key)) {
+                        if (!App.ProfileIdMap[p.key]) {
+                            App.ProfileIdMap[p.key] = runningIndex++;
+                        }
+                    }
+                });
                 // Restore: move current user's tab to the front
                 let currentKey = null;
                 try {
@@ -599,7 +634,13 @@ const TableRenderer = {
                 } catch (e) { /* ignore */ }
                 // Sort by savedAt desc (most recent first)
                 profiles.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-                // Move current user's tab to the front if present
+                // Extract favorites (if present) so we can place it at the far right later
+                let favoritesEntry = null;
+                const favIdx = profiles.findIndex(p => p.key === 'goob-favorites');
+                if (favIdx !== -1) {
+                    favoritesEntry = profiles.splice(favIdx, 1)[0];
+                }
+                // Move current user's tab to the front if present (after removing favorites so favorites stays at end later)
                 if (currentKey) {
                     const idx = profiles.findIndex(p => p.key === currentKey);
                     if (idx > 0) profiles.unshift(profiles.splice(idx, 1)[0]);
@@ -617,13 +658,17 @@ const TableRenderer = {
 
                 profiles.push({
                     key: 'goob-combined-linked',
-                    label: 'Combine Offers',
+                    label: 'Combined Offers',
                     isCombined: true,
                     linkedEmails: linkedAccounts.map(acc => acc.email)
                 });
+                // Append favorites as the rightmost tab (after Combined Offers) if it exists
+                if (favoritesEntry) {
+                    profiles.push(favoritesEntry);
+                }
 
                 const profileKeys = profiles.map(p => p.key);
-                // Update activeKey logic to handle Combine Offers tab
+                // Update activeKey logic to handle Combined Offers tab
                 if (!profileKeys.includes(activeKey)) {
                     if (state.selectedProfileKey === 'goob-combined-linked') {
                         activeKey = 'goob-combined-linked';
@@ -638,17 +683,46 @@ const TableRenderer = {
                     const btn = document.createElement('button');
                     btn.className = 'profile-tab';
                     btn.setAttribute('data-key', p.key);
-                    // Fix: define loyaltyId for each profile
+                    // Assign profileId for gobo-* (exclude favorites & combined)
+                    let profileIdForTab = null;
+                    if (/^gobo-/.test(p.key)) {
+                        if (!App.ProfileIdMap[p.key]) {
+                            App.ProfileIdMap[p.key] = runningIndex++;
+                        }
+                        profileIdForTab = App.ProfileIdMap[p.key];
+                    }
+                    // Safely derive loyaltyId per profile (was missing, caused ReferenceError)
                     let loyaltyId = null;
                     try {
-                        const payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key)));
-                        if (payload && payload.data) {
-                            loyaltyId = payload.data.loyaltyId || null;
+                        const storedRaw = (typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key));
+                        if (storedRaw) {
+                            const storedPayload = JSON.parse(storedRaw);
+                            loyaltyId = storedPayload?.data?.loyaltyId || null;
                         }
-                    } catch (e) { /* ignore */ }
-                    const labelDiv = document.createElement('div');
+                    } catch(e){ /* ignore */ }
+                    let labelDiv = document.createElement('div');
                     labelDiv.className = 'profile-tab-label';
                     labelDiv.textContent = p.label || p.key;
+                    if (p.key === 'goob-favorites') {
+                        labelDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;line-height:1.15;">'
+                            + '<span style="font-weight:600;">Favorites</span>'
+                            + '<span aria-hidden="true" style="color:#f5c518;font-size:20px;margin-top:2px;">★</span>'
+                            + '</div>';
+                    }
+                    // Inject profileId badge if applicable
+                    if (profileIdForTab) {
+                        const badge = document.createElement('span');
+                        badge.className = 'profile-id-badge';
+                        badge.textContent = profileIdForTab;
+                        badge.style.marginRight = '6px';
+                        // Prepend badge
+                        const wrapper = document.createElement('div');
+                        wrapper.style.display = 'flex';
+                        wrapper.style.alignItems = 'center';
+                        wrapper.appendChild(badge);
+                        wrapper.appendChild(labelDiv);
+                        labelDiv = wrapper; // replace reference so container appends wrapper
+                    }
                     const loyaltyDiv = document.createElement('div');
                     loyaltyDiv.className = 'profile-tab-loyalty';
                     loyaltyDiv.textContent = loyaltyId ? `${loyaltyId}` : '';
@@ -668,7 +742,7 @@ const TableRenderer = {
                     btn.innerHTML = '';
                     btn.appendChild(labelContainer);
                     // Add icon container for link/unlink and trash can (skip for combined tab)
-                    if (!p.isCombined) {
+                    if (!p.isCombined && p.key !== 'goob-favorites') {
                         const iconContainer = document.createElement('div');
                         iconContainer.style.display = 'flex';
                         iconContainer.style.flexDirection = 'column';
@@ -761,26 +835,14 @@ const TableRenderer = {
                                     const wasActive = btn.classList.contains('active');
                                     btn.remove();
                                     if (App.ProfileCache) delete App.ProfileCache[p.key];
-                                    // Re-render tabs to remove Linked Offers tab if needed
                                     App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState.groupingStack, App.TableRenderer.lastState.groupKeysStack);
-                                    // After re-render, activate the first tab if the deleted tab was active
-                                    if (wasActive) {
-                                        setTimeout(() => {
-                                            const newTabs = document.querySelectorAll('.profile-tab');
-                                            if (newTabs.length > 0) {
-                                                newTabs[0].click();
-                                            }
-                                        }, 0);
-                                    }
-                                } catch (err) {
-                                    App.ErrorHandler.showError('Failed to delete profile.');
-                                }
+                                    if (wasActive) setTimeout(() => { const newTabs = document.querySelectorAll('.profile-tab'); if (newTabs.length) newTabs[0].click(); }, 0);
+                                } catch (err) { App.ErrorHandler.showError('Failed to delete profile.'); }
                             }
                         });
                         iconContainer.appendChild(trashIcon);
                         btn.appendChild(iconContainer);
                     }
-                    // For combined tab, show linked emails below label
                     if (p.isCombined) {
                         const emailsDiv = document.createElement('div');
                         emailsDiv.className = 'profile-tab-linked-emails';
@@ -789,433 +851,102 @@ const TableRenderer = {
                         emailsDiv.style.color = '#2a7';
                         emailsDiv.style.textAlign = 'left';
                         let lines = [];
-                        if (p.linkedEmails && p.linkedEmails.length > 0) {
+                        if (p.linkedEmails && p.linkedEmails.length) {
                             lines = p.linkedEmails.slice(0, 2);
-                            while (lines.length < 2) lines.push('&nbsp;');
+                            while(lines.length < 2) lines.push('&nbsp;');
                         } else {
                             lines = ['&nbsp;', '&nbsp;'];
                         }
                         emailsDiv.innerHTML = lines.map(email => `<div>${email}</div>`).join('');
                         labelContainer.appendChild(emailsDiv);
+                    } else if (p.key === 'goob-favorites') {
+                        // Remove old spacer lines: the star beneath the label provides vertical sizing now
+                        // Intentionally left empty
                     }
-                    // Set active class only for the current user's tab (or first tab if only one)
                     if (p.key === activeKey) {
                         btn.classList.add('active');
-                        console.log('[DEBUG] .profile-tab.active set in tab click for activeKey:', p.key, btn);
                         btn.setAttribute('aria-pressed', 'true');
                     } else {
                         btn.setAttribute('aria-pressed', 'false');
                     }
                     btn.addEventListener('click', () => {
-                        // Show spinner for 500ms when switching tabs
                         if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
-                            Spinner.showSpinner();
-                            setTimeout(() => {
+                            Spinner.showSpinner(); setTimeout(()=>{
                                 if (p.key === 'goob-combined-linked') {
-                                    try {
-                                        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
-                                        if (!raw) {
-                                            App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.');
-                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                            return;
-                                        }
-                                        const payload = JSON.parse(raw);
-                                        if (payload && payload.data) {
-                                            App.TableRenderer.loadProfile('goob-combined-linked', payload);
-                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                        } else {
-                                            App.ErrorHandler.showError('Combine Offers data is malformed.');
-                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                        }
-                                    } catch (err) {
-                                        App.ErrorHandler.showError('Failed to load Combine Offers.');
-                                        if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                    }
+                                    try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined')); if (!raw) { App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.'); Spinner.hideSpinner(); return; } const payload = JSON.parse(raw); if (payload?.data) { App.TableRenderer.loadProfile('goob-combined-linked', payload); Spinner.hideSpinner(); } else { App.ErrorHandler.showError('Combined Offers data is malformed.'); Spinner.hideSpinner(); } } catch(err){ App.ErrorHandler.showError('Failed to load Combined Offers.'); Spinner.hideSpinner(); }
+                                } else if (p.key === 'goob-favorites') {
+                                    try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites')); const payload = raw ? JSON.parse(raw) : { data:{ offers: [] }, savedAt: Date.now() }; App.TableRenderer.loadProfile('goob-favorites', payload); } catch(err){ App.ErrorHandler.showError('Failed to load Favorites profile.'); } Spinner.hideSpinner();
                                 } else {
-                                    try {
-                                        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key));
-                                        if (!raw) {
-                                            App.ErrorHandler.showError('Selected profile is no longer available.');
-                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                            return;
-                                        }
-                                        const payload = JSON.parse(raw);
-                                        if (payload && payload.data) {
-                                            console.log('[DEBUG] Calling LoadProfile');
-                                            App.TableRenderer.loadProfile(p.key, payload);
-                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                        } else {
-                                            App.ErrorHandler.showError('Profile data is malformed.');
-                                            if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                        }
-                                    } catch (err) {
-                                        App.ErrorHandler.showError('Failed to load profile.');
-                                        if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner();
-                                    }
+                                    try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key)); if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); Spinner.hideSpinner(); return; } const payload = JSON.parse(raw); if (payload?.data) { App.TableRenderer.loadProfile(p.key, payload); Spinner.hideSpinner(); } else { App.ErrorHandler.showError('Profile data is malformed.'); Spinner.hideSpinner(); } } catch(err){ App.ErrorHandler.showError('Failed to load profile.'); Spinner.hideSpinner(); }
                                 }
                                 state.selectedProfileKey = p.key;
-                                // Defer highlight until load completes through centralized logic
-                            }, 0);
+                            },0);
                         } else {
-                            // Fallback: no spinner, just process immediately
                             if (p.key === 'goob-combined-linked') {
-                                // Load the merged profile from localStorage
-                                try {
-                                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
-                                    if (!raw) {
-                                        App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.');
-                                        return;
-                                    }
-                                    const payload = JSON.parse(raw);
-                                    if (payload && payload.data) {
-                                        App.TableRenderer.loadProfile('goob-combined-linked', payload);
-                                    } else {
-                                        App.ErrorHandler.showError('Combine Offers data is malformed.');
-                                    }
-                                } catch (err) {
-                                    App.ErrorHandler.showError('Failed to load Combine Offers.');
-                                }
+                                try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined')); if (!raw) { App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.'); return; } const payload = JSON.parse(raw); if (payload?.data) App.TableRenderer.loadProfile('goob-combined-linked', payload); else App.ErrorHandler.showError('Combined Offers data is malformed.'); } catch(err){ App.ErrorHandler.showError('Failed to load Combined Offers.'); }
+                            } else if (p.key === 'goob-favorites') {
+                                try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites')); const payload = raw ? JSON.parse(raw) : { data:{offers:[]}, savedAt: Date.now() }; App.TableRenderer.loadProfile('goob-favorites', payload); } catch(err){ App.ErrorHandler.showError('Failed to load Favorites profile.'); }
                             } else {
-                                try {
-                                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key));
-                                    if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; }
-                                    const payload = JSON.parse(raw);
-                                    if (payload && payload.data) {
-                                        console.log('[DEBUG] Calling LoadProfile');
-                                        App.TableRenderer.loadProfile(p.key, payload);
-                                    } else {
-                                        App.ErrorHandler.showError('Saved profile data is malformed.');
-                                    }
-                                } catch (err) {
-                                    App.ErrorHandler.showError('Failed to load saved profile.');
-                                }
+                                try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(p.key) : localStorage.getItem(p.key)); if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; } const payload = JSON.parse(raw); if (payload?.data) App.TableRenderer.loadProfile(p.key, payload); else App.ErrorHandler.showError('Saved profile data is malformed.'); } catch(err){ App.ErrorHandler.showError('Failed to load saved profile.'); }
                             }
                         }
                     });
                     tabs.appendChild(btn);
                 });
-
-                // Insert tabs into the tabs row (above the breadcrumb row)
                 tabsRow.appendChild(tabs);
             }
-        } catch (e) {
-            // don't break breadcrumb rendering if storage access fails
-            console.warn('Failed to render profile tabs', e);
-        }
-
-        // All Offers root crumb - placed in crumbsRow (below tabs)
-        const all = document.createElement('span');
-        all.className = 'breadcrumb-link';
-        all.textContent = 'All Offers';
-        all.addEventListener('click', () => {
-            state.viewMode = 'table';
-            state.groupingStack = [];
-            state.groupKeysStack = [];
-            state.groupSortStates = {};
-            state.openGroups = new Set();
-            // Restore previous base sort if available
-            if (state.baseSortColumn) {
-                state.currentSortColumn = state.baseSortColumn;
-                state.currentSortOrder = state.baseSortOrder;
-            } else {
-                state.currentSortColumn = 'offerDate';
-                state.currentSortOrder = 'desc';
-            }
-            state.currentGroupColumn = null;
-            App.TableRenderer.updateView(state);
-        });
-        crumbsRow.appendChild(all);
-
+        } catch(e) { console.warn('Failed to render profile tabs', e); }
+        const all = document.createElement('span'); all.className='breadcrumb-link'; all.textContent='All Offers'; all.addEventListener('click', () => { state.viewMode='table'; state.groupingStack=[]; state.groupKeysStack=[]; state.groupSortStates={}; state.openGroups=new Set(); if (state.baseSortColumn) { state.currentSortColumn=state.baseSortColumn; state.currentSortOrder=state.baseSortOrder; } else { state.currentSortColumn='offerDate'; state.currentSortOrder='desc'; } state.currentGroupColumn=null; App.TableRenderer.updateView(state); }); crumbsRow.appendChild(all);
         container.classList.toggle('accordion-view', groupingStack.length > 0);
-
-        // Build crumbs into crumbsRow: for each grouping column, add its label; if a value is selected at this depth add it
-        for (let i = 0; i < groupingStack.length; i++) {
-            // Arrow before column label
-            const arrowToCol = document.createElement('span');
-            arrowToCol.className = 'breadcrumb-arrow';
-            crumbsRow.appendChild(arrowToCol);
-
-            const colKey = groupingStack[i];
-            const colLabel = state.headers.find(h => h.key === colKey)?.label || colKey;
-            const colCrumb = document.createElement('span');
-            colCrumb.className = 'breadcrumb-crumb breadcrumb-col';
-            colCrumb.textContent = colLabel;
-            crumbsRow.appendChild(colCrumb);
-
-            // If user has selected a specific group value at this depth, add it
+        for (let i=0;i<groupingStack.length;i++) {
+            const arrowToCol = document.createElement('span'); arrowToCol.className='breadcrumb-arrow'; crumbsRow.appendChild(arrowToCol);
+            const colKey = groupingStack[i]; const colLabel = state.headers.find(h=>h.key===colKey)?.label || colKey;
+            const colCrumb = document.createElement('span'); colCrumb.className='breadcrumb-crumb breadcrumb-col'; colCrumb.textContent=colLabel; crumbsRow.appendChild(colCrumb);
             if (i < groupKeysStack.length) {
-                const arrowToVal = document.createElement('span');
-                arrowToVal.className = 'breadcrumb-arrow';
-                crumbsRow.appendChild(arrowToVal);
-
-                const valCrumb = document.createElement('span');
-                valCrumb.className = 'breadcrumb-crumb breadcrumb-val';
-                valCrumb.textContent = groupKeysStack[i];
-                crumbsRow.appendChild(valCrumb);
+                const arrowToVal = document.createElement('span'); arrowToVal.className='breadcrumb-arrow'; crumbsRow.appendChild(arrowToVal);
+                const valCrumb = document.createElement('span'); valCrumb.className='breadcrumb-crumb breadcrumb-val'; valCrumb.textContent=groupKeysStack[i]; crumbsRow.appendChild(valCrumb);
             }
         }
-
-        // Persisted Hide TIER toggle
-        const tierToggle = document.createElement('label');
-        tierToggle.className = 'tier-filter-toggle';
-        tierToggle.style.marginLeft = 'auto';
-
-        // Add hidden groups display
-        const hiddenGroupsLabel = document.createElement('span');
-        hiddenGroupsLabel.textContent = 'Hidden Groups:';
-        hiddenGroupsLabel.style.marginLeft = '16px';
-        const hiddenGroupsDisplay = document.createElement('div');
-        hiddenGroupsDisplay.id = 'hidden-groups-display';
+        const tierToggle = document.createElement('label'); tierToggle.className='tier-filter-toggle'; tierToggle.style.marginLeft='auto';
+        const hiddenGroupsLabel = document.createElement('span'); hiddenGroupsLabel.textContent='Hidden Groups:'; hiddenGroupsLabel.style.marginLeft='16px';
+        const hiddenGroupsDisplay = document.createElement('div'); hiddenGroupsDisplay.id='hidden-groups-display';
         let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
         Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
-        tierToggle.appendChild(hiddenGroupsLabel);
-        tierToggle.appendChild(hiddenGroupsDisplay);
-        // Place the tier toggle at the end of the crumbs row
-        crumbsRow.appendChild(tierToggle);
+        const b2bButton = document.createElement('button'); b2bButton.type='button'; b2bButton.className='b2b-search-button'; b2bButton.textContent='Back-to-Back Search'; b2bButton.style.cssText='margin-left:12px; background:#0d3b66; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:4px; cursor:pointer;';
+        b2bButton.addEventListener('click', () => { try { if (App && App.Modal && typeof App.Modal.showBackToBackModal === 'function') App.Modal.showBackToBackModal(); } catch(e){} });
+        tierToggle.appendChild(b2bButton); tierToggle.appendChild(hiddenGroupsLabel); tierToggle.appendChild(hiddenGroupsDisplay); crumbsRow.appendChild(tierToggle);
     }
 };
 
-/**
- * Merges two profile objects, combining their offers and preserving key fields.
- * @param {object} profileA - First profile object
- * @param {object} profileB - Second profile object
- * @returns {object} Merged profile object
- */
 function mergeProfiles(profileA, profileB) {
-    console.debug('[mergeProfiles] ENTRY', { profileA, profileB });
-    if (!profileA && !profileB) {
-        console.debug('[mergeProfiles] Both profiles are null/undefined');
-        return null;
-    }
-    if (!profileA) {
-        console.debug('[mergeProfiles] profileA is null/undefined, returning profileB');
-        return profileB;
-    }
-    if (!profileB) {
-        console.debug('[mergeProfiles] profileB is null/undefined, returning profileA');
-        return profileA;
-    }
-    // Category upgrade orders
-    const celebrityOrder = ["Interior", "Ocean View", "Veranda", "Concierge"];
-    const defaultOrder = ["Interior", "Ocean View", "Balcony", "Junior Suite"];
-    // Deep copy profileA
-    const deepCopy = JSON.parse(JSON.stringify(profileA));
-    const offersA = deepCopy.data?.offers || [];
-    const offersB = profileB.data?.offers || [];
-    console.debug('[mergeProfiles] offersA count:', offersA.length);
-    console.debug('[mergeProfiles] offersB count:', offersB.length);
-    // Build a map of sailing keys to offerB for fast lookup
+    if (!profileA && !profileB) return null; if (!profileA) return profileB; if (!profileB) return profileA;
+    const celebrityOrder = ["Interior","Ocean View","Veranda","Concierge"]; const defaultOrder=["Interior","Ocean View","Balcony","Junior Suite"];
+    const deepCopy = JSON.parse(JSON.stringify(profileA)); const offersA = deepCopy.data?.offers || []; const offersB = profileB.data?.offers || [];
     const sailingMapB = new Map();
-    offersB.forEach(offerB => {
-        const codeB = offerB.campaignCode || '';
-        const offerCodeB = offerB.campaignOffer?.offerCode || '';
-        const categoryB = offerB.category || '';
-        const guestsB = offerB.guests || '';
-        const brandB = offerB.brand || offerB.campaignOffer?.brand || '';
-        const sailingsB = offerB.campaignOffer?.sailings || [];
-        sailingsB.forEach(sailingB => {
-            const key = codeB + '|' + (sailingB.shipName || '') + '|' + (sailingB.sailDate || '') + '|' + String(sailingB.isGOBO);
-            sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, guestsB, sailingB });
-        });
-    });
-    console.debug('[mergeProfiles] sailingMapB size:', sailingMapB.size);
-    // Filter sailings in profileA to only those that match in profileB
-    offersA.forEach((offerA, offerIdx) => {
-        const codeA = offerA.campaignCode || '';
-        const offerCodeA = offerA.campaignOffer?.offerCode || '';
-        const brandA = offerA.brand || offerA.campaignOffer?.brand || '';
-        const sailingsA = offerA.campaignOffer?.sailings || [];
-        const offerNameA = (offerA.campaignOffer?.name || '').toLowerCase();
-        const beforeCount = sailingsA.length;
-        // Remove non-matching sailings and combine offerCodes/upgrade category if needed
+    offersB.forEach(offerB => { const codeB = offerB.campaignCode || ''; const offerCodeB = offerB.campaignOffer?.offerCode || ''; const categoryB = offerB.category || ''; const guestsB = offerB.guests || ''; const brandB = offerB.brand || offerB.campaignOffer?.brand || ''; (offerB.campaignOffer?.sailings||[]).forEach(sailingB => { const key = codeB + '|' + (sailingB.shipName||'') + '|' + (sailingB.sailDate||'') + '|' + String(sailingB.isGOBO); sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, guestsB, sailingB }); }); });
+    offersA.forEach((offerA, offerIdx)=>{
+        const codeA = offerA.campaignCode || ''; const offerCodeA = offerA.campaignOffer?.offerCode || ''; const brandA = offerA.brand || offerA.campaignOffer?.brand || ''; const sailingsA = offerA.campaignOffer?.sailings || []; const offerNameA = (offerA.campaignOffer?.name||'').toLowerCase();
         offerA.campaignOffer.sailings = sailingsA.filter(sailingA => {
-            const key = codeA + '|' + (sailingA.shipName || '') + '|' + (sailingA.sailDate || '') + '|' + String(sailingA.isGOBO);
-            const matchObj = sailingMapB.get(key);
-            if (!matchObj) {
-                console.debug(`[mergeProfiles] OfferA[${offerIdx}] sailing removed`, { key, sailingA });
-                return false;
-            }
-            // NEW RULE: Do not combine sailings if either offer name contains 'Two Room Offer'
-            const offerNameB = (matchObj.offerB?.campaignOffer?.name || '').toLowerCase();
-            if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) {
-                console.debug(`[mergeProfiles] OfferA[${offerIdx}] sailing skipped due to Two Room Offer restriction`, { key, offerNameA: offerA.campaignOffer?.name, offerNameB: matchObj.offerB?.campaignOffer?.name });
-                return false; // Exclude from merged overlapping sailings
-            }
-            const isGOBOA = sailingA.isGOBO === true;
-            const isGOBOB = matchObj.sailingB.isGOBO === true;
-            const roomTypeA = sailingA.roomType || '';
-            const roomTypeB = matchObj.sailingB.roomType || '';
-            // If either sailing has isGOBO=true, set merged isGOBO=false and Guests='2 guests'
-            if (isGOBOA || isGOBOB) {
-                sailingA.isGOBO = false;
-                offerA.guests = "2 guests";
-                // Set category to the lowest of the two roomTypes
-                let isCelebrity = false;
-                if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) {
-                    isCelebrity = true;
-                } else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) {
-                    isCelebrity = true;
-                }
-                const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
-                const idxA = categoryOrder.indexOf(roomTypeA);
-                const idxB = categoryOrder.indexOf(roomTypeB);
-                let lowestIdx = Math.min(idxA, idxB);
-                let lowestRoomType = categoryOrder[lowestIdx >= 0 ? lowestIdx : 0];
-                sailingA.roomType = lowestRoomType;
-                offerA.category = lowestRoomType;
-                console.debug(`[mergeProfiles] OfferA[${offerIdx}] isGOBO=true, roomType set to lowest`, { key, lowestRoomType, idxA, idxB, roomTypeA, roomTypeB });
-            } else {
-                // Determine brand for category upgrade
-                let isCelebrity = false;
-                if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) {
-                    isCelebrity = true;
-                } else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) {
-                    isCelebrity = true;
-                }
-                const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
-                if (isCelebrity) {
-                    console.debug(`[mergeProfiles] OfferA[${offerIdx}] using Celebrity category order`, { key });
-                } else {
-                    console.debug(`[mergeProfiles] OfferA[${offerIdx}] using Default category order`, { key });
-                }
-                // If offerCodes differ, combine them
-                if (offerCodeA !== matchObj.offerCodeB) {
-                    const combinedCode = offerCodeA + ' / ' + matchObj.offerCodeB;
-                    offerA.campaignOffer.offerCode = combinedCode;
-                    console.debug(`[mergeProfiles] OfferA[${offerIdx}] offerCode combined`, { key, combinedCode, offerCodeA, offerCodeB: matchObj.offerCodeB });
-                }
-                // Only upgrade category if both sailings are isGOBO=false
-                const canUpgrade = !isGOBOA && !isGOBOB;
-                const idxA = categoryOrder.indexOf(roomTypeA);
-                const idxB = categoryOrder.indexOf(roomTypeB);
-                let highestIdx = Math.max(idxA, idxB);
-                let upgradedRoomType = categoryOrder[highestIdx];
-                console.debug(`[mergeProfiles] OfferA[${offerIdx}] canUpgrade check`, {
-                    key,
-                    isGOBOA,
-                    isGOBOB,
-                    canUpgrade,
-                    idxA,
-                    idxB,
-                    highestIdx,
-                    categoryOrder,
-                    roomTypeA,
-                    roomTypeB
-                });
-                if (canUpgrade) {
-                    if (highestIdx >= 0 && highestIdx < categoryOrder.length - 1) {
-                        upgradedRoomType = categoryOrder[highestIdx + 1];
-                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] roomType upgraded`, { key, from: categoryOrder[highestIdx], to: upgradedRoomType });
-                    } else if (highestIdx === categoryOrder.length - 1) {
-                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] roomType is already highest ('${categoryOrder[highestIdx]}'), no upgrade`, { key, roomType: upgradedRoomType });
-                    } else {
-                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] canUpgrade=true but upgrade skipped: invalid highestIdx`, { key, idxA, idxB, highestIdx, categoryOrder, roomTypeA, roomTypeB });
-                    }
-                } else {
-                    if (highestIdx >= 0) {
-                        console.debug(`[mergeProfiles] OfferA[${offerIdx}] roomType upgrade skipped (isGOBO conditions not met)`, { key, roomType: upgradedRoomType, isGOBOA, isGOBOB });
-                    }
-                }
-                sailingA.roomType = upgradedRoomType;
-                offerA.category = upgradedRoomType;
-                // Always set guests to '2 guests' for merged sailings
-                offerA.guests = "2 guests";
-            }
+            const key = codeA + '|' + (sailingA.shipName||'') + '|' + (sailingA.sailDate||'') + '|' + String(sailingA.isGOBO); const matchObj = sailingMapB.get(key); if (!matchObj) return false;
+            const offerNameB = (matchObj.offerB?.campaignOffer?.name||'').toLowerCase(); if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) return false;
+            const isGOBOA = sailingA.isGOBO === true; const isGOBOB = matchObj.sailingB.isGOBO === true; const roomTypeA = sailingA.roomType || ''; const roomTypeB = matchObj.sailingB.roomType || '';
+            if (isGOBOA || isGOBOB) { sailingA.isGOBO=false; offerA.guests='2 guests'; let isCelebrity=false; if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) isCelebrity=true; else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) isCelebrity=true; const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder; const idxA=categoryOrder.indexOf(roomTypeA); const idxB=categoryOrder.indexOf(roomTypeB); let lowestIdx=Math.min(idxA,idxB); let lowestRoomType=categoryOrder[lowestIdx >=0 ? lowestIdx : 0]; sailingA.roomType=lowestRoomType; offerA.category=lowestRoomType; }
+            else { let isCelebrity=false; if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) isCelebrity=true; else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) isCelebrity=true; const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder; if (offerCodeA !== matchObj.offerCodeB) offerA.campaignOffer.offerCode = offerCodeA + ' / ' + matchObj.offerCodeB; const canUpgrade = !isGOBOA && !isGOBOB; const idxA=categoryOrder.indexOf(roomTypeA); const idxB=categoryOrder.indexOf(roomTypeB); let highestIdx=Math.max(idxA,idxB); let upgradedRoomType = categoryOrder[highestIdx]; if (canUpgrade) { if (highestIdx >=0 && highestIdx < categoryOrder.length -1) upgradedRoomType = categoryOrder[highestIdx+1]; } sailingA.roomType=upgradedRoomType; offerA.category=upgradedRoomType; offerA.guests='2 guests'; }
             return true;
         });
-        const afterCount = offerA.campaignOffer.sailings.length;
-        if (beforeCount !== afterCount) {
-            console.debug(`[mergeProfiles] OfferA[${offerIdx}] sailings filtered`, { beforeCount, afterCount });
-        }
     });
-    // Remove offers with no sailings
-    const beforeOffersCount = offersA.length;
-    deepCopy.data.offers = offersA.filter((offerA, offerIdx) => {
-        const keep = offerA.campaignOffer?.sailings?.length > 0;
-        if (!keep) {
-            console.debug(`[mergeProfiles] OfferA[${offerIdx}] removed (no matching sailings)`, offerA);
-        }
-        return keep;
-    });
-    const afterOffersCount = deepCopy.data.offers.length;
-    if (beforeOffersCount !== afterOffersCount) {
-        console.debug('[mergeProfiles] Offers filtered', { beforeOffersCount, afterOffersCount });
-    }
-    // Mark as merged and add metadata
-    deepCopy.merged = true;
-    deepCopy.mergedFrom = [profileA.data?.email, profileB.data?.email].filter(Boolean);
-    deepCopy.savedAt = Date.now();
-    console.debug('[mergeProfiles] EXIT', { mergedProfile: deepCopy });
+    deepCopy.data.offers = offersA.filter(o=>o.campaignOffer?.sailings?.length>0);
+    deepCopy.merged=true; deepCopy.mergedFrom=[profileA.data?.email, profileB.data?.email].filter(Boolean); deepCopy.savedAt=Date.now();
     return deepCopy;
 }
 
-// Helper to always preserve selectedProfileKey
 function preserveSelectedProfileKey(state, prevState) {
-    // Always trust the explicit key in state, unless not set
     let selectedProfileKey = state.selectedProfileKey || (prevState && prevState.selectedProfileKey);
-    if (!selectedProfileKey) {
-        const activeTab = document.querySelector('.profile-tab.active');
-        if (activeTab) selectedProfileKey = activeTab.getAttribute('data-key');
-    }
+    if (!selectedProfileKey) { const activeTab = document.querySelector('.profile-tab.active'); if (activeTab) selectedProfileKey = activeTab.getAttribute('data-key'); }
     return { ...state, selectedProfileKey: selectedProfileKey || null };
 }
-
-// Helper to get/set linked accounts
-function getLinkedAccounts() {
-    try {
-        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLinkedAccounts') : localStorage.getItem('goboLinkedAccounts'));
-        return raw ? JSON.parse(raw) : [];
-    } catch (e) { return []; }
-}
-
-function setLinkedAccounts(arr) {
-    try { if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(arr)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr)); } catch (e) { /* ignore */ }
-}
-
-function formatTimeAgo(savedAt) {
-    const now = Date.now();
-    const diffMs = now - savedAt;
-    const minute = 60 * 1000;
-    const hour = 60 * minute;
-    const day = 24 * hour;
-    const week = 7 * day;
-    const month = 30 * day;
-    if (diffMs < minute) return 'just now';
-    if (diffMs < hour) return `${Math.floor(diffMs / minute)} minute${Math.floor(diffMs / minute) === 1 ? '' : 's'} ago`;
-    if (diffMs < day) return `${Math.floor(diffMs / hour)} hour${Math.floor(diffMs / hour) === 1 ? '' : 's'} ago`;
-    if (diffMs < week) return `${Math.floor(diffMs / day)} day${Math.floor(diffMs / day) === 1 ? '' : 's'} ago`;
-    if (diffMs < month) return `${Math.floor(diffMs / week)} week${Math.floor(diffMs / week) === 1 ? '' : 's'} ago`;
-    return `${Math.floor(diffMs / month)} month${Math.floor(diffMs / month) === 1 ? '' : 's'} ago`;
-}
-
-function updateCombinedOffersCache() {
-    // Get all linked accounts
-    const linkedAccounts = getLinkedAccounts();
-    if (!linkedAccounts || linkedAccounts.length < 2) return;
-    // Fetch latest data for each linked account from storage
-    const profiles = linkedAccounts.map(acc => {
-        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key));
-        return raw ? JSON.parse(raw) : null;
-    }).filter(Boolean);
-    if (profiles.length < 2) return;
-    // Merge profiles
-    const merged = mergeProfiles(profiles[0], profiles[1]);
-    // Save to storage
-    if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged));
-    // Delete cached DOM
-    if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
-        delete App.ProfileCache['goob-combined-linked'];
-        console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after combined offers regeneration');
-    }
-    console.log('[DEBUG] Combined offers data regenerated and cache cleared');
-}
-
-// Helper to get extension asset URL
-function getAssetUrl(path) {
-    if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.getURL) {
-        return browser.runtime.getURL(path);
-    } else if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-        return chrome.runtime.getURL(path);
-    }
-    return path;
-}
+function getLinkedAccounts() { try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLinkedAccounts') : localStorage.getItem('goboLinkedAccounts')); return raw ? JSON.parse(raw) : []; } catch(e){ return []; } }
+function setLinkedAccounts(arr) { try { if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(arr)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr)); } catch(e){} }
+function formatTimeAgo(savedAt) { const now=Date.now(); const diffMs = now - savedAt; const minute=60000, hour=60*minute, day=24*hour, week=7*day, month=30*day; if (diffMs < minute) return 'just now'; if (diffMs < hour) return `${Math.floor(diffMs/minute)} minute${Math.floor(diffMs/minute)===1?'':'s'} ago`; if (diffMs < day) return `${Math.floor(diffMs/hour)} hour${Math.floor(diffMs/hour)===1?'':'s'} ago`; if (diffMs < week) return `${Math.floor(diffMs/day)} day${Math.floor(diffMs/day)===1?'':'s'} ago`; if (diffMs < month) return `${Math.floor(diffMs/week)} week${Math.floor(diffMs/week)===1?'':'s'} ago`; return `${Math.floor(diffMs/month)} month${Math.floor(diffMs/month)===1?'':'s'} ago`; }
+function updateCombinedOffersCache() { const linkedAccounts = getLinkedAccounts(); if (!linkedAccounts || linkedAccounts.length < 2) return; const profiles = linkedAccounts.map(acc=>{ const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key)); return raw ? JSON.parse(raw) : null; }).filter(Boolean); if (profiles.length <2) return; const merged = mergeProfiles(profiles[0], profiles[1]); if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged)); if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked']; }
+function getAssetUrl(path) { if (typeof browser !== 'undefined' && browser.runtime?.getURL) return browser.runtime.getURL(path); if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) return chrome.runtime.getURL(path); return path; }

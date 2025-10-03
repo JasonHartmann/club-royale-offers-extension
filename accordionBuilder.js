@@ -207,6 +207,12 @@ const AccordionBuilder = {
                 const th = document.createElement('th');
                 th.className = 'border p-2 text-left font-semibold';
                 th.dataset.key = headerObj.key;
+                if (headerObj.key === 'favorite') {
+                    // No grouping/sorting UI for favorites column inside accordions
+                    th.innerHTML = `<span>${headerObj.label}</span>`;
+                    tr.appendChild(th);
+                    return; // skip adding listeners
+                }
                 th.innerHTML = `<span class="group-icon" title="Group by ${headerObj.label}">🗂️</span> <span class="sort-label cursor-pointer">${headerObj.label}</span>`;
 
                 // Group (nested) click
