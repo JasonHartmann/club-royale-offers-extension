@@ -20,7 +20,7 @@ const Styles = {
                 @keyframes spin { 0% {transform:rotate(0deg);} 100% {transform:rotate(360deg);} }
                 .sort-asc::after { content:' ↓'; }
                 .sort-desc::after { content:' ↑'; }
-                .group-icon { cursor:pointer; margin-right:8px; display:inline-block; }
+                .group-icon { cursor:pointer; margin-right:2px; display:inline-block; }
                 /* Enhanced contrast + depth accent for accordion headers */
                 .accordion-header { background:#cbd5e1; padding:8px; cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; align-items:center; border-left:4px solid #64748b; transition:background .15s, filter .15s; }
                 .accordion-header[data-depth="0"] { background:#cbd5e1; border-left-color:#475569; }
@@ -38,7 +38,7 @@ const Styles = {
                 .table-auto { table-layout:auto; width:100%; border-collapse:separate; }
                 .table-auto th, .table-auto td, .accordion-table th, .accordion-table td { box-sizing:border-box; font-size:0.75rem; padding:4px 6px; vertical-align:top; }
 
-                /* Column order with favorites: 1 Favorite, 2 Code, 3 Received, 4 Expiration, 5 Name, 6 Class, 7 Ship, 8 Sail Date, 9 Departure Port, 10 Nights, 11 Destination, 12 Category, 13 Guests, 14 Perks */
+                /* Column order with favorites: 1 Favorite, 2 Code, 3 Rcvd, 4 Expires, 5 Name, 6 Class, 7 Ship, 8 Sail Date, 9 Departs, 10 Nights, 11 Destination, 12 Category, 13 Guests, 14 Perks */
 
                 /* Favorite star column: extra small */
                 .table-auto th[data-key="favorite"], .accordion-table th[data-key="favorite"],
@@ -51,15 +51,16 @@ const Styles = {
                 .table-auto th[data-key="offerDate"], .accordion-table th[data-key="offerDate"], .table-auto td:nth-child(3), .accordion-table td:nth-child(3),
                 .table-auto th[data-key="expiration"], .accordion-table th[data-key="expiration"], .table-auto td:nth-child(4), .accordion-table td:nth-child(4),
                 .table-auto th[data-key="shipClass"], .accordion-table th[data-key="shipClass"], .table-auto td:nth-child(6), .accordion-table td:nth-child(6),
-                .table-auto th[data-key="sailDate"], .accordion-table th[data-key="sailDate"], .table-auto td:nth-child(8), .accordion-table td:nth-child(8) { width:90px; min-width:80px; max-width:110px; white-space:nowrap; }
+                .table-auto th[data-key="sailDate"], .accordion-table th[data-key="sailDate"], .table-auto td:nth-child(8), .accordion-table td:nth-child(8) { width:90px; min-width:70px; max-width:110px; white-space:nowrap; }
                 /* Nights */
-                .table-auto th[data-key="nights"], .accordion-table th[data-key="nights"], .table-auto td:nth-child(10), .accordion-table td:nth-child(10) { width:90px; min-width:90px; max-width:90px; text-align:center; white-space:nowrap; }
-                /* Name, Ship, Departure Port */
+                .table-auto th[data-key="nights"], .accordion-table th[data-key="nights"], .table-auto td:nth-child(10), .accordion-table td:nth-child(10) { width:90px; min-width:70px; max-width:90px; text-align:center; white-space:nowrap; }
+                /* Departs */
+                .table-auto th[data-key="departurePort"], .accordion-table th[data-key="departurePort"], .table-auto td:nth-child(9), .accordion-table td:nth-child(9) { min-width:100px; width:10%; max-width:240px;  word-break:break-word; white-space:normal; }
+                /* Ship */
                 .table-auto th[data-key="offerName"], .accordion-table th[data-key="offerName"], .table-auto td:nth-child(5), .accordion-table td:nth-child(5),
-                .table-auto th[data-key="ship"], .accordion-table th[data-key="ship"], .table-auto td:nth-child(7), .accordion-table td:nth-child(7),
-                .table-auto th[data-key="departurePort"], .accordion-table th[data-key="departurePort"], .table-auto td:nth-child(9), .accordion-table td:nth-child(9) { min-width:150px; width:170px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                .table-auto th[data-key="ship"], .accordion-table th[data-key="ship"], .table-auto td:nth-child(7), .accordion-table td:nth-child(7) { min-width:100px; width:25%; word-break:break-word; white-space:normal; }
                 /* Destination */
-                .table-auto th[data-key="destination"], .accordion-table th[data-key="destination"], .table-auto td:nth-child(11), .accordion-table td:nth-child(11) { min-width:260px; width:100%; word-break:break-word; white-space:normal; }
+                .table-auto th[data-key="destination"], .accordion-table th[data-key="destination"], .table-auto td:nth-child(11), .accordion-table td:nth-child(11) { min-width:120px; width:40%; word-break:break-word; white-space:normal; }
                 /* Category & Guests */
                 .table-auto th[data-key="category"], .accordion-table th[data-key="category"], .table-auto td:nth-child(12), .accordion-table td:nth-child(12),
                 .table-auto th[data-key="guests"], .accordion-table th[data-key="guests"], .table-auto td:nth-child(13), .accordion-table td:nth-child(13) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
@@ -110,7 +111,38 @@ const Styles = {
                 .hidden-group-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
                 .hidden-group-remove { color:red; cursor:pointer; font-weight:bold; margin-left:8px; }
                 .profile-id-badge { display:inline-flex; align-items:center; justify-content:center; background:#05880A; color:#fff; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; line-height:1; box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
-                .profile-id-badge-combined { display:inline-flex; align-items:center; justify-content:center; background:#2196f3; color:#fff; font-size:10px; font-weight:600; width:18px; height:18px; border-radius:50%; line-height:1; box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
+                .profile-id-badge-combined { display:inline-flex; align-items:center; justify-content:center; background:#2196f3; color:#fff; font-size:7px; font-weight:600; width:18px; height:18px; border-radius:50%; line-height:1; box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
+                .profile-id-badge-1 { background:#05880A !important; }
+                .profile-id-badge-2 { background:#F37828 !important; }
+                .profile-id-badge-3 { background:#BE28E3 !important; }
+                .profile-id-badge-4 { background:#909024 !important; }
+                .profile-id-badge-5 { background:#803A90 !important; }
+                .profile-id-badge-6 { background:#3A907E !important; }
+                .profile-id-badge-7 { background:#545A90 !important; }
+                .profile-id-badge-8 { background:#90434A !important; }
+                .profile-id-badge-9 { background:#797B7C !important; }
+                .profile-id-badge-10 { background:#5E7C2E !important; }
+                /* Combined badge variants 1-20 */
+                .profile-id-badge-combined-1  { background:#1F618D !important; }
+                .profile-id-badge-combined-2  { background:#117864 !important; }
+                .profile-id-badge-combined-3  { background:#7D3C98 !important; }
+                .profile-id-badge-combined-4  { background:#D35400 !important; }
+                .profile-id-badge-combined-5  { background:#AF601A !important; }
+                .profile-id-badge-combined-6  { background:#2874A6 !important; }
+                .profile-id-badge-combined-7  { background:#B03A2E !important; }
+                .profile-id-badge-combined-8  { background:#4A235A !important; }
+                .profile-id-badge-combined-9  { background:#7B241C !important; }
+                .profile-id-badge-combined-10 { background:#6E2C00 !important; }
+                .profile-id-badge-combined-11 { background:#196F3D !important; }
+                .profile-id-badge-combined-12 { background:#641E16 !important; }
+                .profile-id-badge-combined-13 { background:#76448A !important; }
+                .profile-id-badge-combined-14 { background:#1B2631 !important; }
+                .profile-id-badge-combined-15 { background:#512E5F !important; }
+                .profile-id-badge-combined-16 { background:#0E6655 !important; }
+                .profile-id-badge-combined-17 { background:#4D5656 !important; }
+                .profile-id-badge-combined-18 { background:#6B2E26 !important; }
+                .profile-id-badge-combined-19 { background:#4B1170 !important; }
+                .profile-id-badge-combined-20 { background:#283747 !important; }
             `;
             document.head.appendChild(style);
             console.debug('Custom styles injected');

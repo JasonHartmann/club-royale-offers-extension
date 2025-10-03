@@ -101,13 +101,13 @@ const TableRenderer = {
                 headers: [
                     { key: 'favorite', label: '★' },
                     { key: 'offerCode', label: 'Code' },
-                    { key: 'offerDate', label: 'Received' },
-                    { key: 'expiration', label: 'Expiration' },
+                    { key: 'offerDate', label: 'Rcvd' },
+                    { key: 'expiration', label: 'Expires' },
                     { key: 'offerName', label: 'Name' },
                     { key: 'shipClass', label: 'Class' },
                     { key: 'ship', label: 'Ship' },
                     { key: 'sailDate', label: 'Sail Date' },
-                    { key: 'departurePort', label: 'Departure Port' },
+                    { key: 'departurePort', label: 'Departs' },
                     { key: 'nights', label: 'Nights' },
                     { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
@@ -115,7 +115,7 @@ const TableRenderer = {
                     { key: 'perks', label: 'Perks' }
                 ],
                 profileId: App.ProfileIdMap[key] || null,
-                currentSortColumn: 'offerDate', // Default sort by Received
+                currentSortColumn: 'offerDate', // Default sort by Rcvd
                 currentSortOrder: 'desc', // Descending (newest first)
                 currentGroupColumn: null,
                 viewMode: 'table',
@@ -246,12 +246,26 @@ const TableRenderer = {
                 }
             } catch (e) { /* ignore */ }
 
-            // // Only select the default tab if it hasn't been done yet for this popup display
-            // if (!this.hasSelectedDefaultTab) {
-            //     // Ignore goboActiveProfile for initial modal launch
-            //     selectedProfileKey = currentKey;
-            //     this.hasSelectedDefaultTab = true;
-            // }
+            // Ensure we do NOT default to favorites tab on first modal open
+            const existingTableCheck = document.getElementById('gobo-offers-table');
+            if (!existingTableCheck) {
+                // Modal is opening fresh; if selected is favorites, try to pick a real profile
+                if (selectedProfileKey === 'goob-favorites') {
+                    try {
+                        const allKeys = Object.keys(localStorage || {}).filter(k => /^gobo-/.test(k));
+                        if (currentKey && allKeys.includes(currentKey)) {
+                            selectedProfileKey = currentKey;
+                        } else if (allKeys.length) {
+                            selectedProfileKey = allKeys[0];
+                        } else {
+                            // fall back to not favorites if combined will be generated later; leave as currentKey if set else unchanged
+                            if (currentKey) selectedProfileKey = currentKey;
+                        }
+                    } catch(e) { /* ignore */ }
+                }
+                // If global App.CurrentProfile was left as favorites from a prior session, clear it so we don't highlight it
+                try { if (App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites') App.CurrentProfile = null; } catch(e) { /* ignore */ }
+            }
 
             const existingTable = document.getElementById('gobo-offers-table');
             if (existingTable) {
@@ -278,13 +292,13 @@ const TableRenderer = {
                 headers: [
                     { key: 'favorite', label: (selectedProfileKey === 'goob-favorites' ? 'ID' : '★') },
                     { key: 'offerCode', label: 'Code' },
-                    { key: 'offerDate', label: 'Received' },
-                    { key: 'expiration', label: 'Expiration' },
+                    { key: 'offerDate', label: 'Rcvd' },
+                    { key: 'expiration', label: 'Expires' },
                     { key: 'offerName', label: 'Name' },
                     { key: 'shipClass', label: 'Class' },
                     { key: 'ship', label: 'Ship' },
                     { key: 'sailDate', label: 'Sail Date' },
-                    { key: 'departurePort', label: 'Departure Port' },
+                    { key: 'departurePort', label: 'Departs' },
                     { key: 'nights', label: 'Nights' },
                     { key: 'destination', label: 'Destination' },
                     { key: 'category', label: 'Category' },
@@ -709,13 +723,24 @@ const TableRenderer = {
                             + '<span aria-hidden="true" style="color:#f5c518;font-size:27px;margin-top:2px;">★</span>'
                             + '</div>';
                     } else if (p.key === 'goob-combined-linked') {
-                        // Inject fixed green C badge for Combined Offers tab
+                        // Inject dynamic badge showing concatenated profile IDs and sum-based class for Combined Offers tab
                         const wrapper = document.createElement('div');
                         wrapper.style.display = 'flex';
                         wrapper.style.alignItems = 'center';
+                        let badgeText = 'C';
+                        let badgeClass = 'profile-id-badge-combined';
+                        try {
+                            const linked = getLinkedAccounts();
+                            if (linked.length >= 2) {
+                                const ids = linked.slice(0,2).map(acc => App.ProfileIdMap?.[acc.key] || 0);
+                                badgeText = `${ids[0]}+${ids[1]}`;
+                                const sum = ids[0] + ids[1];
+                                badgeClass += ` profile-id-badge-combined-${sum}`;
+                            }
+                        } catch(e){}
                         const badge = document.createElement('span');
-                        badge.className = 'profile-id-badge-combined';
-                        badge.textContent = 'C';
+                        badge.className = badgeClass;
+                        badge.textContent = badgeText;
                         badge.style.marginRight = '6px';
                         wrapper.appendChild(badge);
                         wrapper.appendChild(labelDiv);
@@ -724,7 +749,7 @@ const TableRenderer = {
                     // Inject profileId badge if applicable
                     if (profileIdForTab) {
                         const badge = document.createElement('span');
-                        badge.className = 'profile-id-badge';
+                        badge.className = `profile-id-badge profile-id-badge-${profileIdForTab}`;
                         badge.textContent = profileIdForTab;
                         badge.style.marginRight = '6px';
                         // Prepend badge

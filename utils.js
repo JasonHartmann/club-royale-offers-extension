@@ -65,10 +65,27 @@ const Utils = {
                 : (offer && offer.__favoriteMeta && offer.__favoriteMeta.profileId !== undefined && offer.__favoriteMeta.profileId !== null)
                     ? offer.__favoriteMeta.profileId
                     : '-';
-            const badgeClasses = savedProfileId === 'C' ? 'profile-id-badge-combined' : 'profile-id-badge';
+            // Use combined badge logic based on savedProfileId parts (fixed at save time)
+            let badgeText, badgeClass;
+            const parts = typeof savedProfileId === 'string'
+                ? savedProfileId.split('-').map(id => parseInt(id, 10)).filter(n => !isNaN(n))
+                : [];
+            if (savedProfileId === 'C' || parts.length >= 2) {
+                if (parts.length >= 2) {
+                    badgeText = `${parts[0]}+${parts[1]}`;
+                    const sum = parts[0] + parts[1];
+                    badgeClass = `profile-id-badge-combined profile-id-badge-combined-${sum}`;
+                } else {
+                    badgeText = 'C';
+                    badgeClass = 'profile-id-badge-combined';
+                }
+            } else {
+                badgeText = String(savedProfileId);
+                badgeClass = `profile-id-badge profile-id-badge-${savedProfileId}`;
+            }
             favCellHtml = `<td class="border p-1 text-center">
                 <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-                    <span class="${badgeClasses}" title="Profile ID #${savedProfileId}">${savedProfileId}</span>
+                    <span class="${badgeClass}" title="Profile ID #${savedProfileId}">${badgeText}</span>
                     <span class="trash-favorite" title="Remove from Favorites" style="cursor:pointer;">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>

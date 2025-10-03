@@ -22,7 +22,7 @@
     }
 
     function getSailingKey(offer, sailing, profileId) {
-        const code = offer.campaignCode || offer.campaignOffer?.offerCode || '';
+        const code = offer.campaignOffer?.offerCode || '';
         const ship = sailing.shipName || '';
         const date = sailing.sailDate || '';
         const isGOBO = String(sailing.isGOBO === true);
@@ -45,18 +45,40 @@
 
     function findOfferIndex(profile, offer) {
         if (!profile || !profile.data || !Array.isArray(profile.data.offers)) return -1;
-        const code = offer.campaignCode || offer.campaignOffer?.offerCode || '';
+        const code = offer.campaignOffer?.offerCode || '';
         return profile.data.offers.findIndex(o => (o.campaignCode || o.campaignOffer?.offerCode || '') === code);
     }
 
     function isFavorite(offer, sailing, profileId) {
         const profile = loadProfileObject();
-        const key = getSailingKey(offer, sailing, profileId);
         const offers = profile.data.offers || [];
+        const requestedPid = profileId; // may be undefined/null
+        const hasCombinedPid = typeof requestedPid === 'string' && requestedPid.includes('-');
+        let isCombinedContext = hasCombinedPid;
+        try { if (!isCombinedContext && App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') isCombinedContext = true; } catch(e){}
+        // Pre-compute comparable core fields (excluding profileId)
+        const coreCode = offer.campaignOffer?.offerCode || '';
+        const coreShip = sailing.shipName || '';
+        const coreDate = sailing.sailDate || '';
+        const coreIsGOBO = String(sailing.isGOBO === true);
+        // Exact key (when we have a requestedPid) for fast path
+        const exactKey = requestedPid ? getSailingKey(offer, sailing, requestedPid) : null;
         for (const off of offers) {
             const sailings = off.campaignOffer?.sailings || [];
             for (const s of sailings) {
-                if (getSailingKey(off, s, s.__profileId || profileId) === key) return true;
+                const storedPid = s.__profileId || requestedPid || 'C';
+                // First try exact key match (only if we have requestedPid)
+                if (exactKey && getSailingKey(off, s, storedPid) === exactKey) return true;
+                // If in combined context, allow core-field match ignoring pid differences
+                if (isCombinedContext) {
+                    const sCode = off.campaignOffer?.offerCode || '';
+                    const sShip = s.shipName || '';
+                    const sDate = s.sailDate || '';
+                    const sIsGOBO = String(s.isGOBO === true);
+                    if (coreCode === sCode && coreShip === sShip && coreDate === sDate && coreIsGOBO === sIsGOBO) {
+                        return true;
+                    }
+                }
             }
         }
         return false;
@@ -66,7 +88,21 @@
         const profile = loadProfileObject();
         // Determine effective profile id: 'C' when on combined offers tab, else provided or '0'
         let effectivePid = profileId;
-        try { if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') effectivePid = 'C'; } catch(e){}
+        try {
+            if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') {
+                // For combined tab, use concatenated numeric profile IDs of linked accounts
+                let linkedAccounts = [];
+                try { if (typeof getLinkedAccounts === 'function') linkedAccounts = getLinkedAccounts(); } catch(e){}
+                const linkedIds = linkedAccounts.map(acc => {
+                    try { return (App.ProfileIdMap && acc.key in App.ProfileIdMap) ? App.ProfileIdMap[acc.key] : acc.key; } catch(e){ return acc.key; }
+                });
+                if (linkedIds.length >= 2) {
+                    effectivePid = linkedIds.join('-');
+                } else {
+                    effectivePid = 'C';
+                }
+            }
+        } catch(e){}
         if (!effectivePid) effectivePid = '0';
         let idx = findOfferIndex(profile, offer);
         const clonedSailing = JSON.parse(JSON.stringify(sailing));
@@ -114,10 +150,10 @@
         const before = isFavorite(offer, sailing, profileId);
         if (before) {
             removeFavorite(offer, sailing, profileId);
-            try { console.debug('[favorites] Removed favorite', { profileId, code: offer.campaignCode || offer.campaignOffer?.offerCode, sailDate: sailing.sailDate }); } catch(e){}
+            try { console.debug('[favorites] Removed favorite', { profileId, code: offer.campaignOffer?.offerCode, sailDate: sailing.sailDate }); } catch(e){}
         } else {
             addFavorite(offer, sailing, profileId);
-            try { console.debug('[favorites] Added favorite', { profileId, code: offer.campaignCode || offer.campaignOffer?.offerCode, sailDate: sailing.sailDate }); } catch(e){}
+            try { console.debug('[favorites] Added favorite', { profileId, code: offer.campaignOffer?.offerCode, sailDate: sailing.sailDate }); } catch(e){}
         }
     }
 

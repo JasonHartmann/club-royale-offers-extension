@@ -110,6 +110,25 @@ const Modal = {
 
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
+
+        // --- Session disappearance watcher ---
+        // Poll every 2 seconds for session presence
+        const sessionCheckInterval = setInterval(() => {
+            try {
+                // If session is missing or empty, close the modal
+                const sessionRaw = localStorage.getItem('persist:session');
+                if (!sessionRaw) {
+                    this.closeModal(container, backdrop, overlappingElements);
+                    clearInterval(sessionCheckInterval);
+                }
+            } catch (e) {
+                // On error, also close modal for safety
+                this.closeModal(container, backdrop, overlappingElements);
+                clearInterval(sessionCheckInterval);
+            }
+        }, 2000);
+        // Store interval id for cleanup
+        this._sessionCheckInterval = sessionCheckInterval;
     },
     closeModal(container, backdrop, overlappingElements) {
         // Allow calling with stored references when no args provided
@@ -128,6 +147,10 @@ const Modal = {
         });
         if (this._escapeHandler) {
             document.removeEventListener('keydown', this._escapeHandler);
+        }
+        if (this._sessionCheckInterval) {
+            clearInterval(this._sessionCheckInterval);
+            this._sessionCheckInterval = null;
         }
         // Cleanup stored refs
         this._container = null;
