@@ -41,7 +41,6 @@ const Filtering = {
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
         const {nights, destination} = App.Utils.parseItinerary(itinerary);
         const perksStr = Utils.computePerks(offer, sailing);
-        const rawCode = offer.campaignOffer?.offerCode || '-';
         switch (key) {
             case 'offerCode':
                 return offer.campaignOffer?.offerCode;
@@ -169,40 +168,50 @@ const Filtering = {
                 removeBtn.style.cursor = 'pointer';
                 removeBtn.addEventListener('click', () => {
                     console.debug('[Filtering] Hidden Group removeBtn clicked (GLOBAL)', { path });
-                    Spinner.showSpinner();
-                    let groups = Filtering.loadHiddenGroups();
-                    groups = groups.filter(g => g !== path);
-                    try {
-                        const GLOBAL_KEY = 'goboHiddenGroups-global';
-                        if (typeof goboStorageSet === 'function') goboStorageSet(GLOBAL_KEY, JSON.stringify(groups)); else localStorage.setItem(GLOBAL_KEY, JSON.stringify(groups));
-                        console.debug('[Filtering] Hidden Group removed from storage (GLOBAL)', { path, groups });
-                    } catch (e) {
-                        console.warn('[Filtering] Error removing Hidden Group from storage (GLOBAL)', e);
-                    }
-                    Filtering.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state);
-                    console.debug('[Filtering] updateHiddenGroupsList called after removal (GLOBAL)', { groups });
-                    if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.updateView === 'function') {
-                        console.debug('[Filtering] Calling App.TableRenderer.updateView after hidden group removal (GLOBAL)');
-                        App.TableRenderer.updateView(state);
-                    }
+                    // Ensure spinner is shown immediately so the user sees feedback.
+                    // Previously we only queued Spinner.showSpinner() which could be starved
+                    // by subsequent synchronous work; show it synchronously and defer
+                    // the heavier work to the next tick so the browser has a chance to paint.
+                    try { Spinner.showSpinner(); } catch(e) { try { Spinner.showSpinner(); } catch(_){} }
+
+                    // Defer the actual removal/storage/update work so spinner can render first.
                     setTimeout(() => {
-                        Spinner.hideSpinner();
-                        console.debug('[Filtering] Spinner hidden after Hidden Group removal (GLOBAL)');
+                        let groups = Filtering.loadHiddenGroups();
+                        groups = groups.filter(g => g !== path);
+                        try {
+                            const GLOBAL_KEY = 'goboHiddenGroups-global';
+                            if (typeof goboStorageSet === 'function') goboStorageSet(GLOBAL_KEY, JSON.stringify(groups)); else localStorage.setItem(GLOBAL_KEY, JSON.stringify(groups));
+                            console.debug('[Filtering] Hidden Group removed from storage (GLOBAL)', { path, groups });
+                        } catch (e) {
+                            console.warn('[Filtering] Error removing Hidden Group from storage (GLOBAL)', e);
+                        }
+
+                        Filtering.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state);
+                        console.debug('[Filtering] updateHiddenGroupsList called after removal (GLOBAL)', { groups });
+                        if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.updateView === 'function') {
+                            console.debug('[Filtering] Calling App.TableRenderer.updateView after hidden group removal (GLOBAL)');
+                            App.TableRenderer.updateView(state);
+                        }
+
                         setTimeout(() => {
-                            console.debug('[Filtering] Post-spinner (GLOBAL): 500ms after spinner hidden');
-                            const table = document.querySelector('table');
-                            const rowCount = table ? table.rows.length : 0;
-                            const visibleElements = Array.from(document.body.querySelectorAll('*')).filter(el => el.offsetParent !== null).length;
-                            console.debug('[Filtering] Post-spinner: Table row count:', rowCount);
-                            console.debug('[Filtering] Post-spinner: Visible DOM elements:', visibleElements);
-                            if (window.performance && window.performance.memory) {
-                                console.debug('[Filtering] Post-spinner: JS Heap Size:', window.performance.memory.usedJSHeapSize, '/', window.performance.memory.totalJSHeapSize);
-                            }
-                            if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) {
-                                console.debug('[Filtering] Post-spinner: TableRenderer.lastState:', App.TableRenderer.lastState);
-                            }
-                        }, 500);
-                    }, 3000);
+                            Spinner.hideSpinner();
+                            console.debug('[Filtering] Spinner hidden after Hidden Group removal (GLOBAL)');
+                            setTimeout(() => {
+                                console.debug('[Filtering] Post-spinner (GLOBAL): 500ms after spinner hidden');
+                                const table = document.querySelector('table');
+                                const rowCount = table ? table.rows.length : 0;
+                                const visibleElements = Array.from(document.body.querySelectorAll('*')).filter(el => el.offsetParent !== null).length;
+                                console.debug('[Filtering] Post-spinner: Table row count:', rowCount);
+                                console.debug('[Filtering] Post-spinner: Visible DOM elements:', visibleElements);
+                                if (window.performance && window.performance.memory) {
+                                    console.debug('[Filtering] Post-spinner: JS Heap Size:', window.performance.memory.usedJSHeapSize, '/', window.performance.memory.totalJSHeapSize);
+                                }
+                                if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) {
+                                    console.debug('[Filtering] Post-spinner: TableRenderer.lastState:', App.TableRenderer.lastState);
+                                }
+                            }, 500);
+                        }, 3000);
+                    }, 0);
                 });
 
                 row.appendChild(label);

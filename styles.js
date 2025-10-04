@@ -76,6 +76,20 @@ const Styles = {
                 .buy-coffee-link { padding:0; cursor:pointer; margin-right:12px; display:flex; align-items:center; }
                 .export-csv-button { background:#22c55e; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; margin-right:12px; transition:background .2s; }
                 .export-csv-button:hover { background:#16a34a; }
+                /* Back-to-Back (B2B) search button styling — moved from inline in tableRenderer.js */
+                .b2b-search-button {
+                    margin-left:12px;
+                    background:#0d3b66;
+                    color:#fff;
+                    border:none;
+                    padding:4px 10px;
+                    font-size:11px;
+                    border-radius:4px;
+                    cursor:pointer;
+                    font-weight:600;
+                    transition:background .15s, transform .08s;
+                }
+                .b2b-search-button:hover { background:#0b3557; transform:translateY(-1px); }
                 .breadcrumb-container { display:flex; align-items:center; gap:8px; padding:8px; margin-bottom:8px; }
                 .breadcrumb-link { color:#2563eb; text-decoration:underline; cursor:pointer; }
                 .breadcrumb-link:hover { color:#1e40af; }
@@ -87,7 +101,6 @@ const Styles = {
                 .expiring-soon-row { background:#FDD !important; }
                 /* Updated: tier filter now inline inside breadcrumb */
                 .tier-filter-toggle { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,0.9); padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.08); font-weight:500; }
-                .tier-filter-toggle input { cursor:pointer; }
                 /* Profile tabs */
                 .profile-tabs {
                     display: flex;

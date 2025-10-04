@@ -1,6 +1,7 @@
 const Spinner = {
     showSpinner() {
         try {
+            console.debug('Loading spinner displaying...');
             const existingSpinner = document.getElementById('gobo-loading-spinner-container');
             if (existingSpinner) existingSpinner.remove();
             const spinnerContainer = document.createElement('div');

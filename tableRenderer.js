@@ -980,7 +980,7 @@ const TableRenderer = {
                         emailsDiv.style.marginTop = '2px';
                         emailsDiv.style.color = '#2a7';
                         emailsDiv.style.textAlign = 'left';
-                        let lines = [];
+                        let lines;
                         if (p.linkedEmails && p.linkedEmails.length) {
                             lines = p.linkedEmails.slice(0, 2);
                             while(lines.length < 2) lines.push('&nbsp;');
@@ -1037,14 +1037,25 @@ const TableRenderer = {
                 const valCrumb = document.createElement('span'); valCrumb.className='breadcrumb-crumb breadcrumb-val'; valCrumb.textContent=groupKeysStack[i]; crumbsRow.appendChild(valCrumb);
             }
         }
-        const tierToggle = document.createElement('label'); tierToggle.className='tier-filter-toggle'; tierToggle.style.marginLeft='auto';
+        const hiddenGroupsPanel = document.createElement('div'); hiddenGroupsPanel.className='tier-filter-toggle'; hiddenGroupsPanel.style.marginLeft='auto';
         const hiddenGroupsLabel = document.createElement('span'); hiddenGroupsLabel.textContent='Hidden Groups:'; hiddenGroupsLabel.style.marginLeft='16px';
         const hiddenGroupsDisplay = document.createElement('div'); hiddenGroupsDisplay.id='hidden-groups-display';
         let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
         Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
-        const b2bButton = document.createElement('button'); b2bButton.type='button'; b2bButton.className='b2b-search-button'; b2bButton.textContent='Back-to-Back Search'; b2bButton.style.cssText='margin-left:12px; background:#0d3b66; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:4px; cursor:pointer;';
-        b2bButton.addEventListener('click', () => { try { if (App && App.Modal && typeof App.Modal.showBackToBackModal === 'function') App.Modal.showBackToBackModal(); } catch(e){} });
-        tierToggle.appendChild(b2bButton); tierToggle.appendChild(hiddenGroupsLabel); tierToggle.appendChild(hiddenGroupsDisplay); crumbsRow.appendChild(tierToggle);
+        const b2bButton = document.createElement('button');
+        b2bButton.type = 'button';
+        b2bButton.className = 'b2b-search-button';
+        b2bButton.textContent = 'Back-to-Back Search';
+        // Defensive handler: only open modal on trusted direct clicks on the button
+        b2bButton.addEventListener('click', (ev) => {
+            try {
+                if (!ev || ev.isTrusted !== true) return; // ignore programmatic/synthetic events
+                const tgt = ev.target || null;
+                if (!tgt || !(b2bButton === tgt || b2bButton.contains(tgt))) return; // ensure click came from the button
+                if (App && App.Modal && typeof App.Modal.showBackToBackModal === 'function') App.Modal.showBackToBackModal();
+            } catch(e) { /* ignore */ }
+        });
+        hiddenGroupsPanel.appendChild(b2bButton); hiddenGroupsPanel.appendChild(hiddenGroupsLabel); hiddenGroupsPanel.appendChild(hiddenGroupsDisplay); crumbsRow.appendChild(hiddenGroupsPanel);
         // Post-build tab highlight correction: ensure active tab matches logical current profile
         try {
             const intended = (App.CurrentProfile && App.CurrentProfile.key) || state.selectedProfileKey;
@@ -1068,7 +1079,7 @@ function mergeProfiles(profileA, profileB) {
     const deepCopy = JSON.parse(JSON.stringify(profileA)); const offersA = deepCopy.data?.offers || []; const offersB = profileB.data?.offers || [];
     const sailingMapB = new Map();
     offersB.forEach(offerB => { const codeB = offerB.campaignCode || ''; const offerCodeB = offerB.campaignOffer?.offerCode || ''; const categoryB = offerB.category || ''; const guestsB = offerB.guests || ''; const brandB = offerB.brand || offerB.campaignOffer?.brand || ''; (offerB.campaignOffer?.sailings||[]).forEach(sailingB => { const key = codeB + '|' + (sailingB.shipName||'') + '|' + (sailingB.sailDate||'') + '|' + String(sailingB.isGOBO); sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, guestsB, sailingB }); }); });
-    offersA.forEach((offerA, offerIdx)=>{
+    offersA.forEach((offerA)=>{
         const codeA = offerA.campaignCode || ''; const offerCodeA = offerA.campaignOffer?.offerCode || ''; const brandA = offerA.brand || offerA.campaignOffer?.brand || ''; const sailingsA = offerA.campaignOffer?.sailings || []; const offerNameA = (offerA.campaignOffer?.name||'').toLowerCase();
         offerA.campaignOffer.sailings = sailingsA.filter(sailingA => {
             const key = codeA + '|' + (sailingA.shipName||'') + '|' + (sailingA.sailDate||'') + '|' + String(sailingA.isGOBO); const matchObj = sailingMapB.get(key); if (!matchObj) return false;
