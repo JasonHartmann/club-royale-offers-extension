@@ -910,10 +910,21 @@ const TableRenderer = {
                                     } catch (e) { /* ignore */ }
                                 }
                             }
+                            // Persist linked accounts, then ensure combined offers are recalculated and cache cleared
                             setLinkedAccounts(updated);
+                            try {
+                                // Recompute combined payload (no-op if not enough linked accounts)
+                                if (typeof updateCombinedOffersCache === 'function') updateCombinedOffersCache();
+                                // Clear any cached combined profile so UI will reload it from storage
+                                if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
+                                    delete App.ProfileCache['goob-combined-linked'];
+                                    console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after linked accounts change');
+                                }
+                            } catch (err) { /* ignore */ }
+                            // Rebuild the tabs/breadcrumb so the Combined Offers tab reflects the new linked accounts
                             App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState.groupingStack, App.TableRenderer.lastState.groupKeysStack);
-                            // Activate this tab after linking/unlinking
-                            btn.click();
+                            // Activate this tab after linking/unlinking; defer slightly so UI updates first
+                            setTimeout(() => btn.click(), 0);
                         });
                         iconContainer.appendChild(linkIcon);
                         // Trash can icon
@@ -1086,3 +1097,46 @@ function setLinkedAccounts(arr) { try { if (typeof goboStorageSet === 'function'
 function formatTimeAgo(savedAt) { const now=Date.now(); const diffMs = now - savedAt; const minute=60000, hour=60*minute, day=24*hour, week=7*day, month=30*day; if (diffMs < minute) return 'just now'; if (diffMs < hour) return `${Math.floor(diffMs/minute)} minute${Math.floor(diffMs/minute)===1?'':'s'} ago`; if (diffMs < day) return `${Math.floor(diffMs/hour)} hour${Math.floor(diffMs/hour)===1?'':'s'} ago`; if (diffMs < week) return `${Math.floor(diffMs/day)} day${Math.floor(diffMs/day)===1?'':'s'} ago`; if (diffMs < month) return `${Math.floor(diffMs/week)} week${Math.floor(diffMs/week)===1?'':'s'} ago`; return `${Math.floor(diffMs/month)} month${Math.floor(diffMs/month)===1?'':'s'} ago`; }
 function updateCombinedOffersCache() { const linkedAccounts = getLinkedAccounts(); if (!linkedAccounts || linkedAccounts.length < 2) return; const profiles = linkedAccounts.map(acc=>{ const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key)); return raw ? JSON.parse(raw) : null; }).filter(Boolean); if (profiles.length <2) return; const merged = mergeProfiles(profiles[0], profiles[1]); if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged)); if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked']; }
 function getAssetUrl(path) { if (typeof browser !== 'undefined' && browser.runtime?.getURL) return browser.runtime.getURL(path); if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) return chrome.runtime.getURL(path); return path; }
+
+// Listen for storage shim updates and refresh Combined Offers UI when relevant
+try {
+    if (typeof document !== 'undefined') {
+        let __goboCombinedDebounce = null;
+        document.addEventListener('goboStorageUpdated', (ev) => {
+            try {
+                const key = ev?.detail?.key;
+                if (!key) return;
+                if (key === 'goboLinkedAccounts' || key === 'goob-combined') {
+                    // Debounce rapid updates
+                    if (__goboCombinedDebounce) clearTimeout(__goboCombinedDebounce);
+                    __goboCombinedDebounce = setTimeout(() => {
+                        try {
+                            if (App && App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
+                                delete App.ProfileCache['goob-combined-linked'];
+                                console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted due to goboStorageUpdated');
+                            }
+                            if (App && App.TableRenderer) {
+                                App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState?.groupingStack || [], App.TableRenderer.lastState?.groupKeysStack || []);
+                            }
+                            // If Combined Offers is currently active, reload it immediately from storage so the view updates
+                            try {
+                                if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked' && typeof App.TableRenderer.loadProfile === 'function') {
+                                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
+                                    if (raw) {
+                                        try {
+                                            const payload = JSON.parse(raw);
+                                            if (payload && payload.data) {
+                                                console.log('[DEBUG] Reloading Combined Offers profile in response to storage update');
+                                                App.TableRenderer.loadProfile('goob-combined-linked', payload);
+                                            }
+                                        } catch(e) { /* ignore malformed */ }
+                                    }
+                                }
+                            } catch(e) { /* ignore */ }
+                        } catch(e) { /* ignore */ }
+                    }, 20);
+                }
+            } catch(e) { /* ignore */ }
+        });
+    }
+} catch(e) { /* ignore */ }

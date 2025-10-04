@@ -92,6 +92,13 @@
             pendingWrites.set(key, value);
             debugStore('setItem queued', key);
             scheduleFlush();
+            // Dispatch a lightweight in-page event so UI can react immediately to important keys
+            try {
+                if (typeof document !== 'undefined') {
+                    const ev = new CustomEvent('goboStorageUpdated', { detail: { key } });
+                    document.dispatchEvent(ev);
+                }
+            } catch(e) { /* ignore */ }
         },
         removeItem(key) {
             if (!shouldManage(key)) return;
