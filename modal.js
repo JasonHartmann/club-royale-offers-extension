@@ -219,11 +219,21 @@ const Modal = {
 
         function labelForFavoriteRow(offer, sailing) {
             let pid = (sailing && sailing.__profileId != null) ? sailing.__profileId : (offer && offer.__favoriteMeta && offer.__favoriteMeta.profileId != null ? offer.__favoriteMeta.profileId : null);
+            // Handle legacy 'C' marker and joined numeric profile IDs like '3-4'
             if (pid === 'C') return combinedLabel();
+            if (typeof pid === 'string' && pid.indexOf('-') !== -1) {
+                // Combined favorites were stored with joined profile IDs (e.g. '3-4'); treat as combined
+                return combinedLabel();
+            }
             if (pid == null) return '';
             // Map numeric/string pid to key
             let key = reverseProfileMap[pid];
-            if (!key) { try { const n = parseInt(pid,10); if (!isNaN(n)) key = reverseProfileMap[n]; } catch(e){} }
+            if (!key) {
+                try {
+                    const n = parseInt(String(pid),10);
+                    if (!isNaN(n)) key = reverseProfileMap[n];
+                } catch(e){}
+            }
             if (!key) return String(pid);
             return shorten(key);
         }
