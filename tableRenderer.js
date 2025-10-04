@@ -168,7 +168,14 @@ const TableRenderer = {
             state.openGroups = new Set();
             state.groupingStack = [];
             state.groupKeysStack = [];
-            this.updateView(state);
+            Spinner.showSpinner();
+            setTimeout(() => {
+                try {
+                    this.updateView(state);
+                } finally {
+                    try { Spinner.hideSpinner(); } catch(e) { /* ignore */ }
+                }
+            }, 0);
         };
         state.thead = App.TableBuilder.createTableHeader(state);
         state.table = App.TableBuilder.createMainTable();
@@ -376,7 +383,19 @@ const TableRenderer = {
                 state.openGroups = new Set();
                 state.groupingStack = [];
                 state.groupKeysStack = [];
-                this.updateView(state);
+                // Show spinner immediately, then allow browser to repaint before heavy work
+                if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
+                    Spinner.showSpinner();
+                    setTimeout(() => {
+                        try {
+                            this.updateView(state);
+                        } finally {
+                            try { Spinner.hideSpinner && Spinner.hideSpinner(); } catch(e) { /* ignore */ }
+                        }
+                    }, 0);
+                } else {
+                    this.updateView(state);
+                }
             };
             state.thead = App.TableBuilder.createTableHeader(state);
             // Only collect overlappingElements if not provided (first open)
@@ -429,7 +448,19 @@ const TableRenderer = {
             state.openGroups = new Set();
             state.groupingStack = [];
             state.groupKeysStack = [];
-            this.updateView(state);
+            // Show spinner immediately, then allow browser to repaint before heavy work
+            if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
+                Spinner.showSpinner();
+                setTimeout(() => {
+                    try {
+                        this.updateView(state);
+                    } finally {
+                        try { Spinner.hideSpinner && Spinner.hideSpinner(); } catch(e) { /* ignore */ }
+                    }
+                }, 0);
+            } else {
+                this.updateView(state);
+            }
         };
         state.table = App.TableBuilder.createMainTable();
         state.thead = App.TableBuilder.createTableHeader(state);
@@ -1026,7 +1057,21 @@ const TableRenderer = {
                 tabsRow.appendChild(tabsScroll);
             }
         } catch(e) { console.warn('Failed to render profile tabs', e); }
-        const all = document.createElement('span'); all.className='breadcrumb-link'; all.textContent='All Offers'; all.addEventListener('click', () => { state.viewMode='table'; state.groupingStack=[]; state.groupKeysStack=[]; state.groupSortStates={}; state.openGroups=new Set(); if (state.baseSortColumn) { state.currentSortColumn=state.baseSortColumn; state.currentSortOrder=state.baseSortOrder; } else { state.currentSortColumn='offerDate'; state.currentSortOrder='desc'; } state.currentGroupColumn=null; App.TableRenderer.updateView(state); }); crumbsRow.appendChild(all);
+        const all = document.createElement('span'); all.className='breadcrumb-link'; all.textContent='All Offers'; all.addEventListener('click', () => {
+            // Reset view state to all offers
+            state.viewMode='table'; state.groupingStack=[]; state.groupKeysStack=[]; state.groupSortStates={}; state.openGroups=new Set();
+            if (state.baseSortColumn) { state.currentSortColumn=state.baseSortColumn; state.currentSortOrder=state.baseSortOrder; } else { state.currentSortColumn='offerDate'; state.currentSortOrder='desc'; }
+            state.currentGroupColumn=null;
+            if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
+                Spinner.showSpinner();
+                setTimeout(() => {
+                    try { App.TableRenderer.updateView(state); }
+                    finally { try { Spinner.hideSpinner && Spinner.hideSpinner(); } catch(e){} }
+                }, 0);
+            } else {
+                App.TableRenderer.updateView(state);
+            }
+        }); crumbsRow.appendChild(all);
         container.classList.toggle('accordion-view', groupingStack.length > 0);
         for (let i=0;i<groupingStack.length;i++) {
             const arrowToCol = document.createElement('span'); arrowToCol.className='breadcrumb-arrow'; crumbsRow.appendChild(arrowToCol);

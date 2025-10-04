@@ -129,11 +129,15 @@ const AccordionBuilder = {
                 if (appendedLabels.length) displayKey = baseKey + ' > ' + appendedLabels.join(' > ');
             }
 
-            let trash = '<span style="display:flex; align-items:center; gap:8px;"><span class="trash-icon" title="Delete group" style="cursor:pointer; vertical-align:middle;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+            // Build a left-side group (icon + label) so we can keep the count right-aligned
+            const iconSvg = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            let trashIconHtml = `<span class="trash-icon" title="Delete group" style="cursor:pointer; vertical-align:middle; display:inline-flex; align-items:center; margin-right:6px;">${iconSvg}</span>`;
             if ((h.dataset.depth && parseInt(h.dataset.depth, 10) > 0)) {
-                trash = '';
+                trashIconHtml = '';
             }
-            h.innerHTML = `${trash}<span style="flex:1;">${displayKey}</span></span> <span>${count} offer${count === 1 ? '' : 's'}</span>`;
+            // Left group contains icon (if any) and the flexible label. Count remains as the last child so justify-content:space-between keeps it right-aligned.
+            const leftGroup = trashIconHtml ? `<span style="display:flex; align-items:center; gap:0; min-width:0;">${trashIconHtml}<span style="flex:1; min-width:0; margin-left:3px; overflow:hidden; text-overflow:ellipsis;">${displayKey}</span></span>` : `<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;">${displayKey}</span>`;
+            h.innerHTML = `${leftGroup}<span style="margin-left:12px">${count} offer${count === 1 ? '' : 's'}</span>`;
             // Add trash icon click handler
             const trashIcon = h.querySelector('.trash-icon');
             if (trashIcon) {
@@ -188,6 +192,11 @@ const AccordionBuilder = {
             header.dataset.baseKey = groupKey; // store original group value for restoration
             header.dataset.keyPath = [...groupKeysStack, groupKey].join('>');
             header.dataset.offerCount = groupedData[groupKey].length;
+            // Make header a flex container so child spans using flex (e.g. `<span style="flex:1;">`) work
+            // and spacing (gap/margin) between the trash icon and label is reliable.
+            header.style.display = 'flex';
+            header.style.alignItems = 'center';
+            header.style.gap = '11px';
             header.innerHTML = `${groupKey} <span>${groupedData[groupKey].length} offer${groupedData[groupKey].length > 1 ? 's' : ''}</span>`;
 
             const content = document.createElement('div');
