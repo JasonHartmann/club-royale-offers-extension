@@ -8,10 +8,17 @@
         /^goob-/,
         /^goboHideTier$/,
         /^goboLinkedAccounts$/,
-        /^goboHiddenGroups-/
+        /^goboHiddenGroups-/,
+        /^goboProfileIdMap_v1$/,
+        /^goboProfileIdFreeIds_v1$/,
+        /^goboProfileIdNext_v1$/
     ];
+    const DEBUG_STORAGE = true; // toggle for storage shim debug
+    function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
     function shouldManage(key) {
-        return EXT_PREFIX_MATCHERS.some(rx => rx.test(key));
+        const match = EXT_PREFIX_MATCHERS.some(rx => rx.test(key));
+        if (!match && DEBUG_STORAGE) { try { console.debug('[GoboStore] ignoring key (pattern mismatch):', key); } catch(e){} }
+        return match;
     }
     const extStorage = (function() {
         if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) return browser.storage.local;
@@ -31,7 +38,10 @@
             const batch = {};
             pendingWrites.forEach((v, k) => { batch[k] = v; });
             pendingWrites.clear();
-            try { extStorage.set(batch, () => { /* ignore errors */ }); } catch(e) { /* ignore */ }
+            try {
+                debugStore('flush: writing batch', Object.keys(batch));
+                extStorage.set(batch, () => { if (chrome && chrome.runtime && chrome.runtime.lastError) { debugStore('flush: lastError', chrome.runtime.lastError); } });
+            } catch(e) { debugStore('flush: exception', e); }
             flushScheduled = false;
         }, 25); // small debounce to collapse bursts
     }
@@ -71,6 +81,7 @@
         getItem(key) {
             if (!shouldManage(key)) return null; // never proxy site storage keys
             const val = internal.get(key);
+            debugStore('getItem', key, val === undefined ? '(undefined)' : 'hit');
             if (val === undefined) return null;
             if (typeof val === 'string') return val;
             try { return JSON.stringify(val); } catch(e) { return null; }
@@ -79,13 +90,15 @@
             if (!shouldManage(key)) return; // ignore other keys
             internal.set(key, value);
             pendingWrites.set(key, value);
+            debugStore('setItem queued', key);
             scheduleFlush();
         },
         removeItem(key) {
             if (!shouldManage(key)) return;
             internal.delete(key);
+            debugStore('removeItem', key);
             if (extStorage) {
-                try { extStorage.remove(key); } catch(e) { /* ignore */ }
+                try { extStorage.remove(key); } catch(e) { debugStore('removeItem error', key, e); }
             }
         },
         key(index) {

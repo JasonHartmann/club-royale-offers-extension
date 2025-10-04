@@ -18,6 +18,7 @@
       ],
       "js": [
         "storageShim.js",
+        "profileIdManager.js",
         "domUtils.js",
         "styles.js",
         "buttonManager.js",

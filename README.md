@@ -11,9 +11,38 @@ This Chrome extension enhances the Royal Caribbean Club Royale Offers page by ad
 - **Visual Highlights**:
   - **Green Row**: The single newest offer (by offer date) is highlighted in green.
   - **Pink Row**: The offer expiring soonest (within the next 3 days) is highlighted in pink.
-- **Legend**: A legend at the bottom explains the color coding.
+- **Favorites Profile**: Star individual sailings to add them to a persistent `Favorites` pseudo‑profile.
+- **Linked / Combined Offers**: Link exactly two profiles to view a merged, upgraded “Combined Offers” view.
+- **Stable Profile IDs**: Each saved profile (gobo-* key) gets a permanent numeric ID badge.
 - **Export to CSV**: Download your offers as a CSV file for offline analysis.
-- **Responsive UI**: Table columns are sized for readability, with the "nights" column compact.
+- **Responsive UI**: Table columns are sized for readability.
+
+## Stable Profile IDs (Immutable Assignment)
+
+Each saved profile key beginning with `gobo-` is assigned a numeric Profile ID (shown as a small badge on its tab). These IDs now satisfy the requirement:
+
+> Once profile data is assigned a Profile ID, it must remain static and never change again. The only way to re-use an assigned Profile ID is if that profile is deleted.
+
+### How It Works
+
+A lightweight manager (`profileIdManager.js`) persists three internal records:
+- `goboProfileIdMap_v1`: `{ profileKey: id }` mapping.
+- `goboProfileIdFreeIds_v1`: queue of numeric IDs available for reuse (from deleted profiles).
+- `goboProfileIdNext_v1`: next auto‑increment ID if no reusable IDs exist.
+
+On each render/update of the tab strip:
+1. Existing mappings are loaded (no re-numbering or compaction ever occurs).
+2. Missing (new) profile keys get the lowest available freed ID, or the next incrementing ID.
+3. Deleted keys free their ID back into the pool for future use.
+
+### Guarantees
+- Opening / closing the modal or reordering profiles will not change existing IDs.
+- Adding new profiles never shifts older IDs.
+- Deleting a profile frees its numeric ID for future brand‑new profiles only.
+- Favorites (`goob-favorites`) and combined linked tab (`goob-combined-linked`) do not consume numeric IDs.
+
+### Rationale
+Previously IDs were recomputed from ordering, causing churn. The new manager ensures traceability (e.g., screenshots, cross‑session notes) and meets the immutability requirement without inflating the ID space indefinitely (because released IDs are recycled deterministically—smallest first).
 
 ## Installation
 
@@ -21,34 +50,44 @@ This Chrome extension enhances the Royal Caribbean Club Royale Offers page by ad
 2. Open Chrome and go to `chrome://extensions/`.
 3. Enable "Developer mode" (top right).
 4. Click "Load unpacked" and select the folder containing this extension.
-5. Visit [Royal Caribbean Club Royale Offers](https://www.royalcaribbean.com/club-royale/offers) and use the new button.
+5. Visit the Club Royale or Blue Chip Club offers page and use the injected button.
 
 ## Usage
 
-- Click the **Show Casino Offers** button on the Club Royale Offers page.
-- Use the table to sort and group offers as needed.
-- Click column headers to sort; click the folder icon to group by that column.
-- Use the accordion view to drill down into groups.
-- Refer to the legend at the bottom for color meanings.
-- Click **Export to CSV** to download your offers.
+- Click the **Show Casino Offers** button on an offers page.
+- Sort or group columns as needed; drill down via accordion mode.
+- Use the star column to add/remove sailings from Favorites.
+- (Optional) Link two accounts with the chain icon to view Combined Offers.
+- Click **Export to CSV** to download raw data.
 
 ## Development
 
-- All source code is in plain JavaScript and CSS, loaded as content scripts.
-- Main files:
-  - `buttonManager.js`: Injects the main button.
-  - `tableBuilder.js`, `accordionBuilder.js`: Render the table and accordion views.
-  - `styles.js`: Injects all custom styles.
-  - `modal.js`: Handles the modal dialog and footer legend.
-  - `utils.js`: Utility functions for formatting and normalization.
-  - `sortUtils.js`: Sorting logic for all columns.
-  - `tableRenderer.js`: Orchestrates rendering and state management.
+Key files:
+- `profileIdManager.js`: Stable, immutable profile ID assignment logic.
+- `tableRenderer.js`: Orchestrates rendering, integrates stable IDs.
+- `favorites.js`: Manages the Favorites pseudo-profile.
+- `accordionBuilder.js`, `tableBuilder.js`: Render logic for hierarchical/table views.
+- `sortUtils.js`, `filtering.js`: Sorting & filtering logic.
+- `modal.js`: Modal creation and auxiliary UI elements.
+- `utils.js` / `domUtils.js`: Utilities and DOM helpers.
 
 ## Customization
 
-- To adjust which columns are shown or their order, edit the `headers` array in `tableRenderer.js`.
-- To change highlight colors, edit the `.newest-offer-row` and `.expiring-soon-row` classes in `styles.js`.
-- To change the grouping or sorting logic, see `accordionBuilder.js` and `sortUtils.js`.
+- Modify visible columns: edit the `headers` arrays in `tableRenderer.js`.
+- Adjust colors / styles: update `styles.js`.
+- Extend grouping rules: see `accordionBuilder.js`.
+
+## Data Storage Keys (Overview)
+
+| Key | Purpose |
+|-----|---------|
+| `gobo-*` | Saved profile payloads (offer data & metadata) |
+| `goob-favorites` | Favorites pseudo-profile data |
+| `goboProfileIdMap_v1` | Stable profileKey → numeric ID mapping |
+| `goboProfileIdFreeIds_v1` | Pool of reusable numeric IDs from deleted profiles |
+| `goboProfileIdNext_v1` | Next auto-increment ID when no free IDs exist |
+| `goboLinkedAccounts` | Metadata for linked accounts (for Combined Offers) |
+| `goob-combined` | Merged profile data for two linked accounts |
 
 ## License
 
@@ -56,5 +95,4 @@ This Chrome extension enhances the Royal Caribbean Club Royale Offers page by ad
 
 ---
 
-**Not affiliated with Royal Caribbean International. For personal use only.**
-
+**Not affiliated with Royal Caribbean International or Celebrity Cruises. For personal use only.**

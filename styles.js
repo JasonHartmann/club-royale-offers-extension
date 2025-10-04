@@ -89,8 +89,39 @@ const Styles = {
                 .tier-filter-toggle { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,0.9); padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.08); font-weight:500; }
                 .tier-filter-toggle input { cursor:pointer; }
                 /* Profile tabs */
-                .profile-tabs { display:flex; gap:6px; align-items:center; width:100%; overflow-x:auto; padding-right:6px; margin-right:0; }
-                .profile-tabs::-webkit-scrollbar { height:8px; }
+                .profile-tabs {
+                    display: flex;
+                    gap: 6px;
+                    align-items: center;
+                    width: 100%;
+                    overflow-x: auto !important;
+                    white-space: nowrap !important;
+                    min-width: 0;
+                    max-width: 100vw;
+                    flex-shrink: 0;
+                    min-height: 56px;
+                    border: 2px dashed #f00 !important;
+                    background: #fffbe7 !important;
+                    position: relative;
+                    z-index: 10;
+                }
+                .profile-tabs::-webkit-scrollbar { height:12px; background:#fff; }
+                .breadcrumb-tabs-row {
+                    width: 100%;
+                    margin-bottom: 0;
+                    overflow-x: auto !important;
+                    white-space: nowrap !important;
+                    max-width: 100vw;
+                    flex-shrink: 0;
+                    min-height: 56px;
+                    border: 2px dashed #00f !important;
+                    background: #e7f7ff !important;
+                    position: relative;
+                    z-index: 10;
+                }
+                .breadcrumb-tabs-row::-webkit-scrollbar { height:12px; background:#fff; }
+                .breadcrumb-tabs-row { width:100%; margin-bottom:0; overflow-x:auto; white-space:nowrap; }
+                .breadcrumb-tabs-row::-webkit-scrollbar { height:8px; }
                 .profile-tabs .profile-tab { display:flex; flex-direction:row; align-items:center; justify-content:space-between; padding:6px 10px; min-width:80px; min-height:50px; line-height:1.2; appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, box-shadow .12s; margin-bottom:0; vertical-align:middle; }
                 .profile-tabs .profile-tab { background:#d1d5db; color:#0b1220; border:1px solid #e5e7eb; border-bottom-color:transparent; font-weight:500; box-shadow:none; position:relative; z-index:1; transition:background .2s; }
                 .profile-tabs .profile-tab:hover { background:#eef2ff; }
@@ -104,9 +135,10 @@ const Styles = {
                 .breadcrumb-container { display:flex; flex-direction:column; align-items:flex-start; gap:0; padding:8px; margin-bottom:8px; width:100%; }
                 .breadcrumb-tabs-row { width:100%; margin-bottom:0; }
                 .breadcrumb-crumb-row { display:flex; align-items:center; gap:8px; width:100%; padding-top:12px; border-top:1px solid #e5e7eb; background:transparent; }
-                @media (max-width:600px) { .profile-tabs { max-width:100%; } .profile-tabs .profile-tab { padding:0 8px; font-size:12px; height:32px; line-height:32px; } }
+                .profile-tabs { min-height:60px !important; height:60px !important; align-items:center !important; }
+                .profile-tabs .profile-tab { height:62px !important; padding:16px 10px !important; font-size:15px !important; line-height:1.25 !important; }
+                .profile-tabs-scroll { padding-bottom:8px !important; }
                 #hidden-groups-display { margin-left:4px; max-width:350px; max-height:80px; overflow-y:auto; font-size:12px; color:#555; white-space:pre-line; padding:2px 6px; background:#f8f8f8; border-radius:4px; border:1px solid #eee; }
-                }
                 .hidden-group-row { display:flex; align-items:center; justify-content:space-between; padding:2px 0; }
                 .hidden-group-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
                 .hidden-group-remove { color:red; cursor:pointer; font-weight:bold; margin-left:8px; }
@@ -143,6 +175,22 @@ const Styles = {
                 .profile-id-badge-combined-18 { background:#6B2E26 !important; }
                 .profile-id-badge-combined-19 { background:#4B1170 !important; }
                 .profile-id-badge-combined-20 { background:#283747 !important; }
+
+                /* --- Horizontal tab scrolling overrides (final refined) --- */
+                /* Dedicated scroll wrapper handles horizontal overflow so tabs don't lose vertical height */
+                .profile-tabs-scroll { width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; position:relative; padding-bottom:4px; scrollbar-gutter:stable; }
+                .profile-tabs-scroll::-webkit-scrollbar { height:10px; }
+                .profile-tabs-scroll::-webkit-scrollbar-track { background:transparent; }
+                .profile-tabs-scroll::-webkit-scrollbar-thumb { background:#c5cad1; border-radius:6px; }
+                .profile-tabs-scroll::-webkit-scrollbar-thumb:hover { background:#9ca3af; }
+                .profile-tabs { display:inline-flex !important; flex-wrap:nowrap !important; width:auto !important; max-width:none !important; gap:6px; padding:0 4px 0 0; background:transparent !important; border:none !important; min-height:48px; height:48px; align-items:stretch; box-sizing:content-box; }
+                .profile-tabs .profile-tab { flex:0 0 auto !important; white-space:nowrap !important; height:46px; line-height:1.15; display:flex; align-items:center; }
+                .breadcrumb-tabs-row { overflow:visible !important; }
+                .profile-tabs-scroll:before, .profile-tabs-scroll:after { content:''; position:absolute; top:0; bottom:4px; width:18px; pointer-events:none; z-index:2; }
+                .profile-tabs-scroll:before { left:0; background:linear-gradient(90deg, rgba(255,255,255,1) 30%, rgba(255,255,255,0)); }
+                .profile-tabs-scroll:after { right:0; background:linear-gradient(270deg, rgba(255,255,255,1) 30%, rgba(255,255,255,0)); }
+                .profile-tabs-scroll.no-overflow:before, .profile-tabs-scroll.no-overflow:after { display:none; }
+                .profile-tabs, .breadcrumb-tabs-row { background:transparent !important; border:none !important; }
             `;
             document.head.appendChild(style);
             console.debug('Custom styles injected');
