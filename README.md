@@ -1,10 +1,10 @@
-# Club Royale Casino Offers Viewer
+# Club Royale Offers Viewer
 
-This Chrome extension enhances the Royal Caribbean Club Royale Offers page by adding a "Show Casino Offers" button. When clicked, it presents your casino offers in a sortable, groupable table and accordion view, making it easy to analyze and compare your offers.
+This Chrome extension enhances the Royal Caribbean Club Royale Offers page by adding a "Show Offers" button. When clicked, it presents your promotional offers in a sortable, groupable table and accordion view, making it easy to analyze and compare your offers.
 
 ## Features
 
-- **Show Casino Offers Button**: Adds a button to the Club Royale Offers page for quick access.
+- **Show Offers Button**: Adds a button to the Club Royale Offers page for quick access.
 - **Sortable Table**: Click any column header to sort offers by that column (ascending/descending/original order).
 - **Groupable Table**: Group offers by any column (e.g., ship, destination, nights, etc.) for easier analysis.
 - **Accordion View**: Drill down into groups with nested accordions for detailed exploration.
@@ -35,6 +35,7 @@ On each render/update of the tab strip:
 2. Missing (new) profile keys get the lowest available freed ID, or the next incrementing ID.
 3. Deleted keys free their ID back into the pool for future use.
 
+
 ### Guarantees
 - Opening / closing the modal or reordering profiles will not change existing IDs.
 - Adding new profiles never shifts older IDs.
@@ -54,7 +55,7 @@ Previously IDs were recomputed from ordering, causing churn. The new manager ens
 
 ## Usage
 
-- Click the **Show Casino Offers** button on an offers page.
+- Click the **Show Offers** button on an offers page.
 - Sort or group columns as needed; drill down via accordion mode.
 - Use the star column to add/remove sailings from Favorites.
 - (Optional) Link two accounts with the chain icon to view Combined Offers.
