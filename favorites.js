@@ -53,8 +53,7 @@
         const profile = loadProfileObject();
         const offers = profile.data.offers || [];
         const requestedPid = profileId; // may be undefined/null
-        const hasCombinedPid = typeof requestedPid === 'string' && requestedPid.includes('-');
-        let isCombinedContext = hasCombinedPid;
+        let isCombinedContext = (typeof requestedPid === 'string' && requestedPid.includes('-'));
         try { if (!isCombinedContext && App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') isCombinedContext = true; } catch(e){}
         // Pre-compute comparable core fields (excluding profileId)
         const coreCode = offer.campaignOffer?.offerCode || '';
@@ -126,18 +125,50 @@
 
     function removeFavorite(offer, sailing, profileId) {
         const profile = loadProfileObject();
-        const key = getSailingKey(offer, sailing, profileId);
         const offers = profile.data.offers || [];
-        for (let i = offers.length -1; i >=0; i--) {
-            const off = offers[i];
-            const sailings = off.campaignOffer?.sailings || [];
-            for (let j = sailings.length -1; j >=0; j--) {
-                if (getSailingKey(off, sailings[j], sailings[j].__profileId || profileId) === key) {
-                    sailings.splice(j,1);
+        // Determine if we're in a combined context (so we should match by core fields, not PID)
+        const requestedPid = profileId; // may be undefined/null
+        let isCombinedContext = (typeof requestedPid === 'string' && requestedPid.includes('-'));
+        try { if (!isCombinedContext && App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') isCombinedContext = true; } catch(e){}
+        // Core fields for comparison
+        const coreCode = offer.campaignOffer?.offerCode || '';
+        const coreShip = sailing.shipName || '';
+        const coreDate = sailing.sailDate || '';
+        const coreIsGOBO = String(sailing.isGOBO === true);
+
+        if (!requestedPid && isCombinedContext) {
+            // Remove by matching core fields (ignore stored __profileId differences)
+            for (let i = offers.length -1; i >= 0; i--) {
+                const off = offers[i];
+                const sailings = off.campaignOffer?.sailings || [];
+                for (let j = sailings.length -1; j >= 0; j--) {
+                    const s = sailings[j];
+                    const sCode = off.campaignOffer?.offerCode || '';
+                    const sShip = s.shipName || '';
+                    const sDate = s.sailDate || '';
+                    const sIsGOBO = String(s.isGOBO === true);
+                    if (coreCode === sCode && coreShip === sShip && coreDate === sDate && coreIsGOBO === sIsGOBO) {
+                        sailings.splice(j, 1);
+                    }
+                }
+                if (!off.campaignOffer?.sailings || off.campaignOffer.sailings.length === 0) {
+                    offers.splice(i, 1);
                 }
             }
-            if (!off.campaignOffer?.sailings || off.campaignOffer.sailings.length === 0) {
-                offers.splice(i,1);
+        } else {
+            // Precise removal using PID-based key (default behavior)
+            const key = getSailingKey(offer, sailing, profileId);
+            for (let i = offers.length -1; i >= 0; i--) {
+                const off = offers[i];
+                const sailings = off.campaignOffer?.sailings || [];
+                for (let j = sailings.length -1; j >= 0; j--) {
+                    if (getSailingKey(off, sailings[j], sailings[j].__profileId || profileId) === key) {
+                        sailings.splice(j, 1);
+                    }
+                }
+                if (!off.campaignOffer?.sailings || off.campaignOffer.sailings.length === 0) {
+                    offers.splice(i, 1);
+                }
             }
         }
         saveProfileObject(profile);
