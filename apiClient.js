@@ -220,7 +220,7 @@ const ApiClient = {
                 console.debug(`[apiClient] Retrying fetch (${retryCount} attempts left)`);
                 setTimeout(() => this.fetchOffers(retryCount - 1), 2000);
             } else {
-                App.ErrorHandler.showError(`Failed to load casino offers: ${error.message}. Please try again later.`);
+                App.ErrorHandler.showError(`Failed to load offers: ${error.message}. Please try again later.`);
                 App.ErrorHandler.closeModalIfOpen();
             }
         } finally {
