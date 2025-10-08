@@ -139,6 +139,34 @@
         window.goboStorageRemove = goboStorageRemove;
     } catch(e) { /* ignore */ }
 
+    // Also listen for external storage changes (chrome.storage.onChanged / browser.storage.onChanged)
+    try {
+        const handleExternalChange = (changes, areaName) => {
+            try {
+                if (areaName && areaName !== 'local') return; // only care about local area
+                const keys = Object.keys(changes || {});
+                keys.forEach(k => {
+                    if (!shouldManage(k)) return;
+                    const newVal = changes[k] && Object.prototype.hasOwnProperty.call(changes[k], 'newValue') ? changes[k].newValue : undefined;
+                    if (newVal === undefined) {
+                        internal.delete(k);
+                        debugStore('externalChange: deleted key', k);
+                    } else {
+                        internal.set(k, newVal);
+                        debugStore('externalChange: updated key', k);
+                    }
+                    try { document.dispatchEvent(new CustomEvent('goboStorageUpdated', { detail: { key: k } })); } catch(e){}
+                });
+            } catch(e) { debugStore('handleExternalChange error', e); }
+        };
+        // Prefer browser API if available
+        if (typeof browser !== 'undefined' && browser.storage && browser.storage.onChanged) {
+            browser.storage.onChanged.addListener(handleExternalChange);
+        } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+            chrome.storage.onChanged.addListener(handleExternalChange);
+        }
+    } catch(e) { /* ignore */ }
+
     // Kick off async init
     GoboStore.init();
 })();

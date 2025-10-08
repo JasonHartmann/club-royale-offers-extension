@@ -190,6 +190,8 @@ const ApiClient = {
             // normalize data (trim, adjust capitalization, etc.) AFTER potential merges so added sailings are normalized too
             console.debug('[apiClient] Normalizing offers data');
             const normalizedData = App.Utils.normalizeOffers(data);
+            // attach savedAt so downstream UI can compare against DOM cache timestamps
+            try { if (normalizedData && typeof normalizedData === 'object') normalizedData.savedAt = Date.now(); } catch(e){}
             console.debug('[apiClient] Offers data normalized');
             // Persist normalized data so it can be accessed across logins by key: gobo-<username>
             try {

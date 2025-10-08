@@ -14,9 +14,9 @@ const ButtonManager = {
             const button = document.createElement('button');
             button.id = 'gobo-offers-button';
             button.className = 'bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg hover:bg-blue-700 ml-2';
-            button.textContent = 'Show Casino Offers';
+            button.textContent = 'Show All Offers';
             button.addEventListener('click', () => {
-                console.debug('Show Casino Offers button clicked');
+                console.debug('Show All Offers button clicked');
                 App.ApiClient.fetchOffers();
             });
 

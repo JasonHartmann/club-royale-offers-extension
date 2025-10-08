@@ -31,11 +31,17 @@ const TableRenderer = {
             console.log('[tableRenderer] switchProfile: No cached profile', { key });
             return;
         }
+        // Compute timestamps early so we can decide if the existing DOM is stale compared to incoming payload
+        const dataSavedAt = (payload && payload.savedAt) || cached.state?.savedAt || 0;
+        const domCachedAt = cached.scrollContainer?._cachedAt || 0;
+        const isStale = !cached.scrollContainer || dataSavedAt > domCachedAt;
+        console.debug('[tableRenderer] switchProfile timestamp check', { key, dataSavedAt, domCachedAt, isStale });
+
         const alreadyLogical = App.CurrentProfile && App.CurrentProfile.key === key;
         const highlightMatches = activeDomKey === key;
-        // Only no-op if BOTH logical and highlight already correct
-        if (alreadyLogical && highlightMatches) {
-            console.debug('[tableRenderer] switchProfile: already active & highlight matches, no-op', { key });
+        // Only no-op if BOTH logical and highlight already correct AND the DOM is NOT stale
+        if (alreadyLogical && highlightMatches && !isStale) {
+            console.debug('[tableRenderer] switchProfile: already active & highlight matches & DOM not stale, no-op', { key });
             return;
         }
         // If logical current matches but highlight doesn't, just fix highlight & state without rebuild
@@ -60,9 +66,6 @@ const TableRenderer = {
             };
             console.log('[tableRenderer] switchProfile: Cached current profile', App.CurrentProfile.key);
         }
-        const dataSavedAt = (payload && payload.savedAt) || cached.state?.savedAt || 0;
-        const domCachedAt = cached.scrollContainer?._cachedAt || 0;
-        console.debug('[tableRenderer] switchProfile timestamp check', { key, dataSavedAt, domCachedAt, isStale: !cached.scrollContainer || dataSavedAt > domCachedAt });
         // Always rebuild to ensure fresh rows
         console.log('[tableRenderer] switchProfile: rebuilding (forced)');
         cached.state._switchToken = switchToken;
@@ -318,7 +321,8 @@ const TableRenderer = {
             const existingTable = document.getElementById('gobo-offers-table');
             if (existingTable) {
                 // Modal is already open, treat as profile load/switch
-                this.loadProfile(selectedProfileKey, { data });
+                // Attach a savedAt timestamp so cached DOM age can be compared against fresh data
+                this.loadProfile(selectedProfileKey, { data, savedAt: Date.now() });
                 return;
             }
 
@@ -415,7 +419,8 @@ const TableRenderer = {
             App.Modal._overlappingElements = overlapping;
             App.Modal.setupModal(state, overlapping);
             // Build & display the initial profile fully so logical current profile matches highlighted tab
-            this.loadProfile(state.selectedProfileKey, { data });
+            // Include savedAt to mark this payload as fresh compared to any cached DOM
+            this.loadProfile(state.selectedProfileKey, { data, savedAt: Date.now() });
         } catch (error) {
             console.log('Failed to display table:', error.message);
             App.ErrorHandler.showError('Failed to display table. Please try again.');
@@ -1043,7 +1048,25 @@ const TableRenderer = {
                                 } else if (clickedStorageKey === 'goob-favorites') {
                                     try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites')); const payload = raw ? JSON.parse(raw) : { data:{ offers: [] }, savedAt: Date.now() }; App.TableRenderer.loadProfile('goob-favorites', payload); } catch(err){ App.ErrorHandler.showError('Failed to load Favorites profile.'); } Spinner.hideSpinner();
                                 } else {
-                                    try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(clickedStorageKey) : localStorage.getItem(clickedStorageKey)); if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); Spinner.hideSpinner(); return; } let payload = JSON.parse(raw); if (!payload || typeof payload !== 'object') { console.warn('[profile-tab-click] payload not object, repairing', { key: clickedStorageKey, raw }); payload = { data:{ offers:[] }, savedAt: Date.now() }; } if (!payload.data || typeof payload.data !== 'object') { console.warn('[profile-tab-click] missing data field, repairing', payload); payload.data = { offers: [] }; } if (!Array.isArray(payload.data.offers)) { console.warn('[profile-tab-click] offers not array, coercing', payload.data.offers); payload.data.offers = []; } if (payload?.data) { App.TableRenderer.loadProfile(clickedStorageKey, payload); Spinner.hideSpinner(); } else { console.warn('[profile-tab-click] malformed payload (no data) after repair attempt', { key: clickedStorageKey, raw }); App.ErrorHandler.showError('Profile data is malformed.'); Spinner.hideSpinner(); } } catch(err){ console.error('[profile-tab-click] exception loading profile', { key: clickedStorageKey, error: err }); try { console.debug('[profile-tab-click] raw storage value for failing key:', (typeof goboStorageGet === 'function' ? goboStorageGet(clickedStorageKey) : localStorage.getItem(clickedStorageKey))); } catch(e2) { /* ignore */ } App.ErrorHandler.showError('Failed to load profile.'); Spinner.hideSpinner(); }
+                                    try {
+                                        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(clickedStorageKey) : localStorage.getItem(clickedStorageKey));
+                                        if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); Spinner.hideSpinner(); return; }
+                                        let payload = JSON.parse(raw);
+                                        if (!payload || typeof payload !== 'object') { console.warn('[profile-tab-click] payload not object, repairing', { key: clickedStorageKey, raw }); payload = { data:{ offers:[] }, savedAt: Date.now() }; }
+                                        if (!payload.data || typeof payload.data !== 'object') { console.warn('[profile-tab-click] missing data field, repairing', payload); payload.data = { offers: [] }; }
+                                        if (!Array.isArray(payload.data.offers)) { console.warn('[profile-tab-click] offers not array, coercing', payload.data.offers); payload.data.offers = []; }
+                                        // Invalidate cache if stored payload is fresher than cached DOM (spinner path)
+                                        try {
+                                            const cached = App.ProfileCache && App.ProfileCache[clickedStorageKey];
+                                            const dataSavedAt = Number(payload.savedAt || payload.data?.savedAt || 0);
+                                            const domCachedAt = cached && cached.scrollContainer ? Number(cached.scrollContainer._cachedAt || 0) : 0;
+                                            if (dataSavedAt > domCachedAt) {
+                                                console.debug('[profile-tab-click] (spinner) stored payload is newer than cached DOM; invalidating App.ProfileCache for', clickedStorageKey, { dataSavedAt, domCachedAt });
+                                                try { if (App.ProfileCache && App.ProfileCache[clickedStorageKey]) delete App.ProfileCache[clickedStorageKey]; } catch(e){}
+                                            }
+                                        } catch(e) { console.warn('[profile-tab-click] (spinner) cache invalidation check failed', e); }
+                                        if (payload?.data) { App.TableRenderer.loadProfile(clickedStorageKey, payload); Spinner.hideSpinner(); } else { App.ErrorHandler.showError('Profile data is malformed.'); Spinner.hideSpinner(); }
+                                    } catch(err){ console.error('[profile-tab-click] exception loading profile', { key: clickedStorageKey, error: err }); try { console.debug('[profile-tab-click] raw storage value for failing key:', (typeof goboStorageGet === 'function' ? goboStorageGet(clickedStorageKey) : localStorage.getItem(clickedStorageKey))); } catch(e2) { /* ignore */ } App.ErrorHandler.showError('Failed to load profile.'); Spinner.hideSpinner(); }
                                 }
                                 console.debug('[TAB CLICK] end', { selectedProfileKey: state.selectedProfileKey, currentProfileAfter: App.CurrentProfile && App.CurrentProfile.key });
                             },0);
@@ -1192,6 +1215,36 @@ try {
                         } catch(e) { /* ignore */ }
                     }, 20);
                 }
+
+                // General handling: invalidate cache for changed key and reload if active
+                try {
+                    // Invalidate cached DOM/state for this key so next load reads fresh data
+                    if (App && App.ProfileCache && App.ProfileCache[key]) {
+                        delete App.ProfileCache[key];
+                        console.log('[DEBUG] App.ProfileCache invalidated due to goboStorageUpdated for', key);
+                    }
+                    // Update breadcrumb/tabs to reflect possible savedAt changes or added/removed profiles
+                    if (App && App.TableRenderer) {
+                        App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState?.groupingStack || [], App.TableRenderer.lastState?.groupKeysStack || []);
+                    }
+                    // If the active profile is the changed key, reload it immediately
+                    try {
+                        const activeKey = App && App.CurrentProfile && App.CurrentProfile.key;
+                        if (activeKey && activeKey === key && typeof App.TableRenderer.loadProfile === 'function') {
+                            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(key) : localStorage.getItem(key));
+                            if (raw) {
+                                try {
+                                    const payload = JSON.parse(raw);
+                                    if (payload && payload.data) {
+                                        console.log('[DEBUG] Reloading active profile in response to goboStorageUpdated for', key);
+                                        App.TableRenderer.loadProfile(key, payload);
+                                    }
+                                } catch(e) { /* ignore malformed */ }
+                            }
+                        }
+                    } catch(e) { /* ignore */ }
+                } catch(e) { /* ignore */ }
+
             } catch(e) { /* ignore */ }
         });
     }
