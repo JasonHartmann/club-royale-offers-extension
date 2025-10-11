@@ -1,0 +1,410 @@
+@charset "UTF-8";
+
+/* 									*
+ *	Local CSS - RIVERSIDE SITE		*
+ * 									*/
+
+/*
+Color Scheme:
+	Dark Blue	-	#091436
+	Light Blue	-	#b8bac1
+	Background	-	#e4e4e4
+	Cells		-	#ffffff
+	Light Text	-	#f6f6f6
+*/
+
+
+/*	Tags  */
+
+body {
+    background-color: #e4e4e4;
+}
+a,
+a:visited,
+a:hover,
+a:active {
+    color: #000;
+}
+h1,
+h1 a,
+h1 a:visited,
+h1 a:hover,
+h1 a:active {
+    color: #091436;
+}
+h2,
+h2 a,
+h2 a:visited,
+h2 a:hover,
+h2 a:active {
+    color: #091436;
+}
+h3,
+h3 a,
+h3 a:visited,
+h3 a:hover,
+h3 a:active {
+    color: #091436;
+}
+hr {								/* Horizontal Lines */
+    border-top: 1px solid #091436;
+}
+
+img {
+    vertical-align: middle;
+}
+
+/*	Header	*/
+
+#admin, #admin a {					/* Admin Box */
+    color: #091436;
+}
+#logo {								/* Casino Logo */
+    height: 75px;
+    margin-left: -18px;
+    position: absolute;
+    width: 256px;
+    left: 22px;
+    top: 28px;
+    background-repeat: no-repeat;
+}
+#sid {								/* SID Logo (Header Center) */
+    height:124px;
+    margin-top:20px;
+    width:300px;
+}
+
+
+/*  Footer  */
+
+#footer {							/* Footer color settings */
+    background-color: #091436;
+    color: #eff2ef;
+}
+#footer a {							/* Footer links color settings */
+    color: #eff2ef;
+}
+
+
+/*  Search Page  */
+
+.searchField_lg {					/* Large search field color settings */
+    background-color:#fff;
+    border:1px solid #091436;
+    color:#091436;
+}
+/*color: #B89A64;*/
+.txtBodorColor {
+
+    border-radius: 0px !important;
+    border-color: #B89A64 !important;
+    border: 72px !important;
+    border: 2px solid #B89A64 !important;
+}
+
+.btnLookUp {
+    border-radius: 0px !important;
+    background-color: #B89A64 !important;
+    height: 31px !important;
+    width: 100px !important;
+    font-family: Cambria Math;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color:#fff;
+    margin-bottom:5px !important;
+}
+
+.loguLabel {
+    margin-top: 5px !important;
+    font-family: Cambria Math;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+.cbox{border:1px solid red;background:yellow;}
+.form-control[disabled], .form-control[readonly], fieldset[disabled] .form-control {
+    background-color: transparent!important;
+
+}
+.headerBackColor {
+    background-color: black !important;
+}
+.logoimg{
+    width: 12% !important;
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+}
+.fontsz{
+    text-align: center;
+    font-size: 14px !important;
+}
+
+.removeBorder {
+    border: 0px !important;
+}
+
+.txtaddWith70 {
+    width: 100% !important;
+}
+
+.txtaddWith35 {
+    width:50% !important;
+}
+
+.midiem {
+    width: 75% !important;
+}
+.footerst{
+    margin-top: 85px !important;
+
+    text-align: center !important;
+
+    font-size: 14px !important;
+
+    margin-left: 49px !important;
+}
+.marg{
+    margin-left: 21px;
+}
+.small {
+    width: 35% !important;
+}
+
+.logoMargn {
+    margin-top: 76px !important;
+    margin-bottom: 76px;
+}
+
+.lblfontStyle {
+    font-family: Cambria Math;
+}
+
+.hrtabge {
+    border: 1px solid #B89A64;
+    padding-left: 49px;
+    margin-left: 15px;
+    margin-right: 53px;
+}
+.logost{
+    margin-top: -10px !important;
+}
+/*  Login Page  */
+
+.loginField { /* Login fields color settings */
+    color: #091436;
+}
+
+
+/*-- Parent Tables --*/
+
+table.fluid,						/* Parent Tables Color Settings */
+table.fixed,
+table.fixed3,
+table.info,
+table.matrix,
+table.box3,
+table.box {
+    border: 1px solid #091436;
+}
+table.fluid td,						/* Parent Tables Cell Color Settings */
+table.fixed td,
+table.fixed3 td,
+table.info td,
+table.box3 td,
+table.box td {
+    background-color: #ffffff;
+}
+
+
+/*  Child Tables  */
+
+table.matrix .header td {			/* Matrix Table Header (Do not use <th>) */
+    background-color: #091436 !important;
+    color: #e4e4e4;
+}
+table.matrix .header h2, table.matrix .header h2 a {
+    color: #e4e4e4;
+}
+table.matrix .header td a {
+    color: #e4e4e4;
+}
+table.matrix tr.subhead td {		/* Matrix Table Subhead Row */
+    background-color: #b8bac1 !important;
+    color: #091436;
+    border-top: 1px solid #091436;
+    border-bottom: 1px solid #091436;
+}
+table.matrix tr:nth-child(even) td {	/* Colorizes every other row of matrices */
+    background-color: #f9f9f9;
+}
+.border {							/* For Miscellaneous Child Tables */
+    border: 1px solid #091436;
+    padding:1px;
+    margin-bottom: 7px;
+}
+
+/*  Row Hover  */
+
+.tr_hover:hover td {				/* Row Hover Highlight Color */
+    background-color: #CCD1D1;
+}
+
+
+/*  Table Header Tag  */
+
+th {								/* Table header color */
+    background-color: #b8bac1 !important;
+    border-top: 1px solid #091436;
+    border-bottom: 1px solid #091436;
+    border-right: none;
+    border-left: none;
+}
+th h2, th h2 a, th h2 a:visited, th h2 a:hover {
+    color: #091436;
+}
+th h3, th h3 a, th h3 a:visited, th h3 a:hover {
+    color: #091436;
+}
+th h4, th h4 a, th h4 a:visited, th h4 a:hover {
+    color: #091436;
+}
+tr:nth-child(1) th {				/* Prevents 2x Top Border for First <th> in a Table */
+    border-top: none;
+}
+
+
+/*  Column Titles  */
+
+.column_titles h4,
+.column_titles h4 a,
+.column_titles h4 a:visited {		/* Small column headings */
+    color: #091436 !important;
+}
+.line hr {							/* Small column headings underline */
+    background-color: #091436;
+}
+
+
+/* Total Row  */
+
+tr.total td, tr.total:hover td {
+    background-color: #b8bac1;
+    color: #091436;
+    border-top: 1px solid #091436;
+}
+tr.total td p {
+    color: #091436;
+}
+
+
+/*  Tabs  */
+
+.tab_active {
+    border: 1px solid #091436;
+    background-color: #b8bac1;
+    border-bottom: none !important;
+}
+.tab_active p {
+    color: #091436;
+}
+.tab_inactive {
+    background-color: #091436;
+    border: 1px solid #091436;
+    border-bottom: none !important;
+}
+.tab_inactive a {
+    color: #eff2ef;
+}
+
+
+/*  "Select Date" Rows  */
+
+.date_select {
+    background-color: #b8bac1;
+    color: #efe8e1;
+}
+.date_select p {
+    color: #091436;
+}
+.date_select #dteToDate,				/* Input Field Colors */
+.date_select #dteFromDate,
+.date_select #dteSailDate,
+.date_select #dteReserveDate,
+.date_select #tbxFromDate,
+.date_select #tbxToDate {
+    color: #091436;
+    border: 1px solid #091436;
+    background-color: #f6f8f6;
+}
+
+
+/*  Dashboard Tables  */
+
+table.dash_section {
+    border-bottom: 1px solid #091436;
+}
+table.dash_section th {
+    background: none !important;
+}
+table.dash_section h3 {
+    color: #091436;
+}
+table.dash_section h3 a {
+    color: #091436;
+}
+
+
+/*  Forms  */
+
+.formField {
+    background-color: #ffffff;
+    border: 1px solid #091436;
+}
+
+
+/* Help Pages  */
+.help_box {
+    margin: 2px 0 8px;
+    border: 1px solid #091436;
+}
+.help_box th {
+    background-color:#091436;
+}
+.help_box td {
+    background-color: #ffffff;
+}
+
+
+.tooltip-inner,.tooltip {
+    max-width: 550px !important;
+    /* If max-width does not work, try using width instead */
+    width: 550px !important;
+    background:#fff !important;
+    color:#000 !important;
+}
+.tooltip
+{   max-width: 650px !important;
+    width: 570px !important;
+    font-size:14px !important;
+    background:#fff !important;
+    border:5px solid #000 !important;
+    border-radius:5px;
+}
+
+/* new logos */
+#nccast {
+    position: relative;
+    display: inline-block;
+    width: 188px;
+    height: 118px;
+    margin-top: 14px;
+    background-image: url(../../global/images/Azamara.png?rnd=062021);
+}
+#nlogo {
+    position: relative;
+    display: inline-block;
+    height: 75px;
+    width: 256px;
+    margin-bottom: -18px;
+    background-image: url(/global/images/RCCLLogo.png);
+    background-repeat: no-repeat;
+}
