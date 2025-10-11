@@ -69,9 +69,27 @@ const Modal = {
         coffeeButton.target = '_blank';
         coffeeButton.rel = 'noopener noreferrer';
         coffeeButton.innerHTML = `<img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=comproyale&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff" alt="Buy Me A Coffee" style="height: 32px;">`;
-        footerContainer.appendChild(coffeeButton);
-        footerContainer.appendChild(exportButton);
-        footerContainer.appendChild(closeButton);
+        // Restructure footer into three groups: left (coffee + whats new), center (export), right (close)
+        footerContainer.style.display = 'grid';
+        footerContainer.style.gridTemplateColumns = '1fr auto 1fr';
+        footerContainer.style.alignItems = 'center';
+        footerContainer.style.columnGap = '12px';
+        const footerLeft = document.createElement('div'); footerLeft.id = 'gobo-footer-left'; footerLeft.style.cssText = 'display:flex; align-items:center; gap:8px; justify-self:start;';
+        const footerCenter = document.createElement('div'); footerCenter.id = 'gobo-footer-center'; footerCenter.style.cssText = 'display:flex; justify-content:center; align-items:center;';
+        const footerRight = document.createElement('div'); footerRight.id = 'gobo-footer-right'; footerRight.style.cssText = 'display:flex; justify-content:flex-end; align-items:center; justify-self:end;';
+        footerLeft.appendChild(coffeeButton);
+        footerCenter.appendChild(exportButton);
+        footerRight.appendChild(closeButton);
+        // Append groups in order
+        footerContainer.innerHTML = '';
+        footerContainer.appendChild(footerLeft);
+        footerContainer.appendChild(footerCenter);
+        footerContainer.appendChild(footerRight);
+        // Fallback: if What's New button already exists (in breadcrumb), relocate it now
+        try {
+            const existingWn = document.getElementById('gobo-whatsnew-btn');
+            if (existingWn) footerLeft.appendChild(existingWn);
+        } catch(e) { /* ignore */ }
 
         container.appendChild(scrollContainer);
         container.appendChild(footerContainer);

@@ -3,7 +3,7 @@ const TableRenderer = {
     hasSelectedDefaultTab: false,
     // One-time flag to force selecting the first (current profile) tab only on initial modal open
     _initialOpenPending: false,
-    // Token used to validate most recent profile switch/render cycle
+    // Token used to validate most recent profile switch/render/render cycle
     currentSwitchToken: null,
     // Map of DOM tab keys to underlying storage keys (handles duplicate storage key collisions)
     TabKeyMap: {},
@@ -1124,11 +1124,35 @@ const TableRenderer = {
             } catch(e) { /* ignore */ }
         });
         hiddenGroupsPanel.appendChild(b2bButton); hiddenGroupsPanel.appendChild(hiddenGroupsLabel); hiddenGroupsPanel.appendChild(hiddenGroupsDisplay); crumbsRow.appendChild(hiddenGroupsPanel);
+        // Inject What's New button (manual trigger) just after Hidden Groups panel for visibility
+        try {
+            if (!document.getElementById('gobo-whatsnew-btn')) {
+                const wnBtn = document.createElement('button');
+                wnBtn.id = 'gobo-whatsnew-btn';
+                wnBtn.type = 'button';
+                wnBtn.textContent = "What's New (v1.3)";
+                wnBtn.className = 'b2b-search-button';
+                wnBtn.style.background = '#f59e0b';
+                wnBtn.style.marginLeft = '8px';
+                wnBtn.style.padding ='8px 10px';
+                // Rounded corners
+                wnBtn.style.borderRadius = '6px';
+                wnBtn.addEventListener('click', () => { try { if (window.WhatsNew) WhatsNew.start(true); } catch(err){} });
+                crumbsRow.appendChild(wnBtn);
+                // Relocate the button to the footer left group (just right of coffee) if footer exists
+                try {
+                    const footerLeft = document.getElementById('gobo-footer-left');
+                    if (footerLeft) footerLeft.appendChild(wnBtn); // appendChild moves it
+                } catch(relErr) { /* ignore relocation errors */ }
+            }
+        } catch(e) { /* ignore */ }
         // Post-build tab highlight correction: ensure active tab matches logical current profile
         try {
             const intended = (App.CurrentProfile && App.CurrentProfile.key) || state.selectedProfileKey;
             if (intended) this._applyActiveTabHighlight(intended);
         } catch(e){/* ignore */}
+        // Attempt auto-start of What's New tour (safe, idempotent)
+        try { if (window.WhatsNew) WhatsNew.maybeAutoStart(); } catch(e) { /* ignore */ }
     }
 };
 

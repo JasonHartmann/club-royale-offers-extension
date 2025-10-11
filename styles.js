@@ -18,6 +18,12 @@ const Styles = {
                 .table-footer-container { flex:0 0 auto; padding:10px; background:#fff; border-top:1px solid #e5e7eb; z-index:10; display:flex; justify-content:space-between; align-items:center; }
                 #gobo-loading-spinner { border:4px solid #f3f3f3; border-top:4px solid #3498db; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; }
                 @keyframes spin { 0% {transform:rotate(0deg);} 100% {transform:rotate(360deg);} }
+                /* Whats New pulse */
+                @keyframes goboPulse { 0% { transform:scale(1); } 50% { transform:scale(1.08); } 100% { transform:scale(1); } }
+                .gobo-whatsnew-focus { animation:goboFocusGlow 1.5s infinite; }
+                @keyframes goboFocusGlow { 0% { box-shadow:0 0 0 4px rgba(251,191,36,.35),0 0 18px 6px rgba(251,191,36,.5);} 50% { box-shadow:0 0 0 2px rgba(251,191,36,.25),0 0 8px 3px rgba(251,191,36,.35);} 100% { box-shadow:0 0 0 4px rgba(251,191,36,.35),0 0 18px 6px rgba(251,191,36,.5);} }
+                .gobo-whatsnew-tooltip { animation:fadeInScale .25s ease; }
+                @keyframes fadeInScale { 0% { opacity:0; transform:translateY(6px) scale(.96);} 100% { opacity:1; transform:translateY(0) scale(1);} }
                 .sort-asc::after { content:' ↓'; }
                 .sort-desc::after { content:' ↑'; }
                 .group-icon { cursor:pointer; margin-right:2px; display:inline-block; }
@@ -73,7 +79,7 @@ const Styles = {
                 .accordion-table th, .accordion-table td { font-size:0.75rem; }
                 .close-button { background:#dc2626; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; }
                 .close-button:hover { background:#b91c1c; }
-                .buy-coffee-link { padding:0; cursor:pointer; margin-right:12px; display:flex; align-items:center; }
+                .buy-coffee-link { padding:0; cursor:pointer; margin-right:6px; display:flex; align-items:center; }
                 .export-csv-button { background:#22c55e; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; margin-right:12px; transition:background .2s; }
                 .export-csv-button:hover { background:#16a34a; }
                 /* Back-to-Back (B2B) search button styling — moved from inline in tableRenderer.js */
@@ -132,7 +138,7 @@ const Styles = {
                     position: relative;
                     z-index: 10;
                 }
-                .breadcrumb-tabs-row::-webkit-scrollbar { height:12px; background:#fff; }
+                .profile-tabs::-webkit-scrollbar { height:12px; background:#fff; }
                 .breadcrumb-tabs-row { width:100%; margin-bottom:0; overflow-x:auto; white-space:nowrap; }
                 .breadcrumb-tabs-row::-webkit-scrollbar { height:8px; }
                 .profile-tabs .profile-tab { display:flex; flex-direction:row; align-items:center; justify-content:space-between; padding:6px 10px; min-width:80px; min-height:50px; line-height:1.2; appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, box-shadow .12s; margin-bottom:0; vertical-align:middle; }

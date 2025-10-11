@@ -11,7 +11,8 @@
         /^goboHiddenGroups-/,
         /^goboProfileIdMap_v1$/,
         /^goboProfileIdFreeIds_v1$/,
-        /^goboProfileIdNext_v1$/
+        /^goboProfileIdNext_v1$/,
+        /^goboWhatsNewShown/
     ];
     const DEBUG_STORAGE = true; // toggle for storage shim debug
     function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
