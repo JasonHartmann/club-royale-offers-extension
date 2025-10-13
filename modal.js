@@ -77,7 +77,7 @@ const Modal = {
         const footerLeft = document.createElement('div'); footerLeft.id = 'gobo-footer-left'; footerLeft.style.cssText = 'display:flex; align-items:center; gap:8px; justify-self:start;';
         const footerCenter = document.createElement('div'); footerCenter.id = 'gobo-footer-center'; footerCenter.style.cssText = 'display:flex; justify-content:center; align-items:center;';
         const footerRight = document.createElement('div'); footerRight.id = 'gobo-footer-right'; footerRight.style.cssText = 'display:flex; justify-content:flex-end; align-items:center; justify-self:end;';
-        footerLeft.appendChild(coffeeButton);
+        // footerLeft.appendChild(coffeeButton);
         footerCenter.appendChild(exportButton);
         footerRight.appendChild(closeButton);
         // Append groups in order
