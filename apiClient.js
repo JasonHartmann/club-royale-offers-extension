@@ -66,15 +66,18 @@ const ApiClient = {
                 const co = offer?.campaignOffer;
                 if (!co || !Array.isArray(co.sailings) || !Array.isArray(co.excludedSailings) || co.excludedSailings.length === 0) return;
                 const before = co.sailings.length;
-                co.sailings = co.sailings.filter(s => {
-                    const sShipCode = (s.shipCode || s.ship?.shipCode || s.ship?.code || '').toString().toUpperCase();
-                    return !co.excludedSailings.some(ex => {
-                        const exShipCode = (ex.shipCode || ex.ship?.shipCode || ex.ship?.code || '').toString().toUpperCase();
-                        // Primary (best) match: BOTH shipCode and sailDate match
-                        return !!(exShipCode && ex.sailDate && sShipCode && s.sailDate && exShipCode === sShipCode && ex.sailDate === s.sailDate);
+                try {
+                    const filtered = co.sailings.filter(s => {
+                        const sShipCode = (s.shipCode || s.ship?.shipCode || s.ship?.code || '').toString().toUpperCase();
+                        return !co.excludedSailings.some(ex => {
+                            const exShipCode = (ex.shipCode || ex.ship?.shipCode || ex.ship?.code || '').toString().toUpperCase();
+                            return !!(exShipCode && ex.sailDate && sShipCode && s.sailDate && exShipCode === sShipCode && ex.sailDate === s.sailDate);
+                        });
                     });
-                });
-                const after = co.sailings.length;
+                    // Reassign via new object to avoid Firefox Xray expando issues
+                    offer.campaignOffer = { ...co, sailings: filtered };
+                } catch(e) { /* ignore filtering errors */ }
+                const after = offer?.campaignOffer?.sailings?.length || 0;
                 if (before !== after) console.debug(`[apiClient] Pruned ${before - after} excluded sailing(s) from offer ${co.offerCode}`);
             };
             // Helper to enforce night limit for *TIER* offers (remove sailings > 7 nights)
@@ -84,16 +87,19 @@ const ApiClient = {
                 const code = co.offerCode.toString().toUpperCase();
                 if (!code.includes('TIER')) return; // only apply to *TIER* offers
                 const before = co.sailings.length;
-                co.sailings = co.sailings.filter(s => {
-                    const text = (s.itineraryDescription || s.sailingType?.name || '').trim();
-                    if (!text) return true; // keep if we cannot parse
-                    const m = text.match(/^	*(\d+)\s+(?:N(?:IGHT|T)?S?)\b/i);
-                    if (!m) return true; // keep if nights not parseable
-                    const nights = parseInt(m[1], 10);
-                    if (isNaN(nights)) return true;
-                    return nights <= 7; // drop if >7
-                });
-                const after = co.sailings.length;
+                try {
+                    const filtered = co.sailings.filter(s => {
+                        const text = (s.itineraryDescription || s.sailingType?.name || '').trim();
+                        if (!text) return true; // keep if we cannot parse
+                        const m = text.match(/^\t*(\d+)\s+(?:N(?:IGHT|T)?S?)\b/i);
+                        if (!m) return true; // keep if nights not parseable
+                        const nights = parseInt(m[1], 10);
+                        if (isNaN(nights)) return true;
+                        return nights <= 7; // drop if >7
+                    });
+                    offer.campaignOffer = { ...co, sailings: filtered };
+                } catch(e) { /* ignore */ }
+                const after = offer?.campaignOffer?.sailings?.length || 0;
                 if (before !== after) console.debug(`[apiClient] Trimmed ${before - after} long (>7) night sailing(s) from TIER offer ${code}`);
             };
             console.debug('[apiClient] Sending fetch request to offers API');
@@ -122,11 +128,15 @@ const ApiClient = {
                 console.debug('[apiClient] Non-OK response, throwing error:', errorText);
                 throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
             }
-            const data = await response.json();
+            // Deep clone JSON to strip potential Xray wrappers (Firefox) so we can safely add/replace properties
+            const rawData = await response.json();
+            let data;
+            try { data = JSON.parse(JSON.stringify(rawData)); } catch(e) { data = rawData; }
             console.debug('[apiClient] API response received:', data);
             // Remove excluded sailings and enforce night limit for TIER offers
             if (data && Array.isArray(data.offers)) {
                 console.debug('[apiClient] Processing offers array, length:', data.offers.length);
+                data.offers = data.offers.map(o => ({ ...o })); // shallow clone each offer root
                 data.offers.forEach(o => {
                     removeExcludedFromOffer(o);
                     enforceTierNightLimit(o);
@@ -154,7 +164,11 @@ const ApiClient = {
                             if (!r.ok) throw new Error(`Refetch ${code} failed: ${r.status}`);
                             return r.json();
                         })
-                        .then(refetchData => ({ code, refetchData }))
+                        .then(refetchData => {
+                            // Deep clone refetch data for same Firefox safety
+                            try { refetchData = JSON.parse(JSON.stringify(refetchData)); } catch(e) { /* ignore */ }
+                            return ({ code, refetchData });
+                        })
                         .catch(err => {
                             console.warn('[apiClient] Offer refetch failed', code, err.message);
                             return { code, refetchData: null };
@@ -164,27 +178,36 @@ const ApiClient = {
                 console.debug('[apiClient] Awaiting Promise.all for refetches');
                 const refetchResults = await Promise.all(refetchPromises);
                 console.debug('[apiClient] Refetches completed');
-                // Merge sailings into original data
-                refetchResults.forEach(({ code, refetchData }) => {
-                    if (!refetchData || !Array.isArray(refetchData.offers)) return;
-                    const refreshedOffer = refetchData.offers.find(o => o?.campaignOffer?.offerCode === code);
-                    if (!refreshedOffer) return;
-                    const refreshedSailings = refreshedOffer?.campaignOffer?.sailings;
-                    if (Array.isArray(refreshedSailings) && refreshedSailings.length) {
-                        const original = data.offers.find(o => o?.campaignOffer?.offerCode === code);
-                        if (original?.campaignOffer) {
-                            original.campaignOffer.sailings = refreshedSailings;
-                            // Replace excludedSailings too (if present) then prune again
-                            if (Array.isArray(refreshedOffer.campaignOffer.excludedSailings)) {
-                                original.campaignOffer.excludedSailings = refreshedOffer.campaignOffer.excludedSailings;
+                // Merge sailings into original data (create new objects instead of mutating in-place to appease Xray wrappers)
+                try {
+                    refetchResults.forEach(({ code, refetchData }) => {
+                        if (!refetchData || !Array.isArray(refetchData.offers)) return;
+                        const refreshedOffer = refetchData.offers.find(o => o?.campaignOffer?.offerCode === code);
+                        if (!refreshedOffer) return;
+                        const refreshedSailings = refreshedOffer?.campaignOffer?.sailings;
+                        if (Array.isArray(refreshedSailings) && refreshedSailings.length) {
+                            const originalIdx = data.offers.findIndex(o => o?.campaignOffer?.offerCode === code);
+                            if (originalIdx !== -1) {
+                                const original = data.offers[originalIdx];
+                                const origCO = original.campaignOffer || {};
+                                const newCO = {
+                                    ...origCO,
+                                    sailings: refreshedSailings.map(s => ({ ...s })),
+                                    excludedSailings: Array.isArray(refreshedOffer.campaignOffer.excludedSailings) ? refreshedOffer.campaignOffer.excludedSailings.map(s => ({ ...s })) : origCO.excludedSailings
+                                };
+                                // Replace campaignOffer object entirely (safer than adding props on existing Xray)
+                                data.offers[originalIdx] = { ...original, campaignOffer: newCO };
+                                // Post-merge pruning / limits
+                                removeExcludedFromOffer(data.offers[originalIdx]);
+                                enforceTierNightLimit(data.offers[originalIdx]);
+                                console.debug(`[apiClient] Merged ${newCO.sailings.length} sailings for offer ${code}`);
                             }
-                            removeExcludedFromOffer(original);
-                            enforceTierNightLimit(original);
-                            console.debug(`[apiClient] Merged ${original.campaignOffer.sailings.length} sailings for offer ${code}`);
                         }
-                    }
-                });
-                console.debug('[apiClient] Refetched offers merged');
+                    });
+                    console.debug('[apiClient] Refetched offers merged');
+                } catch(mergeErr) {
+                    console.warn('[apiClient] Merge phase error (continuing with partial data):', mergeErr);
+                }
             }
 
             // normalize data (trim, adjust capitalization, etc.) AFTER potential merges so added sailings are normalized too
@@ -216,7 +239,9 @@ const ApiClient = {
             console.debug('[apiClient] Offers table rendered');
         } catch (error) {
             console.debug('[apiClient] Fetch failed:', error.message);
-            if (retryCount > 0) {
+            if (/cross-origin object/i.test(error.message)) {
+                console.debug('[apiClient] Detected Firefox XrayWrapper mutation issue. Will not retry mutation-specific error this cycle.');
+            } else if (retryCount > 0) {
                 console.debug(`[apiClient] Retrying fetch (${retryCount} attempts left)`);
                 setTimeout(() => this.fetchOffers(retryCount - 1), 2000);
             } else {
