@@ -77,6 +77,11 @@ Key files:
 - Adjust colors / styles: update `styles.js`.
 - Extend grouping rules: see `accordionBuilder.js`.
 
+## Planned updates
+
+- Browse Itineraries: View detailed sailing itineraries directly from an offer — port-by-port stops, durations, and links to shore excursions.
+- Back-to-Back Wizard: Guided assistant to detect and link back-to-back sailings, surface upgrade opportunities, and simplify combined booking flows.
+
 ## Data Storage Keys (Overview)
 
 | Key | Purpose |

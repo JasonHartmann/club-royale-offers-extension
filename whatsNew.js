@@ -1,6 +1,6 @@
 // whatsNew.js
 // Provides a lightweight, versioned in-page "What's New" / guided help tour.
-// Patch 1.3 topics:
+// Patch 1.4 topics:
 //  1. Multiple account profile tabs – log out then sign in with a 2nd account to add more tabs
 //  2. Link / Unlink icon – chain link toggles linking two accounts to form a Combined Offers tab
 //  3. Favorite (★) column – click a row's star to add/remove a sailing from Favorites
@@ -13,7 +13,7 @@
             if (typeof browser !== 'undefined' && browser.runtime?.getManifest) return browser.runtime.getManifest().version || '1.3';
             if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) return chrome.runtime.getManifest().version || '1.3';
         } catch(e) {}
-        return '1.3';
+        return '1.4';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
     const TOUR_REVISION = '3'; // r1 initial, r2 added Favorite column, r3 adds Link/Unlink icon step
