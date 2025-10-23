@@ -40,7 +40,12 @@ h1,h2{font-weight:600;color:var(--text);margin:0 0 .5rem}
 .lead{color:var(--muted);font-size:1.02rem;margin-top:0.2rem}
 
 a{color:var(--accent-2)}
-a:hover{color:var(--accent)}
+/* Only change color on hover for non-button links so buttons keep their intended text color */
+a:not(.btn):hover{color:var(--accent)}
+/* Ensure button text color stays consistent on hover/focus */
+.btn:hover, .btn:focus { color: #021427; }
+/* Keep outlined/alt buttons' text light on hover so they remain readable */
+.btn.alt:hover, .btn.alt:focus { color: var(--text); }
 
 /* Buttons */
 .btn{background:var(--accent);color:#021427;padding:0.55rem 0.95rem;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;border:none;font-weight:600}
@@ -50,15 +55,15 @@ a:hover{color:var(--accent)}
 /* Hero and layout */
 .gradient-hero{padding:2.25rem 0 1rem;background:linear-gradient(135deg, rgba(10,123,214,0.10), rgba(10,77,140,0.03));backdrop-filter:saturate(120%)}
 .hero-inner{display:flex;flex-wrap:wrap;gap:2rem;align-items:center;padding:2rem 1rem;max-width:1100px;margin:0 auto}
-.hero-inner > div{flex:1 1 360px}
+.hero-inner > div{flex:1 1 360px;min-width:0}
 
 .screen-card{background:var(--card);border-radius:12px;padding:1rem;box-shadow:0 10px 30px var(--shadow);border:1px solid rgba(255,255,255,0.03)}
 .hero-peek h4{margin:0 0 .5rem;font-size:.95rem}
 img.resp{max-width:100%;height:auto;border-radius:6px;display:block}
 
 /* Pills */
-.pill-row{margin-top:1rem}
-.pill-row .pill{background:rgba(255,255,255,0.06);color:var(--muted);padding:.28rem .7rem;border-radius:999px;margin-right:.5rem;font-size:.78rem;border:1px solid rgba(255,255,255,0.03)}
+.pill-row{margin-top:1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.pill-row .pill{flex:0 0 auto;white-space:nowrap;background:rgba(255,255,255,0.06);color:var(--muted);padding:.28rem .7rem;border-radius:999px;margin-right:.5rem;font-size:.78rem;border:1px solid rgba(255,255,255,0.03)}
 
 /* Sections */
 .wrapper{padding:1.5rem}
@@ -102,12 +107,21 @@ a[href^="mailto:"], a[href^="https://chromewebstore"]{color:var(--accent);font-w
 
 /* Prominent Venmo CTA in hero */
 .btn.venmo{
-  display:inline-flex;align-items:center;gap:10px;padding:0.56rem 1rem;border-radius:10px;background:linear-gradient(180deg,#6dd07f,#43b868);color:#021427;font-weight:700;border:none;text-decoration:none;box-shadow:0 10px 28px rgba(47,120,70,0.18);transition:transform .12s ease,box-shadow .12s ease,opacity .12s ease;}
-.btn.venmo svg{flex:0 0 auto;display:block;margin-right:8px}
+  display:inline-flex;align-items:center;gap:10px;padding:0.56rem 1rem;border-radius:10px;background:linear-gradient(180deg,#6dd07f,#43b868);color:#021427;font-weight:700;border:none;text-decoration:none;box-shadow:0 10px 28px rgba(47,120,70,0.18);}
+.btn.venmo .material-symbols-outlined{flex:0 0 auto;display:block;margin-right:8px}
 .btn.venmo .btn-text{font-size:0.98rem}
-.btn.venmo:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(47,120,70,0.25)}
+.btn.venmo:hover{box-shadow:0 14px 36px rgba(47,120,70,0.25)}
 .btn.venmo:active{transform:translateY(0)}
 .btn.venmo:focus{outline:3px solid rgba(230,184,0,0.18);outline-offset:3px}
+
+/* Firefox CTA styling (matches site theme with a Firefox-leaning accent */
+.btn.firefox{
+  display:inline-flex;align-items:center;gap:10px;padding:0.56rem 1rem;border-radius:10px;background:linear-gradient(180deg,#ffb366,#ff7a00);color:#021427;font-weight:700;border:none;text-decoration:none;box-shadow:0 10px 28px rgba(170,90,0,0.14);
+}
+.btn.firefox .material-symbols-outlined{flex:0 0 auto;display:block;margin-right:8px}
+.btn.firefox:hover{box-shadow:0 14px 36px rgba(170,90,0,0.22)}
+.btn.firefox:active{transform:translateY(0)}
+.btn.firefox:focus{outline:3px solid rgba(255,180,90,0.16);outline-offset:3px}
 
 /* CTA row layout: align buttons nicely and allow wrapping on small screens */
 .cta-row{display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;margin-top:1rem}
@@ -117,13 +131,37 @@ a[href^="mailto:"], a[href^="https://chromewebstore"]{color:var(--accent);font-w
 .btn .btn-text{display:inline-block}
 .btn svg{display:inline-block;vertical-align:middle;height:18px;width:18px}
 
+/* Add a consistent transition and hover lift + shadow for all buttons */
+.btn{transition:transform .12s ease,box-shadow .12s ease,opacity .12s ease}
+.btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,0.12);opacity:1}
+
+/* Ensure pressing (active) returns the button to its resting position for all buttons */
+.btn:active{transform:translateY(0);transition:none}
+
+/* Force button text color to remain visible on hover/focus (highest specificity to avoid accidental overrides) */
+.btn, .btn:hover, .btn:focus { color: #021427 !important; }
+/* Keep outlined/alt buttons' text light on hover so they remain readable */
+.btn.alt, .btn.alt:hover, .btn.alt:focus { color: var(--text) !important; }
+
 /* preserve prior specific button paddings for visual balance */
 .btn.alt{padding:0.48rem 0.85rem}
 .btn.download{padding:0.56rem 0.95rem}
-.btn.venmo{padding:0.52rem 0.95rem}
+.btn.venmo{padding:0.52rem 0.95rem;background:linear-gradient(180deg,#6dd07f,#43b868);color:#021427;font-weight:700;border:none;text-decoration:none;box-shadow:0 10px 28px rgba(47,120,70,0.18)}
 
 @media (max-width:640px){
   .cta-row{gap:.6rem}
   .btn{flex:1 1 auto;min-width:0}
   .btn.venmo{width:100%}
 }
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .btn, .btn:hover, .btn:active, .btn.venmo:hover{transition:none !important;transform:none !important;box-shadow:none !important}
+}
+
+/* Prominent GitHub link and footer note styling */
+.footer-github{margin-top:.5rem;font-size:.95rem;color:var(--muted)}
+.footer-list a[href*="github.com"]{color:var(--accent);font-weight:700}
+
+/* Material Symbols helper */
+.material-symbols-outlined{font-family:'Material Symbols Outlined', sans-serif;font-variation-settings:'FILL' 0,'wght' 700,'GRAD' 0,'opsz' 24;vertical-align:middle;margin-right:8px;font-size:18px;display:inline-block}

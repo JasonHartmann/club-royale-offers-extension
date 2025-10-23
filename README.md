@@ -82,6 +82,12 @@ Key files:
 - Browse Itineraries: View detailed sailing itineraries directly from an offer — port-by-port stops, durations, and links to shore excursions.
 - Back-to-Back Wizard: Guided assistant to detect and link back-to-back sailings, surface upgrade opportunities, and simplify combined booking flows.
 
+## Report issues & contribute
+
+Found a bug or have an improvement idea? Please open an issue or submit a pull request on GitHub so I can track and prioritize it:
+
+- https://github.com/JasonHartmann/club-royale-offers-extension/issues
+
 ## Data Storage Keys (Overview)
 
 | Key | Purpose |

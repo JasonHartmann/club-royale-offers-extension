@@ -50,7 +50,7 @@ const Utils = {
             let split = String(rawCode).split('/');
             const codes = split.map(c => c.trim()).filter(Boolean);
             const links = codes.map(code => `
-                <a href="#" class="offer-code-link text-blue-600 underline" data-offer-code="${code}" title="Lookup ${code}">${code}</a>
+                <a href="javascript:void(0)" class="offer-code-link text-blue-600 underline" data-offer-code="${code}" title="Lookup ${code}">${code}</a>
             `).join(' / ');
             codeCell = `${links}`; // Redeem button currently disabled
         }

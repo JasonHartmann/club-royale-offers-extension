@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Comp Royale – Club Royale & Blue Chip Offers Viewer Extension</title>
+  <title>Comp Royale   Club Royale & Blue Chip Offers Viewer Extension</title>
   <meta name="description" content="Chrome extension that transforms Royal Caribbean Club Royale and Celebrity Blue Chip Club offers into a sortable, groupable, power-user interface." />
   <meta name="theme-color" content="#0a4d8c" />
   <meta property="og:title" content="Club Royale & Blue Chip Offers Viewer" />
@@ -13,6 +13,8 @@
   <meta property="og:image" content="https://comproyale.com/offer-screen.png" />
   <link rel="icon" type="image/png" href="offer-screen.png" />
   <link rel="stylesheet" href="styles.css" />
+  <!-- Google Material Symbols (outlined) for simple icon usage -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -33,21 +35,16 @@
     <div class="hero-inner">
       <div>
         <h1>Club Royale & Blue Chip Offers Viewer</h1>
-        <p class="lead">Supercharge your Royal Caribbean Club Royale <strong>and</strong> Celebrity Blue Chip Club offer browsing. Instantly view all comp offers in a fast, sortable table or drillable accordion—group, filter, highlight, and plan smarter. <strong>Now with multi-profile support and combined offer upgrades!</strong></p>
+        <p class="lead">Supercharge your Royal Caribbean Club Royale <strong>and</strong> Celebrity Blue Chip Club offer browsing. Instantly view all comp offers in a fast, sortable table or drillable accordion group, filter, highlight, and plan smarter. <strong>Now with multi-profile support and combined offer upgrades!</strong></p>
         <div class="cta-row">
           <a class="btn" href="#install">Install Extension</a>
+          <a class="btn firefox" href="https://addons.mozilla.org/en-US/firefox/addon/rcl-club-offers/" target="_blank" rel="noopener" aria-label="Install extension on Firefox (desktop and Firefox for Android)">Install for Firefox</a>
           <a class="btn alt" href="#screens">See Screens</a>
           <a class="btn venmo" href="https://venmo.com/percex" target="_blank" rel="noopener" aria-label="Buy me a coffee (opens in new tab)">
-            <!-- Coffee cup icon (simple) -->
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-              <path d="M18 8h1a3 3 0 010 6h-1v1a3 3 0 01-3 3H8a3 3 0 01-3-3V8h11z" fill="#fff"/>
-              <path d="M6 6h10v1H6z" fill="#fff" opacity="0.9"/>
-              <path d="M19 6a1 1 0 010 2h-1V6h1z" fill="#fff"/>
-            </svg>
+            <!-- Coffee cup icon replaced with Material Symbol -->
+            <span class="material-symbols-outlined" aria-hidden="true">local_cafe</span>
             <span class="btn-text">Buy me a coffee</span>
           </a>
-          <!-- Direct download instructions: prominent action linking to the manual download page -->
-          <a class="btn download" href="download-direct.html">Direct Download</a>
         </div>
         <div class="pill-row" aria-label="Key benefits">
           <span class="pill">Multiple Profiles</span>
@@ -71,7 +68,7 @@
   <main>
     <section id="whatsnew">
       <div class="wrapper">
-        <h2>What’s New in v1.4</h2>
+        <h2>What's New in v1.4</h2>
         <ul class="details">
           <li><strong>Celebrity Blue Chip Club Support:</strong> View and manage offers from both Royal Caribbean Club Royale and Celebrity Blue Chip Club in one place.</li>
           <li><strong>Multiple Profile Support:</strong> Add and switch between player profiles. Each account gets its own tab with email, loyalty number, and refresh time.</li>
@@ -86,7 +83,7 @@
     <section id="features">
       <div class="wrapper">
         <h2>Why it helps</h2>
-        <p class="intro-text">Scrolling raw offer cards is slow. This extension structures everything into actionable data so you can focus on planning—not parsing. Quick sorting, multi-profile tabs, grouping, and frictionless reading all save time. <strong>Works for both Club Royale and Blue Chip Club offers.</strong></p>
+        <p class="intro-text">Scrolling raw offer cards is slow. This extension structures everything into actionable data so you can focus on planning not parsing. Quick sorting, multi-profile tabs, grouping, and frictionless reading all save time. <strong>Works for both Club Royale and Blue Chip Club offers.</strong></p>
         <div class="features-grid">
           <div class="feature"><h3>Celebrity & Royal Support</h3><p>Works on both Royal Caribbean Club Royale and Celebrity Blue Chip Club offers pages.</p></div>
           <div class="feature"><h3>Multiple Profiles</h3><p>Switch between player accounts with tabs. Each profile is saved and managed separately.</p></div>
@@ -95,7 +92,7 @@
           <div class="feature"><h3>Accordion Groups</h3><p>Group by code, ship, port, destination, category, or guests.</p></div>
           <div class="feature"><h3>Hide by Group</h3><p>Use the trash icon to hide all offers in a group (per profile).</p></div>
           <div class="feature"><h3>Visual Highlights</h3><p>Newest offers + soon expiring flagged for fast triage.</p></div>
-          <div class="feature"><h3>Favorites</h3><p>Save individual sailings to your Favorites tab for quick access — works across profiles and combined views.</p></div>
+          <div class="feature"><h3>Favorites</h3><p>Save individual sailings to your Favorites tab for quick access   works across profiles and combined views.</p></div>
           <div class="feature"><h3>Privacy First</h3><p>No remote calls beyond the site itself; no tracking or analytics.</p></div>
           <div class="feature"><h3>Low Overhead</h3><p>Lightweight content script, fast DOM operations, minimal styles.</p></div>
         </div>
@@ -119,12 +116,13 @@
           <p style="margin-top:6px;font-size:.95rem;">Prefer manual install or troubleshooting? See the <a href="download-direct.html">direct download & manual install instructions</a>.</p>
           <ol class="steps">
             <li>Install from the <a href="https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">Chrome Web Store</a>.</li>
+            <li>Or install from the <a href="https://addons.mozilla.org/en-US/firefox/addon/rcl-club-offers/" target="_blank" rel="noopener">Firefox Add-ons</a> page (supports Firefox desktop and Firefox for Android).</li>
             <li>Log into your Royal Caribbean or Celebrity account and open the Club Royale or Blue Chip Club Offers page.</li>
             <li>Click the added <strong>Show All Offers</strong> button in the top bar.</li>
             <li>Switch between profiles using the tabs at the top.</li>
             <li>Link two profiles with the chain icon to see combined offers.</li>
             <li>Sort columns, group, or filter as needed.</li>
-            <li>Hide groups with the trash icon (per profile).</li>
+            <li>Hide groups with the trash icon.</li>
             <li>Close with the X or press ESC.</li>
           </ol>
           <p class="note">No data leaves the page. Processing is local and ephemeral.</p>
@@ -132,6 +130,7 @@
         <div>
           <h2>Key Details</h2>
           <ul class="details">
+            <li>Available for Chrome and Firefox (including Firefox for Android)</li>
             <li>Works on both Royal Caribbean and Celebrity offers pages</li>
             <li>Switch between multiple player profiles with one click</li>
             <li>Combine offers from two accounts to see upgrade opportunities</li>
@@ -171,8 +170,11 @@
           <li><a href="#privacy">Privacy</a></li>
           <li><a href="mailto:admin@comproyale.com">Support</a></li>
           <li><a href="download-direct.html">Direct ZIP Download</a></li>
+          <li><a href="https://addons.mozilla.org/en-US/firefox/addon/rcl-club-offers/" target="_blank" rel="noopener">Firefox Add-on</a></li>
+          <li><a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener" aria-label="Open project repository on GitHub (issues and improvement requests)"><span class="material-symbols-outlined" aria-hidden="true">bug_report</span>Project &amp; Issues on GitHub</a></li>
         </ul>
         <p class="footer-contact">Email: <a class="support-link" href="mailto:admin@comproyale.com">admin@comproyale.com</a></p>
+        <p class="footer-github" style="margin-top:.5rem;font-size:.9rem;">Have an issue or a suggestion? Please open an issue or improvement request on the project's <a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener">GitHub repository</a>.</p>
       </div>
       <div>
         <h4 class="footer-head">Status</h4>
@@ -180,8 +182,9 @@
       </div>
     </div>
     <p class="legal small-print">Not affiliated with Royal Caribbean International, Celebrity Cruises, or their loyalty programs. All trademarks belong to their respective owners.</p>
-    <p style="text-align:center;font-size:.6rem;opacity:.55;margin:.5rem 0 0;">© 2025 Percex Technologies, LLC. Supercharge your Club Royale and Blue Chip Club browsing with the new Club Royale & Blue Chip Offers Viewer — a tiny Chrome extension that turns messy offer cards into a fast, sortable table and grouped accordion views. View, sort, group, and highlight expiring offers locally with zero tracking. Install now: <a href="https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd</a>. All rights reserved.</p>
+    <p style="text-align:center;font-size:.6rem;opacity:.55;margin:.5rem 0 0;">© 2025 Percex Technologies, LLC. Supercharge your Club Royale and Blue Chip Club browsing with the new Club Royale & Blue Chip Offers Viewer   a tiny Chrome extension that turns messy offer cards into a fast, sortable table and grouped accordion views. View, sort, group, and highlight expiring offers locally with zero tracking. Install now: <a href="https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd</a>. All rights reserved.</p>
   </footer>
   <noscript><div style="padding:1rem;text-align:center;font-size:.75rem;color:#555">JavaScript is disabled; some interactive enhancements may not appear.</div></noscript>
 </body>
 </html>
+
