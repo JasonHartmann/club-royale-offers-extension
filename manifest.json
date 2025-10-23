@@ -16,6 +16,12 @@
         "https://*.royalcaribbean.com/club-royale/*",
         "https://*.celebritycruises.com/blue-chip-club/*"
       ],
+      "css": [
+        "styles/table.css",
+        "styles/accordion.css",
+        "styles/ui.css",
+        "styles/tabs-badges.css"
+      ],
       "js": [
         "storageShim.js",
         "utils.js",

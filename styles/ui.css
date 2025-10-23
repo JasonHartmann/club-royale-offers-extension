@@ -1,0 +1,32 @@
+/* General UI elements, buttons, breadcrumbs, filters, animations extracted from styles.css */
+/* Whats New pulse */
+@keyframes goboPulse { 0% { transform:scale(1); } 50% { transform:scale(1.08); } 100% { transform:scale(1); } }
+.gobo-whatsnew-focus { animation:goboFocusGlow 1.5s infinite; }
+@keyframes goboFocusGlow { 0% { box-shadow:0 0 0 4px rgba(251,191,36,.35),0 0 18px 6px rgba(251,191,36,.5);} 50% { box-shadow:0 0 0 2px rgba(251,191,36,.25),0 0 8px 3px rgba(251,191,36,.35);} 100% { box-shadow:0 0 0 4px rgba(251,191,36,.35),0 0 18px 6px rgba(251,191,36,.5);} }
+.gobo-whatsnew-tooltip { animation:fadeInScale .25s ease; }
+@keyframes fadeInScale { 0% { opacity:0; transform:translateY(6px) scale(.96);} 100% { opacity:1; transform:translateY(0) scale(1);} }
+.close-button { background:#dc2626; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; }
+.close-button:hover { background:#b91c1c; }
+.buy-coffee-link { padding:0; cursor:pointer; margin-right:6px; display:flex; align-items:center; }
+.export-csv-button { background:#22c55e; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; margin-right:12px; transition:background .2s; }
+.export-csv-button:hover { background:#16a34a; }
+/* Back-to-Back (B2B) search button styling — moved from inline in tableRenderer.js */
+.b2b-search-button { margin-left:12px; background:#0d3b66; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:4px; cursor:pointer; font-weight:600; transition:background .15s, transform .08s; }
+.b2b-search-button:hover { background:#0b3557; transform:translateY(-1px); }
+/* Breadcrumbs */
+.breadcrumb-container { display:flex; align-items:center; gap:8px; padding:8px; margin-bottom:8px; }
+.breadcrumb-link { color:#2563eb; text-decoration:underline; cursor:pointer; }
+.breadcrumb-link:hover { color:#1e40af; }
+.breadcrumb-arrow { display:none; }
+.accordion-view .breadcrumb-arrow { display:inline; }
+.breadcrumb-arrow::after { content:'→'; margin:0 8px; }
+/* Offer rows highlighting */
+.newest-offer-row { background:#DFD !important; }
+.expiring-soon-row { background:#FDD !important; }
+/* Updated: tier filter now inline inside breadcrumb */
+.tier-filter-toggle { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,0.9); padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.08); font-weight:500; }
+/* Expanded breadcrumb layout variant */
+.breadcrumb-container { display:flex; flex-direction:column; align-items:flex-start; gap:0; padding:8px; margin-bottom:8px; width:100%; }
+.breadcrumb-tabs-row { width:100%; margin-bottom:0; }
+.breadcrumb-crumb-row { display:flex; align-items:center; gap:8px; width:100%; padding-top:12px; border-top:1px solid #e5e7eb; background:transparent; }
+
