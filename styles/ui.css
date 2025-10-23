@@ -7,7 +7,23 @@
 @keyframes fadeInScale { 0% { opacity:0; transform:translateY(6px) scale(.96);} 100% { opacity:1; transform:translateY(0) scale(1);} }
 .close-button { background:#dc2626; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; }
 .close-button:hover { background:#b91c1c; }
-.buy-coffee-link { padding:0; cursor:pointer; margin-right:6px; display:flex; align-items:center; }
+.buy-coffee-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    margin-right: 6px;
+    background: transparent;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+}
+.buy-coffee-link:hover { background: rgba(0,0,0,0.04); }
+.buy-coffee-link:focus { outline: 2px solid #ffd166; outline-offset: 2px; }
+.coffee-emoji { font-size: 18px; line-height: 1; display:inline-block; }
 .export-csv-button { background:#22c55e; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; margin-right:12px; transition:background .2s; }
 .export-csv-button:hover { background:#16a34a; }
 /* Back-to-Back (B2B) search button styling — moved from inline in tableRenderer.js */
@@ -29,4 +45,3 @@
 .breadcrumb-container { display:flex; flex-direction:column; align-items:flex-start; gap:0; padding:8px; margin-bottom:8px; width:100%; }
 .breadcrumb-tabs-row { width:100%; margin-bottom:0; }
 .breadcrumb-crumb-row { display:flex; align-items:center; gap:8px; width:100%; padding-top:12px; border-top:1px solid #e5e7eb; background:transparent; }
-

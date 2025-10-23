@@ -65,10 +65,35 @@ const Modal = {
         // Add Buy Me a Coffee button (left-justified)
         const coffeeButton = document.createElement('a');
         coffeeButton.className = 'buy-coffee-link';
-        coffeeButton.href = 'https://www.buymeacoffee.com/comproyale';
+        // Point to Ko-fi as requested
+        coffeeButton.href = 'https://ko-fi.com/percex';
         coffeeButton.target = '_blank';
         coffeeButton.rel = 'noopener noreferrer';
-        coffeeButton.innerHTML = `<img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=comproyale&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff" alt="Buy Me A Coffee" style="height: 32px;">`;
+        // Use an emoji + text rather than an external image; sizing and layout handled via CSS
+        coffeeButton.setAttribute('aria-label', 'Buy me a coffee (opens in new tab)');
+        coffeeButton.innerHTML = '<span class="coffee-emoji" aria-hidden="true">☕️</span><span class="buy-coffee-text">Buy me a coffee</span>';
+
+        // Create Venmo circular button placed between coffee and what's new
+        const venmoButton = document.createElement('a');
+        venmoButton.className = 'venmo-link';
+        venmoButton.href = 'https://venmo.com/percex';
+        venmoButton.target = '_blank';
+        venmoButton.rel = 'noopener noreferrer';
+        venmoButton.setAttribute('aria-label', 'Venmo (opens in new tab)');
+        // Inline styles adjusted: 24px circle, no padding so image can fill it
+        venmoButton.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; overflow:hidden; background:#fff; border:1px solid #ddd; box-sizing:border-box;';
+        const venmoImg = document.createElement('img');
+        // Prefer extension-safe URL if available, fallback to relative path
+        try {
+            venmoImg.src = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL('images/venmo.png') : 'images/venmo.png';
+        } catch(e) {
+            venmoImg.src = 'images/venmo.png';
+        }
+        venmoImg.alt = 'Venmo';
+        // Make the image fill the circular container
+        venmoImg.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+        venmoButton.appendChild(venmoImg);
+
         // Restructure footer into three groups: left (coffee + whats new), center (export), right (close)
         footerContainer.style.display = 'grid';
         footerContainer.style.gridTemplateColumns = '1fr auto 1fr';
@@ -77,7 +102,10 @@ const Modal = {
         const footerLeft = document.createElement('div'); footerLeft.id = 'gobo-footer-left'; footerLeft.style.cssText = 'display:flex; align-items:center; gap:8px; justify-self:start;';
         const footerCenter = document.createElement('div'); footerCenter.id = 'gobo-footer-center'; footerCenter.style.cssText = 'display:flex; justify-content:center; align-items:center;';
         const footerRight = document.createElement('div'); footerRight.id = 'gobo-footer-right'; footerRight.style.cssText = 'display:flex; justify-content:flex-end; align-items:center; justify-self:end;';
-        // footerLeft.appendChild(coffeeButton);
+        // Re-enable the coffee button in the footer
+        footerLeft.appendChild(coffeeButton);
+        // Insert the Venmo button after the coffee button so it's between coffee and any What's New button
+        footerLeft.appendChild(venmoButton);
         footerCenter.appendChild(exportButton);
         footerRight.appendChild(closeButton);
         // Append groups in order
