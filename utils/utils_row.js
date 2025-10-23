@@ -27,6 +27,25 @@
             codeCell = `${links}`; // Redeem button currently disabled
         }
         const shipClass = Utils.getShipClass(sailing.shipName);
+        // Trade-in value extraction & formatting (inserted between Expiration and Name columns)
+        const rawTrade = offer.campaignOffer?.tradeInValue;
+        let tradeDisplay = '-';
+        if (rawTrade !== undefined && rawTrade !== null && rawTrade !== '') {
+            if (typeof rawTrade === 'number') {
+                const num = rawTrade;
+                tradeDisplay = (Number.isInteger(num) ? `$${num.toLocaleString()}` : `$${num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`);
+            } else {
+                // Strip non-numeric chars and attempt parse
+                const cleaned = String(rawTrade).replace(/[^0-9.\-]/g, '');
+                const parsed = cleaned === '' ? NaN : parseFloat(cleaned);
+                if (!isNaN(parsed)) {
+                    tradeDisplay = (Number.isInteger(parsed) ? `$${parsed.toLocaleString()}` : `$${parsed.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`);
+                } else {
+                    // Fallback to raw string
+                    tradeDisplay = String(rawTrade);
+                }
+            }
+        }
         // Favorite / ID column setup
         const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
         let favCellHtml;
@@ -83,6 +102,7 @@
             <td class="border p-2">${codeCell}</td>
             <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
+            <td class="border p-2">${tradeDisplay}</td>
             <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
             <td class="border p-2">${shipClass}</td>
             <td class="border p-2">${sailing.shipName || '-'}</td>

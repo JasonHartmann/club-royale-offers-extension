@@ -307,6 +307,7 @@ const Modal = {
                 offer.campaignOffer?.offerCode || '-',
                 offer.campaignOffer?.startDate ? App.Utils.formatDate(offer.campaignOffer.startDate) : '-',
                 offer.campaignOffer?.reserveByDate ? App.Utils.formatDate(offer.campaignOffer.reserveByDate) : '-',
+                (function(){ const t = offer.campaignOffer?.tradeInValue; if (t === null || t === undefined || t === '') return '-'; if (typeof t === 'number') return Number.isInteger(t) ? `$${t.toLocaleString()}` : `$${t.toFixed(2)}`; const cleaned = String(t).replace(/[^0-9.\-]/g, ''); const parsed = cleaned === '' ? NaN : parseFloat(cleaned); if (!isNaN(parsed)) return Number.isInteger(parsed) ? `$${parsed.toLocaleString()}` : `$${parsed.toFixed(2)}`; return String(t); })(),
                 offer.campaignOffer?.name || '-',
                 shipClass,
                 sailing.shipName || '-',

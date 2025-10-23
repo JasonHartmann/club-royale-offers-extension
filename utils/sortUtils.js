@@ -88,7 +88,29 @@ const SortUtils = {
                     aValue = App.Utils.getShipClass(a.sailing.shipName) || '';
                     bValue = App.Utils.getShipClass(b.sailing.shipName) || '';
                     break;
-            }
+                case 'tradeInValue': {
+                    const aRaw = a.offer.campaignOffer?.tradeInValue;
+                    const bRaw = b.offer.campaignOffer?.tradeInValue;
+                    function parseTrade(v) {
+                        if (v === null || v === undefined) return NaN;
+                        if (typeof v === 'number') return v;
+                        const cleaned = String(v).replace(/[^0-9.\-]/g, '');
+                        if (cleaned === '') return NaN;
+                        const p = parseFloat(cleaned);
+                        return isNaN(p) ? NaN : p;
+                    }
+                    const aNum = parseTrade(aRaw);
+                    const bNum = parseTrade(bRaw);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        aValue = aNum;
+                        bValue = bNum;
+                    } else {
+                        aValue = String(aRaw || '').toLowerCase();
+                        bValue = String(bRaw || '').toLowerCase();
+                    }
+                    break;
+                }
+             }
             if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
             return 0;
