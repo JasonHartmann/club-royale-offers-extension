@@ -171,3 +171,77 @@
     // Kick off async init
     GoboStore.init();
 })();
+
+// Listen for storage shim updates and refresh Combined Offers UI when relevant
+try {
+    if (typeof document !== 'undefined') {
+        let __goboCombinedDebounce = null;
+        document.addEventListener('goboStorageUpdated', (ev) => {
+            try {
+                const key = ev?.detail?.key;
+                if (!key) return;
+                if (key === 'goboLinkedAccounts' || key === 'goob-combined') {
+                    // Debounce rapid updates
+                    if (__goboCombinedDebounce) clearTimeout(__goboCombinedDebounce);
+                    __goboCombinedDebounce = setTimeout(() => {
+                        try {
+                            if (App && App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
+                                delete App.ProfileCache['goob-combined-linked'];
+                                console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted due to goboStorageUpdated');
+                            }
+                            if (App && App.TableRenderer) {
+                                App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState?.groupingStack || [], App.TableRenderer.lastState?.groupKeysStack || []);
+                            }
+                            // If Combined Offers is currently active, reload it immediately from storage so the view updates
+                            try {
+                                if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked' && typeof App.TableRenderer.loadProfile === 'function') {
+                                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
+                                    if (raw) {
+                                        try {
+                                            const payload = JSON.parse(raw);
+                                            if (payload && payload.data) {
+                                                console.log('[DEBUG] Reloading Combined Offers profile in response to storage update');
+                                                App.TableRenderer.loadProfile('goob-combined-linked', payload);
+                                            }
+                                        } catch(e) { /* ignore malformed */ }
+                                    }
+                                }
+                            } catch(e) { /* ignore */ }
+                        } catch(e) { /* ignore */ }
+                    }, 20);
+                }
+
+                // General handling: invalidate cache for changed key and reload if active
+                try {
+                    // Invalidate cached DOM/state for this key so next load reads fresh data
+                    if (App && App.ProfileCache && App.ProfileCache[key]) {
+                        delete App.ProfileCache[key];
+                        console.log('[DEBUG] App.ProfileCache invalidated due to goboStorageUpdated for', key);
+                    }
+                    // Update breadcrumb/tabs to reflect possible savedAt changes or added/removed profiles
+                    if (App && App.TableRenderer) {
+                        App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState?.groupingStack || [], App.TableRenderer.lastState?.groupKeysStack || []);
+                    }
+                    // If the active profile is the changed key, reload it immediately
+                    try {
+                        const activeKey = App && App.CurrentProfile && App.CurrentProfile.key;
+                        if (activeKey && activeKey === key && typeof App.TableRenderer.loadProfile === 'function') {
+                            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(key) : localStorage.getItem(key));
+                            if (raw) {
+                                try {
+                                    const payload = JSON.parse(raw);
+                                    if (payload && payload.data) {
+                                        console.log('[DEBUG] Reloading active profile in response to goboStorageUpdated for', key);
+                                        App.TableRenderer.loadProfile(key, payload);
+                                    }
+                                } catch(e) { /* ignore malformed */ }
+                            }
+                        }
+                    } catch(e) { /* ignore */ }
+                } catch(e) { /* ignore */ }
+
+            } catch(e) { /* ignore */ }
+        });
+    }
+} catch(e) { /* ignore */ }
+
