@@ -63,6 +63,21 @@ const Utils = {
             return word;
         }).join('');
     },
+    // Helper to format trade-in values consistently across table, grouping and filtering
+    formatTradeValue(rawTrade) {
+        if (rawTrade === undefined || rawTrade === null || rawTrade === '') return '-';
+        if (typeof rawTrade === 'number') {
+            const num = rawTrade;
+            return Number.isInteger(num) ? `$${num.toLocaleString()}` : `$${num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+        }
+        const cleaned = String(rawTrade).replace(/[^0-9.\-]/g, '');
+        const parsed = cleaned === '' ? NaN : parseFloat(cleaned);
+        if (!isNaN(parsed)) {
+            return Number.isInteger(parsed) ? `$${parsed.toLocaleString()}` : `$${parsed.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+        }
+        const s = String(rawTrade).trim();
+        return s === '' ? '-' : s;
+    },
     // Normalize fetched offers data: trim and standardize capitalization
     normalizeOffers(data) {
         if (data && Array.isArray(data.offers)) {
@@ -92,6 +107,7 @@ const Utils = {
             // Royal Caribbean International
             'icon of the seas': 'Icon',
             'star of the seas': 'Icon',
+            'legend of the seas': 'Icon',
             'utopia of the seas': 'Oasis',
             'oasis of the seas': 'Oasis',
             'allure of the seas': 'Oasis',

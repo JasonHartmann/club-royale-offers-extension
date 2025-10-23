@@ -20,8 +20,9 @@
     cursor: pointer;
     font-weight: 600;
     font-size: 13px;
+    transition: background .15s, transform .08s;
 }
-.buy-coffee-link:hover { background: rgba(0,0,0,0.04); }
+.buy-coffee-link:hover { background: rgba(0,0,0,0.04); transform: translateY(-1px); }
 .buy-coffee-link:focus { outline: 2px solid #ffd166; outline-offset: 2px; }
 .coffee-emoji { font-size: 18px; line-height: 1; display:inline-block; }
 .export-csv-button { background:#22c55e; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; margin-right:12px; transition:background .2s; }
@@ -29,6 +30,22 @@
 /* Back-to-Back (B2B) search button styling — moved from inline in tableRenderer.js */
 .b2b-search-button { margin-left:12px; background:#0d3b66; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:4px; cursor:pointer; font-weight:600; transition:background .15s, transform .08s; }
 .b2b-search-button:hover { background:#0b3557; transform:translateY(-1px); }
+/* Venmo circular button — match hover lift and subtle background change */
+.venmo-link { transition: background .15s, transform .08s; will-change: transform; }
+.venmo-link:hover { transform: translateY(-1px); background: rgba(0,0,0,0.04); }
+
+/* Ensure coffee button also has will-change for smoother render */
+.buy-coffee-link { will-change: transform; }
+
+/* Respect users' motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .buy-coffee-link, .venmo-link, .b2b-search-button {
+        transition: none !important;
+        transform: none !important;
+        will-change: auto !important;
+    }
+}
+
 /* Breadcrumbs */
 .breadcrumb-container { display:flex; align-items:center; gap:8px; padding:8px; margin-bottom:8px; }
 .breadcrumb-link { color:#2563eb; text-decoration:underline; cursor:pointer; }

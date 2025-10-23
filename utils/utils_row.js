@@ -29,23 +29,7 @@
         const shipClass = Utils.getShipClass(sailing.shipName);
         // Trade-in value extraction & formatting (inserted between Expiration and Name columns)
         const rawTrade = offer.campaignOffer?.tradeInValue;
-        let tradeDisplay = '-';
-        if (rawTrade !== undefined && rawTrade !== null && rawTrade !== '') {
-            if (typeof rawTrade === 'number') {
-                const num = rawTrade;
-                tradeDisplay = (Number.isInteger(num) ? `$${num.toLocaleString()}` : `$${num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`);
-            } else {
-                // Strip non-numeric chars and attempt parse
-                const cleaned = String(rawTrade).replace(/[^0-9.\-]/g, '');
-                const parsed = cleaned === '' ? NaN : parseFloat(cleaned);
-                if (!isNaN(parsed)) {
-                    tradeDisplay = (Number.isInteger(parsed) ? `$${parsed.toLocaleString()}` : `$${parsed.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`);
-                } else {
-                    // Fallback to raw string
-                    tradeDisplay = String(rawTrade);
-                }
-            }
-        }
+        const tradeDisplay = (typeof App !== 'undefined' && App.Utils && App.Utils.formatTradeValue) ? App.Utils.formatTradeValue(rawTrade) : (function(rt){ if (rt===undefined||rt===null||rt==='') return '-'; const cleaned=String(rt).replace(/[^0-9.\-]/g,''); const parsed = cleaned===''?NaN:parseFloat(cleaned); if(!isNaN(parsed)) return Number.isInteger(parsed)?`$${parsed.toLocaleString()}`:`$${parsed.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}`; return String(rt); })(rawTrade);
         // Favorite / ID column setup
         const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
         let favCellHtml;

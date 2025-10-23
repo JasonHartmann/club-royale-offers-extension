@@ -68,6 +68,8 @@ const Filtering = {
                 return guestsText;
             case 'perks':
                 return perksStr;
+            case 'tradeInValue':
+                return App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue);
             default:
                 return offer[key];
         }

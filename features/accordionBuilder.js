@@ -28,6 +28,12 @@ const AccordionBuilder = {
                 case 'expiration':
                     groupKey = App.Utils.formatDate(offer.campaignOffer?.reserveByDate);
                     break;
+                case 'tradeInValue':
+                    // Use the same formatting as table rows so group labels match displayed values
+                    groupKey = App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue);
+                    // Debug: show mapping from raw value to group key for troubleshooting
+                    try { console.debug('[AccordionBuilder] tradeInValue grouping:', { raw: offer.campaignOffer?.tradeInValue, groupKey }); } catch(e) {}
+                    break;
                 case 'offerName':
                     groupKey = offer.campaignOffer?.name || '-';
                     break;

@@ -81,7 +81,7 @@ const Modal = {
         venmoButton.rel = 'noopener noreferrer';
         venmoButton.setAttribute('aria-label', 'Venmo (opens in new tab)');
         // Inline styles adjusted: 24px circle, no padding so image can fill it
-        venmoButton.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; overflow:hidden; background:#fff; border:1px solid #ddd; box-sizing:border-box;';
+        venmoButton.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; overflow:hidden; border:1px solid #ddd; box-sizing:border-box;';
         const venmoImg = document.createElement('img');
         // Prefer extension-safe URL if available, fallback to relative path
         try {
@@ -102,9 +102,14 @@ const Modal = {
         const footerLeft = document.createElement('div'); footerLeft.id = 'gobo-footer-left'; footerLeft.style.cssText = 'display:flex; align-items:center; gap:8px; justify-self:start;';
         const footerCenter = document.createElement('div'); footerCenter.id = 'gobo-footer-center'; footerCenter.style.cssText = 'display:flex; justify-content:center; align-items:center;';
         const footerRight = document.createElement('div'); footerRight.id = 'gobo-footer-right'; footerRight.style.cssText = 'display:flex; justify-content:flex-end; align-items:center; justify-self:end;';
-        // Re-enable the coffee button in the footer
+        const separator = document.createElement('span');
+        separator.className = 'footer-separator';
+        separator.textContent = '|';
+        separator.setAttribute('aria-hidden', 'true');
+        separator.style.cssText = 'color:#888; margin:0 2px; font-size:24px; align-self:center;';
+
         footerLeft.appendChild(coffeeButton);
-        // Insert the Venmo button after the coffee button so it's between coffee and any What's New button
+        footerLeft.appendChild(separator);
         footerLeft.appendChild(venmoButton);
         footerCenter.appendChild(exportButton);
         footerRight.appendChild(closeButton);
@@ -286,7 +291,7 @@ const Modal = {
 
         const csvRows = rows.map(({ offer, sailing }) => {
             // Determine profile label per row
-            let profileLabel = '';
+            let profileLabel;
             if (activeKey === 'goob-favorites') {
                 profileLabel = labelForFavoriteRow(offer, sailing) || 'Favorites';
             } else if (activeKey === 'goob-combined-linked') {

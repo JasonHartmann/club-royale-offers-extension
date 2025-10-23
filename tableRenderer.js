@@ -1101,7 +1101,7 @@ const TableRenderer = {
         for (let i=0;i<groupingStack.length;i++) {
             const arrowToCol = document.createElement('span'); arrowToCol.className='breadcrumb-arrow'; crumbsRow.appendChild(arrowToCol);
             const colKey = groupingStack[i]; const colLabel = state.headers.find(h=>h.key===colKey)?.label || colKey;
-            const colCrumb = document.createElement('span'); valCrumb.className='breadcrumb-crumb breadcrumb-col'; valCrumb.textContent=colLabel; crumbsRow.appendChild(colCrumb);
+            const colCrumb = document.createElement('span'); colCrumb.className='breadcrumb-crumb breadcrumb-col'; colCrumb.textContent=colLabel; crumbsRow.appendChild(colCrumb);
             if (i < groupKeysStack.length) {
                 const arrowToVal = document.createElement('span'); arrowToVal.className='breadcrumb-arrow'; crumbsRow.appendChild(arrowToVal);
                 const valCrumb = document.createElement('span'); valCrumb.className='breadcrumb-crumb breadcrumb-val'; valCrumb.textContent=groupKeysStack[i]; crumbsRow.appendChild(valCrumb);

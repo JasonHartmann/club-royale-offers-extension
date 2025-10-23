@@ -12,7 +12,7 @@
 .table-auto th[data-key="shipClass"], .accordion-table th[data-key="shipClass"], .table-auto td:nth-child(7), .accordion-table td:nth-child(7),
 .table-auto th[data-key="sailDate"], .accordion-table th[data-key="sailDate"], .table-auto td:nth-child(9), .accordion-table td:nth-child(9) { width:90px; min-width:70px; max-width:110px; white-space:nowrap; }
 /* Trade-in Value (new column) -> column index 5 in row markup */
-.table-auto th[data-key="tradeInValue"], .accordion-table th[data-key="tradeInValue"], .table-auto td:nth-child(5), .accordion-table td:nth-child(5) { width:55px; min-width:55px; max-width:70px; white-space:nowrap; }
+.table-auto th[data-key="tradeInValue"], .accordion-table th[data-key="tradeInValue"], .table-auto td:nth-child(5), .accordion-table td:nth-child(5) { width:75px; min-width:75px; max-width:75px; white-space:nowrap; }
 /* Offer Name & Ship */
 .table-auto th[data-key="offerName"], .accordion-table th[data-key="offerName"], .table-auto td:nth-child(6), .accordion-table td:nth-child(6),
 .table-auto th[data-key="ship"], .accordion-table th[data-key="ship"], .table-auto td:nth-child(8), .accordion-table td:nth-child(8) { min-width:100px; width:25%; word-break:break-word; white-space:normal; }
