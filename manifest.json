@@ -17,7 +17,8 @@
         "https://*.celebritycruises.com/blue-chip-club/*"
       ],
       "css": [
-        "styles/table.css",
+        "styles/table-base.css",
+        "styles/table-columns.css",
         "styles/accordion.css",
         "styles/ui.css",
         "styles/tabs-badges.css"

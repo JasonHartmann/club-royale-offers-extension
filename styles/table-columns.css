@@ -1,40 +1,30 @@
-/* Table & layout related styles extracted from styles.css */
-/* Column order with favorites: 1 Favorite, 2 Code, 3 Rcvd, 4 Expires, 5 Name, 6 Class, 7 Ship, 8 Sail Date, 9 Departs, 10 Nights, 11 Destination, 12 Category, 13 Guests, 14 Perks */
-#gobo-offers-table { max-width: 90vw; max-height: 90vh; background-color: #fff; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display:flex; flex-direction:column; }
-.table-scroll-container { flex:1 1 auto; overflow-y:auto; overflow-x:auto; max-height:calc(90vh - 60px); padding:8px; }
-.table-scroll-container::-webkit-scrollbar { width:12px; }
-.table-scroll-container::-webkit-scrollbar-track { background:#f1f1f1; border-radius:10px; }
-.table-scroll-container::-webkit-scrollbar-thumb { background:#888; border-radius:10px; }
-.table-scroll-container::-webkit-scrollbar-thumb:hover { background:#555; }
-.table-footer-container { flex:0 0 auto; padding:10px; background:#fff; border-top:1px solid #e5e7eb; z-index:10; display:flex; justify-content:space-between; align-items:center; }
-#gobo-loading-spinner { border:4px solid #f3f3f3; border-top:4px solid #3498db; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; }
-@keyframes spin { 0% {transform:rotate(0deg);} 100% {transform:rotate(360deg);} }
-.sort-asc::after { content:' ↓'; }
-.sort-desc::after { content:' ↑'; }
-.group-icon { cursor:pointer; margin-right:2px; display:inline-block; }
-.table-header, .accordion-table-header { position:sticky; top:0; background:#fff; z-index:10; border-bottom:2px solid #e5e7eb; }
-.table-header tr, .accordion-table-header tr { background:#f3f4f6; }
-.table-auto { table-layout:auto; width:100%; border-collapse:separate; }
-.table-auto th, .table-auto td, .accordion-table th, .accordion-table td { box-sizing:border-box; font-size:0.75rem; padding:4px 6px; vertical-align:top; }
-/* Column sizing */
+/* Column sizing & per-column presentation rules split from original table.css */
+/* Includes widths for all 15 columns (Favorite .. Trade-in Value) */
+
+/* Favorite */
 .table-auto th[data-key="favorite"], .accordion-table th[data-key="favorite"],
 .table-auto td:nth-child(1), .accordion-table td:nth-child(1) { width:32px; min-width:26px; max-width:36px; text-align:center; padding:2px 4px; }
+/* Offer Code */
 .table-auto th[data-key="offerCode"], .accordion-table th[data-key="offerCode"], .table-auto td:nth-child(2), .accordion-table td:nth-child(2) { width:120px; min-width:100px; max-width:200px; white-space:nowrap; }
+/* Dates / ShipClass / SailDate grouped width rules */
 .table-auto th[data-key="offerDate"], .accordion-table th[data-key="offerDate"], .table-auto td:nth-child(3), .accordion-table td:nth-child(3),
 .table-auto th[data-key="expiration"], .accordion-table th[data-key="expiration"], .table-auto td:nth-child(4), .accordion-table td:nth-child(4),
 .table-auto th[data-key="shipClass"], .accordion-table th[data-key="shipClass"], .table-auto td:nth-child(6), .accordion-table td:nth-child(6),
 .table-auto th[data-key="sailDate"], .accordion-table th[data-key="sailDate"], .table-auto td:nth-child(8), .accordion-table td:nth-child(8) { width:90px; min-width:70px; max-width:110px; white-space:nowrap; }
+/* Nights */
 .table-auto th[data-key="nights"], .accordion-table th[data-key="nights"], .table-auto td:nth-child(10), .accordion-table td:nth-child(10) { width:90px; min-width:70px; max-width:90px; text-align:center; white-space:nowrap; }
+/* Departure Port */
 .table-auto th[data-key="departurePort"], .accordion-table th[data-key="departurePort"], .table-auto td:nth-child(9), .accordion-table td:nth-child(9) { min-width:100px; width:10%; max-width:240px;  word-break:break-word; white-space:normal; }
+/* Offer Name & Ship */
 .table-auto th[data-key="offerName"], .accordion-table th[data-key="offerName"], .table-auto td:nth-child(5), .accordion-table td:nth-child(5),
 .table-auto th[data-key="ship"], .accordion-table th[data-key="ship"], .table-auto td:nth-child(7), .accordion-table td:nth-child(7) { min-width:100px; width:25%; word-break:break-word; white-space:normal; }
+/* Destination */
 .table-auto th[data-key="destination"], .accordion-table th[data-key="destination"], .table-auto td:nth-child(11), .accordion-table td:nth-child(11) { min-width:120px; width:40%; word-break:break-word; white-space:normal; }
+/* Category & Guests */
 .table-auto th[data-key="category"], .accordion-table th[data-key="category"], .table-auto td:nth-child(12), .accordion-table td:nth-child(12),
 .table-auto th[data-key="guests"], .accordion-table th[data-key="guests"], .table-auto td:nth-child(13), .accordion-table td:nth-child(13) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
+/* Perks */
 .table-auto th[data-key="perks"], .accordion-table th[data-key="perks"], .table-auto td:nth-child(14), .accordion-table td:nth-child(14) { width:140px; min-width:90px; max-width:200px; }
-/* Zebra stripes */
-.table-auto tbody tr:nth-child(odd) { background:#fafafa; }
-/* Accordion table font size reinforcement */
-.accordion-table th, .accordion-table td { font-size:0.75rem; }
-/* Bolder font weight for table cell contents */
-.table-auto td, .accordion-table td { font-weight:600; font-size:0.8rem; }
+/* Trade-in Value (new column) -> column index 15 in row markup */
+.table-auto th[data-key="tradeInValue"], .accordion-table th[data-key="tradeInValue"], .table-auto td:nth-child(15), .accordion-table td:nth-child(15) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
+

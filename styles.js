@@ -19,7 +19,7 @@ const Styles = {
                 console.debug('[OffersExt] Base stylesheet (styles/styles.css) present');
             } else if (!document.querySelector('link[data-ext-base-css]')) {
                 // Fallback only if segmented styles are not yet all injected (avoid double rules if both exist)
-                const segmentedNeeded = ['styles/table.css','styles/accordion.css','styles/ui.css','styles/tabs-badges.css']
+                const segmentedNeeded = ['styles/table-base.css', 'styles/table-columns.css','styles/accordion.css','styles/ui.css','styles/tabs-badges.css']
                   .some(p => !document.querySelector(`link[data-ext-seg="${p}"]`));
                 if (segmentedNeeded) {
                     const baseLink = document.createElement('link');
