@@ -69,7 +69,7 @@ Key files:
 - `accordionBuilder.js`, `tableBuilder.js`: Render logic for hierarchical/table views.
 - `sortUtils.js`, `filtering.js`: Sorting & filtering logic.
 - `modal.js`: Modal creation and auxiliary UI elements.
-- `utils.js` / `domUtils.js`: Utilities and DOM helpers.
+- `utils_core.js` + `utils_row.js` / `domUtils.js`: Utilities and DOM helpers (utils.js has been split into core helpers and row rendering).
 
 ## Customization
 

@@ -130,7 +130,7 @@ const AccordionBuilder = {
             }
 
             // Build a left-side group (icon + label) so we can keep the count right-aligned
-            const iconSvg = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            const iconSvg = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
             let trashIconHtml = `<span class="trash-icon" title="Delete group" style="cursor:pointer; vertical-align:middle; display:inline-flex; align-items:center; margin-right:6px;">${iconSvg}</span>`;
             if ((h.dataset.depth && parseInt(h.dataset.depth, 10) > 0)) {
                 trashIconHtml = '';

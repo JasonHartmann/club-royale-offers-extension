@@ -24,7 +24,8 @@
         "styles/tabs-badges.css"
       ],
       "js": [
-        "utils/utils.js",
+        "utils/utils_core.js",
+        "utils/utils_row.js",
         "utils/domUtils.js",
         "utils/errorHandler.js",
         "utils/apiClient.js",
