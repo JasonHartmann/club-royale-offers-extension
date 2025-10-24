@@ -258,7 +258,7 @@ const TableRenderer = {
         }
         return { originalOffers, sortedOffers };
     },
-    displayTable(data, selectedProfileKey, overlappingElements) {
+    async displayTable(data, selectedProfileKey, overlappingElements) {
         try {
             // Trigger background hydration of itinerary cache (non-blocking)
             try {
@@ -282,8 +282,7 @@ const TableRenderer = {
                         });
                     });
                     if (keySet.size) {
-                        // Fire and forget; hydration updates cache asynchronously
-                        Promise.resolve(ItineraryCache.hydrateIfNeeded(Array.from(keySet))).catch(()=>{});
+                        await ItineraryCache.hydrateIfNeeded(Array.from(keySet));
                     }
                 }
             } catch(e) { /* ignore hydration trigger errors */ }
