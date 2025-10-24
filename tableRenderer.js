@@ -260,6 +260,28 @@ const TableRenderer = {
     },
     displayTable(data, selectedProfileKey, overlappingElements) {
         try {
+            // Trigger background hydration of itinerary cache (non-blocking)
+            try {
+                if (typeof ItineraryCache !== 'undefined' && ItineraryCache && data && Array.isArray(data.offers)) {
+                    const keySet = new Set();
+                    data.offers.forEach(o => {
+                        const sailings = o?.campaignOffer?.sailings;
+                        if (!Array.isArray(sailings)) return;
+                        sailings.forEach(s => {
+                            const ic = s?.itineraryCode;
+                            const sd = s?.sailDate;
+                            if (ic && sd) {
+                                const key = `${String(ic).trim()}_${String(sd).trim()}`;
+                                if (key) keySet.add(key);
+                            }
+                        });
+                    });
+                    if (keySet.size) {
+                        // Fire and forget; hydration updates cache asynchronously
+                        Promise.resolve(ItineraryCache.hydrateIfNeeded(Array.from(keySet))).catch(()=>{});
+                    }
+                }
+            } catch(e) { /* ignore hydration trigger errors */ }
             // Always determine current user's key
             let currentKey = null;
             try {
