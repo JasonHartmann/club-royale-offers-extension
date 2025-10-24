@@ -100,16 +100,19 @@
                 const endpoint = `https://${brandHost}/graph`;
                 // NOTE: Do not modify the GraphQL string per user instruction
                 const query = 'query cruiseSearch_Cruises($filters:String,$qualifiers:String,$sort:CruiseSearchSort,$pagination:CruiseSearchPagination,$nlSearch:String){cruiseSearch(filters:$filters,qualifiers:$qualifiers,sort:$sort,pagination:$pagination,nlSearch:$nlSearch){results{cruises{id productViewLink masterSailing{itinerary{name code days{number type ports{activity arrivalTime departureTime port{code name region}}}departurePort{code name region}destination{code name}portSequence sailingNights ship{code name}totalNights type}}sailings{bookingLink id itinerary{code}sailDate startDate endDate taxesAndFees{value}taxesAndFeesIncluded stateroomClassPricing{price{value currency{code}}stateroomClass{id content{code}}}}}cruiseRecommendationId total}}}';
+                const CHUNK_SIZE = 100;
                 const chunks = [];
-                for (let i=0;i<stale.length;i+=40) chunks.push(stale.slice(i,i+40));
+                for (let i=0;i<stale.length;i+=CHUNK_SIZE) chunks.push(stale.slice(i,i+CHUNK_SIZE));
                 dbg('Hydration chunks prepared', { chunkCount: chunks.length, chunkSizes: chunks.map(c => c.length) });
+                // Metrics aggregated across parallel chunk requests
                 let anyUpdated = false;
                 let cruisesSeenTotal = 0; let cruisesMatched = 0; let cruisesSkippedNoKey = 0; let sailingsSeen = 0; let sailingsMatched = 0;
-                for (const chunk of chunks) {
+                // Fire all chunk fetches in parallel (one request per chunk). Cardinality: #requests === #chunks.
+                const chunkPromises = chunks.map(chunk => (async () => {
                     const filtersValue = 'id:' + chunk.join(',');
                     dbg('Hydration chunk start', { size: chunk.length, filtersValue: filtersValue.slice(0,120) + (filtersValue.length>120?'...':'') });
-                    let respJson = null;
-                    let status = null;
+                    let respJson = null; let status = null; let localAnyUpdated = false;
+                    let localCruisesSeen = 0; let localCruisesMatched = 0; let localCruisesSkippedNoKey = 0; let localSailingsSeen = 0; let localSailingsMatched = 0;
                     try {
                         const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: 1000, skip: 0 } } });
                         const resp = await fetch(endpoint, {
@@ -124,21 +127,21 @@
                             body
                         });
                         status = resp.status;
-                        if (!resp.ok) { dbg('Hydration chunk fetch not ok', { status }); continue; }
+                        if (!resp.ok) { dbg('Hydration chunk fetch not ok', { status }); return { localAnyUpdated, localCruisesSeen, localCruisesMatched, localCruisesSkippedNoKey, localSailingsSeen, localSailingsMatched }; }
                         respJson = await resp.json();
-                    } catch(netErr) { dbg('Hydration fetch error', netErr); continue; }
+                    } catch(netErr) { dbg('Hydration fetch error', netErr); return { localAnyUpdated, localCruisesSeen, localCruisesMatched, localCruisesSkippedNoKey, localSailingsSeen, localSailingsMatched }; }
                     const cruises = respJson?.data?.cruiseSearch?.results?.cruises || [];
                     dbg('Hydration response', { status, cruises: cruises.length });
-                    cruisesSeenTotal += cruises.length;
+                    localCruisesSeen += cruises.length;
                     cruises.forEach(c => {
                         try {
                             const itin = c?.masterSailing?.itinerary || {};
                             const sailingList = Array.isArray(c?.sailings) ? c.sailings : [];
                             if (!sailingList.length) { dbg('Cruise has no sailings array; skipping', { cruiseId: c.id }); return; }
                             sailingList.forEach(s => {
-                                sailingsSeen++;
+                                localSailingsSeen++;
                                 const key = s?.id?.trim();
-                                if (!key || !this._cache[key]) { cruisesSkippedNoKey++; return; }
+                                if (!key || !this._cache[key]) { localCruisesSkippedNoKey++; return; }
                                 const entry = this._cache[key];
                                 const before = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
                                 // Copy shared itinerary details onto each sailing entry
@@ -152,13 +155,25 @@
                                 entry.type = itin.type || entry.type || '';
                                 entry.enriched = true;
                                 entry.updatedAt = Date.now();
-                                anyUpdated = true; cruisesMatched++; sailingsMatched++;
+                                localAnyUpdated = true; localCruisesMatched++; localSailingsMatched++;
                                 const after = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
                                 dbg('Sailing hydrated', { key, before, after });
                             });
                         } catch(updateErr) { dbg('Error updating cruise sailings', updateErr); }
                     });
-                }
+                    return { localAnyUpdated, localCruisesSeen, localCruisesMatched, localCruisesSkippedNoKey, localSailingsSeen, localSailingsMatched };
+                })());
+                const results = await Promise.all(chunkPromises);
+                // Aggregate metrics
+                results.forEach(r => {
+                    if (!r) return;
+                    if (r.localAnyUpdated) anyUpdated = true;
+                    cruisesSeenTotal += r.localCruisesSeen;
+                    cruisesMatched += r.localCruisesMatched;
+                    cruisesSkippedNoKey += r.localCruisesSkippedNoKey;
+                    sailingsSeen += r.localSailingsSeen;
+                    sailingsMatched += r.localSailingsMatched;
+                });
                 if (anyUpdated) {
                     this._persist();
                     try { document.dispatchEvent(new CustomEvent('goboItineraryHydrated', { detail: { keys: stale } })); } catch(e){}
