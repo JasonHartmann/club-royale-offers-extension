@@ -1,6 +1,6 @@
 // features/itinerary.js
-// Builds and maintains a shared itinerary -> sailing cache across all profiles.
-// Key format: <itineraryCode>_<sailDate> e.g. "EX05E057_2025-12-08"
+// Builds and maintains a shared sailing cache where each key is primarily the GraphQL sailing id.
+// Fallback key pattern (when id missing): <itineraryCode>_<sailDate> e.g. "EX05E057_2025-12-08".
 // Stored under storage key: goob-itinerary-map (managed by storageShim via /^goob-/ pattern)
 (function(){
     const STORAGE_KEY = 'goob-itinerary-map';
@@ -37,10 +37,13 @@
                     co.sailings.forEach(s => {
                         sailingsProcessed++;
                         try {
+                            const rawId = s?.id && String(s.id).trim();
                             const itineraryCode = (s && s.itineraryCode) ? String(s.itineraryCode).trim() : '';
                             const sailDate = (s && s.sailDate) ? String(s.sailDate).trim() : '';
-                            if (!itineraryCode || !sailDate) { dbg('Skipping sailing missing itineraryCode or sailDate', { itineraryCode, sailDate }); return; }
-                            const key = `${itineraryCode}_${sailDate}`;
+                            const fallbackId = (itineraryCode && sailDate) ? `${itineraryCode}_${sailDate}` : '';
+                            // Primary key: sailing.id (matches GraphQL filter expectation). Fallback to composite if id missing.
+                            const key = rawId || fallbackId;
+                            if (!key) { dbg('Skipping sailing missing id and composite parts', { itineraryCode, sailDate }); return; }
                             let entry = this._cache[key];
                             if (!entry) {
                                 entry = this._cache[key] = {
@@ -68,6 +71,9 @@
                             if (!entry.shipName && (s.shipName || s.ship?.name)) entry.shipName = s.shipName || s.ship?.name;
                             if (!entry.shipCode && s.ship?.code) entry.shipCode = s.ship.code;
                             if (!entry.itineraryDescription && s.itineraryDescription) entry.itineraryDescription = s.itineraryDescription;
+                            // Keep itineraryCode/sailDate fields updated if they were blank and we used fallback
+                            if (!entry.itineraryCode && itineraryCode) entry.itineraryCode = itineraryCode;
+                            if (!entry.sailDate && sailDate) entry.sailDate = sailDate;
                             entry.updatedAt = now;
                         } catch(inner) { dbg('Error processing sailing', inner); }
                     });
@@ -98,7 +104,7 @@
                 for (let i=0;i<stale.length;i+=40) chunks.push(stale.slice(i,i+40));
                 dbg('Hydration chunks prepared', { chunkCount: chunks.length, chunkSizes: chunks.map(c => c.length) });
                 let anyUpdated = false;
-                let cruisesSeenTotal = 0; let cruisesMatched = 0; let cruisesSkippedNoKey = 0;
+                let cruisesSeenTotal = 0; let cruisesMatched = 0; let cruisesSkippedNoKey = 0; let sailingsSeen = 0; let sailingsMatched = 0;
                 for (const chunk of chunks) {
                     const filtersValue = 'id:' + chunk.join(',');
                     dbg('Hydration chunk start', { size: chunk.length, filtersValue: filtersValue.slice(0,120) + (filtersValue.length>120?'...':'') });
@@ -126,37 +132,38 @@
                     cruisesSeenTotal += cruises.length;
                     cruises.forEach(c => {
                         try {
-                            const ms = c.masterSailing || {};
-                            const itin = ms.itinerary || {};
-                            const code = (itin.code || itin.itineraryCode || '').trim();
-                            let depDate = (ms.departureDate || '').split('T')[0];
-                            if (!depDate && typeof ms.departureDate === 'string') depDate = ms.departureDate.trim();
-                            const compositeKey = (code && depDate) ? `${code}_${depDate}` : null;
-                            const targetKey = compositeKey && this._cache[compositeKey] ? compositeKey : (this._cache[c.id] ? c.id : compositeKey);
-                            if (!targetKey || !this._cache[targetKey]) { cruisesSkippedNoKey++; dbg('Cruise skipped - no cache key match', { cruiseId: c.id, compositeKey }); return; }
-                            const entry = this._cache[targetKey];
-                            const before = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
-                            entry.shipName = itin.ship?.name || entry.shipName;
-                            entry.shipCode = itin.ship?.code || entry.shipCode || '';
-                            entry.itineraryDescription = itin.description || itin.name || entry.itineraryDescription;
-                            entry.destinationName = itin.destination?.name || entry.destinationName || '';
-                            entry.departurePortName = itin.departurePort?.name || entry.departurePortName || '';
-                            entry.totalNights = itin.totalNights || itin.sailingNights || entry.totalNights;
-                            entry.days = Array.isArray(itin.days) ? itin.days : entry.days;
-                            entry.type = itin.type || entry.type || '';
-                            entry.enriched = true;
-                            entry.updatedAt = Date.now();
-                            anyUpdated = true; cruisesMatched++;
-                            const after = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
-                            dbg('Cruise hydrated', { targetKey, before, after });
-                        } catch(updateErr) { dbg('Error updating cruise', updateErr); }
+                            const itin = c?.masterSailing?.itinerary || {};
+                            const sailingList = Array.isArray(c?.sailings) ? c.sailings : [];
+                            if (!sailingList.length) { dbg('Cruise has no sailings array; skipping', { cruiseId: c.id }); return; }
+                            sailingList.forEach(s => {
+                                sailingsSeen++;
+                                const key = s?.id?.trim();
+                                if (!key || !this._cache[key]) { cruisesSkippedNoKey++; return; }
+                                const entry = this._cache[key];
+                                const before = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
+                                // Copy shared itinerary details onto each sailing entry
+                                entry.shipName = itin.ship?.name || entry.shipName;
+                                entry.shipCode = itin.ship?.code || entry.shipCode || '';
+                                entry.itineraryDescription = itin.name || entry.itineraryDescription;
+                                entry.destinationName = itin.destination?.name || entry.destinationName || '';
+                                entry.departurePortName = itin.departurePort?.name || entry.departurePortName || '';
+                                entry.totalNights = itin.totalNights || itin.sailingNights || entry.totalNights;
+                                entry.days = Array.isArray(itin.days) ? itin.days : entry.days;
+                                entry.type = itin.type || entry.type || '';
+                                entry.enriched = true;
+                                entry.updatedAt = Date.now();
+                                anyUpdated = true; cruisesMatched++; sailingsMatched++;
+                                const after = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
+                                dbg('Sailing hydrated', { key, before, after });
+                            });
+                        } catch(updateErr) { dbg('Error updating cruise sailings', updateErr); }
                     });
                 }
                 if (anyUpdated) {
                     this._persist();
                     try { document.dispatchEvent(new CustomEvent('goboItineraryHydrated', { detail: { keys: stale } })); } catch(e){}
                 }
-                dbg('Hydration complete', { anyUpdated, cruisesSeenTotal, cruisesMatched, cruisesSkippedNoKey, cacheSize: Object.keys(this._cache).length });
+                dbg('Hydration complete', { anyUpdated, cruisesSeenTotal, cruisesMatched, sailingsSeen, sailingsMatched, cruisesSkippedNoKey, cacheSize: Object.keys(this._cache).length });
             } catch(e) { dbg('hydrateIfNeeded error', e); }
         },
         _persist() {

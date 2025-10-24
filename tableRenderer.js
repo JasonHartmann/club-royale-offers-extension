@@ -268,11 +268,16 @@ const TableRenderer = {
                         const sailings = o?.campaignOffer?.sailings;
                         if (!Array.isArray(sailings)) return;
                         sailings.forEach(s => {
-                            const ic = s?.itineraryCode;
-                            const sd = s?.sailDate;
-                            if (ic && sd) {
-                                const key = `${String(ic).trim()}_${String(sd).trim()}`;
-                                if (key) keySet.add(key);
+                            // Prefer the sailing.id (true unique sailing identifier) per corrected logic.
+                            const sailingId = s?.id && String(s.id).trim();
+                            if (sailingId) {
+                                keySet.add(sailingId);
+                            } else {
+                                const ic = s?.itineraryCode;
+                                const sd = s?.sailDate;
+                                if (ic && sd) {
+                                    keySet.add(`${String(ic).trim()}_${String(sd).trim()}`);
+                                }
                             }
                         });
                     });
