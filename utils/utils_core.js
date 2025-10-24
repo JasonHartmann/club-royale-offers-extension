@@ -96,6 +96,10 @@ const Utils = {
                     }
                 }
             });
+            // Build/update shared itinerary cache (keys: <itineraryCode>_<sailDate>) persisted in extension storage
+            try {
+                ItineraryCache.buildOrUpdateFromOffers(data);
+            } catch(e) { /* ignore cache build errors */ }
         }
         return data;
     },
