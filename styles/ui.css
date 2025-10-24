@@ -62,3 +62,9 @@
 .breadcrumb-container { display:flex; flex-direction:column; align-items:flex-start; gap:0; padding:8px; margin-bottom:8px; width:100%; }
 .breadcrumb-tabs-row { width:100%; margin-bottom:0; }
 .breadcrumb-crumb-row { display:flex; align-items:center; gap:8px; width:100%; padding-top:12px; border-top:1px solid #e5e7eb; background:transparent; }
+/* Support link styling */
+.support-link { display:inline-flex; align-items:center; gap:4px; font-size:10px; color:#2563eb; text-decoration:none; font-weight:600; line-height:1; }
+.support-link:hover { text-decoration:underline; color:#1d4ed8; }
+.support-link:focus { outline:1px solid #2563eb; outline-offset:2px; }
+.support-link-icon { width:14px; height:14px; display:block; border-radius:3px; }
+@media (prefers-reduced-motion: reduce) { .support-link { transition:none; } }

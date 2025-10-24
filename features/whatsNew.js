@@ -1,22 +1,17 @@
 // whatsNew.js
 // Provides a lightweight, versioned in-page "What's New" / guided help tour.
-// Patch 1.4 topics:
-//  1. Multiple account profile tabs – log out then sign in with a 2nd account to add more tabs
-//  2. Link / Unlink icon – chain link toggles linking two accounts to form a Combined Offers tab
-//  3. Favorite (★) column – click a row's star to add/remove a sailing from Favorites
-//  4. Favorites are snapshots – original offers may disappear but favorites persist
-//  5. Hidden Groups panel – hide grouped values globally until removed
-// (Removed prior r4 temporary NEW badge for link icon)
+// Patch 1.5 topics:
+//  1. Trade-in Value
 (function(){
     const VERSION = (function(){
         try {
-            if (typeof browser !== 'undefined' && browser.runtime?.getManifest) return browser.runtime.getManifest().version || '1.3';
-            if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) return chrome.runtime.getManifest().version || '1.3';
+            if (typeof browser !== 'undefined' && browser.runtime?.getManifest) return browser.runtime.getManifest().version || '1.4';
+            if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) return chrome.runtime.getManifest().version || '1.4';
         } catch(e) {}
-        return '1.4';
+        return '1.5';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '3'; // r1 initial, r2 added Favorite column, r3 adds Link/Unlink icon step
+    const TOUR_REVISION = '2'; // r1 initial, r2 adds Buy Me a Coffee support step
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 40; // up to ~8s (200ms interval) waiting for elements
 
@@ -98,35 +93,23 @@
             }
             this._steps = [
                 {
-                    id:'profileTabs',
-                    target:()=> document.querySelector('.profile-tabs'),
-                    title:'Multiple Account Tabs',
-                    body:'Sign out of the site and sign back in with a second account to capture its offers. Each account becomes a tab here so you can switch instantly.'
+                    id:'tradeInValue',
+                    target:()=> document.querySelector('th[data-key="tradeInValue"]'),
+                    title:'Trade-In Value Column',
+                    body: 'New column showing trade-in value for eligible sailings.',
                 },
                 {
-                    id:'linkIcon',
-                    target:()=> findLinkIcon(),
-                    title:'Link / Unlink Accounts',
-                    body:'Use the chain link icon in a tab to link two accounts. When two are linked a Combined Offers tab appears. Click again to unlink.'
+                    id:'supportCoffee',
+                    target:()=> document.querySelector('.buy-coffee-link') || document.body,
+                    title:'Support Development',
+                    body:'If this extension saves you time, consider a tip (Ko-Fi or Venmo, your choice!). Thank you for helping me keep up with the requests!',
                 },
                 {
-                    id:'favoriteColumn',
-                    target:()=> document.querySelector('th[data-key="favorite"]'),
-                    title:'Favorite Column (★)',
-                    body:'Click the star in any offer row to add that sailing to Favorites. The header star is just a label; starred sailings are copied into a persistent Favorites profile.'
+                    id:'support-link',
+                    target:()=> document.querySelector('.support-link') || document.body,
+                    title:'Get Help',
+                    body:'Follow us on Facebook for updates or support!',
                 },
-                {
-                    id:'favoritesTab',
-                    target:()=> document.querySelector('.profile-tab[data-storage-key="goob-favorites"]'),
-                    title:'Favorites Snapshot',
-                    body:'Favorites store a snapshot of a sailing when you starred it. The live offer might expire or change, but your favorite stays until you remove it.'
-                },
-                {
-                    id:'hiddenGroups',
-                    target:()=> document.getElementById('hidden-groups-display'),
-                    title:'Hidden Groups',
-                    body:'When you group offers (folder icon in a column header) you can hide any group value. Hidden groups are filtered out globally until you remove them here.'
-                }
             ];
         },
         _initAndBegin(){
@@ -246,3 +229,4 @@
     // Expose
     try { window.WhatsNew = WhatsNew; } catch(e){}
 })();
+

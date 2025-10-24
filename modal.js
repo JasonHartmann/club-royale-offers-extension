@@ -152,11 +152,28 @@ const Modal = {
 
         // Copyright
         const copyright = document.createElement('div');
-        copyright.style.cssText = 'text-align: right; font-size: 10px; color: #bbb; margin-right: 8px;';
-        copyright.textContent = '© 2025 Percex Technologies, LLC';
+        copyright.style.cssText = 'text-align: right; font-size: 10px; color: #bbb; margin-right: 0;';
+        copyright.textContent = '\u00a9 2025 Percex Technologies, LLC';
+
+        // Support link (Facebook)
+        const supportLink = document.createElement('a');
+        supportLink.className = 'support-link';
+        supportLink.href = 'https://www.facebook.com/people/Percex-Technologies/61573755056279/';
+        supportLink.target = '_blank';
+        supportLink.rel = 'noopener noreferrer';
+        supportLink.setAttribute('aria-label','Get support on Facebook (opens in new tab)');
+        // Prefer web accessible resource URL
+        let fbIconUrl = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL('images/facebook.png') : 'images/facebook.png';
+        supportLink.innerHTML = '<img src="'+fbIconUrl+'" alt="Facebook" class="support-link-icon" /> <span>Get Support</span>';
+
+        // Wrap copyright + support into right meta container
+        const rightMeta = document.createElement('div');
+        rightMeta.style.cssText = 'display:flex; align-items:center; gap:10px;';
+        rightMeta.appendChild(copyright);
+        rightMeta.appendChild(supportLink);
 
         legendCopyrightWrapper.appendChild(legend);
-        legendCopyrightWrapper.appendChild(copyright);
+        legendCopyrightWrapper.appendChild(rightMeta);
         container.appendChild(legendCopyrightWrapper);
 
         document.body.appendChild(backdrop);

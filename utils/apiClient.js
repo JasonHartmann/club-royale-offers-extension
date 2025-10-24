@@ -59,7 +59,7 @@ const ApiClient = {
                 cruiseLoyaltyId: loyaltyId,
                 offerCode: '',
                 brand: brandCode,
-                returnExcludedSailings: true
+                // returnExcludedSailings: true
             };
             // Helper to remove excluded sailings from an offer in-place
             const removeExcludedFromOffer = (offer) => {
@@ -145,7 +145,7 @@ const ApiClient = {
             }
             // Identify offers that returned with empty sailings but have an offerCode we can refetch
             const offersToRefetch = (data && Array.isArray(data.offers)) ? data.offers
-                .filter(o => o?.campaignOffer?.offerCode && Array.isArray(o.campaignOffer.sailings) && o.campaignOffer.sailings.length === 0)
+                .filter(o => o?.campaignOffer?.offerCode && Array.isArray(o.campaignOffer.sailings) && (o.campaignOffer.sailings.length === 0 || o.campaignOffer.sailings[0].itineraryCode === null) )
                 .map(o => o.campaignOffer.offerCode.trim()) : [];
 
             if (offersToRefetch.length) {
