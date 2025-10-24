@@ -59,6 +59,13 @@
                                     days: null,
                                     type: '',
                                     enriched: false,
+                                    // pricing-related fields added
+                                    taxesAndFees: null,
+                                    taxesAndFeesIncluded: null,
+                                    stateroomPricing: {}, // map of stateroom class id -> { price, currency, code }
+                                    bookingLink: '',
+                                    startDate: '',
+                                    endDate: '',
                                     updatedAt: now
                                 };
                                 newEntries++;
@@ -100,7 +107,7 @@
                 const endpoint = `https://${brandHost}/graph`;
                 // NOTE: Do not modify the GraphQL string per user instruction
                 const query = 'query cruiseSearch_Cruises($filters:String,$qualifiers:String,$sort:CruiseSearchSort,$pagination:CruiseSearchPagination,$nlSearch:String){cruiseSearch(filters:$filters,qualifiers:$qualifiers,sort:$sort,pagination:$pagination,nlSearch:$nlSearch){results{cruises{id productViewLink masterSailing{itinerary{name code days{number type ports{activity arrivalTime departureTime port{code name region}}}departurePort{code name region}destination{code name}portSequence sailingNights ship{code name}totalNights type}}sailings{bookingLink id itinerary{code}sailDate startDate endDate taxesAndFees{value}taxesAndFeesIncluded stateroomClassPricing{price{value currency{code}}stateroomClass{id content{code}}}}}cruiseRecommendationId total}}}';
-                const CHUNK_SIZE = 100;
+                const CHUNK_SIZE = 40; // revert to original size
                 const chunks = [];
                 for (let i=0;i<stale.length;i+=CHUNK_SIZE) chunks.push(stale.slice(i,i+CHUNK_SIZE));
                 dbg('Hydration chunks prepared', { chunkCount: chunks.length, chunkSizes: chunks.map(c => c.length) });
@@ -158,6 +165,32 @@
                                 localAnyUpdated = true; localCruisesMatched++; localSailingsMatched++;
                                 const after = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
                                 dbg('Sailing hydrated', { key, before, after });
+                                // --- Pricing enrichment start ---
+                                try {
+                                    if (s && typeof s === 'object') {
+                                        // booking / dates
+                                        if (s.bookingLink && !entry.bookingLink) entry.bookingLink = s.bookingLink;
+                                        if (s.startDate) entry.startDate = s.startDate;
+                                        if (s.endDate) entry.endDate = s.endDate;
+                                        // taxes and fees
+                                        if (s.taxesAndFees && typeof s.taxesAndFees.value === 'number') entry.taxesAndFees = s.taxesAndFees.value;
+                                        if (typeof s.taxesAndFeesIncluded === 'boolean') entry.taxesAndFeesIncluded = s.taxesAndFeesIncluded;
+                                        // stateroom pricing
+                                        if (Array.isArray(s.stateroomClassPricing)) {
+                                            entry.stateroomPricing = entry.stateroomPricing || {};
+                                            s.stateroomClassPricing.forEach(p => {
+                                                try {
+                                                    const classId = p?.stateroomClass?.id || p?.stateroomClass?.content?.code;
+                                                    if (!classId) return;
+                                                    const priceVal = (p && p.price && typeof p.price.value === 'number') ? p.price.value : null;
+                                                    const currencyCode = p?.price?.currency?.code || null;
+                                                    const simpleCode = p?.stateroomClass?.content?.code || null;
+                                                    entry.stateroomPricing[classId] = { price: priceVal, currency: currencyCode, code: simpleCode };
+                                                } catch(innerP){ /* ignore single price item */ }
+                                            });
+                                        }
+                                    }
+                                } catch(priceErr){ dbg('Pricing enrichment error', priceErr); }
                             });
                         } catch(updateErr) { dbg('Error updating cruise sailings', updateErr); }
                     });
