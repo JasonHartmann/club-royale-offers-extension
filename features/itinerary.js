@@ -1,7 +1,3 @@
-// features/itinerary.js
-// Builds and maintains a shared sailing cache where each key is primarily the GraphQL sailing id.
-// Fallback key pattern (when id missing): <itineraryCode>_<sailDate> e.g. "EX05E057_2025-12-08".
-// Stored under storage key: goob-itinerary-map (managed by storageShim via /^goob-/ pattern)
 (function(){
     const STORAGE_KEY = 'goob-itinerary-map';
     const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
@@ -216,7 +212,7 @@
         },
         get(key) { this._ensureLoaded(); return this._cache[key]; },
         all() { this._ensureLoaded(); return { ...this._cache }; },
-        showModal(key) {
+        showModal(key, sourceEl) {
             try {
                 this._ensureLoaded();
                 const data = this._cache[key];
@@ -224,11 +220,61 @@
                 // Remove existing
                 const existing = document.getElementById('gobo-itinerary-modal');
                 if (existing) existing.remove();
+                // Remove any previous highlight left behind
+                try { document.querySelectorAll('.gobo-itinerary-highlight').forEach(el=>el.classList.remove('gobo-itinerary-highlight')); } catch(e){}
+
+                // Determine row to highlight (prefer provided source element)
+                let rowToHighlight = null;
+                try {
+                    if (sourceEl && sourceEl instanceof Element) {
+                        rowToHighlight = sourceEl.closest ? sourceEl.closest('tr') || sourceEl : sourceEl;
+                    }
+                    if (!rowToHighlight) {
+                        const cell = document.getElementById(key);
+                        if (cell) rowToHighlight = cell.closest ? cell.closest('tr') : null;
+                    }
+                } catch(e) { rowToHighlight = null; }
+
+                // Inject highlight style if not present
+                try {
+                    if (!document.getElementById('gobo-itinerary-highlight-style')) {
+                        const style = document.createElement('style');
+                        style.id = 'gobo-itinerary-highlight-style';
+                        style.textContent = `
+                            .gobo-itinerary-highlight { 
+                                animation: gobo-itin-flash 1s ease-in-out; 
+                                background: rgba(255,245,170,0.9) !important; 
+                                transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out; 
+                                box-shadow: 0 0 0 3px rgba(255,230,120,0.4) inset; 
+                            }
+                            @keyframes gobo-itin-flash { 0% { background: rgba(255,245,170,0.0); } 30% { background: rgba(255,245,170,0.95); } 100% { background: rgba(255,245,170,0.9); } }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                } catch(e) { /* ignore style injection errors */ }
+
+                // Apply highlight and scroll into view
+                // Keep highlight until user explicitly clicks a different itinerary row.
+                // We still remove any previous highlight at the start of showModal so
+                // clicking another row will clear the previous one.
+                const applyHighlight = () => {
+                    try {
+                        if (rowToHighlight && rowToHighlight.classList) {
+                            rowToHighlight.classList.add('gobo-itinerary-highlight');
+                            try { rowToHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e){}
+                        }
+                    } catch(e){}
+                };
+                // No auto-cleanup here. The highlight persists until a new row is clicked
+                // (which triggers showModal and clears previous highlights at the top).
+                if (rowToHighlight) applyHighlight();
+
                 // Backdrop
                 const backdrop = document.createElement('div');
                 backdrop.id = 'gobo-itinerary-modal';
                 backdrop.className = 'gobo-itinerary-backdrop';
-                backdrop.addEventListener('click', (e)=> { if (e.target === backdrop) backdrop.remove(); });
+                // Do not remove the highlight when the modal is closed — leave it until user clicks another row.
+                backdrop.addEventListener('click', (e)=> { if (e.target === backdrop) { backdrop.remove(); } });
                 // Panel
                 const panel = document.createElement('div');
                 panel.className = 'gobo-itinerary-panel';
@@ -238,7 +284,8 @@
                 closeBtn.className = 'gobo-itinerary-close';
                 closeBtn.textContent = '\u00d7';
                 closeBtn.setAttribute('aria-label','Close');
-                closeBtn.addEventListener('click', ()=> backdrop.remove());
+                // Closing the modal should not clear the highlight — highlight stays until another row is clicked.
+                closeBtn.addEventListener('click', ()=> { backdrop.remove(); });
                 panel.appendChild(closeBtn);
                 // Title
                 const title = document.createElement('h2');
@@ -320,7 +367,8 @@
                         const rawCode = pr.code || k || '';
                         const classLabel = resolveDisplay(rawCode);
                         const hasPrice = (typeof pr.price === 'number');
-                        const priceVal = hasPrice ? pr.price.toFixed(2) : 'Sold Out';
+                        // Prices returned are per-person for double occupancy; display should show total for two people.
+                        const priceVal = hasPrice ? (Number(pr.price) * 2).toFixed(2) : 'Sold Out';
                         const currency = hasPrice ? (pr.currency || '') : '';
                         [classLabel, priceVal, currency].forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if(i===1 && hasPrice) td.style.textAlign='right'; td.title = rawCode; if(i===1 && !hasPrice) td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
                         tb.appendChild(tr); });
@@ -328,7 +376,10 @@
                     if (data.taxesAndFees != null) {
                         const tf = document.createElement('div');
                         tf.className = 'gobo-itinerary-taxes';
-                        tf.textContent = `Taxes & Fees: ${data.taxesAndFees.toFixed(2)} ${Object.values(data.stateroomPricing)[0]?.currency || ''} (${data.taxesAndFeesIncluded? 'Included' : 'Additional'})`;
+                        // Taxes/fees are per-person; show doubled amount for two people
+                        const taxesAmount = (typeof data.taxesAndFees === 'number') ? (Number(data.taxesAndFees) * 2) : data.taxesAndFees;
+                        const taxesText = (typeof taxesAmount === 'number') ? taxesAmount.toFixed(2) : taxesAmount;
+                        tf.textContent = `Taxes & Fees: ${taxesText} ${Object.values(data.stateroomPricing)[0]?.currency || ''} (${data.taxesAndFeesIncluded? 'Included' : 'Additional'})`;
                         panel.appendChild(tf);
                     }
                 }
@@ -341,10 +392,27 @@
                     const dTable = document.createElement('table');
                     dTable.className = 'gobo-itinerary-table';
                     const dh = document.createElement('thead'); const dhr=document.createElement('tr');
-                    ['Day','Type','Port','Arrival','Departure'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; dhr.appendChild(th); });
+                    // Add Day of Week and Date columns to show absolute calendar info for each sailing day
+                    ['Day','Day of Week','Date','Type','Port','Arrival','Departure'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; dhr.appendChild(th); });
                     dh.appendChild(dhr); dTable.appendChild(dh);
                     const db = document.createElement('tbody');
                     data.days.forEach(day => { try { const tr=document.createElement('tr');
+                        // Compute calendar date for this day if startDate or sailDate is available
+                        let baseDateStr = data.startDate || data.sailDate || null;
+                        let computedDate = null;
+                        try {
+                            if (baseDateStr) {
+                                const base = new Date(baseDateStr);
+                                if (!isNaN(base.getTime())) {
+                                    // day.number is typically 1-based; subtract 1 to offset from start date
+                                    const offset = (day && day.number && !isNaN(Number(day.number))) ? (Number(day.number) - 1) : 0;
+                                    computedDate = new Date(base);
+                                    computedDate.setDate(computedDate.getDate() + offset);
+                                }
+                            }
+                        } catch(e) { computedDate = null; }
+                        const dow = computedDate ? computedDate.toLocaleDateString(undefined, { weekday: 'short' }) : '';
+                        const dateFormatted = computedDate ? (App && App.Utils && typeof App.Utils.formatDate === 'function' ? App.Utils.formatDate(computedDate.toISOString()) : computedDate.toLocaleDateString()) : '';
                         const ports = Array.isArray(day.ports)? day.ports : [];
                         let activity = ''; let arrival=''; let departure='';
                         if (ports.length) {
@@ -353,7 +421,8 @@
                             arrival = p.arrivalTime || '';
                             departure = p.departureTime || '';
                         }
-                        const cells = [day.number, day.type || '', activity, arrival, departure];
+                        const dayLabel = (day && (day.number != null)) ? String(day.number) : '';
+                        const cells = [dayLabel, dow, dateFormatted, day.type || '', activity, arrival, departure];
                         cells.forEach(c=>{ const td=document.createElement('td'); td.textContent=c==null? '' : c; tr.appendChild(td); });
                         db.appendChild(tr); } catch(inner){ /* ignore */ } });
                     dTable.appendChild(db); panel.appendChild(dTable);

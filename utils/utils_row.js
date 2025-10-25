@@ -114,7 +114,7 @@
                 a.textContent = text || destination || itineraryKey;
                 a.addEventListener('click', (ev) => {
                     ev.preventDefault();
-                    try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(itineraryKey); } catch(e){ /* ignore */ }
+                    try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(itineraryKey, a); } catch(e){ /* ignore */ }
                 });
                 itinCell.appendChild(a);
             }

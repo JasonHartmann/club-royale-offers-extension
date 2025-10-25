@@ -131,6 +131,18 @@ const TableRenderer = {
                 // Ensure cached state carries token
                 if (App.ProfileCache[key].state) App.ProfileCache[key].state._switchToken = switchToken;
                 this.switchProfile(key, payload);
+                // Ensure itinerary hydration happens after the DOM has been reactivated/switch applied.
+                try {
+                    this.recacheItineraries(payload).then(r => {
+                        try {
+                            if (typeof requestAnimationFrame === 'function') {
+                                requestAnimationFrame(() => requestAnimationFrame(() => { try { this.updateItineraries(r); } catch(e){} }));
+                            } else {
+                                setTimeout(() => { try { this.updateItineraries(r); } catch(e){} }, 50);
+                            }
+                        } catch(e) { /* ignore */ }
+                    }).catch(()=>{});
+                } catch(e) { /* ignore */ }
                 console.log('[DEBUG] loadProfile EXIT after switchProfile', { key });
             } else {
                 console.log('[DEBUG] Profile found in cache but no active DOM; rebuilding from cached state', key);
@@ -139,6 +151,18 @@ const TableRenderer = {
                 cachedState._switchToken = switchToken;
                 try {
                     this.rebuildProfileView(key, cachedState, payload, switchToken);
+                    // After rebuilding the DOM from cached state, hydrate itineraries and apply links.
+                    try {
+                        this.recacheItineraries(payload).then(r => {
+                            try {
+                                if (typeof requestAnimationFrame === 'function') {
+                                    requestAnimationFrame(() => requestAnimationFrame(() => { try { this.updateItineraries(r); } catch(e){} }));
+                                } else {
+                                    setTimeout(() => { try { this.updateItineraries(r); } catch(e){} }, 50);
+                                }
+                            } catch(e) { /* ignore */ }
+                        }).catch(()=>{});
+                    } catch(e) { /* ignore */ }
                     console.log('[DEBUG] loadProfile EXIT after rebuildProfileView (from cache)', { key });
                 } catch(rebErr) {
                     console.error('[DEBUG] rebuild from cache failed, falling back to full build', rebErr);
@@ -151,7 +175,10 @@ const TableRenderer = {
         let preparedData;
         try {
             preparedData = this.prepareOfferData(payload.data);
-            this.recacheItineraries(payload).then(r => {this.updateItineraries(r)});
+            // Defer itinerary hydration until after the table DOM has been rendered to avoid
+            // a race where updateItineraries cannot find destination TDs by ID.
+            // We'll trigger hydration after updateView so links are created only when rows exist.
+            // (hydration invocation moved to post-render locations below)
             console.log('[DEBUG] prepareOfferData result:', preparedData);
         } catch (e) {
             console.error('[DEBUG] Error in prepareOfferData', e, payload);
@@ -277,6 +304,20 @@ const TableRenderer = {
         // Render the view
         console.log('[DEBUG] Calling updateView with state');
         this.updateView(state);
+        // After rendering the table, hydrate itineraries and apply links. Use requestAnimationFrame
+        // to ensure the browser has painted the newly inserted rows so document.getElementById() can find them.
+        try {
+            this.recacheItineraries(payload).then(r => {
+                try {
+                    if (typeof requestAnimationFrame === 'function') {
+                        requestAnimationFrame(() => requestAnimationFrame(() => { try { this.updateItineraries(r); } catch(e){} }));
+                    } else {
+                        // Fallback to a short timeout
+                        setTimeout(() => { try { this.updateItineraries(r); } catch(e){} }, 50);
+                    }
+                } catch(e) { /* ignore scheduling errors */ }
+            }).catch(() => {/* ignore hydration errors */});
+        } catch(e) { /* ignore */ }
         // Final highlight guard
         if (this.currentSwitchToken === switchToken) this._applyActiveTabHighlight(key);
         console.log('[DEBUG] loadProfile EXIT after updateView', { key });
@@ -1222,7 +1263,7 @@ const TableRenderer = {
                     a.textContent = currentText;
                     a.addEventListener('click', (ev) => {
                         ev.preventDefault();
-                        try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(key); } catch(e) { /* ignore */ }
+                        try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(key, a); } catch(e) { /* ignore */ }
                     });
                     el.appendChild(a);
                 } catch(inner) { /* ignore single element errors */ }
