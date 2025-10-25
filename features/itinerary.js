@@ -102,7 +102,7 @@
                 const endpoint = `https://${brandHost}/graph`;
                 // NOTE: Do not modify the GraphQL string per user instruction
                 const query = 'query cruiseSearch_Cruises($filters:String,$qualifiers:String,$sort:CruiseSearchSort,$pagination:CruiseSearchPagination,$nlSearch:String){cruiseSearch(filters:$filters,qualifiers:$qualifiers,sort:$sort,pagination:$pagination,nlSearch:$nlSearch){results{cruises{id productViewLink masterSailing{itinerary{name code days{number type ports{activity arrivalTime departureTime port{code name region}}}departurePort{code name region}destination{code name}portSequence sailingNights ship{code name}totalNights type}}sailings{bookingLink id itinerary{code}sailDate startDate endDate taxesAndFees{value}taxesAndFeesIncluded stateroomClassPricing{price{value currency{code}}stateroomClass{id content{code}}}}}cruiseRecommendationId total}}}';
-                const CHUNK_SIZE = 40; // revert to original size
+                const CHUNK_SIZE = 30;
                 const chunks = [];
                 for (let i=0;i<stale.length;i+=CHUNK_SIZE) chunks.push(stale.slice(i,i+CHUNK_SIZE));
                 dbg('Hydration chunks prepared', { chunkCount: chunks.length, chunkSizes: chunks.map(c => c.length) });
@@ -116,7 +116,7 @@
                     let respJson = null; let status = null; let localAnyUpdated = false;
                     let localCruisesSeen = 0; let localCruisesMatched = 0; let localCruisesSkippedNoKey = 0; let localSailingsSeen = 0; let localSailingsMatched = 0;
                     try {
-                        const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: 1000, skip: 0 } } });
+                        const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: CHUNK_SIZE*2, skip: 0 } } });
                         const resp = await fetch(endpoint, {
                             method: 'POST',
                             headers: {
@@ -397,22 +397,42 @@
                     dh.appendChild(dhr); dTable.appendChild(dh);
                     const db = document.createElement('tbody');
                     data.days.forEach(day => { try { const tr=document.createElement('tr');
-                        // Compute calendar date for this day if startDate or sailDate is available
+                        // Compute calendar date for this day if startDate or sailDate is available.
+                        // Parse dates using the YYYY-MM-DD prefix (if present) and treat them as UTC dates
+                        // so local timezone offsets don't change the calendar day.
                         let baseDateStr = data.startDate || data.sailDate || null;
                         let computedDate = null;
                         try {
                             if (baseDateStr) {
-                                const base = new Date(baseDateStr);
-                                if (!isNaN(base.getTime())) {
+                                // Helper: construct a UTC date from a date string. Prefer the YYYY-MM-DD prefix
+                                function utcDateFromDateString(ds) {
+                                    if (!ds || typeof ds !== 'string') return null;
+                                    const m = ds.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                                    if (m) {
+                                        const y = parseInt(m[1], 10);
+                                        const mo = parseInt(m[2], 10) - 1;
+                                        const d = parseInt(m[3], 10);
+                                        return new Date(Date.UTC(y, mo, d));
+                                    }
+                                    // Fallback: attempt to parse then normalize to the parsed date's Y/M/D in UTC
+                                    const parsed = new Date(ds);
+                                    if (isNaN(parsed.getTime())) return null;
+                                    return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+                                }
+                                const baseUtc = utcDateFromDateString(baseDateStr);
+                                if (baseUtc) {
                                     // day.number is typically 1-based; subtract 1 to offset from start date
                                     const offset = (day && day.number && !isNaN(Number(day.number))) ? (Number(day.number) - 1) : 0;
-                                    computedDate = new Date(base);
-                                    computedDate.setDate(computedDate.getDate() + offset);
+                                    computedDate = new Date(baseUtc);
+                                    // Use UTC methods to avoid timezone-shifts
+                                    computedDate.setUTCDate(computedDate.getUTCDate() + offset);
                                 }
                             }
                         } catch(e) { computedDate = null; }
-                        const dow = computedDate ? computedDate.toLocaleDateString(undefined, { weekday: 'short' }) : '';
-                        const dateFormatted = computedDate ? (App && App.Utils && typeof App.Utils.formatDate === 'function' ? App.Utils.formatDate(computedDate.toISOString()) : computedDate.toLocaleDateString()) : '';
+                        // Use UTC-based weekday so local timezone won't change the calendar day
+                        const dow = computedDate ? new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' }).format(computedDate) : '';
+                        // Use UTC-based formatting to keep the calendar day consistent across timezones.
+                        const dateFormatted = computedDate ? new Intl.DateTimeFormat(undefined, { year:'numeric', month:'short', day:'numeric', timeZone: 'UTC' }).format(computedDate) : '';
                         const ports = Array.isArray(day.ports)? day.ports : [];
                         let activity = ''; let arrival=''; let departure='';
                         if (ports.length) {
