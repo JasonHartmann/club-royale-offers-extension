@@ -1,0 +1,125 @@
+/* Itinerary modal & link styles */
+
+.gobo-itinerary-link {
+  color: #2563eb !important; /* same blue used for offer codes */
+  text-decoration: underline;
+  cursor: pointer;
+}
+.gobo-itinerary-link:hover,
+.gobo-itinerary-link:focus {
+  text-decoration: none;
+  color: #1d4ed8 !important; /* slightly darker on hover */
+}
+
+/* Backdrop */
+#gobo-itinerary-modal.gobo-itinerary-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px; /* allow some breathing on small screens */
+}
+
+/* Panel */
+.gobo-itinerary-panel {
+  background: #ffffff;
+  border-radius: 8px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.30);
+  padding: 20px 24px 28px;
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,'Helvetica Neue',Arial,sans-serif;
+  position: relative;
+  animation: goboItinFadeIn .18s ease-out;
+}
+@keyframes goboItinFadeIn { from { opacity:0; transform: translateY(8px);} to { opacity:1; transform: translateY(0);} }
+
+.gobo-itinerary-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #555;
+}
+.gobo-itinerary-close:hover { color:#111; }
+
+.gobo-itinerary-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.gobo-itinerary-subtitle {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #444;
+}
+
+.gobo-itinerary-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 16px 0 6px;
+}
+
+.gobo-itinerary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.gobo-itinerary-table thead th {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #ccc;
+  font-weight: 600;
+  background: #f9fafb;
+}
+.gobo-itinerary-table tbody td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+.gobo-itinerary-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.gobo-itinerary-table tbody td:nth-child(1) {
+  font-weight: 600;
+}
+
+.gobo-itinerary-taxes {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #555;
+}
+
+.gobo-itinerary-offercodes {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #444;
+  word-break: break-word;
+}
+
+.gobo-itinerary-footer {
+  margin-top: 18px;
+  font-size: 11px;
+  color: #666;
+}
+
+/* Responsive tweaks */
+@media (max-width: 540px) {
+  .gobo-itinerary-panel { padding: 16px 16px 24px; }
+  .gobo-itinerary-title { font-size: 18px; }
+  .gobo-itinerary-table thead { display: none; }
+  .gobo-itinerary-table tbody td { display:block; padding:6px 2px; }
+  .gobo-itinerary-table tbody tr { border-bottom:1px solid #e5e7eb; }
+  .gobo-itinerary-table tbody tr:last-child { border-bottom:none; }
+}
+

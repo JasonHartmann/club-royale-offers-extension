@@ -69,7 +69,6 @@
                                     updatedAt: now
                                 };
                                 newEntries++;
-                                dbg('New entry created', key, { shipName: entry.shipName });
                             } else {
                                 updatedEntries++;
                             }
@@ -150,7 +149,6 @@
                                 const key = s?.id?.trim();
                                 if (!key || !this._cache[key]) { localCruisesSkippedNoKey++; return; }
                                 const entry = this._cache[key];
-                                const before = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
                                 // Copy shared itinerary details onto each sailing entry
                                 entry.shipName = itin.ship?.name || entry.shipName;
                                 entry.shipCode = itin.ship?.code || entry.shipCode || '';
@@ -163,8 +161,6 @@
                                 entry.enriched = true;
                                 entry.updatedAt = Date.now();
                                 localAnyUpdated = true; localCruisesMatched++; localSailingsMatched++;
-                                const after = { shipName: entry.shipName, shipCode: entry.shipCode, desc: entry.itineraryDescription, enriched: entry.enriched };
-                                dbg('Sailing hydrated', { key, before, after });
                                 // --- Pricing enrichment start ---
                                 try {
                                     if (s && typeof s === 'object') {
@@ -212,13 +208,172 @@
                     try { document.dispatchEvent(new CustomEvent('goboItineraryHydrated', { detail: { keys: stale } })); } catch(e){}
                 }
                 dbg('Hydration complete', { anyUpdated, cruisesSeenTotal, cruisesMatched, sailingsSeen, sailingsMatched, cruisesSkippedNoKey, cacheSize: Object.keys(this._cache).length });
+                return results;
             } catch(e) { dbg('hydrateIfNeeded error', e); }
         },
         _persist() {
             try { goboStorageSet(STORAGE_KEY, JSON.stringify(this._cache)); dbg('Cache persisted', { entries: Object.keys(this._cache).length }); } catch(e) { dbg('Persist error', e); }
         },
         get(key) { this._ensureLoaded(); return this._cache[key]; },
-        all() { this._ensureLoaded(); return { ...this._cache }; }
+        all() { this._ensureLoaded(); return { ...this._cache }; },
+        showModal(key) {
+            try {
+                this._ensureLoaded();
+                const data = this._cache[key];
+                if (!data) { dbg('showModal: no data for key', key); return; }
+                // Remove existing
+                const existing = document.getElementById('gobo-itinerary-modal');
+                if (existing) existing.remove();
+                // Backdrop
+                const backdrop = document.createElement('div');
+                backdrop.id = 'gobo-itinerary-modal';
+                backdrop.className = 'gobo-itinerary-backdrop';
+                backdrop.addEventListener('click', (e)=> { if (e.target === backdrop) backdrop.remove(); });
+                // Panel
+                const panel = document.createElement('div');
+                panel.className = 'gobo-itinerary-panel';
+                // Close button
+                const closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'gobo-itinerary-close';
+                closeBtn.textContent = '\u00d7';
+                closeBtn.setAttribute('aria-label','Close');
+                closeBtn.addEventListener('click', ()=> backdrop.remove());
+                panel.appendChild(closeBtn);
+                // Title
+                const title = document.createElement('h2');
+                title.className = 'gobo-itinerary-title';
+                title.textContent = `${data.itineraryDescription || 'Itinerary'} (${data.totalNights || '?'} nights)`;
+                panel.appendChild(title);
+                // Subtitle
+                const subtitle = document.createElement('div');
+                subtitle.className = 'gobo-itinerary-subtitle';
+                subtitle.textContent = `${data.shipName || ''} • ${data.departurePortName || ''} • ${data.sailDate || ''}`;
+                panel.appendChild(subtitle);
+                // Booking link
+                if (data.bookingLink) {
+                    const linkWrap = document.createElement('div');
+                    const a = document.createElement('a');
+                    const host = (function(){ try { if (App && App.Utils && typeof App.Utils.detectBrand === 'function') return App.Utils.detectBrand() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com'; } catch(e){} return 'www.royalcaribbean.com'; })();
+                    a.href = `https://${host}${data.bookingLink}`;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    a.textContent = 'Open Retail Booking Page';
+                    a.className = 'gobo-itinerary-link';
+                    linkWrap.appendChild(a);
+                    panel.appendChild(linkWrap);
+                }
+                // Pricing
+                const priceKeys = Object.keys(data.stateroomPricing || {});
+                if (priceKeys.length) {
+                    const priceTitle = document.createElement('h3');
+                    priceTitle.className = 'gobo-itinerary-section-title';
+                    priceTitle.textContent = 'Stateroom Pricing';
+                    panel.appendChild(priceTitle);
+                    const pTable = document.createElement('table');
+                    pTable.className = 'gobo-itinerary-table';
+                    const thead = document.createElement('thead'); const thr = document.createElement('tr');
+                    ['Class','Price','Currency'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; thr.appendChild(th); });
+                    thead.appendChild(thr); pTable.appendChild(thead);
+                    const tb = document.createElement('tbody');
+                    // Mapping of short/various codes to friendly display names (what user sees)
+                    const codeMap = {
+                        I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior',
+                        O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View',
+                        B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony',
+                        D:'Junior Suite', DLX:'Junior Suite', DELUXE:'Junior Suite', JS:'Junior Suite', SU:'Junior Suite', SUITE:'Junior Suite'
+                    };
+                    // Canonical base category mapping used purely for sorting (do NOT change display names)
+                    const baseCategoryMap = {
+                        I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
+                        O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
+                        B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
+                        D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE'
+                    };
+                    function resolveDisplay(codeOrId){
+                        const raw = (codeOrId||'').toString().trim();
+                        const upper = raw.toUpperCase();
+                        return codeMap[upper] || raw;
+                    }
+                    function resolveCategory(codeOrId){
+                        const raw = (codeOrId||'').toString().trim();
+                        const upper = raw.toUpperCase();
+                        if (baseCategoryMap[upper]) return baseCategoryMap[upper];
+                        if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(upper)) return upper; // already canonical
+                        return null;
+                    }
+                    const sortOrder = { INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3 };
+                    priceKeys.sort((a,b)=>{
+                        const aRaw = data.stateroomPricing[a]?.code || a;
+                        const bRaw = data.stateroomPricing[b]?.code || b;
+                        const aCat = resolveCategory(aRaw);
+                        const bCat = resolveCategory(bRaw);
+                        const aRank = (aCat && aCat in sortOrder) ? sortOrder[aCat] : 100;
+                        const bRank = (bCat && bCat in sortOrder) ? sortOrder[bCat] : 100;
+                        if (aRank !== bRank) return aRank - bRank;
+                        // Same rank (either same category or both unknown) -> compare display labels alphabetically
+                        const aDisp = resolveDisplay(aRaw).toUpperCase();
+                        const bDisp = resolveDisplay(bRaw).toUpperCase();
+                        return aDisp.localeCompare(bDisp);
+                    });
+                    priceKeys.forEach(k=>{ const pr=data.stateroomPricing[k]; const tr=document.createElement('tr');
+                        const rawCode = pr.code || k || '';
+                        const classLabel = resolveDisplay(rawCode);
+                        const hasPrice = (typeof pr.price === 'number');
+                        const priceVal = hasPrice ? pr.price.toFixed(2) : 'Sold Out';
+                        const currency = hasPrice ? (pr.currency || '') : '';
+                        [classLabel, priceVal, currency].forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if(i===1 && hasPrice) td.style.textAlign='right'; td.title = rawCode; if(i===1 && !hasPrice) td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
+                        tb.appendChild(tr); });
+                    pTable.appendChild(tb); panel.appendChild(pTable);
+                    if (data.taxesAndFees != null) {
+                        const tf = document.createElement('div');
+                        tf.className = 'gobo-itinerary-taxes';
+                        tf.textContent = `Taxes & Fees: ${data.taxesAndFees.toFixed(2)} ${Object.values(data.stateroomPricing)[0]?.currency || ''} (${data.taxesAndFeesIncluded? 'Included' : 'Additional'})`;
+                        panel.appendChild(tf);
+                    }
+                }
+                // Day-by-day
+                if (Array.isArray(data.days) && data.days.length) {
+                    const dayTitle = document.createElement('h3');
+                    dayTitle.className = 'gobo-itinerary-section-title';
+                    dayTitle.textContent = 'Day-by-Day';
+                    panel.appendChild(dayTitle);
+                    const dTable = document.createElement('table');
+                    dTable.className = 'gobo-itinerary-table';
+                    const dh = document.createElement('thead'); const dhr=document.createElement('tr');
+                    ['Day','Type','Port','Arrival','Departure'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; dhr.appendChild(th); });
+                    dh.appendChild(dhr); dTable.appendChild(dh);
+                    const db = document.createElement('tbody');
+                    data.days.forEach(day => { try { const tr=document.createElement('tr');
+                        const ports = Array.isArray(day.ports)? day.ports : [];
+                        let activity = ''; let arrival=''; let departure='';
+                        if (ports.length) {
+                            const p = ports[0];
+                            activity = (p.port && p.port.name) || '';
+                            arrival = p.arrivalTime || '';
+                            departure = p.departureTime || '';
+                        }
+                        const cells = [day.number, day.type || '', activity, arrival, departure];
+                        cells.forEach(c=>{ const td=document.createElement('td'); td.textContent=c==null? '' : c; tr.appendChild(td); });
+                        db.appendChild(tr); } catch(inner){ /* ignore */ } });
+                    dTable.appendChild(db); panel.appendChild(dTable);
+                }
+                // Offer codes
+                if (Array.isArray(data.offerCodes) && data.offerCodes.length) {
+                    const oc = document.createElement('div');
+                    oc.className = 'gobo-itinerary-offercodes';
+                    oc.textContent = 'Offer Codes: ' + data.offerCodes.join(', ');
+                    panel.appendChild(oc);
+                }
+                // Footer
+                const footer = document.createElement('div');
+                footer.className = 'gobo-itinerary-footer';
+                footer.textContent = 'Itinerary data last updated ' + (data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '');
+                panel.appendChild(footer);
+                backdrop.appendChild(panel);
+                document.body.appendChild(backdrop);
+            } catch(e) { dbg('showModal error', e); }
+        }
     };
     try { window.ItineraryCache = ItineraryCache; dbg('ItineraryCache exposed'); } catch(e) { /* ignore */ }
 })();

@@ -8,6 +8,7 @@ const TableRenderer = {
     // Map of DOM tab keys to underlying storage keys (handles duplicate storage key collisions)
     TabKeyMap: {},
     // Centralized tab highlight helper (called only when token matches)
+    caching: false,
     _applyActiveTabHighlight(activeKey) {
         const tabs = document.querySelectorAll('.profile-tab');
         tabs.forEach(tb => {
@@ -72,7 +73,43 @@ const TableRenderer = {
         this.rebuildProfileView(key, cached.state, payload, switchToken);
         console.log('[tableRenderer] switchProfile EXIT (forced rebuild)');
     },
-    loadProfile(key, payload) {
+    async recacheItineraries(payload) {
+        if (this.caching === false) {
+            try {
+                this.caching = true;
+                const keySet = new Set();
+                console.log('[ItineraryCache] updateView', payload.data.offers);
+                payload.data.offers.forEach(o => {
+                    const sailings = o?.campaignOffer?.sailings;
+                    if (!Array.isArray(sailings)) return;
+                    sailings.forEach(s => {
+                        const sailingId = s?.id && String(s.id).trim();
+                        if (sailingId) {
+                            keySet.add(sailingId);
+                        } else {
+                            const ic = s?.itineraryCode;
+                            const sd = s?.sailDate;
+                            if (ic && sd) {
+                                keySet.add(`${String(ic).trim()}_${String(sd).trim()}`);
+                            }
+                        }
+                    });
+                });
+                if (keySet.size) {
+                    console.log('[ItineraryCache] hydrating', keySet);
+                    await ItineraryCache.hydrateIfNeeded(Array.from(keySet));
+                    // Return a snapshot of the full map so updateItineraries can operate on it directly
+                    if (ItineraryCache && typeof ItineraryCache.all === 'function') return ItineraryCache.all();
+                }
+                // If nothing to hydrate just return current map (may be empty)
+                if (ItineraryCache && typeof ItineraryCache.all === 'function') return ItineraryCache.all();
+            } catch (e) {
+                /* ignore hydration trigger errors */
+            } finally {
+                this.caching = false;
+            }
+        }
+    }, loadProfile(key, payload) {
         const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
         this.currentSwitchToken = switchToken;
         // Ensure profileId map exists
@@ -114,6 +151,7 @@ const TableRenderer = {
         let preparedData;
         try {
             preparedData = this.prepareOfferData(payload.data);
+            this.recacheItineraries(payload).then(r => {this.updateItineraries(r)});
             console.log('[DEBUG] prepareOfferData result:', preparedData);
         } catch (e) {
             console.error('[DEBUG] Error in prepareOfferData', e, payload);
@@ -260,32 +298,6 @@ const TableRenderer = {
     },
     async displayTable(data, selectedProfileKey, overlappingElements) {
         try {
-            // Trigger background hydration of itinerary cache (non-blocking)
-            try {
-                if (typeof ItineraryCache !== 'undefined' && ItineraryCache && data && Array.isArray(data.offers)) {
-                    const keySet = new Set();
-                    data.offers.forEach(o => {
-                        const sailings = o?.campaignOffer?.sailings;
-                        if (!Array.isArray(sailings)) return;
-                        sailings.forEach(s => {
-                            // Prefer the sailing.id (true unique sailing identifier) per corrected logic.
-                            const sailingId = s?.id && String(s.id).trim();
-                            if (sailingId) {
-                                keySet.add(sailingId);
-                            } else {
-                                const ic = s?.itineraryCode;
-                                const sd = s?.sailDate;
-                                if (ic && sd) {
-                                    keySet.add(`${String(ic).trim()}_${String(sd).trim()}`);
-                                }
-                            }
-                        });
-                    });
-                    if (keySet.size) {
-                        await ItineraryCache.hydrateIfNeeded(Array.from(keySet));
-                    }
-                }
-            } catch(e) { /* ignore hydration trigger errors */ }
             // Always determine current user's key
             let currentKey = null;
             try {
@@ -1181,5 +1193,40 @@ const TableRenderer = {
         } catch(e){/* ignore */}
         // Attempt auto-start of What's New tour (safe, idempotent)
         try { if (window.WhatsNew) WhatsNew.maybeAutoStart(); } catch(e) { /* ignore */ }
+    },
+    updateItineraries(hydrated) {
+        // hydrated is expected to be the full itinerary map returned from recacheItineraries (a snapshot of ItineraryCache.all()).
+        // Fallback: if an array or falsy value is provided, re-fetch the current map.
+        try {
+            let map = {};
+            if (hydrated && !Array.isArray(hydrated) && typeof hydrated === 'object') {
+                map = hydrated;
+            } else if (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.all === 'function') {
+                map = ItineraryCache.all();
+            }
+            Object.entries(map).forEach(([key, value]) => {
+                try {
+                    const el = document.getElementById(key);
+                    if (!el) return;
+                    const existingLink = el.querySelector && el.querySelector('a.gobo-itinerary-link');
+                    if (existingLink) {
+                        existingLink.classList.add('gobo-itinerary-link');
+                        return; // already processed
+                    }
+                    const currentText = (el.textContent || '').trim() || value.itineraryDescription || key;
+                    el.innerHTML = '';
+                    const a = document.createElement('a');
+                    a.href = '#';
+                    a.className = 'gobo-itinerary-link';
+                    a.dataset.itineraryKey = key;
+                    a.textContent = currentText;
+                    a.addEventListener('click', (ev) => {
+                        ev.preventDefault();
+                        try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(key); } catch(e) { /* ignore */ }
+                    });
+                    el.appendChild(a);
+                } catch(inner) { /* ignore single element errors */ }
+            });
+        } catch(e) { /* ignore overall errors */ }
     }
 };

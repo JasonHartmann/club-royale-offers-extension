@@ -21,7 +21,8 @@
         "styles/table-columns.css",
         "styles/accordion.css",
         "styles/ui.css",
-        "styles/tabs-badges.css"
+        "styles/tabs-badges.css",
+        "styles/itinerary.css"
       ],
       "js": [
         "utils/utils_core.js",

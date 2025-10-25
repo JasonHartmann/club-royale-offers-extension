@@ -14,6 +14,9 @@
         if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
         const {nights, destination} = Utils.parseItinerary(itinerary);
+        const itineraryClass = sailing.itineraryCode + "_" + sailing.sailDate;
+        // Primary itinerary key should match ItineraryCache key (prefer sailing.id when present)
+        const itineraryKey = (sailing && sailing.id && String(sailing.id).trim()) || itineraryClass;
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
         // Generate separate links/buttons for each code if rawCode contains '/'
@@ -93,11 +96,29 @@
             <td class="border p-2">${Utils.formatDate(sailing.sailDate)}</td>
             <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
             <td class="border p-2">${nights}</td>
-            <td class="border p-2">${destination}</td>
+            <td class="border p-2 itinerary" id="${itineraryKey}">${destination}</td>
             <td class="border p-2">${room || '-'}</td>
             <td class="border p-2">${guestsText}</td>
             <td class="border p-2">${perksStr}</td>
         `;
+        // Wrap itinerary cell text in link immediately (so accordion rows also get links) if destination not placeholder
+        try {
+            const itinCell = row.querySelector('.itinerary');
+            if (itinCell && !itinCell.querySelector('a.gobo-itinerary-link')) {
+                const text = (itinCell.textContent || '').trim();
+                itinCell.textContent = '';
+                const a = document.createElement('a');
+                a.href = '#';
+                a.className = 'gobo-itinerary-link';
+                a.dataset.itineraryKey = itineraryKey;
+                a.textContent = text || destination || itineraryKey;
+                a.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(itineraryKey); } catch(e){ /* ignore */ }
+                });
+                itinCell.appendChild(a);
+            }
+        } catch(e){ /* ignore itinerary link wrapping errors */ }
         // Attach favorite toggle handler only when not in favorites overview
         if (!isFavoritesView) {
             try {
