@@ -216,7 +216,7 @@
             try {
                 this._ensureLoaded();
                 const data = this._cache[key];
-                if (!data) { dbg('showModal: no data for key', key); return; }
+
                 // Remove existing
                 const existing = document.getElementById('gobo-itinerary-modal');
                 if (existing) existing.remove();
@@ -268,6 +268,12 @@
                 // No auto-cleanup here. The highlight persists until a new row is clicked
                 // (which triggers showModal and clears previous highlights at the top).
                 if (rowToHighlight) applyHighlight();
+
+                if (!data) {
+                    dbg('showModal: no data for key', key);
+                    try { if (typeof App !== 'undefined' && App.ErrorHandler && typeof App.ErrorHandler.showError === 'function') { App.ErrorHandler.showError('Itinerary details are not available for this sailing. (Ghost offer!)\nThis offer cannot be redeemed online. You will need to call to book this offer.'); } } catch(e) { /* ignore toast error */ }
+                    return;
+                }
 
                 // Backdrop
                 const backdrop = document.createElement('div');

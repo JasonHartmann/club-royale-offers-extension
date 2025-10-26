@@ -1,4 +1,56 @@
 const ApiClient = {
+    // New helper to compare sailings between original batch offer and refreshed offer
+    logSailingDifferences(originalOffer, refreshedOffer) {
+        try {
+            const getSailingsArray = (offer) => (offer && offer.campaignOffer && Array.isArray(offer.campaignOffer.sailings)) ? offer.campaignOffer.sailings : [];
+            const offerCode = (originalOffer?.campaignOffer?.offerCode || refreshedOffer?.campaignOffer?.offerCode || 'UNKNOWN').toString();
+            // Deep clone sailings so we can safely run light normalization without mutating inputs
+            const cloneSailings = (arr) => arr.map(s => ({ ...s }));
+            let origSailings = cloneSailings(getSailingsArray(originalOffer));
+            let refSailings = cloneSailings(getSailingsArray(refreshedOffer));
+
+            // Helper to derive ship code
+            const ship = (s) => (s.shipCode || s.ship?.shipCode || s.ship?.code || '').toString().toUpperCase();
+            // Key builder (ship + sailDate)
+            const sailingKey = (s) => {
+                const sc = ship(s);
+                const sd = (s.sailDate || '').toString();
+                if (!sc || !sd) return null; // insufficient identity info
+                return sc + '|' + sd;
+            };
+            // Filter out obviously placeholder / unusable sailings (null itineraryCode & missing ship/date)
+            const isPlaceholder = (s) => s && (s.itineraryCode == null) && !ship(s) && !s.sailDate;
+            origSailings = origSailings.filter(s => !isPlaceholder(s));
+            refSailings = refSailings.filter(s => !isPlaceholder(s));
+
+            // Build maps for quick lookup
+            const toMap = (list) => {
+                const m = new Map();
+                list.forEach(s => {
+                    const k = sailingKey(s);
+                    if (k) m.set(k, s);
+                });
+                return m;
+            };
+            const origMap = toMap(origSailings);
+            const refMap = toMap(refSailings);
+
+            // Differences: in refetch but not original (missing in original batch)
+            refMap.forEach((s, k) => {
+                if (!origMap.has(k)) {
+                    console.debug(`[apiClient] Sailing present only after refetch (was missing in original) offer ${offerCode}: ship=${ship(s)} sailDate=${s.sailDate || 'n/a'} itineraryCode=${s.itineraryCode || 'n/a'} desc="${(s.itineraryDescription || s.sailingType?.name || '').toString().trim().slice(0,120)}"`);
+                }
+            });
+            // Differences: in original but not refetch (refetch missing it)
+            origMap.forEach((s, k) => {
+                if (!refMap.has(k)) {
+                    console.debug(`[apiClient] Sailing missing in refetch (was in original) offer ${offerCode}: ship=${ship(s)} sailDate=${s.sailDate || 'n/a'} itineraryCode=${s.itineraryCode || 'n/a'} desc="${(s.itineraryDescription || s.sailingType?.name || '').toString().trim().slice(0,120)}"`);
+                }
+            });
+        } catch (e) {
+            console.warn('[apiClient] logSailingDifferences failed', e);
+        }
+    },
     async fetchOffers(retryCount = 3) {
         console.debug('[apiClient] fetchOffers called, retryCount:', retryCount);
         let authToken, accountId, loyaltyId, user;
@@ -148,6 +200,17 @@ const ApiClient = {
                 .filter(o => o?.campaignOffer?.offerCode && Array.isArray(o.campaignOffer.sailings) && (o.campaignOffer.sailings.length === 0 || o.campaignOffer.sailings[0].itineraryCode === null) )
                 .map(o => o.campaignOffer.offerCode.trim()) : [];
 
+            // Snapshot original offers (post initial pruning) for diff logging
+            const originalOfferSnapshots = {};
+            if (offersToRefetch.length) {
+                offersToRefetch.forEach(code => {
+                    const snap = data.offers.find(o => o?.campaignOffer?.offerCode === code);
+                    if (snap) {
+                        try { originalOfferSnapshots[code] = JSON.parse(JSON.stringify(snap)); } catch(e) { originalOfferSnapshots[code] = snap; }
+                    }
+                });
+            }
+
             if (offersToRefetch.length) {
                 console.debug(`[apiClient] Refetching ${offersToRefetch.length} offers with empty sailings`, offersToRefetch);
                 // Deduplicate just in case
@@ -184,24 +247,52 @@ const ApiClient = {
                         if (!refetchData || !Array.isArray(refetchData.offers)) return;
                         const refreshedOffer = refetchData.offers.find(o => o?.campaignOffer?.offerCode === code);
                         if (!refreshedOffer) return;
+                        const originalIdx = data.offers.findIndex(o => o?.campaignOffer?.offerCode === code);
+                        if (originalIdx === -1) return;
+                        const original = data.offers[originalIdx];
                         const refreshedSailings = refreshedOffer?.campaignOffer?.sailings;
-                        if (Array.isArray(refreshedSailings) && refreshedSailings.length) {
-                            const originalIdx = data.offers.findIndex(o => o?.campaignOffer?.offerCode === code);
-                            if (originalIdx !== -1) {
-                                const original = data.offers[originalIdx];
-                                const origCO = original.campaignOffer || {};
-                                const newCO = {
-                                    ...origCO,
-                                    sailings: refreshedSailings.map(s => ({ ...s })),
-                                    excludedSailings: Array.isArray(refreshedOffer.campaignOffer.excludedSailings) ? refreshedOffer.campaignOffer.excludedSailings.map(s => ({ ...s })) : origCO.excludedSailings
-                                };
-                                // Replace campaignOffer object entirely (safer than adding props on existing Xray)
-                                data.offers[originalIdx] = { ...original, campaignOffer: newCO };
-                                // Post-merge pruning / limits
-                                removeExcludedFromOffer(data.offers[originalIdx]);
-                                enforceTierNightLimit(data.offers[originalIdx]);
-                                console.debug(`[apiClient] Merged ${newCO.sailings.length} sailings for offer ${code}`);
-                            }
+                        // Always log differences even if refreshedSailings is empty/undefined
+                        try { this.logSailingDifferences(originalOfferSnapshots[code], refreshedOffer); } catch(dErr) { console.warn('[apiClient] logSailingDifferences invocation failed', dErr); }
+
+                        if (Array.isArray(refreshedSailings)) {
+                            // Build a superset (union) of original + refreshed sailings (keyed by shipCode + sailDate)
+                            const origCO = original.campaignOffer || {};
+                            const originalSailings = Array.isArray(origCO.sailings) ? origCO.sailings : [];
+                            const superset = originalSailings.map(s => ({ ...s }));
+                            const keyFor = (s) => {
+                                const shipCode = (s.shipCode || s.ship?.shipCode || s.ship?.code || '').toString().toUpperCase();
+                                const sailDate = (s.sailDate || '').toString();
+                                return (shipCode && sailDate) ? `${shipCode}|${sailDate}` : null;
+                            };
+                            const indexByKey = new Map();
+                            superset.forEach((s, i) => {
+                                const k = keyFor(s); if (k) indexByKey.set(k, i);
+                            });
+                            let added = 0, replaced = 0;
+                            refreshedSailings.forEach(rs => {
+                                const clone = { ...rs };
+                                const k = keyFor(clone);
+                                if (k && indexByKey.has(k)) {
+                                    // Replace existing with refreshed (prefer fresher itinerary details)
+                                    const idx = indexByKey.get(k);
+                                    superset[idx] = clone;
+                                    replaced++;
+                                } else {
+                                    superset.push(clone);
+                                    if (k) indexByKey.set(k, superset.length - 1);
+                                    added++;
+                                }
+                            });
+                            const newCO = {
+                                ...origCO,
+                                sailings: superset,
+                                excludedSailings: Array.isArray(refreshedOffer.campaignOffer?.excludedSailings) ? refreshedOffer.campaignOffer.excludedSailings.map(s => ({ ...s })) : origCO.excludedSailings
+                            };
+                            data.offers[originalIdx] = { ...original, campaignOffer: newCO };
+                            // Post-merge pruning / limits (may drop some superset entries if excluded or >7 nights for TIER)
+                            removeExcludedFromOffer(data.offers[originalIdx]);
+                            enforceTierNightLimit(data.offers[originalIdx]);
+                            console.debug(`[apiClient] Unioned sailings for offer ${code}: original=${originalSailings.length} refetched=${refreshedSailings.length} added=${added} replaced=${replaced} final=${data.offers[originalIdx].campaignOffer.sailings.length}`);
                         }
                     });
                     console.debug('[apiClient] Refetched offers merged');
