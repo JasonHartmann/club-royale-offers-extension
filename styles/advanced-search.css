@@ -1,0 +1,47 @@
+/* Advanced Search (migrated from inline styles in breadcrumbs.js) */
+.advanced-search-panel { border:1px solid #e5e7eb; padding:8px 10px; margin-top:8px; background:#ffffff; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.04); width:100%; box-sizing:border-box; }
+.advanced-search-panel.adv-search-disabled-active { opacity:.6; }
+.adv-search-header { display:flex; align-items:center; gap:12px; border-bottom:1px solid #e5e7eb; padding-bottom:4px; }
+.adv-search-header .adv-badge { background:#2563eb; color:#fff; border-radius:12px; padding:2px 8px; font-size:11px; font-weight:600; }
+.adv-search-master-toggle { display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:12px; font-weight:600; color:#1f2937; }
+.adv-search-master-toggle input { accent-color:#2563eb; }
+.adv-search-clear-btn { background:#dc2626; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+.adv-search-clear-btn:hover { background:#b91c1c; }
+
+.adv-search-body { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; margin-top:6px; }
+.adv-predicate-box { display:flex; align-items:flex-start; gap:6px; padding:6px 8px; border-radius:6px; background:#f9fafb; color:#1f2937; font-size:12px; max-width:600px; position:relative; border:1px solid #e5e7eb; }
+.adv-predicate-box.adv-predicate-preview { box-shadow:0 0 0 2px #2563eb; border-color:#2563eb; }
+.adv-predicate-field-label { font-weight:600; }
+
+.adv-operator-select, .adv-values-multiselect, .adv-add-field-select, .adv-predicate-box input[type="text"] { background:#fff; color:#1f2937; font-size:12px; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; }
+.adv-operator-select:focus, .adv-values-multiselect:focus, .adv-add-field-select:focus, .adv-predicate-box input[type="text"]:focus { outline:2px solid #2563eb; outline-offset:1px; }
+.adv-values-multiselect { min-width:140px; max-width:200px; padding:4px; }
+.adv-values-multiselect option { font-size:12px; }
+
+.adv-help-text { font-size:10px; opacity:.70; max-width:220px; color:#374151; line-height:1.2; }
+
+.adv-value-chips { display:flex; flex-wrap:wrap; gap:4px; }
+.adv-chip { background:#e5e7eb; color:#1f2937; padding:2px 6px; border-radius:12px; font-size:11px; display:inline-flex; align-items:center; gap:4px; }
+.adv-chip button { border:none; background:transparent; color:#374151; cursor:pointer; font-size:11px; line-height:1; padding:0; }
+.adv-chip button:hover { color:#111827; }
+
+.adv-commit-btn { background:#22c55e; color:#fff; border:none; font-weight:700; cursor:pointer; width:28px; height:28px; border-radius:6px; font-size:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+.adv-commit-btn:hover:not(:disabled) { filter:brightness(.95); }
+.adv-commit-btn:disabled { opacity:.35; cursor:not-allowed; }
+.adv-search-disabled-active .adv-commit-btn { cursor:not-allowed; opacity:.35 !important; }
+
+.adv-add-field-wrapper { display:flex; align-items:center; }
+
+.adv-search-empty-inline { flex-basis:100%; font-size:12px; opacity:.7; color:#374151; }
+.adv-search-disabled-msg { flex-basis:100%; font-size:12px; opacity:.55; color:#374151; }
+
+.adv-stack-col { display:flex; flex-direction:column; gap:4px; }
+.adv-placeholder { font-style:italic; opacity:.7; }
+.adv-delete-btn { background:transparent; color:#dc2626; border:none; cursor:pointer; font-size:14px; line-height:1; padding:0 2px; }
+.adv-delete-btn:hover { filter:brightness(.85); }
+
+/* Buttons (reuse existing b2b button style where possible) */
+.adv-search-button { }
+
+/* Tier filter cluster already styled in ui.css; ensure spacing harmony */
+.tier-filter-toggle { gap:6px; }

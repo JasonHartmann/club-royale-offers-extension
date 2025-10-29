@@ -195,24 +195,78 @@ try {
 } catch(e){ /* ignore init errors */ }
 
 function mergeProfiles(profileA, profileB) {
-    if (!profileA && !profileB) return null; if (!profileA) return profileB; if (!profileB) return profileA;
-    const celebrityOrder = ["Interior","Ocean View","Veranda","Concierge"]; const defaultOrder=["Interior","Ocean View","Balcony","Junior Suite"];
-    const deepCopy = JSON.parse(JSON.stringify(profileA)); const offersA = deepCopy.data?.offers || []; const offersB = profileB.data?.offers || [];
+    if (!profileA && !profileB) return null;
+    if (!profileA) return profileB;
+    if (!profileB) return profileA;
+    const celebrityOrder = ["Interior", "Ocean View", "Veranda", "Concierge"];
+    const defaultOrder = ["Interior", "Ocean View", "Balcony", "Junior Suite"];
+    const deepCopy = JSON.parse(JSON.stringify(profileA));
+    const offersA = deepCopy.data?.offers || [];
+    const offersB = profileB.data?.offers || [];
     const sailingMapB = new Map();
-    offersB.forEach(offerB => { const codeB = offerB.campaignCode || ''; const offerCodeB = offerB.campaignOffer?.offerCode || ''; const categoryB = offerB.category || ''; const guestsB = offerB.guests || ''; const brandB = offerB.brand || offerB.campaignOffer?.brand || ''; (offerB.campaignOffer?.sailings||[]).forEach(sailingB => { const key = codeB + '|' + (sailingB.shipName||'') + '|' + (sailingB.sailDate||'') + '|' + String(sailingB.isGOBO); sailingMapB.set(key, { offerB, offerCodeB, categoryB, brandB, guestsB, sailingB }); }); });
-    offersA.forEach((offerA)=>{
-        const codeA = offerA.campaignCode || ''; const offerCodeA = offerA.campaignOffer?.offerCode || ''; const brandA = offerA.brand || offerA.campaignOffer?.brand || ''; const sailingsA = offerA.campaignOffer?.sailings || []; const offerNameA = (offerA.campaignOffer?.name||'').toLowerCase();
+    offersB.forEach(offerB => {
+        const codeB = offerB.campaignCode || '';
+        const offerCodeB = offerB.campaignOffer?.offerCode || '';
+        const categoryB = offerB.category || '';
+        const guestsB = offerB.guests || '';
+        const brandB = offerB.brand || offerB.campaignOffer?.brand || '';
+        (offerB.campaignOffer?.sailings || []).forEach(sailingB => {
+            const key = codeB + '|' + (sailingB.shipName || '') + '|' + (sailingB.sailDate || '') + '|' + String(sailingB.isGOBO);
+            sailingMapB.set(key, {offerB, offerCodeB, categoryB, brandB, guestsB, sailingB});
+        });
+    });
+    offersA.forEach((offerA) => {
+        const codeA = offerA.campaignCode || '';
+        const offerCodeA = offerA.campaignOffer?.offerCode || '';
+        const brandA = offerA.brand || offerA.campaignOffer?.brand || '';
+        const sailingsA = offerA.campaignOffer?.sailings || [];
+        const offerNameA = (offerA.campaignOffer?.name || '').toLowerCase();
         offerA.campaignOffer.sailings = sailingsA.filter(sailingA => {
-            const key = codeA + '|' + (sailingA.shipName||'') + '|' + (sailingA.sailDate||'') + '|' + String(sailingA.isGOBO); const matchObj = sailingMapB.get(key); if (!matchObj) return false;
-            const offerNameB = (matchObj.offerB?.campaignOffer?.name||'').toLowerCase(); if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) return false;
-            const isGOBOA = sailingA.isGOBO === true; const isGOBOB = matchObj.sailingB.isGOBO === true; const roomTypeA = sailingA.roomType || ''; const roomTypeB = matchObj.sailingB.roomType || '';
-            if (isGOBOA || isGOBOB) { sailingA.isGOBO=false; offerA.guests='2 guests'; let isCelebrity=false; if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) isCelebrity=true; else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) isCelebrity=true; const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder; const idxA=categoryOrder.indexOf(roomTypeA); const idxB=categoryOrder.indexOf(roomTypeB); let lowestIdx=Math.min(idxA,idxB); let lowestRoomType=categoryOrder[lowestIdx >=0 ? lowestIdx : 0]; sailingA.roomType=lowestRoomType; offerA.category=lowestRoomType; }
-            else { let isCelebrity=false; if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) isCelebrity=true; else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) isCelebrity=true; const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder; if (offerCodeA !== matchObj.offerCodeB) offerA.campaignOffer.offerCode = offerCodeA + ' / ' + matchObj.offerCodeB; const canUpgrade = !isGOBOA && !isGOBOB; const idxA=categoryOrder.indexOf(roomTypeA); const idxB=categoryOrder.indexOf(roomTypeB); let highestIdx=Math.max(idxA,idxB); let upgradedRoomType = categoryOrder[highestIdx]; if (canUpgrade) { if (highestIdx >=0 && highestIdx < categoryOrder.length -1) upgradedRoomType = categoryOrder[highestIdx+1]; } sailingA.roomType=upgradedRoomType; offerA.category=upgradedRoomType; offerA.guests='2 guests'; }
+            const key = codeA + '|' + (sailingA.shipName || '') + '|' + (sailingA.sailDate || '') + '|' + String(sailingA.isGOBO);
+            const matchObj = sailingMapB.get(key);
+            if (!matchObj) return false;
+            const offerNameB = (matchObj.offerB?.campaignOffer?.name || '').toLowerCase();
+            if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) return false;
+            const isGOBOA = sailingA.isGOBO === true;
+            const isGOBOB = matchObj.sailingB.isGOBO === true;
+            const roomTypeA = sailingA.roomType || '';
+            const roomTypeB = matchObj.sailingB.roomType || '';
+            if (isGOBOA || isGOBOB) {
+                sailingA.isGOBO = false;
+                offerA.guests = '2 guests';
+                let isCelebrity = false;
+                if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) isCelebrity = true; else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) isCelebrity = true;
+                const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
+                const idxA = categoryOrder.indexOf(roomTypeA);
+                const idxB = categoryOrder.indexOf(roomTypeB);
+                let lowestIdx = Math.min(idxA, idxB);
+                let lowestRoomType = categoryOrder[lowestIdx >= 0 ? lowestIdx : 0];
+                sailingA.roomType = lowestRoomType;
+                offerA.category = lowestRoomType;
+            } else {
+                let isCelebrity = false;
+                if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) isCelebrity = true; else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) isCelebrity = true;
+                const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
+                if (offerCodeA !== matchObj.offerCodeB) offerA.campaignOffer.offerCode = offerCodeA + ' / ' + matchObj.offerCodeB;
+                const canUpgrade = !isGOBOA && !isGOBOB;
+                const idxA = categoryOrder.indexOf(roomTypeA);
+                const idxB = categoryOrder.indexOf(roomTypeB);
+                let highestIdx = Math.max(idxA, idxB);
+                let upgradedRoomType = categoryOrder[highestIdx];
+                if (canUpgrade) {
+                    if (highestIdx >= 0 && highestIdx < categoryOrder.length - 1) upgradedRoomType = categoryOrder[highestIdx + 1];
+                }
+                sailingA.roomType = upgradedRoomType;
+                offerA.category = upgradedRoomType;
+                offerA.guests = '2 guests';
+            }
             return true;
         });
     });
-    deepCopy.data.offers = offersA.filter(o=>o.campaignOffer?.sailings?.length>0);
-    deepCopy.merged=true; deepCopy.mergedFrom=[profileA.data?.email, profileB.data?.email].filter(Boolean); deepCopy.savedAt=Date.now();
+    deepCopy.data.offers = offersA.filter(o => o.campaignOffer?.sailings?.length > 0);
+    deepCopy.merged = true;
+    deepCopy.mergedFrom = [profileA.data?.email, profileB.data?.email].filter(Boolean);
+    deepCopy.savedAt = Date.now();
     return deepCopy;
 }
 
@@ -224,9 +278,51 @@ function preserveSelectedProfileKey(state, prevState) {
     }
     return { ...state, selectedProfileKey: selectedProfileKey || null };
 }
-function getLinkedAccounts() { try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLinkedAccounts') : localStorage.getItem('goboLinkedAccounts')); return raw ? JSON.parse(raw) : []; } catch(e){ return []; } }
-function setLinkedAccounts(arr) { try { if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(arr)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr)); } catch(e){} }
-function formatTimeAgo(savedAt) { const now=Date.now(); const diffMs = now - savedAt; const minute=60000, hour=60*minute, day=24*hour, week=7*day, month=30*day; if (diffMs < minute) return 'just now'; if (diffMs < hour) return `${Math.floor(diffMs/minute)} minute${Math.floor(diffMs/minute)===1?'':'s'} ago`; if (diffMs < day) return `${Math.floor(diffMs/hour)} hour${Math.floor(diffMs/hour)===1?'':'s'} ago`; if (diffMs < week) return `${Math.floor(diffMs/day)} day${Math.floor(diffMs/day)===1?'':'s'} ago`; if (diffMs < month) return `${Math.floor(diffMs/week)} week${Math.floor(diffMs/week)===1?'':'s'} ago`; return `${Math.floor(diffMs/month)} month${Math.floor(diffMs/month)===1?'':'s'} ago`; }
-function updateCombinedOffersCache() { const linkedAccounts = getLinkedAccounts(); if (!linkedAccounts || linkedAccounts.length < 2) return; const profiles = linkedAccounts.map(acc=>{ const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key)); return raw ? JSON.parse(raw) : null; }).filter(Boolean); if (profiles.length <2) return; const merged = mergeProfiles(profiles[0], profiles[1]); if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged)); if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked']; }
-function getAssetUrl(path) { if (typeof browser !== 'undefined' && browser.runtime?.getURL) return browser.runtime.getURL(path); if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) return chrome.runtime.getURL(path); return path; }
+
+function getLinkedAccounts() {
+    try {
+        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLinkedAccounts') : localStorage.getItem('goboLinkedAccounts'));
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function setLinkedAccounts(arr) {
+    try {
+        if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(arr)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr));
+    } catch (e) {
+    }
+}
+
+function formatTimeAgo(savedAt) {
+    const now = Date.now();
+    const diffMs = now - savedAt;
+    const minute = 60000, hour = 60 * minute, day = 24 * hour, week = 7 * day, month = 30 * day;
+    if (diffMs < minute) return 'just now';
+    if (diffMs < hour) return `${Math.floor(diffMs / minute)} minute${Math.floor(diffMs / minute) === 1 ? '' : 's'} ago`;
+    if (diffMs < day) return `${Math.floor(diffMs / hour)} hour${Math.floor(diffMs / hour) === 1 ? '' : 's'} ago`;
+    if (diffMs < week) return `${Math.floor(diffMs / day)} day${Math.floor(diffMs / day) === 1 ? '' : 's'} ago`;
+    if (diffMs < month) return `${Math.floor(diffMs / week)} week${Math.floor(diffMs / week) === 1 ? '' : 's'} ago`;
+    return `${Math.floor(diffMs / month)} month${Math.floor(diffMs / month) === 1 ? '' : 's'} ago`;
+}
+
+function updateCombinedOffersCache() {
+    const linkedAccounts = getLinkedAccounts();
+    if (!linkedAccounts || linkedAccounts.length < 2) return;
+    const profiles = linkedAccounts.map(acc => {
+        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key));
+        return raw ? JSON.parse(raw) : null;
+    }).filter(Boolean);
+    if (profiles.length < 2) return;
+    const merged = mergeProfiles(profiles[0], profiles[1]);
+    if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged));
+    if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked'];
+}
+
+function getAssetUrl(path) {
+    if (typeof browser !== 'undefined' && browser.runtime?.getURL) return browser.runtime.getURL(path);
+    if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) return chrome.runtime.getURL(path);
+    return path;
+}
 

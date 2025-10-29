@@ -14,6 +14,7 @@
         AccordionBuilder,
         SortUtils,
         TableRenderer,
+        Breadcrumbs,
         Utils,
         OfferCodeLookup,
         Filtering,

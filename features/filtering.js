@@ -2,35 +2,80 @@ const Filtering = {
 
     filterOffers(state, offers) {
         console.time('Filtering.filterOffers');
-        // Hidden groups are now GLOBAL (shared across all accounts)
+        // Hidden groups (GLOBAL)
         const hiddenGroups = Filtering.loadHiddenGroups();
-        if (!Array.isArray(hiddenGroups) || hiddenGroups.length === 0) {
-            console.timeEnd('Filtering.filterOffers');
-            return offers;
-        }
-        // Map group label to offer property key using headers
-        const labelToKey = {};
-        if (Array.isArray(state.headers)) {
-            state.headers.forEach(h => {
-                if (h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key;
+        let working = offers;
+        if (Array.isArray(hiddenGroups) && hiddenGroups.length > 0) {
+            const labelToKey = {};
+            if (Array.isArray(state.headers)) {
+                state.headers.forEach(h => { if (h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; });
+            }
+            working = working.filter(({ offer, sailing }) => {
+                for (const path of hiddenGroups) {
+                    const [label, value] = path.split(':').map(s => s.trim());
+                    if (!label || !value) continue;
+                    const key = labelToKey[label.toLowerCase()];
+                    if (!key) continue;
+                    const offerColumnValue = this.getOfferColumnValue(offer, sailing, key);
+                    if (offerColumnValue && offerColumnValue.toString().toUpperCase() === value.toUpperCase()) return false;
+                }
+                return true;
             });
         }
-        // Helper to get the displayed value for each column, matching table rendering
-        const result = offers.filter(({ offer, sailing }) => {
-            for (const path of hiddenGroups) {
-                const [label, value] = path.split(':').map(s => s.trim());
-                if (!label || !value) continue;
-                const key = labelToKey[label.toLowerCase()];
-                if (!key) continue;
-                const offerColumnValue = this.getOfferColumnValue(offer, sailing, key);
-                if (offerColumnValue && offerColumnValue.toString().toUpperCase() === value.toUpperCase()) {
-                    return false;
-                }
+        // Advanced Search layer
+        try {
+            if (state && state.advancedSearch && state.advancedSearch.enabled) {
+                working = Filtering.applyAdvancedSearch(working, state);
             }
-            return true;
-        });
+        } catch(e) { console.warn('[Filtering][AdvancedSearch] applyAdvancedSearch failed', e); }
         console.timeEnd('Filtering.filterOffers');
-        return result;
+        return working;
+    },
+    applyAdvancedSearch(offers, state) {
+        // Only apply when panel enabled
+        if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return offers;
+        const basePreds = (state.advancedSearch && Array.isArray(state.advancedSearch.predicates)) ? state.advancedSearch.predicates : [];
+        const committed = basePreds.filter(p=>p && p.complete && p.fieldKey && p.operator && Array.isArray(p.values) && p.values.length);
+        // Preview: optionally include one incomplete predicate currently being previewed
+        if (state._advPreviewPredicateId) {
+            const preview = basePreds.find(p=>p && p.id === state._advPreviewPredicateId);
+            if (preview && !preview.complete && preview.fieldKey && preview.operator && Array.isArray(preview.values) && preview.values.length) {
+                committed.push({ ...preview, complete:true, _syntheticPreview:true });
+            }
+        }
+        const preds = committed;
+        if (!preds.length) return offers; // nothing to do
+        const labelToKey = {};
+        try { (state.headers||[]).forEach(h=>{ if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; }); } catch(e){}
+        return offers.filter(wrapper => Filtering.matchesAdvancedPredicates(wrapper, preds, labelToKey, state));
+    },
+    matchesAdvancedPredicates(wrapper, predicates, labelToKey, state) {
+        try {
+            return predicates.every(pred => {
+                try {
+                    const key = pred.fieldKey || labelToKey[pred.fieldKey?.toLowerCase()] || pred.fieldKey;
+                    const rawVal = Filtering.getOfferColumnValue(wrapper.offer, wrapper.sailing, key);
+                    return Filtering.evaluatePredicate(pred, rawVal);
+                } catch(e){ return false; }
+            });
+        } catch(e) { return true; }
+    },
+    evaluatePredicate(predicate, fieldValue) {
+        try {
+            const op = (predicate.operator||'').toLowerCase();
+            const values = Array.isArray(predicate.values) ? predicate.values.map(v=>Filtering.normalizePredicateValue(v, predicate.fieldKey)) : [];
+            const fv = Filtering.normalizePredicateValue(fieldValue == null ? '' : (''+fieldValue), predicate.fieldKey);
+            if (!op || !values.length) return true; // ignore incomplete
+            if (op === 'in') return values.includes(fv);
+            if (op === 'not in') return !values.includes(fv);
+            if (op === 'starts with') return values.some(v=> fv.startsWith(v));
+            if (op === 'contains') return values.some(v => fv.includes(v));
+            if (op === 'not contains') return values.every(v => !fv.includes(v));
+            return true;
+        } catch(e) { return true; }
+    },
+    normalizePredicateValue(raw, fieldKey) {
+        try { return (''+raw).trim().toUpperCase(); } catch(e){ return ''; }
     },
     getOfferColumnValue(offer, sailing, key) {
         let guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests';

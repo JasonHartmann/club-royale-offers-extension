@@ -75,43 +75,78 @@ const TableBuilder = {
     },
     renderTable(tbody, state, globalMaxOfferDate = null) {
         console.debug('[DEBUG] renderTable ENTRY', { sortedOffersLength: state.sortedOffers.length, tbody });
+        const total = state.sortedOffers.length;
+        // Cancel any in-flight incremental render
+        state._rowRenderToken = (Date.now().toString(36)+Math.random().toString(36).slice(2));
+        const token = state._rowRenderToken;
         tbody.innerHTML = '';
-        if (state.sortedOffers.length === 0) {
+        if (total === 0) {
             const row = document.createElement('tr');
             const colSpan = (state.headers && state.headers.length) ? state.headers.length : 14;
             row.innerHTML = `<td colspan="${colSpan}" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
-            console.debug('[DEBUG] renderTable: No offers available row appended');
         } else {
-            // Find the soonest expiring offer in the next 2 days
+            // Pre-compute soonest expiring (within 2 days) once
             let soonestExpDate = null;
             const now = Date.now();
             const twoDays = 2 * 24 * 60 * 60 * 1000;
-            state.sortedOffers.forEach(({ offer }) => {
-                const expStr = offer.campaignOffer?.reserveByDate;
-                if (expStr) {
-                    const expDate = new Date(expStr).getTime();
-                    if (expDate >= now && expDate - now <= twoDays) {
-                        if (!soonestExpDate || expDate < soonestExpDate) soonestExpDate = expDate;
+            for (let i=0;i<total;i++) {
+                const offer = state.sortedOffers[i].offer; const expStr = offer.campaignOffer?.reserveByDate; if (!expStr) continue; const expDate = new Date(expStr).getTime(); if (expDate >= now && expDate - now <= twoDays) { if (!soonestExpDate || expDate < soonestExpDate) soonestExpDate = expDate; }
+            }
+            // Threshold for incremental rendering
+            const CHUNK_THRESHOLD = 400; // if over this many rows, chunk rendering
+            if (total > CHUNK_THRESHOLD) {
+                const CHUNK_SIZE_BASE = 200; // base chunk size
+                let index = 0;
+                // Optional status row to indicate progressive rendering (removed once complete)
+                const statusRow = document.createElement('tr');
+                const colSpan = (state.headers && state.headers.length) ? state.headers.length : 14;
+                statusRow.innerHTML = `<td colspan="${colSpan}" class="border p-2 text-left" style="font-size:12px;color:#666;">Rendering ${total.toLocaleString()} offers…</td>`;
+                tbody.appendChild(statusRow);
+                const processChunk = () => {
+                    if (token !== state._rowRenderToken) return; // aborted by a newer render
+                    // Dynamically adjust chunk size to ~16ms frame budget (rough heuristic)
+                    let chunkSize = CHUNK_SIZE_BASE;
+                    const tStart = performance.now();
+                    const frag = document.createDocumentFragment();
+                    for (let c=0; c<chunkSize && index < total; c++, index++) {
+                        const { offer, sailing } = state.sortedOffers[index];
+                        const offerDate = offer.campaignOffer?.startDate;
+                        const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
+                        const expDate = offer.campaignOffer?.reserveByDate;
+                        const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
+                        const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon, index);
+                        if (row) frag.appendChild(row);
+                        if (performance.now() - tStart > 12) break; // yield to keep frame responsive
                     }
+                    if (statusRow.parentNode) tbody.insertBefore(frag, statusRow);
+                    // Update status text
+                    if (statusRow && statusRow.firstChild) {
+                        const rendered = Math.min(index, total);
+                        statusRow.firstChild.textContent = `Rendering ${rendered.toLocaleString()} / ${total.toLocaleString()} offers…`;
+                    }
+                    if (index < total) {
+                        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(processChunk); else setTimeout(processChunk, 0);
+                    } else {
+                        if (statusRow && statusRow.parentNode) statusRow.remove();
+                        console.debug('[DEBUG] renderTable incremental complete', { total });
+                    }
+                };
+                processChunk();
+            } else {
+                // Synchronous render for smaller datasets (original path)
+                for (let idx=0; idx<total; idx++) {
+                    const { offer, sailing } = state.sortedOffers[idx];
+                    const offerDate = offer.campaignOffer?.startDate;
+                    const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
+                    const expDate = offer.campaignOffer?.reserveByDate;
+                    const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
+                    const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon, idx);
+                    if (row) tbody.appendChild(row); else console.warn('[DEBUG] renderTable: createOfferRow returned null/undefined', { idx, offer, sailing });
                 }
-            });
-            state.sortedOffers.forEach(({ offer, sailing }, idx) => {
-                const offerDate = offer.campaignOffer?.startDate;
-                const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
-                const expDate = offer.campaignOffer?.reserveByDate;
-                const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
-                // Pass idx to createOfferRow for 1-based ID in favorites
-                const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon, idx);
-                if (row) {
-                    tbody.appendChild(row);
-                } else {
-                    console.warn('[DEBUG] renderTable: createOfferRow returned null/undefined', { idx, offer, sailing });
-                }
-            });
-            console.debug('[DEBUG] renderTable: Finished appending ' + state.sortedOffers.length + ' rows');
+            }
         }
-
+        // Update sort indicators immediately (independent of incremental completion)
         state.headers.forEach(header => {
             const th = state.thead.querySelector(`th[data-key="${header.key}"]`);
             if (!th || header.key === 'favorite') return; // skip favorite column for sorting indicators

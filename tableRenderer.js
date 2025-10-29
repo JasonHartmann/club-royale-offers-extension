@@ -215,6 +215,7 @@ const TableRenderer = {
             hideTierSailings: false,
             selectedProfileKey: key,
             _switchToken: switchToken,
+            advancedSearch: { enabled:false, predicates: [] },
             ...preparedData
         };
         // Load persisted preference for Hide TIER
@@ -450,6 +451,7 @@ const TableRenderer = {
                 hideTierSailings: false,
                 selectedProfileKey: selectedProfileKey || currentKey || null,
                 _switchToken: null,
+                advancedSearch: { enabled:false, predicates: [] },
                 ...this.prepareOfferData(data)
             };
             // Load persisted preference for Hide TIER
@@ -522,6 +524,7 @@ const TableRenderer = {
             }
         } catch(e) { /* ignore */ }
         const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken, profileId: App.ProfileIdMap ? App.ProfileIdMap[key] : null };
+        if (!state.advancedSearch) state.advancedSearch = { enabled:false, predicates: [] };
         // Ensure core structures
         state.accordionContainer = document.createElement('div');
         state.accordionContainer.className = 'w-full';
@@ -653,7 +656,26 @@ const TableRenderer = {
         (filtered || []).forEach(({ offer }) => {
             const ds = offer.campaignOffer?.startDate; if (ds) { const t = new Date(ds).getTime(); if (!globalMaxOfferDate || t > globalMaxOfferDate) globalMaxOfferDate = t; }
         });
-        state.sortedOffers = currentSortOrder !== 'original' ? App.SortUtils.sortOffers(filtered, currentSortColumn, currentSortOrder) : [...filtered];
+        // Optimized sorting: reuse a master sorted list for the full set, then filter it to maintain order.
+        const sortKey = currentSortColumn + '|' + currentSortOrder;
+        if (currentSortOrder !== 'original') {
+            try {
+                if (!state._globalSortedCache) state._globalSortedCache = {};
+                const fullLen = state.fullOriginalOffers.length;
+                const masterCacheKey = sortKey + '|' + fullLen;
+                if (!state._globalSortedCache[masterCacheKey]) {
+                    // Compute and cache master sorted list only once per profile length + sort key.
+                    state._globalSortedCache[masterCacheKey] = App.SortUtils.sortOffers([...state.fullOriginalOffers], currentSortColumn, currentSortOrder);
+                }
+                const membership = new Set(filtered);
+                state.sortedOffers = state._globalSortedCache[masterCacheKey].filter(w => membership.has(w));
+            } catch(e) {
+                // Fallback to original behavior if cache path fails
+                state.sortedOffers = App.SortUtils.sortOffers(filtered, currentSortColumn, currentSortOrder);
+            }
+        } else {
+            state.sortedOffers = [...filtered];
+        }
         if (viewMode === 'table') {
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             if (!table.contains(thead)) table.appendChild(thead);
@@ -698,7 +720,12 @@ const TableRenderer = {
             }
             renderNestedAccordion(accordionContainer, state.sortedOffers, state.groupingStack, state.groupKeysStack, 0);
         }
-        this.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+        // Replace internal call with external module
+        if (!state._skipBreadcrumb) {
+            Breadcrumbs.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+        } else {
+            try { delete state._skipBreadcrumb; } catch(e){}
+        }
         if (switchToken && this.currentSwitchToken !== switchToken) {
             console.debug('[tableRenderer] updateView: token mismatch post-render, aborting highlight', { switchToken, currentSwitchToken: this.currentSwitchToken });
         } else if (switchToken) {
@@ -721,520 +748,7 @@ const TableRenderer = {
         }
         console.log('[tableRenderer] updateView EXIT');
     },
-    updateBreadcrumb(groupingStack, groupKeysStack) {
-        console.log('[tableRenderer] updateBreadcrumb ENTRY', { groupingStack, groupKeysStack });
-        // If extension storage hasn't finished hydration yet, wait and retry once
-        if (typeof GoboStore !== 'undefined' && GoboStore && !GoboStore.ready) {
-            console.debug('[tableRenderer] GoboStore not ready; deferring breadcrumb render until goboStorageReady');
-            const retry = () => {
-                try { App.TableRenderer.updateBreadcrumb(groupingStack, groupKeysStack); } catch(e) { /* ignore */ }
-            };
-            document.addEventListener('goboStorageReady', retry, { once: true });
-            return;
-        }
-        const state = App.TableRenderer.lastState;
-        if (!state) return;
-        const container = document.querySelector('.breadcrumb-container');
-        if (!container) return;
-        container.innerHTML = '';
-        // Create two rows: one for tabs (top), one for breadcrumbs (below)
-        const tabsRow = document.createElement('div');
-        tabsRow.className = 'breadcrumb-tabs-row';
-        // Use block so inner inline-flex can exceed width and trigger horizontal scroll
-        tabsRow.style.cssText = 'display:block; margin-bottom:8px; overflow:hidden;';
-        const crumbsRow = document.createElement('div');
-        crumbsRow.className = 'breadcrumb-crumb-row';
-        crumbsRow.style.cssText = 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;';
-        container.appendChild(tabsRow);
-        container.appendChild(crumbsRow);
-
-        // Render profile tabs (saved profiles from localStorage prefixed with 'gobo-')
-        try {
-            const profiles = [];
-            // Ensure favorites profile exists
-            try { if (window.Favorites && Favorites.ensureProfileExists) Favorites.ensureProfileExists(); } catch(e) { /* ignore */ }
-            // Prefer GoboStore enumeration if available
-            let profileKeys = [];
-            if (typeof GoboStore !== 'undefined' && GoboStore && typeof GoboStore.getAllProfileKeys === 'function') {
-                profileKeys = GoboStore.getAllProfileKeys();
-            } else {
-                for (let i = 0; i < localStorage.length; i++) {
-                    const k = localStorage.key(i);
-                    if (k && k.startsWith('gobo-')) profileKeys.push(k);
-                }
-            }
-            // Manually include favorites key if present
-            try {
-                const favRaw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites'));
-                if (favRaw) {
-                    profileKeys.push('goob-favorites');
-                }
-            } catch(e){ /* ignore */ }
-            // De-dupe
-            profileKeys = Array.from(new Set(profileKeys));
-            profileKeys.forEach(k => {
-                let payload = null;
-                try {
-                    payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k)));
-                    if (payload && payload.data && payload.savedAt) {
-                        profiles.push({ key: k, label: k === 'goob-favorites' ? 'Favorites' : k.replace(/^gobo-/, '').replace(/_/g, '@'), savedAt: k === 'goob-favorites' ? null : payload.savedAt });
-                    }
-                } catch (e) { /* ignore invalid */ }
-            });
-            if (profiles.length) {
-                // Build/refresh stable profileId map using ProfileIdManager (no renumbering of existing IDs)
-                try {
-                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
-                        const goboKeys = profiles.filter(p => /^gobo-/.test(p.key)).map(p => p.key);
-                        ProfileIdManager.ensureIds(goboKeys);
-                        App.ProfileIdMap = { ...ProfileIdManager.map };
-                    } else {
-                        // Fallback: preserve existing map without resetting to prevent churn
-                        if (!App.ProfileIdMap) App.ProfileIdMap = {};
-                        const existingIds = new Set(Object.values(App.ProfileIdMap));
-                        let maxId = 0; Object.values(App.ProfileIdMap).forEach(v => { if (v > maxId) maxId = v; });
-                        profiles.filter(p => /^gobo-/.test(p.key)).forEach(p => {
-                            if (App.ProfileIdMap[p.key] == null) {
-                                let candidate = maxId + 1;
-                                while (existingIds.has(candidate)) candidate++;
-                                App.ProfileIdMap[p.key] = candidate;
-                                existingIds.add(candidate);
-                                maxId = candidate;
-                            }
-                        });
-                    }
-                } catch(e){ /* ignore map errors */ }
-
-                // Restore: move current user's tab to the front
-                let currentKey = null;
-                try {
-                    const sessionRaw = localStorage.getItem('persist:session');
-                    if (sessionRaw) {
-                        const parsed = JSON.parse(sessionRaw);
-                        const user = parsed.user ? JSON.parse(parsed.user) : null;
-                        if (user) {
-                            const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
-                            const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                            currentKey = `gobo-${usernameKey}`;
-                        }
-                    }
-                } catch (e) { /* ignore */ }
-                // Sort by savedAt desc (most recent first)
-                profiles.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-                // Extract favorites (if present) so we can place it at the far right later
-                let favoritesEntry = null;
-                const favIdx = profiles.findIndex(p => p.key === 'goob-favorites');
-                if (favIdx !== -1) {
-                    favoritesEntry = profiles.splice(favIdx, 1)[0];
-                }
-                // Move current user's tab to the front if present (after removing favorites so favorites stays at end later)
-                if (currentKey) {
-                    const idx = profiles.findIndex(p => p.key === currentKey);
-                    if (idx > 0) profiles.unshift(profiles.splice(idx, 1)[0]);
-                }
-                const tabs = document.createElement('div');
-                tabs.className = 'profile-tabs';
-                // Create a dedicated horizontal scroll wrapper so inner tabs do not shrink
-                const tabsScroll = document.createElement('div');
-                tabsScroll.className = 'profile-tabs-scroll';
-                tabsScroll.style.cssText = 'overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch;';
-                // Let stylesheet control scrolling; ensure no inline overrides that enable shrinking
-                tabs.style.cssText = 'display:inline-flex; flex-direction:row; gap:8px; flex-wrap:nowrap;';
-                // Always use App.CurrentProfile.key as activeKey after a profile switch
-                let activeKey = (App.CurrentProfile && App.CurrentProfile.key) ? App.CurrentProfile.key : state.selectedProfileKey;
-                // If this is the very first modal open for this session, force the first (current profile) tab active exactly once
-                if (TableRenderer._initialOpenPending && !TableRenderer.hasSelectedDefaultTab && profiles.length) {
-                    activeKey = profiles[0].key;
-                    state.selectedProfileKey = activeKey;
-                    TableRenderer.hasSelectedDefaultTab = true; // prevent re-selection during this open
-                    TableRenderer._initialOpenPending = false; // consume the one-time flag
-                }
-                console.debug('[DEBUG] ActiveKey before validation: ', activeKey);
-                console.debug('CurrentProfile.key: ', App.CurrentProfile ? App.CurrentProfile.key : null);
-                console.debug('selectedProfileKey: ', state.selectedProfileKey);
-                // Instrumentation: list profiles before augmentation
-                try { console.debug('[TABS BUILD] base profiles order', profiles.map(p=>p.key)); } catch(e){}
-                // After profiles array is built and before profileKeys is used
-                let linkedAccounts = getLinkedAccounts();
-                profiles.push({
-                    key: 'goob-combined-linked',
-                    label: 'Combined Offers',
-                    isCombined: true,
-                    linkedEmails: linkedAccounts.map(acc => acc.email)
-                });
-                // Append favorites as the rightmost tab (after Combined Offers) if it exists
-                if (favoritesEntry) {
-                    profiles.push(favoritesEntry);
-                }
-                try { console.debug('[TABS BUILD] augmented profiles order', profiles.map(p=>p.key)); } catch(e){}
-                const profileKeys = profiles.map(p => p.key);
-                // Update activeKey logic to handle Combined Offers tab
-                if (!profileKeys.includes(activeKey)) {
-                    if (state.selectedProfileKey === 'goob-combined-linked') {
-                        activeKey = 'goob-combined-linked';
-                    } else {
-                        activeKey = profileKeys.includes(state.selectedProfileKey) ? state.selectedProfileKey : (profileKeys[0] || null);
-                    }
-                }
-                state.selectedProfileKey = activeKey;
-                console.debug('*** Updated selectedProfileKey: ', state.selectedProfileKey);
-                // Instrumentation: detect duplicate keys
-                try { const seen = new Set(); const dups = []; profiles.forEach(p=>{ if (seen.has(p.key)) dups.push(p.key); else seen.add(p.key); }); if (dups.length) console.warn('[TABS BUILD] Duplicate profile keys detected', dups); } catch(e){}
-                // Reset TabKeyMap for fresh build to avoid incrementing counts perpetually
-                TableRenderer.TabKeyMap = {};
-                profiles.forEach((p, idx) => {
-                    console.debug('[TABS BUILD] creating tab', { index: idx, key: p.key, label: p.label, isCombined: !!p.isCombined });
-                    // Generate a unique DOM key if this storage key has appeared before
-                    const storageKey = p.key;
-                    if (!TableRenderer.TabKeyMap[storageKey]) {
-                        TableRenderer.TabKeyMap[storageKey] = { count: 0 };
-                    } else {
-                        TableRenderer.TabKeyMap[storageKey].count++;
-                    }
-                    const domKey = TableRenderer.TabKeyMap[storageKey].count === 0 ? storageKey : `${storageKey}#${TableRenderer.TabKeyMap[storageKey].count}`;
-                    const btn = document.createElement('button');
-                    btn.className = 'profile-tab';
-                    btn.setAttribute('data-key', domKey); // DOM-unique key
-                    btn.setAttribute('data-storage-key', storageKey); // underlying storage key
-                    // Assign stable profileId for gobo-* (exclude favorites & combined)
-                    let profileIdForTab = null;
-                    if (/^gobo-/.test(storageKey)) {
-                        try { profileIdForTab = App.ProfileIdMap ? App.ProfileIdMap[storageKey] : null; } catch(e){ profileIdForTab = null; }
-                    }
-                    // Safely derive loyaltyId per profile (was missing, caused ReferenceError)
-                    let loyaltyId = null;
-                    try {
-                        const storedRaw = (typeof goboStorageGet === 'function' ? goboStorageGet(storageKey) : localStorage.getItem(storageKey));
-                        if (storedRaw) {
-                            const storedPayload = JSON.parse(storedRaw);
-                            loyaltyId = storedPayload?.data?.loyaltyId || null;
-                        }
-                    } catch(e){ /* ignore */ }
-                    let labelDiv = document.createElement('div');
-                    labelDiv.className = 'profile-tab-label';
-                    labelDiv.textContent = p.label || storageKey;
-                    if (storageKey === 'goob-favorites') {
-                        labelDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;line-height:1.05;">'
-                            + '<span style="font-weight:600;">Favorites</span>'
-                            + '<span aria-hidden="true" style="color:#f5c518;font-size:27px;margin-top:2px;">★</span>'
-                            + '</div>';
-                    } else if (storageKey === 'goob-combined-linked') {
-                        // Inject dynamic badge showing concatenated profile IDs and sum-based class for Combined Offers tab
-                        const wrapper = document.createElement('div');
-                        wrapper.style.display = 'flex';
-                        wrapper.style.alignItems = 'center';
-                        let badgeText = 'C';
-                        let badgeClass = 'profile-id-badge-combined';
-                        try {
-                            const linked = getLinkedAccounts();
-                            if (linked.length >= 2) {
-                                const ids = linked.slice(0,2).map(acc => App.ProfileIdMap?.[acc.key] || 0);
-                                badgeText = `${ids[0]}+${ids[1]}`;
-                                const sum = ids[0] + ids[1];
-                                badgeClass += ` profile-id-badge-combined-${sum}`;
-                            }
-                        } catch(e){}
-                        const badge = document.createElement('span');
-                        badge.className = badgeClass;
-                        badge.textContent = badgeText;
-                        badge.style.marginRight = '6px';
-                        wrapper.appendChild(badge);
-                        wrapper.appendChild(labelDiv);
-                        labelDiv = wrapper;
-                    }
-                    // Inject profileId badge if applicable
-                    if (profileIdForTab) {
-                        const badge = document.createElement('span');
-                        badge.className = `profile-id-badge profile-id-badge-${profileIdForTab}`;
-                        badge.textContent = profileIdForTab;
-                        badge.style.marginRight = '6px';
-                        // Prepend badge
-                        const wrapper = document.createElement('div');
-                        wrapper.style.display = 'flex';
-                        wrapper.style.alignItems = 'center';
-                        wrapper.appendChild(badge);
-                        wrapper.appendChild(labelDiv);
-                        labelDiv = wrapper; // replace reference so container appends wrapper
-                    }
-                    const loyaltyDiv = document.createElement('div');
-                    loyaltyDiv.className = 'profile-tab-loyalty';
-                    loyaltyDiv.textContent = loyaltyId ? `${loyaltyId}` : '';
-
-                    let refreshedDiv = null;
-                    if (p.savedAt) {
-                        refreshedDiv = document.createElement('div');
-                        refreshedDiv.className = 'profile-tab-refreshed';
-                        refreshedDiv.textContent = `Last Refreshed: ${formatTimeAgo(p.savedAt)}`;
-                        try { btn.title = new Date(p.savedAt).toLocaleString(); } catch(e) { /* ignore */ }
-                    }
-                    const labelContainer = document.createElement('div');
-                    labelContainer.className = 'profile-tab-label-container';
-                    labelContainer.appendChild(labelDiv);
-                    labelContainer.appendChild(loyaltyDiv);
-                    if (refreshedDiv) labelContainer.appendChild(refreshedDiv);
-                    btn.innerHTML = '';
-                    btn.appendChild(labelContainer);
-                    // Add icon container for link/unlink and trash can (skip for combined tab)
-                    if (!p.isCombined && storageKey !== 'goob-favorites') {
-                        const iconContainer = document.createElement('div');
-                        iconContainer.style.display = 'flex';
-                        iconContainer.style.flexDirection = 'column';
-                        iconContainer.style.alignItems = 'center';
-                        iconContainer.style.gap = '2px';
-                        iconContainer.style.marginLeft = '4px'; // 4px gap between label and icons
-                        // Link/unlink icon
-                        const linkIcon = document.createElement('span');
-                        const isLinked = getLinkedAccounts().some(acc => acc.key === storageKey);
-                        linkIcon.innerHTML = isLinked
-                            ? `<img src="${getAssetUrl('images/link.png')}" width="16" height="16" alt="Linked" style="vertical-align:middle;" />`
-                            : `<img src="${getAssetUrl('images/link_off.png')}" width="16" height="16" alt="Unlinked" style="vertical-align:middle;" />`;
-                        linkIcon.style.cursor = 'pointer';
-                        linkIcon.title = isLinked ? 'Unlink account' : 'Link account';
-                        linkIcon.style.marginBottom = '2px';
-                        linkIcon.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            let updated = getLinkedAccounts();
-                            if (isLinked) {
-                                updated = updated.filter(acc => acc.key !== storageKey);
-                                // Remove goob-combined if less than 2 linked accounts
-                                if (updated.length < 2) {
-                                    try {
-                                        if (typeof goboStorageRemove === 'function') goboStorageRemove('goob-combined'); else localStorage.removeItem('goob-combined');
-                                        if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
-                                            delete App.ProfileCache['goob-combined-linked'];
-                                            console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after goob-combined removal');
-                                        }
-                                    } catch (err) { /* ignore */ }
-                                    console.debug('[LinkedAccounts] goob-combined removed from storage due to unlink');
-                                }
-                            } else {
-                                if (updated.length >= 2) return; // Prevent linking a third account
-                                let email = p.label;
-                                try {
-                                    const payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(storageKey) : localStorage.getItem(storageKey)));
-                                    if (payload && payload.data && payload.data.email) email = payload.data.email;
-                                } catch (e) { /* ignore */ }
-                                updated.push({ key: storageKey, email });
-                                // If this is the second linked account, merge both profiles and save to 'goob-combined'
-                                if (updated.length === 2) {
-                                    try {
-                                        const raw1 = (typeof goboStorageGet === 'function' ? goboStorageGet(updated[0].key) : localStorage.getItem(updated[0].key));
-                                        const raw2 = (typeof goboStorageGet === 'function' ? goboStorageGet(updated[1].key) : localStorage.getItem(updated[1].key));
-                                        const profile1 = raw1 ? JSON.parse(raw1) : null;
-                                        const profile2 = raw2 ? JSON.parse(raw2) : null;
-                                        const merged = mergeProfiles(profile1, profile2);
-                                        if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged));
-                                    } catch (e) { /* ignore */ }
-                                }
-                            }
-                            // Persist linked accounts, then ensure combined offers are recalculated and cache cleared
-                            setLinkedAccounts(updated);
-                            try {
-                                // Recompute combined payload (no-op if not enough linked accounts)
-                                if (typeof updateCombinedOffersCache === 'function') updateCombinedOffersCache();
-                                // Clear any cached combined profile so UI will reload it from storage
-                                if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
-                                    delete App.ProfileCache['goob-combined-linked'];
-                                    console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after linked accounts change');
-                                }
-                            } catch (err) { /* ignore */ }
-                            // Rebuild the tabs/breadcrumb so the Combined Offers tab reflects the new linked accounts
-                            App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState.groupingStack, App.TableRenderer.lastState.groupKeysStack);
-                            // Activate this tab after linking/unlinking; defer slightly so UI updates first
-                            setTimeout(() => btn.click(), 0);
-                        });
-                        iconContainer.appendChild(linkIcon);
-                        // Trash can icon
-                        const trashIcon = document.createElement('span');
-                        trashIcon.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-                        trashIcon.style.cursor = 'pointer';
-                        trashIcon.style.marginTop = '4px';
-                        trashIcon.title = 'Delete profile';
-                        trashIcon.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            if (confirm('Are you sure you want to delete this saved profile? This action cannot be undone.')) {
-                                try {
-                                    // Unlink first if linked
-                                    let linkedAccounts = getLinkedAccounts();
-                                    if (linkedAccounts.some(acc => acc.key === storageKey)) {
-                                        linkedAccounts = linkedAccounts.filter(acc => acc.key !== storageKey);
-                                        setLinkedAccounts(linkedAccounts);
-                                        // Remove combined offers if less than 2 linked accounts
-                                        if (linkedAccounts.length < 2) {
-                                            try {
-                                                if (typeof goboStorageRemove === 'function') goboStorageRemove('goob-combined'); else localStorage.removeItem('goob-combined');
-                                                if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
-                                                    delete App.ProfileCache['goob-combined-linked'];
-                                                    console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after combined removal');
-                                                }
-                                            } catch (err) { /* ignore */ }
-                                            console.debug('[LinkedAccounts] goob-combined removed from storage due to unlink on delete');
-                                        }
-                                    }
-                                    // Remove profile storage
-                                    if (typeof goboStorageRemove === 'function') goboStorageRemove(storageKey); else localStorage.removeItem(storageKey);
-                                    // Reclaim ID explicitly (do NOT trigger global renumber)
-                                    try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && /^gobo-/.test(storageKey)) { ProfileIdManager.removeKeys([storageKey]); App.ProfileIdMap = { ...ProfileIdManager.map }; } } catch(reclaimErr){ console.warn('[ProfileIdManager] reclaim failed', reclaimErr); }
-                                    if (storageKey === 'goob-combined-linked' && App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
-                                        delete App.ProfileCache['goob-combined-linked'];
-                                        console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted after trash removal');
-                                    }
-                                    const wasActive = btn.classList.contains('active');
-                                    btn.remove();
-                                    if (App.ProfileCache) delete App.ProfileCache[storageKey];
-                                    App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState.groupingStack, App.TableRenderer.lastState.groupKeysStack);
-                                    if (wasActive) setTimeout(() => { const newTabs = document.querySelectorAll('.profile-tab'); if (newTabs.length) newTabs[0].click(); }, 0);
-                                } catch (err) { App.ErrorHandler.showError('Failed to delete profile.'); }
-                            }
-                        });
-                        iconContainer.appendChild(trashIcon);
-                        btn.appendChild(iconContainer);
-                    }
-                    if (p.isCombined) {
-                        const emailsDiv = document.createElement('div');
-                        emailsDiv.className = 'profile-tab-linked-emails';
-                        emailsDiv.style.fontSize = '11px';
-                        emailsDiv.style.marginTop = '2px';
-                        emailsDiv.style.color = '#2a7';
-                        emailsDiv.style.textAlign = 'left';
-                        let lines;
-                        if (p.linkedEmails && p.linkedEmails.length) {
-                            lines = p.linkedEmails.slice(0, 2);
-                            while(lines.length < 2) lines.push('&nbsp;');
-                        } else {
-                            lines = ['&nbsp;', '&nbsp;'];
-                        }
-                        emailsDiv.innerHTML = lines.map(email => `<div>${email}</div>`).join('');
-                        labelContainer.appendChild(emailsDiv);
-                    } else if (storageKey === 'goob-favorites') {
-                        // Intentionally left empty
-                    }
-                    if (storageKey === activeKey) {
-                        btn.classList.add('active');
-                        btn.setAttribute('aria-pressed', 'true');
-                    } else {
-                        btn.setAttribute('aria-pressed', 'false');
-                    }
-                    btn.addEventListener('click', () => {
-                        const clickedStorageKey = btn.getAttribute('data-storage-key') || storageKey;
-                        // Immediately set selectedProfileKey to avoid highlight reverting during async spinner operations
-                        try { if (App.TableRenderer.lastState) App.TableRenderer.lastState.selectedProfileKey = clickedStorageKey; } catch(e){/* ignore */}
-                        state.selectedProfileKey = clickedStorageKey;
-                        console.debug('[TAB CLICK] start', { clickedKey: clickedStorageKey, domKey: domKey, currentProfile: App.CurrentProfile && App.CurrentProfile.key, cacheKeys: Object.keys(App.ProfileCache||{}), activeTabDom: (document.querySelector('.profile-tab.active')||{}).getAttribute ? document.querySelector('.profile-tab.active').getAttribute('data-key') : null });
-                        if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
-                            Spinner.showSpinner(); setTimeout(()=>{
-                                console.debug('[TAB CLICK] processing', { clickedKey: clickedStorageKey, currentProfileBefore: App.CurrentProfile && App.CurrentProfile.key });
-                                if (clickedStorageKey === 'goob-combined-linked') {
-                                    try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined')); if (!raw) { App.ErrorHandler.showError('Link two accounts with the chain link icon in each tab to view combined offers.'); Spinner.hideSpinner(); return; } const payload = JSON.parse(raw); if (payload?.data) { App.TableRenderer.loadProfile('goob-combined-linked', payload); Spinner.hideSpinner(); } else { App.ErrorHandler.showError('Combined Offers data is malformed.'); Spinner.hideSpinner(); } } catch(err){ App.ErrorHandler.showError('Failed to load Combined Offers.'); Spinner.hideSpinner(); }
-                                } else if (clickedStorageKey === 'goob-favorites') {
-                                    try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites')); const payload = raw ? JSON.parse(raw) : { data:{ offers: [] }, savedAt: Date.now() }; App.TableRenderer.loadProfile('goob-favorites', payload); } catch(err){ App.ErrorHandler.showError('Failed to load Favorites profile.'); } Spinner.hideSpinner();
-                                } else {
-                                    try {
-                                        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(clickedStorageKey) : localStorage.getItem(clickedStorageKey));
-                                        if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); Spinner.hideSpinner(); return; }
-                                        let payload = JSON.parse(raw);
-                                        if (!payload || typeof payload !== 'object') { console.warn('[profile-tab-click] payload not object, repairing', { key: clickedStorageKey, raw }); payload = { data:{ offers:[] }, savedAt: Date.now() }; }
-                                        if (!payload.data || typeof payload.data !== 'object') { console.warn('[profile-tab-click] missing data field, repairing', payload); payload.data = { offers: [] }; }
-                                        if (!Array.isArray(payload.data.offers)) { console.warn('[profile-tab-click] offers not array, coercing', payload.data.offers); payload.data.offers = []; }
-                                        // Invalidate cache if stored payload is fresher than cached DOM (spinner path)
-                                        try {
-                                            const cached = App.ProfileCache && App.ProfileCache[clickedStorageKey];
-                                            const dataSavedAt = Number(payload.savedAt || payload.data?.savedAt || 0);
-                                            const domCachedAt = cached && cached.scrollContainer ? Number(cached.scrollContainer._cachedAt || 0) : 0;
-                                            if (dataSavedAt > domCachedAt) {
-                                                console.debug('[profile-tab-click] (spinner) stored payload is newer than cached DOM; invalidating App.ProfileCache for', clickedStorageKey, { dataSavedAt, domCachedAt });
-                                                try { if (App.ProfileCache && App.ProfileCache[clickedStorageKey]) delete App.ProfileCache[clickedStorageKey]; } catch(e){}
-                                            }
-                                        } catch(e) { console.warn('[profile-tab-click] (spinner) cache invalidation check failed', e); }
-                                        if (payload?.data) { App.TableRenderer.loadProfile(clickedStorageKey, payload); Spinner.hideSpinner(); } else { App.ErrorHandler.showError('Profile data is malformed.'); Spinner.hideSpinner(); }
-                                    } catch(err){ console.error('[profile-tab-click] exception loading profile', { key: clickedStorageKey, error: err }); try { console.debug('[profile-tab-click] raw storage value for failing key:', (typeof goboStorageGet === 'function' ? goboStorageGet(clickedStorageKey) : localStorage.getItem(clickedStorageKey))); } catch(e2) { /* ignore */ } App.ErrorHandler.showError('Failed to load profile.'); Spinner.hideSpinner(); }
-                                }
-                                console.debug('[TAB CLICK] end', { selectedProfileKey: state.selectedProfileKey, currentProfileAfter: App.CurrentProfile && App.CurrentProfile.key });
-                            },0);
-                        } else {
-                            try { const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(clickedStorageKey) : localStorage.getItem(clickedStorageKey)); if (!raw) { App.ErrorHandler.showError('Selected profile is no longer available.'); return; } let payload = JSON.parse(raw); if (!payload || typeof payload !== 'object') { console.warn('[profile-tab-click][no-spinner] payload not object, repairing', { key: clickedStorageKey, raw }); payload = { data:{ offers:[] }, savedAt: Date.now() }; } if (!payload.data || typeof payload.data !== 'object') { console.warn('[profile-tab-click][no-spinner] missing data field, repairing', payload); payload.data = { offers: [] }; } if (!Array.isArray(payload.data.offers)) { console.warn('[profile-tab-click][no-spinner] offers not array, coercing', payload.data.offers); payload.data.offers = []; } if (payload?.data) App.TableRenderer.loadProfile(clickedStorageKey, payload); else App.ErrorHandler.showError('Saved profile data is malformed.'); } catch(err){ App.ErrorHandler.showError('Failed to load saved profile.'); }
-                        }
-                    });
-                    tabs.appendChild(btn);
-                });
-                tabsScroll.appendChild(tabs);
-                tabsRow.appendChild(tabsScroll);
-            }
-        } catch(e) { console.warn('Failed to render profile tabs', e); }
-        const all = document.createElement('span'); all.className='breadcrumb-link'; all.textContent='All Offers'; all.addEventListener('click', () => {
-            // Reset view state to all offers
-            state.viewMode='table'; state.groupingStack=[]; state.groupKeysStack=[]; state.groupSortStates={}; state.openGroups=new Set();
-            if (state.baseSortColumn) { state.currentSortColumn=state.baseSortColumn; state.currentSortOrder=state.baseSortOrder; } else { state.currentSortColumn='offerDate'; state.currentSortOrder='desc'; }
-            state.currentGroupColumn=null;
-            if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
-                Spinner.showSpinner();
-                setTimeout(() => {
-                    try { App.TableRenderer.updateView(state); }
-                    finally { try { Spinner.hideSpinner && Spinner.hideSpinner(); } catch(e){} }
-                }, 0);
-            } else {
-                App.TableRenderer.updateView(state);
-            }
-        }); crumbsRow.appendChild(all);
-        container.classList.toggle('accordion-view', groupingStack.length > 0);
-        for (let i=0;i<groupingStack.length;i++) {
-            const arrowToCol = document.createElement('span'); arrowToCol.className='breadcrumb-arrow'; crumbsRow.appendChild(arrowToCol);
-            const colKey = groupingStack[i]; const colLabel = state.headers.find(h=>h.key===colKey)?.label || colKey;
-            const colCrumb = document.createElement('span'); colCrumb.className='breadcrumb-crumb breadcrumb-col'; colCrumb.textContent=colLabel; crumbsRow.appendChild(colCrumb);
-            if (i < groupKeysStack.length) {
-                const arrowToVal = document.createElement('span'); arrowToVal.className='breadcrumb-arrow'; crumbsRow.appendChild(arrowToVal);
-                const valCrumb = document.createElement('span'); valCrumb.className='breadcrumb-crumb breadcrumb-val'; valCrumb.textContent=groupKeysStack[i]; crumbsRow.appendChild(valCrumb);
-            }
-        }
-        const hiddenGroupsPanel = document.createElement('div'); hiddenGroupsPanel.className='tier-filter-toggle'; hiddenGroupsPanel.style.marginLeft='auto';
-        const hiddenGroupsLabel = document.createElement('span'); hiddenGroupsLabel.textContent='Hidden Groups:'; hiddenGroupsLabel.style.marginLeft='16px';
-        const hiddenGroupsDisplay = document.createElement('div'); hiddenGroupsDisplay.id='hidden-groups-display';
-        let profileKey = (state.selectedProfileKey || (App.CurrentProfile && App.CurrentProfile.key)) || 'default';
-        Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
-        const b2bButton = document.createElement('button');
-        b2bButton.type = 'button';
-        b2bButton.className = 'b2b-search-button';
-        b2bButton.textContent = 'Back-to-Back Search';
-        // Defensive handler: only open modal on trusted direct clicks on the button
-        b2bButton.addEventListener('click', (ev) => {
-            try {
-                if (!ev || ev.isTrusted !== true) return; // ignore programmatic/synthetic events
-                const tgt = ev.target || null;
-                if (!tgt || !(b2bButton === tgt || b2bButton.contains(tgt))) return; // ensure click came from the button
-                if (App && App.Modal && typeof App.Modal.showBackToBackModal === 'function') App.Modal.showBackToBackModal();
-            } catch(e) { /* ignore */ }
-        });
-        hiddenGroupsPanel.appendChild(b2bButton); hiddenGroupsPanel.appendChild(hiddenGroupsLabel); hiddenGroupsPanel.appendChild(hiddenGroupsDisplay); crumbsRow.appendChild(hiddenGroupsPanel);
-        // Inject What's New button (manual trigger) just after Hidden Groups panel for visibility
-        try {
-            if (!document.getElementById('gobo-whatsnew-btn')) {
-                const wnBtn = document.createElement('button');
-                wnBtn.id = 'gobo-whatsnew-btn';
-                wnBtn.type = 'button';
-                wnBtn.textContent = "What's New";
-                wnBtn.className = 'b2b-search-button';
-                wnBtn.style.background = '#f59e0b';
-                wnBtn.style.marginLeft = '8px';
-                wnBtn.style.padding ='8px 10px';
-                // Rounded corners
-                wnBtn.style.borderRadius = '6px';
-                wnBtn.addEventListener('click', () => { try { if (window.WhatsNew) WhatsNew.start(true); } catch(err){} });
-                crumbsRow.appendChild(wnBtn);
-                // Relocate the button to the footer left group (just right of coffee) if footer exists
-                try {
-                    const footerLeft = document.getElementById('gobo-footer-left');
-                    if (footerLeft) footerLeft.appendChild(wnBtn); // appendChild moves it
-                } catch(relErr) { /* ignore relocation errors */ }
-            }
-        } catch(e) { /* ignore */ }
-        // Post-build tab highlight correction: ensure active tab matches logical current profile
-        try {
-            const intended = (App.CurrentProfile && App.CurrentProfile.key) || state.selectedProfileKey;
-            if (intended) this._applyActiveTabHighlight(intended);
-        } catch(e){/* ignore */}
-        // Attempt auto-start of What's New tour (safe, idempotent)
-        try { if (window.WhatsNew) WhatsNew.maybeAutoStart(); } catch(e) { /* ignore */ }
-    },
+    // Removed updateBreadcrumb; logic moved to features/breadcrumbs.js
     updateItineraries(hydrated) {
         // hydrated is expected to be the full itinerary map returned from recacheItineraries (a snapshot of ItineraryCache.all()).
         // Fallback: if an array or falsy value is provided, re-fetch the current map.
@@ -1271,3 +785,9 @@ const TableRenderer = {
         } catch(e) { /* ignore overall errors */ }
     }
 };
+// Backward-compatible shim so existing callers (other modules) still work
+if (typeof TableRenderer.updateBreadcrumb !== 'function') {
+    TableRenderer.updateBreadcrumb = function(groupingStack, groupKeysStack) {
+        try { Breadcrumbs.updateBreadcrumb(groupingStack, groupKeysStack); } catch(e) { console.warn('[shim] Breadcrumbs.updateBreadcrumb failed', e); }
+    };
+}

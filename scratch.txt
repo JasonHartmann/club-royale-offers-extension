@@ -1,0 +1,237 @@
+We are incrementally adding an Advanced Search UI and filtering engine extension on top of existing offer filtering (`Filtering.filterOffers` in `features/filtering.js`). The new system layers an AND set of user-defined predicates over existing hidden group logic without breaking current behavior. Each predicate: field (table header), operator (in | not in | starts with), values (one or more tokens). Panel sits below breadcrumb, toggled by new Advanced Search button (left of existing Back-to-Back Search button).
+
+Non Goals (for now):
+- No persistence beyond session unless explicitly added in later slice.
+- No OR logic, grouping, parentheses, or free-form expressions.
+- No server calls (all client-side).
+- No fuzzy matching or regex.
+
+Core Concepts:
+State additions:
+advancedSearch: {
+  enabled: boolean,
+  predicates: Predicate[]
+}
+
+Predicate shape:
+{
+  id: string (stable uuid/nonce),
+  fieldKey: string,          // maps to existing header key
+  operator: 'in' | 'not in' | 'starts with',
+  values: string[],          // normalized display values
+  complete: boolean          // true after commit
+}
+
+UI Elements (future slices progressively implemented):
+1. Toggle Button: Advanced Search
+2. Panel Container: full-width block
+3. Predicate Row List: horizontal flow, wrapping
+4. Predicate Box:
+   [Field selector]* -> [Operator selector]* -> [Value multi-select]* -> [values chips]* -> [Commit ✓]* -> [Delete X]
+   * items appear progressively
+5. Inline Add Field control (dropdown) always available after last predicate (unless an incomplete predicate exists)
+
+General Interaction Flow (happy path):
+- User clicks Advanced Search (enables panel if hidden).
+- User selects a field from Add dropdown -> creates new predicate box (field locked).
+- Operator dropdown appears -> user selects operator.
+- Values dropdown (multi-select for in/not in; single or multi allowed; for starts with maybe free-text token entry) appears.
+- User selects value(s); tokens appear inline.
+- User commits via green check, Enter, or Tab -> predicate.complete = true; filtering runs.
+- User can delete predicate (removes box; re-filter).
+- Any change to predicates triggers re-filter if all predicates are complete.
+
+Filtering Integration (planned):
+Enhance `Filtering.filterOffers(state, offers)`:
+1. Run existing hidden groups exclusion (unchanged).
+2. If state.advancedSearch.enabled && predicates.length:
+   - Only include offers for which every predicate returns true.
+3. Implement helper:
+Filtering.matchesAdvancedPredicates(offerWrapper, predicates, labelToKey, state)
+Where offerWrapper = { offer, sailing } (current structure).
+4. Field value acquisition must reuse `getOfferColumnValue(offer, sailing, key)` for consistency.
+
+Predicate Evaluation Semantics:
+- Normalize comparison values to uppercase trimmed strings.
+- Operator in: fieldValueString is exactly any selected value (case-insensitive).
+- Operator not in: fieldValueString differs from all selected values.
+- Operator starts with: fieldValueString startsWith(value) for any provided value (case-insensitive).
+- Null / undefined field values treated as empty string.
+
+Extensibility Hooks (reserve names now):
+Filtering.buildAdvancedSearchFieldOptions(state)
+Filtering.getAdvancedSearchValueOptions(fieldKey, state, offersVisible)
+Filtering.normalizePredicateValue(raw, fieldKey)
+
+Accessibility / UX Notes (future slices may address):
+- Keyboard navigation between dropdowns.
+- ARIA roles for listbox, chips, buttons.
+- Visual focus ring.
+
+Performance Considerations:
+- Debounce re-filter only during value selection; immediate on commit.
+- Avoid repeated expensive value option generation: cache per field until offers dataset changes.
+
+Error Handling:
+- Ignore incomplete predicates during filtering (do not block).
+- Remove predicates whose fieldKey no longer exists after a header set change.
+
+Data Sources For Field Options:
+- Use current `state.headers` (label + key).
+- Exclude any headers without both label and key.
+
+Placeholder Planned Functions (to be implemented slice by slice):
+UI (separate module eventually):
+createAdvancedSearchPanel(container, state)
+renderPredicates(state)
+attachAdvancedSearchEvents(state)
+Filtering layer additions:
+Filtering.applyAdvancedSearch(offers, state, labelToKey)
+Filtering.evaluatePredicate(predicate, fieldValue)
+
+Test Plan Outline (accumulate across slices):
+1. No predicates -> behavior unchanged.
+2. Single in predicate filters correctly.
+3. not in excludes correct rows.
+4. starts with matches prefix case-insensitive.
+5. Multiple predicates combine AND.
+6. Deleting predicate restores offers.
+7. Hidden groups + predicates both applied (intersection).
+8. Headers removed -> orphan predicate ignored or auto-removed.
+
+Completed Vertical Slice:
+- Breadcrumb logic successfully split from `tableRenderer.js` into `features/breadcrumbs.js`.
+- Manifest updated to load `features/breadcrumbs.js` before `tableRenderer.js` and `app.js`.
+- `app.js` exposes `Breadcrumbs` on the global `App` object.
+- `TableRenderer.updateView` now calls `Breadcrumbs.updateBreadcrumb`.
+- Backward-compatible shim (`TableRenderer.updateBreadcrumb`) to avoid breaking legacy calls.
+- Advanced Search Operator selection UI implemented (predicate operator dropdown, state transitions, focus management, placeholder message) – 2025-10-26.
+- Predicate values selection & commit UI implemented (multi-select for `in` / `not in`, token input for `starts with`, chips, commit ✓, keyboard interactions Enter/Tab/Escape, cache of visible values keyed by profile+field+origLen+visibleLen, re-filter on commit & chip removal) – 2025-10-26.
+
+Next Vertical Slice Task: Debounced Live Preview, Master Toggle & Badges (Slice 3)
+Goal: Enhance UX with live (debounced) preview while editing predicate values, global enable/disable control, predicate count badge, and bulk management.
+
+Scope / Deliverables:
+1. Live Preview (Debounced):
+   - While editing values of an incomplete predicate (selecting options or adding tokens), apply a temporary preview filter after 250ms of inactivity.
+   - Preview affects table (state.sortedOffers) but does NOT mark predicate.complete.
+   - Visual indicator (e.g., predicate box outline glow + text label "(preview)").
+   - Cancel preview when: predicate committed, values cleared, predicate deleted, or panel disabled.
+2. Predicate Count Badge:
+   - Advanced Search toggle button shows a badge with the number of committed predicates (e.g., "Advanced Search (2)" or a small superscript badge).
+   - Badge hidden when count = 0.
+3. Master Enable/Disable Toggle:
+   - Checkbox or toggle inside panel header (e.g., "Apply Predicates").
+   - When unchecked: advancedSearch.enabled remains true (panel visible) but filtering layer skips predicates (simulate disabled) and UI dims chips (reduced opacity) and disables commit buttons for new incomplete predicate edits (except allow continuing editing; commits allowed but effect deferred until re-enabled).
+   - Toggling back on re-applies committed predicates immediately.
+4. Clear All Button:
+   - Button in panel header (e.g., "Clear All") with confirm prompt.
+   - Removes all predicates and triggers full table refresh & cache clear of _advFieldCache.
+5. Visual States:
+   - Disabled (master toggle off): add class `adv-search-disabled-active` to panel. Chips/op/selects styled (opacity ~0.5, cursor not-allowed for commit button). Incomplete predicate editing still allowed.
+   - Preview state: add class `adv-predicate-preview` to the predicate box.
+6. Caching Adjustments:
+   - When preview filtering active, value options for OTHER incomplete predicates should still derive from original visible set prior to applying the uncommitted predicate. Implementation: maintain `state._advPreviewPredicateId`; if present, build cache source from offers filtered by committed predicates ONLY.
+7. State Additions:
+   - `state.advancedSearch.masterEnabled` (default true) – if false, skip predicate layer in Filtering.applyAdvancedSearch.
+   - `state._advPreviewPredicateId` (transient) – id of predicate currently in live preview (null when none).
+8. Filtering Integration:
+   - Modify Filtering.applyAdvancedSearch: early return if `state.advancedSearch.masterEnabled === false`.
+   - Ensure preview predicate (incomplete) evaluation applied only for UI preview (not for final list if master disabled or predicate incomplete with no preview flag).
+   - Approach: do NOT change core filter; instead TableRenderer.updateView should operate on state.originalOffers; preview effect achieved by temporary insertion of a synthetic complete predicate list during debounce evaluation before rendering (without mutating `complete`). Simpler: temporarily treat preview predicate as complete in a local array passed to Filtering.matchesAdvancedPredicates.
+9. Accessibility:
+   - Master toggle: role="switch" with aria-checked.
+   - Badge: aria-label updated to include predicate count.
+10. Error Handling:
+   - If preview debounce fires after predicate deleted, safely no-op (guard by current id existence check).
+11. Performance:
+   - Debounce timer cleared on rapid input; max 250ms idle before preview re-filter.
+
+Implementation Notes:
+- Introduce Breadcrumbs._applyPreviewFiltering(state, predicate) to compute preview list by calling Filtering.filterOffers with a temporary predicate set (committed + candidate) WITHOUT mutating original predicate `complete`.
+- Add CSS classes (inline styles or minimal style injection if needed) for preview/disabled states.
+- Ensure commit cancels preview timer and clears `state._advPreviewPredicateId`.
+- On master disable toggle, clear any preview, revert table to offers filtered only by hidden groups.
+- Clear All: reset `advancedSearch.predicates=[]; masterEnabled=true; _advPreviewPredicateId=null; _advFieldCache={};` then updateView.
+
+Testing Focus:
+- Debounce: multiple rapid key entries -> single preview update after pause.
+- Preview visual indicator appears/disappears correctly.
+- Master disable removes predicate filtering but leaves panel & predicate definitions intact; re-enable re-applies.
+- Badge reflects committed predicate count and updates on add/delete/clear.
+- Clear All empties predicates and restores full (hidden-group filtered) set.
+- Cache invalidation after Clear All (options repopulate from full dataset).
+- No console errors when toggling master or clearing preview mid-debounce.
+
+Acceptance Criteria:
+- Live preview filtering feels responsive (<300ms) and accurate.
+- Badge shows correct count; hides at 0.
+- Master toggle reliably suspends/reinstates filtering without losing predicate definitions.
+- Clear All removes all predicates and resets badge & filtering.
+- No performance regressions (>100ms incremental value option build still holds).
+
+Completed Vertical Slice (Slice 3) – 2025-10-26:
+- Debounced live preview implemented (250ms) while editing incomplete predicate values; preview predicate rendered with class `adv-predicate-preview`.
+- Master enable/disable toggle (`Apply Predicates`) added with accessibility role switch and aria-checked management; when off, predicates retained but filtering skipped.
+- Predicate count badge integrated into Advanced Search button label (e.g., "Advanced Search (2)").
+- Clear All button with confirmation clears predicates, preview state, caches.
+- Caching logic updated to exclude preview predicate from value source sets; cache key includes preview flag segment.
+- State additions: `advancedSearch.masterEnabled`, transient `state._advPreviewPredicateId`, and `state._advPreviewTimer` (internal).
+- Filtering layer updated: `applyAdvancedSearch` honors master toggle and injects synthetic preview predicate when active.
+- UI visual + disabled states implemented via injected style block (id `adv-search-style-injected`).
+- Commit cancels preview; deleting or clearing preview predicate safely aborts timers.
+- Badge & header re-render logic integrated with breadcrumb rebuild.
+
+Next Vertical Slice Task (Slice 4): Session Persistence & Enhanced Operators
+Goal: Improve continuity and expressiveness—persist committed predicates per profile within the session and add new textual matching operators.
+
+Scope / Deliverables:
+1. Session Persistence (sessionStorage):
+   - Key pattern: `advSearchPredicates::<profileKey>` storing JSON of committed + incomplete predicates (excluding transient preview state).
+   - Restore predicates when profile tab activated and Advanced Search toggled on; ignore if schema mismatch.
+   - Clear storage entries on Clear All.
+2. Auto-Save Behavior:
+   - Persist after each commit, delete, clear, or master toggle change (throttled/debounced 200ms to avoid excessive writes during bulk edits).
+3. New Operators:
+   - `contains` / `not contains` (case-insensitive substring match).
+   - UI: extend operator dropdown; evaluation semantics: fieldValue includes any token (for contains) or includes none (for not contains).
+4. Token Input Reuse:
+   - For contains/not contains, reuse existing multi-token input pattern (same as starts with) but allow substring tokens.
+5. Backward Compatibility:
+   - Existing predicates without new operators remain unaffected; unknown operators skipped gracefully.
+6. Filtering Integration:
+   - Extend `Filtering.evaluatePredicate` with contains / not contains logic.
+7. Migration:
+   - When restoring predicates from storage, drop any with unknown operator.
+8. UX Enhancements:
+   - Display operator-specific helper text inline (e.g., "Enter one or more substrings").
+9. Testing Focus:
+   - Persistence across profile switches within same modal session.
+   - contains/not contains substring matching correctness + case insensitivity.
+   - Mixed operator predicates (in + contains) AND behavior.
+   - Storage cleanup on Clear All.
+10. Performance:
+   - Ensure persistence writes do not block UI (debounced writes, try/catch around storage).
+
+Acceptance Criteria:
+- Predicates restored after profile change & panel re-open within session.
+- New operators function per spec; no regression in existing filtering.
+- No console errors on storage quota failures (logged warning only).
+
+! When complete, update scratch.txt with the next task and do not delete this directive. !
+
+Completed Vertical Slice (Slice 4) – 2025-10-26:
+- Session persistence (sessionStorage) implemented per-profile with key pattern `advSearchPredicates::<profileKey>`.
+- Auto-save (debounced 200ms) on commit, delete, add predicate, master toggle changes.
+- Restoration occurs when Advanced Search panel is enabled for a profile (one-time per profile in session).
+- New operators added: contains / not contains with substring semantics (case-insensitive) using existing token input UI.
+- Filtering.evaluatePredicate extended to support contains / not contains.
+- Unknown operators skipped on restore; predicates sanitized.
+- Operator-specific helper text added.
+- Clear All removes stored session predicates for active profile.
+- Backward compatibility retained for existing operators; no regressions expected.
+
+Next Vertical Slice Task (Slice 5): (Plan placeholder – define after validation of Slice 4)
+// TODO: Identify next enhancements (e.g., persistence across browser restarts (localStorage), export/import predicate sets, OR grouping prototype, UX polish & keyboard navigation, analytics instrumentation). Do not remove directive line below.
+
+! When complete, update scratch.txt with the next task and do not delete this directive. !

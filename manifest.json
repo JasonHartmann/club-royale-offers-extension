@@ -22,7 +22,8 @@
         "styles/accordion.css",
         "styles/ui.css",
         "styles/tabs-badges.css",
-        "styles/itinerary.css"
+        "styles/itinerary.css",
+        "styles/advanced-search.css"
       ],
       "js": [
         "utils/utils_core.js",
@@ -41,6 +42,7 @@
         "features/offerCodeLookup.js",
         "features/filtering.js",
         "features/whatsNew.js",
+        "features/breadcrumbs.js",
         "styles.js",
         "modal.js",
         "tableBuilder.js",
