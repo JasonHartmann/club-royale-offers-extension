@@ -59,7 +59,6 @@ a:not(.btn):hover{color:var(--accent)}
 
 .screen-card{background:var(--card);border-radius:12px;padding:1rem;box-shadow:0 10px 30px var(--shadow);border:1px solid rgba(255,255,255,0.03)}
 .hero-peek h4{margin:0 0 .5rem;font-size:.95rem}
-img.resp{max-width:100%;height:auto;border-radius:6px;display:block}
 
 /* Make large screenshot previews approximately 60% width on larger viewports
    while keeping them responsive (full width) on small screens. */
