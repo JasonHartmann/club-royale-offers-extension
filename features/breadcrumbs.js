@@ -37,8 +37,11 @@ const Breadcrumbs = {
       if (!raw) { state._advRestoredProfiles.add(state.selectedProfileKey); return; }
       let parsed; try { parsed = JSON.parse(raw); } catch(e){ parsed=null; }
       if (!parsed || typeof parsed !== 'object') { state._advRestoredProfiles.add(state.selectedProfileKey); return; }
-      const allowedOps = new Set(['in','not in','starts with','contains','not contains']);
-      const restored = Array.isArray(parsed.predicates) ? parsed.predicates.filter(p=>p && allowedOps.has((p.operator||'').toLowerCase()) && p.fieldKey).map(p=>({ id: p.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,8)), fieldKey: p.fieldKey, operator: (p.operator||'').toLowerCase(), values: Array.isArray(p.values)? p.values.slice():[], complete: !!p.complete })) : [];
+      const allowedOps = new Set(['in','not in','contains','not contains']);
+      const restored = Array.isArray(parsed.predicates) ? parsed.predicates
+        .filter(p=>p && p.fieldKey && p.operator)
+        .map(p=>{ let op=(p.operator||'').toLowerCase(); if (op==='starts with') op='contains'; return { id: p.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,8)), fieldKey: p.fieldKey, operator: op, values: Array.isArray(p.values)? p.values.slice():[], complete: !!p.complete }; })
+        .filter(p=> allowedOps.has(p.operator)) : [];
       state.advancedSearch.predicates = restored;
       state._advRestoredProfiles.add(state.selectedProfileKey);
       setTimeout(()=>{ try { this._renderAdvancedPredicates(state); } catch(e){} try { TableRenderer.updateView(state); } catch(e){} },0);
@@ -168,7 +171,7 @@ const Breadcrumbs = {
       body.innerHTML = '';
       const { predicates } = state.advancedSearch;
       const headers = (state.headers || []).filter(h => h && h.key && h.label);
-      const allowedOperators = ['in','not in','starts with','contains','not contains'];
+      const allowedOperators = ['in','not in','contains','not contains'];
       for (let i = predicates.length -1; i>=0; i--) {
         if (!headers.some(h=>h.key===predicates[i].fieldKey)) predicates.splice(i,1);
       }
@@ -218,11 +221,18 @@ const Breadcrumbs = {
               else if (e.key === 'Tab') { if (pred.values && pred.values.length) { this._attemptCommitPredicate(pred, state); } }
             });
             selectWrap.appendChild(sel);
-            const help = document.createElement('div'); help.className='adv-help-text'; help.textContent='Select one or more exact values.'; selectWrap.appendChild(help);
+            const help = document.createElement('div'); help.className='adv-help-text';
+            // Updated help text to instruct on multi-select using Ctrl/Cmd+Click
+            try {
+              const isMac = /Mac/i.test(navigator.platform || '');
+              const modKey = isMac ? 'Cmd' : 'Ctrl';
+              help.textContent = `Select one or more exact values. Use ${modKey}+Click to select or deselect multiple.`;
+            } catch(e){ help.textContent='Select one or more exact values. Use Ctrl+Click to select or deselect multiple.'; }
+            selectWrap.appendChild(help);
             box.appendChild(selectWrap);
-          } else if (pred.operator === 'starts with' || pred.operator === 'contains' || pred.operator === 'not contains') {
+          } else if (pred.operator === 'contains' || pred.operator === 'not contains') {
             const tokenWrap = document.createElement('div'); tokenWrap.className='adv-stack-col';
-            const input = document.createElement('input'); input.type='text'; input.placeholder = (pred.operator==='starts with' ? 'Enter prefix & press Enter' : 'Enter substring & press Enter');
+            const input = document.createElement('input'); input.type='text'; input.placeholder = (pred.operator==='contains' ? 'Enter substring & press Enter' : 'Enter substring & press Enter');
             const addToken = (raw) => { const norm = Filtering.normalizePredicateValue(raw, pred.fieldKey); if (!norm) return; if (!pred.values.includes(norm)) pred.values.push(norm); input.value=''; this._schedulePreview(state, pred); this._renderAdvancedPredicates(state); };
             input.addEventListener('keydown', (e) => {
               if (e.key === 'Enter') { if (input.value.trim()) { e.preventDefault(); addToken(input.value); } else if (pred.values && pred.values.length) { e.preventDefault(); this._attemptCommitPredicate(pred, state); } }
@@ -233,16 +243,29 @@ const Breadcrumbs = {
             });
             input.addEventListener('input', () => { this._schedulePreview(state, pred); });
             tokenWrap.appendChild(input);
-            const help = document.createElement('div'); help.className='adv-help-text'; help.textContent = (pred.operator==='starts with' ? 'Add one or more prefixes (case-insensitive).' : (pred.operator==='contains' ? 'Add substrings; any match passes.' : 'Add substrings; none must appear.')); tokenWrap.appendChild(help);
+            const help = document.createElement('div'); help.className='adv-help-text'; help.textContent = (pred.operator==='contains' ? 'Add substrings; any match passes.' : 'Add substrings; none must appear.'); tokenWrap.appendChild(help);
             box.appendChild(tokenWrap); setTimeout(()=>{ try { input.focus(); } catch(e){} },0);
           }
           if (pred.values && pred.values.length) this._renderPredicateValueChips(box, pred, state); else { const placeholder = document.createElement('span'); placeholder.textContent = 'No values selected'; placeholder.className='adv-placeholder'; box.appendChild(placeholder); }
-          const commitBtn = document.createElement('button'); commitBtn.type='button'; commitBtn.textContent='\u2713'; commitBtn.title='Commit predicate'; commitBtn.disabled = !(pred.values && pred.values.length); commitBtn.className='adv-commit-btn'; commitBtn.addEventListener('click', () => { this._attemptCommitPredicate(pred, state); }); box.appendChild(commitBtn);
+          const commitBtn = document.createElement('button'); commitBtn.type='button'; commitBtn.textContent='\u2713'; commitBtn.title='Commit filter'; commitBtn.disabled = !(pred.values && pred.values.length); commitBtn.className='adv-commit-btn'; commitBtn.addEventListener('click', () => { this._attemptCommitPredicate(pred, state); }); box.appendChild(commitBtn);
         } else if (pred.complete) {
           const summary = document.createElement('span'); summary.textContent = pred.operator; summary.style.fontWeight='500'; box.appendChild(summary); this._renderPredicateValueChips(box, pred, state);
         }
-        const del = document.createElement('button'); del.type = 'button'; del.textContent = '\u2716'; del.setAttribute('aria-label', 'Delete predicate'); del.className='adv-delete-btn'; del.addEventListener('click', () => { const idx = state.advancedSearch.predicates.findIndex(p => p.id === pred.id); if (idx !== -1) state.advancedSearch.predicates.splice(idx, 1); if (state._advPreviewPredicateId === pred.id) { state._advPreviewPredicateId = null; if (state._advPreviewTimer) { clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; } }
-          if (pred.complete) { this._lightRefresh(state); } else { this._schedulePreview(state, state.advancedSearch.predicates.find(p=>!p.complete)); this._renderAdvancedPredicates(state); }
+        const del = document.createElement('button'); del.type = 'button'; del.textContent = '\u2716'; del.setAttribute('aria-label', 'Delete filter'); del.className='adv-delete-btn'; del.addEventListener('click', () => {
+          const idx = state.advancedSearch.predicates.findIndex(p => p.id === pred.id);
+          if (idx !== -1) state.advancedSearch.predicates.splice(idx, 1);
+          if (state._advPreviewPredicateId === pred.id) {
+            state._advPreviewPredicateId = null;
+            if (state._advPreviewTimer) { clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; }
+          }
+          const nextIncomplete = state.advancedSearch.predicates.find(p=>!p.complete);
+          if (nextIncomplete) { this._schedulePreview(state, nextIncomplete); }
+          try { this._lightRefresh(state); } catch(e){}
+          try { this._renderAdvancedPredicates(state); } catch(e){}
+          // If no filters remain, focus Add Field select for convenience
+          if (state.advancedSearch.enabled && state.advancedSearch.predicates.length === 0) {
+            setTimeout(()=>{ try { const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); } catch(e){} },0);
+          }
           this._debouncedPersist(state);
         }); box.appendChild(del); body.appendChild(box);
       });
@@ -261,7 +284,7 @@ const Breadcrumbs = {
       }
       // Empty placeholder
       if (!predicates.length && state.advancedSearch.enabled) {
-        const empty = document.createElement('div'); empty.className = 'adv-search-empty-inline'; empty.textContent = 'Select a field to start building a predicate.'; body.appendChild(empty);
+        const empty = document.createElement('div'); empty.className = 'adv-search-empty-inline'; empty.textContent = 'Select a field to start building a filter.'; body.appendChild(empty);
       } else if (!predicates.length) { const disabledMsg = document.createElement('div'); disabledMsg.className = 'adv-search-disabled-msg'; disabledMsg.textContent = 'Advanced Search disabled – toggle above to begin.'; body.appendChild(disabledMsg); }
       // Post-render focus management
       setTimeout(() => { try { if (state._advFocusOperatorId) { const sel = body.querySelector(`select.adv-operator-select[data-pred-id="${state._advFocusOperatorId}"]`); if (sel) sel.focus(); delete state._advFocusOperatorId; } else if (state._advFocusPredicateId) { const box = body.querySelector(`.adv-predicate-box[data-predicate-id="${state._advFocusPredicateId}"]`); if (box) box.focus(); delete state._advFocusPredicateId; } } catch(e) { /* ignore */ } }, 0);
@@ -417,7 +440,7 @@ const Breadcrumbs = {
     // Advanced Search toggle with badge
     this._ensureAdvancedSearchState(state);
     const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
-    const advButton = document.createElement('button'); advButton.type='button'; advButton.className='b2b-search-button adv-search-button'; advButton.textContent= committedCount? `Advanced Search (${committedCount})` : 'Advanced Search'; advButton.setAttribute('aria-label', committedCount? `Advanced Search with ${committedCount} predicates` : 'Advanced Search');
+    const advButton = document.createElement('button'); advButton.type='button'; advButton.className='b2b-search-button adv-search-button'; advButton.textContent= committedCount? `Advanced Search (${committedCount})` : 'Advanced Search'; advButton.setAttribute('aria-label', committedCount? `Advanced Search with ${committedCount} filters` : 'Advanced Search');
     advButton.setAttribute('aria-pressed', state.advancedSearch.enabled ? 'true':'false');
     advButton.addEventListener('click', (ev)=>{ if (ev && ev.isTrusted===false) return; try { state.advancedSearch.enabled = !state.advancedSearch.enabled; advButton.setAttribute('aria-pressed', state.advancedSearch.enabled ? 'true':'false'); if (state.advancedSearchPanel) { state.advancedSearchPanel.style.display = state.advancedSearch.enabled ? 'block':'none'; state.advancedSearchPanel.classList.toggle('enabled', state.advancedSearch.enabled); }
       if (state.advancedSearch.enabled) { Breadcrumbs._restoreAdvancedPredicates(state); }
@@ -445,7 +468,21 @@ const Breadcrumbs = {
       if (!header) { header = document.createElement('div'); header.className='adv-search-header'; advPanel.appendChild(header); }
       header.innerHTML='';
       // Only Clear All + badge now
-      const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.className='adv-search-clear-btn'; clearBtn.textContent='Clear All'; clearBtn.addEventListener('click', ()=>{ if (!state.advancedSearch.predicates.length) return; if (!confirm('Clear all predicates?')) return; state.advancedSearch.predicates = []; state._advPreviewPredicateId=null; if (state._advPreviewTimer) { clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; } state._advFieldCache = {}; try { TableRenderer.updateView(state); } catch(e){} Breadcrumbs._renderAdvancedPredicates(state); Breadcrumbs.updateBreadcrumb(state.groupingStack, state.groupKeysStack); try { const key = Breadcrumbs._advStorageKey(state.selectedProfileKey); sessionStorage.removeItem(key); } catch(e){} }); header.appendChild(clearBtn);
+      const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.className='adv-search-clear-btn'; clearBtn.textContent='Clear All'; clearBtn.addEventListener('click', ()=>{
+        const hadAny = !!state.advancedSearch.predicates.length;
+        if (hadAny && !confirm('Clear all filters?')) return;
+        state.advancedSearch.predicates = [];
+        state._advPreviewPredicateId=null;
+        if (state._advPreviewTimer) { clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; }
+        state._advFieldCache = {};
+        if (state.advancedSearch && state.advancedSearch.enabled !== true) state.advancedSearch.enabled = true;
+        try { Breadcrumbs._lightRefresh(state); } catch(e){}
+        Breadcrumbs._renderAdvancedPredicates(state);
+        // Light badge/text update instead of full breadcrumb rebuild
+        Breadcrumbs._updateAdvBadge(state);
+        try { const key = Breadcrumbs._advStorageKey(state.selectedProfileKey); sessionStorage.removeItem(key); } catch(e){}
+        setTimeout(()=>{ try { const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); } catch(e){} },0);
+      }); header.appendChild(clearBtn);
       const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
       if (committedCount) { const badge = document.createElement('span'); badge.className='adv-badge'; badge.textContent = committedCount + ' active'; header.appendChild(badge); }
       this._renderAdvancedPredicates(state);
@@ -461,7 +498,7 @@ const Breadcrumbs = {
       if (!btn || !state || !state.advancedSearch) return;
       const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
       btn.textContent = committedCount ? `Advanced Search (${committedCount})` : 'Advanced Search';
-      btn.setAttribute('aria-label', committedCount ? `Advanced Search with ${committedCount} predicates` : 'Advanced Search');
+      btn.setAttribute('aria-label', committedCount ? `Advanced Search with ${committedCount} filters` : 'Advanced Search');
       // Panel header badge
       const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
       if (panel) {

@@ -62,13 +62,13 @@ const Filtering = {
     },
     evaluatePredicate(predicate, fieldValue) {
         try {
-            const op = (predicate.operator||'').toLowerCase();
+            let op = (predicate.operator||'').toLowerCase();
+            if (op === 'starts with') op = 'contains';
             const values = Array.isArray(predicate.values) ? predicate.values.map(v=>Filtering.normalizePredicateValue(v, predicate.fieldKey)) : [];
             const fv = Filtering.normalizePredicateValue(fieldValue == null ? '' : (''+fieldValue), predicate.fieldKey);
-            if (!op || !values.length) return true; // ignore incomplete
+            if (!op || !values.length) return true;
             if (op === 'in') return values.includes(fv);
             if (op === 'not in') return !values.includes(fv);
-            if (op === 'starts with') return values.some(v=> fv.startsWith(v));
             if (op === 'contains') return values.some(v => fv.includes(v));
             if (op === 'not contains') return values.every(v => !fv.includes(v));
             return true;

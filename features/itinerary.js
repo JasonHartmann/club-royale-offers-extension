@@ -334,7 +334,7 @@
                         I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior',
                         O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View',
                         B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony',
-                        D:'Junior Suite', DLX:'Junior Suite', DELUXE:'Junior Suite', JS:'Junior Suite', SU:'Junior Suite', SUITE:'Junior Suite'
+                        D:'Suite', DLX:'Suite', DELUXE:'Suite', JS:'Suite', SU:'Suite', SUITE:'Suite'
                     };
                     // Canonical base category mapping used purely for sorting (do NOT change display names)
                     const baseCategoryMap = {
@@ -385,7 +385,7 @@
                         // Taxes/fees are per-person; show doubled amount for two people
                         const taxesAmount = (typeof data.taxesAndFees === 'number') ? (Number(data.taxesAndFees) * 2) : data.taxesAndFees;
                         const taxesText = (typeof taxesAmount === 'number') ? taxesAmount.toFixed(2) : taxesAmount;
-                        tf.textContent = `Taxes & Fees: ${taxesText} ${Object.values(data.stateroomPricing)[0]?.currency || ''} (${data.taxesAndFeesIncluded? 'Included' : 'Additional'})`;
+                        tf.textContent = `Taxes & Fees: ${taxesText} ${Object.values(data.stateroomPricing)[0]?.currency || ''} (${data.taxesAndFeesIncluded? 'Included' : 'Additional'}) - Prices are cheapest rate in category for two guests in a double-occupancy room.`;
                         panel.appendChild(tf);
                     }
                 }

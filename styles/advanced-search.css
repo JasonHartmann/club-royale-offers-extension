@@ -42,6 +42,10 @@
 
 /* Buttons (reuse existing b2b button style where possible) */
 .adv-search-button { }
+/* Active (enabled) state: make golden */
+.adv-search-button[aria-pressed="true"] { background:#f59e0b; color:#fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.08); }
+.adv-search-button[aria-pressed="true"]:hover { background:#d97706; }
+.adv-search-button[aria-pressed="true"]:focus { outline:2px solid #b45309; outline-offset:2px; }
 
 /* Tier filter cluster already styled in ui.css; ensure spacing harmony */
 .tier-filter-toggle { gap:6px; }
