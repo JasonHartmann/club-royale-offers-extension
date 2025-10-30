@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Download Club Royale Extension</title>
+  <title>Download Cruise Offers Viewer</title>
   <style>
     /* Make the page allow scrolling when content is taller than the viewport.
        Use min-height instead of fixed 100vh, top padding for comfortable spacing,
@@ -18,9 +18,9 @@
 </head>
 <body>
   <div class="card">
-    <h1>Download Club Royale Extension</h1>
+    <h1>Download Cruise Offers Viewer</h1>
     <p>Click the button below to download the ZIP file.</p>
-    <p><a class="btn" id="downloadBtn" href="https://comproyale.com/club-royal-offers-extension.zip" target="_blank" rel="noopener">Download ZIP</a></p>
+    <p><a class="btn" id="downloadBtn" href="https://comproyale.com/cruise-offers-viewer.zip" target="_blank" rel="noopener">Download ZIP</a></p>
     <p style="font-size:.85rem;color:#64748b;">If your browser blocks direct installation of ZIP files, save the file and follow your browser's developer extension install instructions.</p>
 
     <!-- Manual install instructions inserted per user request -->
@@ -48,7 +48,7 @@
       const btn = document.getElementById('downloadBtn');
       if (!btn) return;
       const url = btn.getAttribute('href');
-      const filename = (url && url.split('/').pop()) || 'club-royale-offers-extension.ZIP';
+      const filename = (url && url.split('/').pop()) || 'cruise-offers-viewer.zip';
       async function fetchAndDownload(ev) {
         ev.preventDefault();
         try {
