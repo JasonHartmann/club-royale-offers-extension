@@ -25,4 +25,7 @@ jobs:
           path: |
             **/*.js
             **/*.png
+            **/*.ico
+            **/*.svg
+            **/*.css
             manifest.json
