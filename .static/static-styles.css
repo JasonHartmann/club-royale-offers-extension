@@ -61,6 +61,25 @@ a:not(.btn):hover{color:var(--accent)}
 .hero-peek h4{margin:0 0 .5rem;font-size:.95rem}
 img.resp{max-width:100%;height:auto;border-radius:6px;display:block}
 
+/* Make large screenshot previews approximately 60% width on larger viewports
+   while keeping them responsive (full width) on small screens. */
+.hero-peek img.resp,
+.screens .screen-card img.resp {
+  width: 60%;
+  max-width: 60%;
+  height: auto;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width:720px){
+  .hero-peek img.resp,
+  .screens .screen-card img.resp {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
 /* Pills */
 .pill-row{margin-top:1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
 .pill-row .pill{flex:0 0 auto;white-space:nowrap;background:rgba(255,255,255,0.06);color:var(--muted);padding:.28rem .7rem;border-radius:999px;margin-right:.5rem;font-size:.78rem;border:1px solid rgba(255,255,255,0.03)}
