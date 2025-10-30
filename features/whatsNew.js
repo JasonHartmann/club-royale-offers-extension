@@ -2,6 +2,9 @@
 // Provides a lightweight, versioned in-page "What's New" / guided help tour.
 // Patch 1.5 topics:
 //  1. Trade-in Value
+//  2. Advanced Search (Preview / Work-in-Progress)
+//  3. Itinerary Links in Destination column
+//  4. Support / Buy Me a Coffee
 (function(){
     const VERSION = (function(){
         try {
@@ -11,7 +14,7 @@
         return '1.5';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '2'; // r1 initial, r2 adds Buy Me a Coffee support step
+    const TOUR_REVISION = '3'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 40; // up to ~8s (200ms interval) waiting for elements
 
@@ -97,6 +100,18 @@
                     target:()=> document.querySelector('th[data-key="tradeInValue"]'),
                     title:'Trade-In Value Column',
                     body: 'New column showing trade-in value for eligible sailings.',
+                },
+                {
+                    id:'advancedSearchPreview',
+                    target:()=> document.querySelector('button.adv-search-button') || document.querySelector('#advanced-search-panel') || document.body,
+                    title:'Advanced Search (Preview)',
+                    body:'Work-in-progress panel to build filters and instantly search for offers. More operators & polish coming—feedback welcome!',
+                },
+                {
+                    id:'itineraryLinks',
+                    target:()=> document.querySelector('a.gobo-itinerary-link') || document.querySelector('th[data-key="destination"]') || document.body,
+                    title:'Itinerary Details Links',
+                    body:'Destination cells now include clickable itinerary links—open one to see route details & more context.',
                 },
                 {
                     id:'supportCoffee',
@@ -229,4 +244,3 @@
     // Expose
     try { window.WhatsNew = WhatsNew; } catch(e){}
 })();
-
