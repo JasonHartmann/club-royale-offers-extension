@@ -136,5 +136,6 @@ Modifying tabs:
 
 Keep tab-related changes inside `updateBreadcrumb()`; avoid duplicating enumeration logic elsewhere.
 
-Avoid adding comments unless vital to describe complex logic. Do not add comments like "Removed XYZ".
+### Avoid adding comments unless **vital** to describe complex logic. 
+### Do not add useless comments like "Removed XYZ".
 
