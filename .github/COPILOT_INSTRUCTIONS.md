@@ -1,6 +1,6 @@
 # Copilot Project Notes (Club Royale / Blue Chip Offers Extension)
 
-Keep responses terse. Prefer existing utility helpers. Avoid inline styles; put new CSS rules in `styles.css`.
+Keep responses terse. Prefer existing utility helpers. Avoid inline styles; put new CSS rules in css files under `/styles`.
 
 ## Core Data Flow
 API -> `TableRenderer.prepareOfferData` builds `originalOffers` array of `{ offer, sailing }` -> sorting (`SortUtils.sortOffers`) & filtering (`Filtering.filterOffers`) -> row HTML via `Utils.createOfferRow`.
@@ -135,4 +135,6 @@ Modifying tabs:
 - When altering payload shape for tabs (adding loyalty or merged metadata), update badge assembly but avoid inline styles beyond existing small adjustments.
 
 Keep tab-related changes inside `updateBreadcrumb()`; avoid duplicating enumeration logic elsewhere.
+
+Avoid adding comments unless vital to describe complex logic. Do not add comments like "Removed XYZ".
 

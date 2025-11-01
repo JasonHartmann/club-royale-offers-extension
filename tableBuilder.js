@@ -103,6 +103,7 @@ const TableBuilder = {
                 const colSpan = (state.headers && state.headers.length) ? state.headers.length : 14;
                 statusRow.innerHTML = `<td colspan="${colSpan}" class="border p-2 text-left" style="font-size:12px;color:#666;">Rendering ${total.toLocaleString()} offers…</td>`;
                 tbody.appendChild(statusRow);
+                statusRow.classList.add('adv-render-status-row');
                 const processChunk = () => {
                     if (token !== state._rowRenderToken) return; // aborted by a newer render
                     // Dynamically adjust chunk size to ~16ms frame budget (rough heuristic)
@@ -130,6 +131,9 @@ const TableBuilder = {
                     } else {
                         if (statusRow && statusRow.parentNode) statusRow.remove();
                         console.debug('[DEBUG] renderTable incremental complete', { total });
+                        try {
+                            setTimeout(() => { try { const evt = new CustomEvent('tableRenderComplete', { detail: { token, total } }); document.dispatchEvent(evt); } catch(e){} }, 0);
+                        } catch(e){ /* ignore */ }
                     }
                 };
                 processChunk();
@@ -144,6 +148,9 @@ const TableBuilder = {
                     const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon, idx);
                     if (row) tbody.appendChild(row); else console.warn('[DEBUG] renderTable: createOfferRow returned null/undefined', { idx, offer, sailing });
                 }
+                try {
+                    setTimeout(() => { try { const evt = new CustomEvent('tableRenderComplete', { detail: { token, total } }); document.dispatchEvent(evt); } catch(e){} }, 0);
+                } catch(e){ /* ignore */ }
             }
         }
         // Update sort indicators immediately (independent of incremental completion)

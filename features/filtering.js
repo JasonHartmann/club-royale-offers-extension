@@ -35,14 +35,8 @@ const Filtering = {
         // Only apply when panel enabled
         if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return offers;
         const basePreds = (state.advancedSearch && Array.isArray(state.advancedSearch.predicates)) ? state.advancedSearch.predicates : [];
+        // Only include fully committed predicates (no preview inclusion)
         const committed = basePreds.filter(p=>p && p.complete && p.fieldKey && p.operator && Array.isArray(p.values) && p.values.length);
-        // Preview: optionally include one incomplete predicate currently being previewed
-        if (state._advPreviewPredicateId) {
-            const preview = basePreds.find(p=>p && p.id === state._advPreviewPredicateId);
-            if (preview && !preview.complete && preview.fieldKey && preview.operator && Array.isArray(preview.values) && preview.values.length) {
-                committed.push({ ...preview, complete:true, _syntheticPreview:true });
-            }
-        }
         const preds = committed;
         if (!preds.length) return offers; // nothing to do
         const labelToKey = {};
@@ -115,6 +109,19 @@ const Filtering = {
                 return perksStr;
             case 'tradeInValue':
                 return App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue);
+            // Advanced-only virtual fields (not in table headers)
+            case 'departureDayOfWeek': {
+                try {
+                    if (App && App.FilterUtils && typeof App.FilterUtils.computeDepartureDayOfWeek === 'function') {
+                        return App.FilterUtils.computeDepartureDayOfWeek(sailing.sailDate);
+                    }
+                    // Fallback (should rarely be hit if utils_filter.js loaded)
+                    const d = new Date(sailing.sailDate);
+                    if (!sailing.sailDate || isNaN(d.getTime())) return '-';
+                    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                    return days[d.getUTCDay()] || '-';
+                } catch(e){ return '-'; }
+            }
             default:
                 return offer[key];
         }

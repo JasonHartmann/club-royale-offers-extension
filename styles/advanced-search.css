@@ -1,10 +1,10 @@
-/* Advanced Search (migrated from inline styles in breadcrumbs.js) */
+/* Advanced Search (migrated from inline styles) */
 .advanced-search-panel { border:1px solid #e5e7eb; padding:8px 10px; margin-top:8px; background:#ffffff; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.04); width:100%; box-sizing:border-box; }
 .advanced-search-panel.adv-search-disabled-active { opacity:.6; }
+.adv-initial-hide { visibility:hidden; }
+.adv-hidden { display:none !important; }
 .adv-search-header { display:flex; align-items:center; gap:12px; border-bottom:1px solid #e5e7eb; padding-bottom:4px; }
 .adv-search-header .adv-badge { background:#2563eb; color:#fff; border-radius:12px; padding:2px 8px; font-size:11px; font-weight:600; }
-.adv-search-master-toggle { display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-size:12px; font-weight:600; color:#1f2937; }
-.adv-search-master-toggle input { accent-color:#2563eb; }
 .adv-search-clear-btn { background:#dc2626; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
 .adv-search-clear-btn:hover { background:#b91c1c; }
 
@@ -12,18 +12,24 @@
 .adv-predicate-box { display:flex; align-items:flex-start; gap:6px; padding:6px 8px; border-radius:6px; background:#f9fafb; color:#1f2937; font-size:12px; max-width:600px; position:relative; border:1px solid #e5e7eb; }
 .adv-predicate-box.adv-predicate-preview { box-shadow:0 0 0 2px #2563eb; border-color:#2563eb; }
 .adv-predicate-field-label { font-weight:600; }
+.adv-summary { font-weight:500; font-size:12px; }
 
-.adv-operator-select, .adv-values-multiselect, .adv-add-field-select, .adv-predicate-box input[type="text"] { background:#fff; color:#1f2937; font-size:12px; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; }
+/* Inputs & selects */
+.adv-operator-select, .adv-values-multiselect, .adv-add-field-select, .adv-predicate-box input[type="text"] { background:#ffffff !important; color:#1f2937; font-size:12px; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; }
 .adv-operator-select:focus, .adv-values-multiselect:focus, .adv-add-field-select:focus, .adv-predicate-box input[type="text"]:focus { outline:2px solid #2563eb; outline-offset:1px; }
 .adv-values-multiselect { min-width:140px; max-width:200px; padding:4px; }
 .adv-values-multiselect option { font-size:12px; }
+
+/* Loading state for deferred options */
+.adv-values-multiselect.loading { background:linear-gradient(90deg,#f3f4f6,#e5e7eb,#f3f4f6); background-size:200% 100%; animation:advLoading 1s linear infinite; color:#6b7280; }
+@keyframes advLoading { 0% { background-position:0 0; } 100% { background-position:200% 0; } }
 
 .adv-help-text { font-size:10px; opacity:.70; max-width:220px; color:#374151; line-height:1.2; }
 
 .adv-value-chips { display:flex; flex-wrap:wrap; gap:4px; }
 .adv-chip { background:#e5e7eb; color:#1f2937; padding:2px 6px; border-radius:12px; font-size:11px; display:inline-flex; align-items:center; gap:4px; }
-.adv-chip button { border:none; background:transparent; color:#374151; cursor:pointer; font-size:11px; line-height:1; padding:0; }
-.adv-chip button:hover { color:#111827; }
+.adv-chip-remove, .adv-chip button { border:none; background:transparent; color:#374151; cursor:pointer; font-size:11px; line-height:1; padding:0; }
+.adv-chip-remove:hover, .adv-chip button:hover { color:#111827; }
 
 .adv-commit-btn { background:#22c55e; color:#fff; border:none; font-weight:700; cursor:pointer; width:28px; height:28px; border-radius:6px; font-size:16px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
 .adv-commit-btn:hover:not(:disabled) { filter:brightness(.95); }
@@ -40,12 +46,11 @@
 .adv-delete-btn { background:transparent; color:#dc2626; border:none; cursor:pointer; font-size:14px; line-height:1; padding:0 2px; }
 .adv-delete-btn:hover { filter:brightness(.85); }
 
-/* Buttons (reuse existing b2b button style where possible) */
-.adv-search-button { }
-/* Active (enabled) state: make golden */
-.adv-search-button[aria-pressed="true"] { background:#f59e0b; color:#fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.08); }
+/* Buttons */
+.adv-search-button { margin-left:12px; background:#0d3b66; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:4px; cursor:pointer; font-weight:600; transition:background .15s, transform .08s; }
+.adv-search-button:hover { background:#0b3557; transform:translateY(-1px); }
+.adv-search-button[aria-pressed="true"] { background:#f59e0b; color:#fff; }
 .adv-search-button[aria-pressed="true"]:hover { background:#d97706; }
-.adv-search-button[aria-pressed="true"]:focus { outline:2px solid #b45309; outline-offset:2px; }
 
-/* Tier filter cluster already styled in ui.css; ensure spacing harmony */
+.adv-add-field-select:disabled { opacity:.55; cursor:not-allowed; background:#f3f4f6 !important; color:#6b7280; }
 .tier-filter-toggle { gap:6px; }
