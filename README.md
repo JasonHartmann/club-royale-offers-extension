@@ -44,13 +44,65 @@ On each render/update of the tab strip:
 ### Rationale
 Previously IDs were recomputed from ordering, causing churn. The new manager ensures traceability (e.g., screenshots, cross‑session notes) and meets the immutability requirement without inflating the ID space indefinitely (because released IDs are recycled deterministically—smallest first).
 
-## Installation
+## Installation (Chrome / Firefox / Edge)
 
 1. Download or clone this repository.
-2. Open Chrome and go to `chrome://extensions/`.
-3. Enable "Developer mode" (top right).
-4. Click "Load unpacked" and select the folder containing this extension.
+2. Chrome: go to `chrome://extensions/` → enable Developer Mode → Load unpacked.
+3. Firefox: Open `about:debugging` → “This Firefox” → “Load Temporary Add‑on…” → select `manifest.json`.
+4. Edge (Chromium): `edge://extensions` → Developer Mode → Load unpacked.
 5. Visit the Club Royale or Blue Chip Club offers page and use the injected button.
+
+## Safari (macOS & iOS) Support
+
+This project is now Safari‑ready via a tiny compatibility shim (`safari-polyfill.js`) that normalizes `chrome.*` vs `browser.*` APIs. Safari 16+ (macOS Ventura / iOS 16) supports Manifest V3 Safari Web Extensions.
+
+### Option A: Xcode GUI Conversion
+
+1. Install the latest Xcode (14+ recommended).
+2. Open Xcode → File → New → Project… → “Safari Web Extension” template.
+3. When prompted, choose “Convert existing extension” and select this project folder.
+4. Xcode generates a container macOS app + embedded Safari Web Extension target.
+5. In the extension target’s `Resources` folder, verify all source files and `manifest.json` were copied.
+6. Add proper PNG icons (Safari prefers square `.png` sizes: 32, 48, 128, 256). Place them under `images/` and update the `icons` field in `manifest.json` (Safari does not use `.ico`).
+7. Set a unique Bundle Identifier (e.g., `com.percex.club-royale-offers`).
+8. Build & run. Safari will prompt to enable the extension (Preferences → Extensions).
+9. Test on target pages; the polyfill ensures storage/runtime calls work.
+
+### Option B: Command Line Converter
+
+Use Apple’s tool to produce an Xcode project automatically:
+
+```bash
+xcrun safari-web-extension-converter ./club-royale-offers-extension \
+  --app-name "Club Royale Offers" \
+  --bundle-identifier com.percex.club-royale-offers \
+  --project-location ./safari-build \
+  --force
+```
+
+After conversion:
+- Open the generated project in Xcode and supply signing (Developer ID or local signing for testing).
+- Replace/augment icons (PNG) and re-run.
+
+### Required Adjustments for Safari
+
+- **Icons**: Provide PNGs (e.g., `images/icon-48.png`, `images/icon-128.png`). Update `manifest.json` accordingly.
+- **Permissions**: Current `storage` permission is compatible. No host permissions are needed because content scripts specify `matches`.
+- **Background Scripts**: None used; content scripts only → simpler conversion.
+- **Polyfill**: Already first in the `js` array (`safari-polyfill.js`). It maps `browser.*` to `chrome.*` (and vice‑versa) for uniform access.
+- **Testing iOS**: Build the iOS app target (created by converter) → install on device → enable extension under Settings → Safari → Extensions.
+
+### Debugging in Safari
+
+- Open Develop → Web Extension Background Pages (if a background page existed; not needed here since only content scripts).
+- Use Web Inspector on a target tab to view content script console output.
+- Check the `local` storage area via the Inspector’s Storage tab (mirrors `chrome.storage.local`).
+
+### Potential Future Enhancements for Safari
+
+- Add `action` popup with quick summary.
+- Provide dedicated PNG icon set with brand styling.
+- Integrate optional `contextMenus` for quick CSV export.
 
 ## Usage
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Club Royale and Blue Chip Club Offers Viewer",
-  "version": "1.5",
+  "version": "1.6",
   "description": "View Royal Caribbean & Celebrity comp offers in a sortable, groupable table and accordion.",
   "browser_specific_settings": {
     "gecko": {
@@ -10,6 +10,10 @@
     }
   },
   "permissions": ["storage"],
+  "icons": {
+    "48": "images/celebrity-icon.ico",
+    "128": "images/celebrity-icon.ico"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -26,6 +30,7 @@
         "styles/advanced-search.css"
       ],
       "js": [
+        "safari-polyfill.js",
         "utils/utils_core.js",
         "utils/utils_row.js",
         "utils/domUtils.js",
