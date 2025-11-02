@@ -8,6 +8,8 @@ This Chrome extension enhances the Royal Caribbean Club Royale Offers page by ad
 - **Sortable Table**: Click any column header to sort offers by that column (ascending/descending/original order).
 - **Groupable Table**: Group offers by any column (e.g., ship, destination, nights, etc.) for easier analysis.
 - **Accordion View**: Drill down into groups with nested accordions for detailed exploration.
+- **Advanced Search Filters**: Build multi‑field predicates (IN / NOT IN / CONTAINS / NOT CONTAINS) plus a new **Date Range** operator (see below) to refine results without leaving the page.
+- **Date Range Picker (Offer / Expiration / Sail Dates)**: Two‑month flight‑style calendar selector lets you highlight offers whose Offer Date, Expiration (Reserve By), or Sail Date fall within an inclusive range.
 - **Visual Highlights**:
   - **Green Row**: The single newest offer (by offer date) is highlighted in green.
   - **Pink Row**: The offer expiring soonest (within the next 3 days) is highlighted in pink.
@@ -16,6 +18,46 @@ This Chrome extension enhances the Royal Caribbean Club Royale Offers page by ad
 - **Stable Profile IDs**: Each saved profile (gobo-* key) gets a permanent numeric ID badge.
 - **Export to CSV**: Download your offers as a CSV file for offline analysis.
 - **Responsive UI**: Table columns are sized for readability.
+
+## Advanced Search & Date Range Filtering
+
+The Advanced Search panel (toggle button near breadcrumbs) lets you layer multiple filters. Newly added:
+
+### Date Range Operator
+Applies to date fields: Offer Date (`offerDate`), Expiration (`expiration`), and Sail Date (`sailDate`).
+
+1. Click "Advanced Search" to enable the panel.
+2. Choose one of the date fields via "Add Field…".
+3. Select operator "date range".
+4. Use the two‑month calendar:
+   - Click a start date (it highlights).
+   - Click an end date (range fills; both endpoints included).
+   - Click another date after completing a range to start over.
+5. Press the green commit ✓ button once both dates are selected (or hit Enter while focus is on the predicate box).
+6. The committed range shows as a single chip like `MM/DD/YY → MM/DD/YY`. Click the chip to edit the range; click the × inside the chip to clear it.
+
+Behavior details:
+- Inclusive boundaries (start and end date both match).
+- Persisted per profile session (restored while panel is enabled during the session via `sessionStorage`).
+- Editing a committed range reopens the calendar with your previous selection.
+- Clearing removes dates and returns the predicate to edit mode.
+- Incomplete (only start picked) ranges aren't applied until both ends selected & committed.
+
+### Other Operators (Unchanged)
+- IN / NOT IN show a multi‑select list of distinct visible values (case‑insensitive dedupe).
+- CONTAINS / NOT CONTAINS build token chips (substring match logic).
+
+### Preview Mode
+While a predicate is incomplete but has provisional values, its box outlines in blue (preview). The table is only filtered once you commit.
+
+### Performance Notes
+- Large value lists chunk‑render to avoid UI jank.
+- Date range filtering uses raw ISO dates when available; falls back to parsing the formatted `MM/DD/YY` display.
+
+### Edge Cases
+- Invalid or partial range silently ignored (filter not applied until both dates chosen).
+- Changing operator resets any temporary range selection.
+- All comparisons are UTC‑normalized to avoid timezone drift.
 
 ## Stable Profile IDs (Immutable Assignment)
 
@@ -110,11 +152,14 @@ After conversion:
 - Sort or group columns as needed; drill down via accordion mode.
 - Use the star column to add/remove sailings from Favorites.
 - (Optional) Link two accounts with the chain icon to view Combined Offers.
+- Use **Advanced Search** to layer filters or define a date range for Offer / Expiration / Sail Date.
 - Click **Export to CSV** to download raw data.
 
 ## Development
 
 Key files:
+- `advancedSearch.js`: Advanced Search state, rendering, date range picker.
+- `filtering.js`: Filtering layer (now includes date range predicate evaluation).
 - `profileIdManager.js`: Stable, immutable profile ID assignment logic.
 - `tableRenderer.js`: Orchestrates rendering, integrates stable IDs.
 - `favorites.js`: Manages the Favorites pseudo-profile.
@@ -126,7 +171,7 @@ Key files:
 ## Customization
 
 - Modify visible columns: edit the `headers` arrays in `tableRenderer.js`.
-- Adjust colors / styles: update `styles.js`.
+- Adjust colors / styles: update `styles.js` or the CSS under `styles/`.
 - Extend grouping rules: see `accordionBuilder.js`.
 
 ## Planned updates

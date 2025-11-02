@@ -54,3 +54,24 @@
 
 .adv-add-field-select:disabled { opacity:.55; cursor:not-allowed; background:#f3f4f6 !important; color:#6b7280; }
 .tier-filter-toggle { gap:6px; }
+
+/* Date Range Picker Styles */
+.adv-date-range-wrapper { display:flex; flex-direction:column; gap:6px; background:#ffffff; padding:4px 4px 6px; border:1px solid #e5e7eb; border-radius:6px; }
+.adv-date-range-controls { display:flex; justify-content:space-between; align-items:center; }
+.adv-date-range-controls button { background:#f3f4f6; border:1px solid #d1d5db; border-radius:4px; cursor:pointer; width:28px; height:28px; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; }
+.adv-date-range-controls button:hover { background:#e5e7eb; }
+.adv-date-range-cals { display:flex; gap:14px; }
+.adv-cal-block { display:flex; flex-direction:column; gap:4px; }
+.adv-cal-title { text-align:center; font-weight:600; font-size:12px; }
+.adv-cal-grid { border-collapse:collapse; }
+.adv-cal-grid th { font-weight:600; font-size:10px; padding:2px 3px; color:#374151; }
+.adv-cal-grid td { width:26px; height:24px; text-align:center; font-size:11px; padding:0; }
+.adv-cal-day { cursor:pointer; border-radius:4px; position:relative; }
+.adv-cal-day:hover { background:#e0f2fe; }
+.adv-cal-day.start, .adv-cal-day.end { background:#2563eb; color:#ffffff; font-weight:600; }
+.adv-cal-day.in-range { background:#bfdbfe; color:#1e3a8a; }
+.adv-date-range-footer { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.adv-date-range-summary { font-size:11px; font-weight:500; color:#1f2937; }
+.adv-date-range-footer button { background:#f3f4f6; border:1px solid #d1d5db; border-radius:4px; padding:2px 8px; font-size:11px; cursor:pointer; }
+.adv-date-range-footer button:hover { background:#e5e7eb; }
+.adv-chip-daterange { background:#2563eb; color:#ffffff; }

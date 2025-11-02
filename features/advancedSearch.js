@@ -62,17 +62,23 @@ const AdvancedSearch = {
                 state._advRestoredProfiles.add(state.selectedProfileKey);
                 return;
             }
-            const allowedOps = new Set(['in', 'not in', 'contains', 'not contains']);
+            const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range']);
             state.advancedSearch.predicates = (Array.isArray(parsed.predicates) ? parsed.predicates
                 .filter(p => p && p.fieldKey && p.operator)
                 .map(p => {
                     let op = (p.operator || '').toLowerCase();
                     if (op === 'starts with') op = 'contains';
+                    if (op === 'between') op = 'date range';
+                    let values = Array.isArray(p.values) ? p.values.slice() : [];
+                    if (op === 'date range' && values.length === 2) {
+                        // Normalize ordering
+                        values = values.slice().sort();
+                    }
                     return {
                         id: p.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)),
                         fieldKey: p.fieldKey,
                         operator: op,
-                        values: Array.isArray(p.values) ? p.values.slice() : [],
+                        values,
                         complete: !!p.complete
                     };
                 })
@@ -177,7 +183,42 @@ const AdvancedSearch = {
     renderPredicateValueChips(box, pred, state) {
         const chipsWrap = document.createElement('div');
         chipsWrap.className = 'adv-value-chips'; // styling handled in CSS
-        // removed inline flex styles
+        // Special handling for date range committed predicate: display a single summarized chip
+        if (pred.operator === 'date range' && pred.values && pred.values.length === 2) {
+            const [startIso, endIso] = pred.values;
+            const fmt = (iso) => {
+                if (!iso) return '?';
+                const parts = iso.split('-');
+                if (parts.length !== 3) return iso;
+                return parts[1] + '/' + parts[2] + '/' + parts[0].slice(-2);
+            };
+            const chip = document.createElement('span');
+            chip.className = 'adv-chip adv-chip-daterange';
+            chip.textContent = fmt(startIso) + ' → ' + fmt(endIso);
+            if (pred.complete) {
+                chip.title = 'Click to edit this date range';
+                chip.addEventListener('click', (e) => {
+                    if (e.target && e.target.classList && e.target.classList.contains('adv-chip-remove')) return;
+                    e.stopPropagation();
+                    this.enterEditMode(pred, state);
+                });
+            }
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.textContent = '\u2715';
+            remove.className = 'adv-chip-remove';
+            remove.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pred.values = [];
+                pred.complete = false; // revert to edit mode
+                this.renderPredicates(state);
+                this.debouncedPersist(state);
+            });
+            chip.appendChild(remove);
+            chipsWrap.appendChild(chip);
+            box.appendChild(chipsWrap);
+            return chipsWrap;
+        }
         pred.values.forEach(val => {
             const chip = document.createElement('span');
             chip.className = 'adv-chip';
@@ -222,6 +263,16 @@ const AdvancedSearch = {
     attemptCommitPredicate(pred, state) {
         if (!pred || pred.complete) return;
         if (!pred.values || !pred.values.length) return;
+        if (pred.operator === 'date range') {
+            // Ensure exactly two values and sorted ascending
+            if (pred.values.length === 2) {
+                pred.values = pred.values.slice().sort();
+                try { AdvancedSearch._logDebug('DateRange commit', { values: pred.values }); } catch(e){}
+            } else {
+                // Incomplete date range should not commit
+                return;
+            }
+        }
         pred.complete = true;
         if (state._advPreviewPredicateId === pred.id) {
             state._advPreviewPredicateId = null;
@@ -287,7 +338,10 @@ const AdvancedSearch = {
             const headerKeysSet = new Set(headerFields.map(h => h.key));
             const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
             const allFields = headerFields.concat(advFiltered);
-            const allowedOperators = ['in', 'not in', 'contains', 'not contains'];
+            const dateFieldKeys = new Set(['offerDate','expiration','sailDate']);
+            const baseOperators = ['in', 'not in', 'contains', 'not contains'];
+            const allowedOperators = baseOperators.slice();
+            // date fields: add date range operator
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
                 this._logDebug('renderPredicates:headersNotReady', { headerCount: headerFields.length });
@@ -305,6 +359,8 @@ const AdvancedSearch = {
             predicates.forEach(pred => {
                 try {
                     const fieldMeta = allFields.find(h => h.key === pred.fieldKey);
+                    const isDateField = dateFieldKeys.has(pred.fieldKey);
+                    const opsForField = isDateField ? allowedOperators.concat(['date range']) : allowedOperators;
                     const box = document.createElement('div');
                     box.className = 'adv-predicate-box';
                     if (state._advPreviewPredicateId === pred.id) box.classList.add('adv-predicate-preview');
@@ -333,21 +389,25 @@ const AdvancedSearch = {
                         optPlaceholder.value = '';
                         optPlaceholder.textContent = 'Select…';
                         opSelect.appendChild(optPlaceholder);
-                        allowedOperators.forEach(op => {
+                        opsForField.forEach(op => {
                             const o = document.createElement('option');
                             o.value = op; o.textContent = op; opSelect.appendChild(o);
                         });
                         opSelect.addEventListener('change', () => {
                             const raw = (opSelect.value || '').toLowerCase();
-                            if (allowedOperators.includes(raw)) {
+                            if (opsForField.includes(raw)) {
                                 pred.operator = raw;
+                                // reset range temp values if switching
+                                if (raw !== 'date range') { delete pred._rangeStart; delete pred._rangeEnd; }
                                 state._advFocusPredicateId = pred.id;
                                 this.renderPredicates(state);
                             }
                         });
                         box.appendChild(opSelect);
                     } else if (!pred.complete && pred.operator) {
-                        if (pred.operator === 'in' || pred.operator === 'not in') {
+                        if (pred.operator === 'date range') {
+                            this._renderDateRangeEditor(box, pred, state);
+                        } else if (pred.operator === 'in' || pred.operator === 'not in') {
                             const selectWrap = document.createElement('div'); selectWrap.className = 'adv-stack-col';
                             const sel = document.createElement('select'); sel.multiple = true; sel.size = 6; sel.className = 'adv-values-multiselect';
                             const values = this.getCachedFieldValues(pred.fieldKey, state) || [];
@@ -380,8 +440,16 @@ const AdvancedSearch = {
                             const help = document.createElement('div'); help.className='adv-help-text'; help.textContent = (pred.operator==='contains'?'Add substrings; any match passes.':'Add substrings; none must appear.'); tokenWrap.appendChild(help);
                             box.appendChild(tokenWrap); setTimeout(()=>{ try{ input.focus(); }catch(e){} },0);
                         }
-                        if (pred.values && pred.values.length) this.renderPredicateValueChips(box, pred, state); else { const placeholder = document.createElement('span'); placeholder.textContent='No values selected'; placeholder.className='adv-placeholder'; box.appendChild(placeholder); }
-                        const commitBtn = document.createElement('button'); commitBtn.type='button'; commitBtn.textContent='\u2713'; commitBtn.title='Commit filter'; commitBtn.disabled = !(pred.values && pred.values.length); commitBtn.className='adv-commit-btn'; commitBtn.addEventListener('click', () => this.attemptCommitPredicate(pred,state)); box.appendChild(commitBtn);
+                        if (pred.operator !== 'date range') {
+                            if (pred.values && pred.values.length) this.renderPredicateValueChips(box, pred, state); else { const placeholder = document.createElement('span'); placeholder.textContent='No values selected'; placeholder.className='adv-placeholder'; box.appendChild(placeholder); }
+                        }
+                        const commitBtn = document.createElement('button'); commitBtn.type='button'; commitBtn.textContent='\u2713'; commitBtn.title='Commit filter';
+                        if (pred.operator === 'date range') {
+                            commitBtn.disabled = !(pred.values && pred.values.length === 2);
+                        } else {
+                            commitBtn.disabled = !(pred.values && pred.values.length);
+                        }
+                        commitBtn.className='adv-commit-btn'; commitBtn.addEventListener('click', () => this.attemptCommitPredicate(pred,state)); box.appendChild(commitBtn);
                     } else if (pred.complete) {
                         const summary = document.createElement('span'); summary.textContent = pred.operator; summary.className='adv-summary'; box.appendChild(summary); this.renderPredicateValueChips(box,pred,state);
                     }
@@ -782,7 +850,137 @@ const AdvancedSearch = {
             this._logDebug('renderCommittedFallback:boxesAdded', { count: preds.length });
             this.ensureAddFieldDropdown(state);
         } catch(e){ this._logDebug('renderCommittedFallback:error', e); }
-    }
+    },
+    _renderDateRangeEditor(container, pred, state) {
+        // Build a lightweight 2-month calendar style date range selector (flight search style)
+        try {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'adv-date-range-wrapper';
+            const controls = document.createElement('div'); controls.className = 'adv-date-range-controls';
+            const prevBtn = document.createElement('button'); prevBtn.type='button'; prevBtn.textContent='‹'; prevBtn.title='Previous month';
+            const nextBtn = document.createElement('button'); nextBtn.type='button'; nextBtn.textContent='›'; nextBtn.title='Next month';
+            controls.appendChild(prevBtn); controls.appendChild(nextBtn);
+            wrapper.appendChild(controls);
+            const calHost = document.createElement('div'); calHost.className='adv-date-range-cals'; wrapper.appendChild(calHost);
+            const footer = document.createElement('div'); footer.className='adv-date-range-footer';
+            const summary = document.createElement('div'); summary.className='adv-date-range-summary'; footer.appendChild(summary);
+            const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear'; clearBtn.addEventListener('click', () => { pred._rangeStart=null; pred._rangeEnd=null; pred.values=[]; this.renderPredicates(state); }); footer.appendChild(clearBtn);
+            wrapper.appendChild(footer);
+            // Initialize base month (first month shown)
+            if (typeof pred._baseMonth === 'undefined') {
+                const today = new Date();
+                pred._baseMonth = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1);
+            }
+            const formatISO = (d) => {
+                const yr = d.getUTCFullYear(); const m = (d.getUTCMonth()+1).toString().padStart(2,'0'); const day = d.getUTCDate().toString().padStart(2,'0');
+                return `${yr}-${m}-${day}`;
+            };
+            const fmtDisp = (iso) => {
+                if (!iso) return '?';
+                const [y,m,d]=iso.split('-'); return `${m}/${d}/${y.slice(-2)}`;
+            };
+            const renderCalendars = () => {
+                calHost.innerHTML='';
+                const months = [0,1];
+                months.forEach(offset => {
+                    const first = new Date(pred._baseMonth);
+                    first.setUTCMonth(first.getUTCMonth()+offset);
+                    const year = first.getUTCFullYear(); const month = first.getUTCMonth(); // use UTC consistently
+                    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                    const title = document.createElement('div'); title.className='adv-cal-title'; title.textContent = monthNames[month] + ' ' + year; // UTC-safe month name
+                    const grid = document.createElement('table'); grid.className='adv-cal-grid';
+                    const thead = document.createElement('thead'); const hr = document.createElement('tr'); ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>{ const th=document.createElement('th'); th.textContent=d; hr.appendChild(th); }); thead.appendChild(hr); grid.appendChild(thead);
+                    const tbody = document.createElement('tbody');
+                    const firstDayDow = new Date(Date.UTC(year, month, 1)).getUTCDay();
+                    let cur = 1; const daysInMonth = new Date(Date.UTC(year, month+1, 0)).getUTCDate();
+                    for (let r=0; r<6 && cur<=daysInMonth; r++) {
+                        const tr = document.createElement('tr');
+                        for (let c=0; c<7; c++) {
+                            const td = document.createElement('td');
+                            if ((r===0 && c < firstDayDow) || cur>daysInMonth) {
+                                td.textContent='';
+                            } else {
+                                const d = new Date(Date.UTC(year, month, cur));
+                                const iso = formatISO(d);
+                                td.textContent = d.getUTCDate();
+                                td.dataset.iso = iso;
+                                td.className='adv-cal-day';
+                                if (pred._rangeStart && iso === pred._rangeStart) td.classList.add('start');
+                                if (pred._rangeEnd && iso === pred._rangeEnd) td.classList.add('end');
+                                if (pred._rangeStart && pred._rangeEnd && iso > pred._rangeStart && iso < pred._rangeEnd) td.classList.add('in-range');
+                                td.addEventListener('click', () => {
+                                    if (!pred._rangeStart || (pred._rangeStart && pred._rangeEnd)) {
+                                        pred._rangeStart = iso; pred._rangeEnd = null; pred.values=[]; // start new selection
+                                    } else if (!pred._rangeEnd) {
+                                        if (iso < pred._rangeStart) { pred._rangeEnd = pred._rangeStart; pred._rangeStart = iso; } else { pred._rangeEnd = iso; }
+                                        pred.values = [pred._rangeStart, pred._rangeEnd];
+                                    }
+                                    summary.textContent = pred._rangeStart ? (pred._rangeEnd ? `${fmtDisp(pred._rangeStart)} → ${fmtDisp(pred._rangeEnd)}` : fmtDisp(pred._rangeStart)+' – …') : 'Select a start date';
+                                    this.schedulePreview(state, pred);
+                                    renderCalendars();
+                                    // Re-enable commit button state
+                                    const commit = container.querySelector('button.adv-commit-btn'); if (commit) commit.disabled = !(pred.values && pred.values.length===2);
+                                });
+                                cur++; // increment only when a day cell is placed
+                            }
+                            tr.appendChild(td);
+                        }
+                        tbody.appendChild(tr);
+                    }
+                    // FIX: append tbody so day numbers render
+                    grid.appendChild(tbody);
+                    const block = document.createElement('div'); block.className='adv-cal-block';
+                    block.appendChild(title); block.appendChild(grid);
+                    calHost.appendChild(block);
+                });
+            };
+            prevBtn.addEventListener('click', () => {
+                try {
+                    const d = new Date(pred._baseMonth);
+                    const beforeY = d.getUTCFullYear(), beforeM = d.getUTCMonth();
+                    d.setUTCMonth(d.getUTCMonth()-1);
+                    pred._baseMonth = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+                    this._logDebug('[DateRange] Prev month click', { beforeY, beforeM, afterY: d.getUTCFullYear(), afterM: d.getUTCMonth(), baseMonth: pred._baseMonth });
+                    renderCalendars();
+                } catch(e){ this._logDebug('[DateRange] Prev month error', e); }
+            });
+            nextBtn.addEventListener('click', () => {
+                try {
+                    const d = new Date(pred._baseMonth);
+                    const beforeY = d.getUTCFullYear(), beforeM = d.getUTCMonth();
+                    d.setUTCMonth(d.getUTCMonth()+1);
+                    pred._baseMonth = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+                    this._logDebug('[DateRange] Next month click', { beforeY, beforeM, afterY: d.getUTCFullYear(), afterM: d.getUTCMonth(), baseMonth: pred._baseMonth });
+                    renderCalendars();
+                } catch(e){ this._logDebug('[DateRange] Next month error', e); }
+            });
+            summary.textContent = pred.values && pred.values.length===2 ? `${fmtDisp(pred.values[0])} → ${fmtDisp(pred.values[1])}` : 'Select a start date';
+            container.appendChild(wrapper);
+            renderCalendars();
+        } catch(e) { /* ignore date range UI errors */ }
+    },
+    debugDumpDateField(fieldKey, state) {
+        try {
+            if (!fieldKey) { console.debug('[AdvancedSearch][debugDumpDateField] fieldKey required'); return; }
+            const base = state?.fullOriginalOffers || state?.originalOffers || state?.sortedOffers || [];
+            const seen = new Set();
+            const rows = [];
+            base.forEach(w => {
+                try {
+                    const rawIso = (fieldKey === 'offerDate' ? w.offer?.campaignOffer?.startDate : fieldKey === 'expiration' ? w.offer?.campaignOffer?.reserveByDate : fieldKey === 'sailDate' ? w.sailing?.sailDate : null) || null;
+                    const formatted = Filtering.getOfferColumnValue(w.offer, w.sailing, fieldKey);
+                    const keySig = rawIso + '|' + formatted;
+                    if (seen.has(keySig)) return;
+                    seen.add(keySig);
+                    rows.push({ rawIso, formatted });
+                } catch(eRow){ /* ignore */ }
+            });
+            console.group(`[AdvancedSearch][debugDumpDateField] ${fieldKey} (${rows.length} unique variants)`);
+            rows.slice().sort((a,b)=> (a.rawIso||'').localeCompare(b.rawIso||''))
+                .forEach(r => console.log('rawIso:', r.rawIso, 'formatted:', r.formatted));
+            console.groupEnd();
+        } catch(e){ console.warn('[AdvancedSearch][debugDumpDateField] error', e); }
+    },
 };
 // Attach render completion hook early
 try { AdvancedSearch._attachRenderCompleteHookOnce(); } catch(e) { /* ignore */ }

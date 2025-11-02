@@ -49,15 +49,71 @@ const Filtering = {
                 try {
                     const key = pred.fieldKey || labelToKey[pred.fieldKey?.toLowerCase()] || pred.fieldKey;
                     const rawVal = Filtering.getOfferColumnValue(wrapper.offer, wrapper.sailing, key);
-                    return Filtering.evaluatePredicate(pred, rawVal);
+                    return Filtering.evaluatePredicate(pred, rawVal, wrapper.offer, wrapper.sailing);
                 } catch(e){ return false; }
             });
         } catch(e) { return true; }
     },
-    evaluatePredicate(predicate, fieldValue) {
+    evaluatePredicate(predicate, fieldValue, offer, sailing) {
         try {
             let op = (predicate.operator||'').toLowerCase();
             if (op === 'starts with') op = 'contains';
+            if (op === 'date range') {
+                // Expect predicate.values = [startISO, endISO] inclusive; ISO = YYYY-MM-DD
+                if (!Array.isArray(predicate.values) || predicate.values.length !== 2) return true; // incomplete treated as pass
+                const [startIso, endIso] = predicate.values;
+                if (!startIso || !endIso) return true;
+                const toEpoch = (iso) => {
+                    if (!iso) return NaN; // iso expected yyyy-mm-dd
+                    const parts = iso.split('-');
+                    if (parts.length !== 3) return NaN;
+                    const y = parseInt(parts[0],10), m=parseInt(parts[1],10)-1, d=parseInt(parts[2],10);
+                    return Date.UTC(y,m,d);
+                };
+                const startEp = toEpoch(startIso), endEp = toEpoch(endIso);
+                if (isNaN(startEp) || isNaN(endEp)) return true;
+                // Determine actual field raw ISO date from offer/sailing when possible
+                let rawIso = null;
+                try {
+                    switch (predicate.fieldKey) {
+                        case 'offerDate': rawIso = offer?.campaignOffer?.startDate || null; break;
+                        case 'expiration': rawIso = offer?.campaignOffer?.reserveByDate || null; break;
+                        case 'sailDate': rawIso = sailing?.sailDate || null; break;
+                        default: rawIso = null; break;
+                    }
+                } catch(e) { rawIso = null; }
+                if (!rawIso) {
+                    // Fallback: attempt parse of formatted MM/DD/YY string (fieldValue)
+                    try {
+                        const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(fieldValue || '');
+                        if (m) {
+                            const mm = parseInt(m[1],10), dd=parseInt(m[2],10), yy=parseInt(m[3],10);
+                            const fullYear = 2000 + yy; // assume 20xx
+                            rawIso = `${fullYear.toString().padStart(4,'0')}-${mm.toString().padStart(2,'0')}-${dd.toString().padStart(2,'0')}`;
+                        }
+                    } catch(e){ /* ignore */ }
+                }
+                if (!rawIso) return true; // treat unknown as pass
+                // Normalize rawIso to first 10 chars (YYYY-MM-DD)
+                rawIso = rawIso.split('T')[0];
+                const valEp = toEpoch(rawIso);
+                const inRange = !isNaN(valEp) && valEp >= startEp && valEp <= endEp;
+                // Debug logging (only when AdvancedSearch debug or advdbg query param active)
+                try {
+                    const dbg = (typeof AdvancedSearch !== 'undefined' && AdvancedSearch._debug) || (typeof window !== 'undefined' && window.location && /[?&]advdbg=1/.test(window.location.search));
+                    if (dbg) {
+                        console.debug('[Filtering][DateRangeEval]', {
+                            fieldKey: predicate.fieldKey,
+                            startIso, endIso,
+                            rawIso,
+                            fieldValue,
+                            startEp, endEp, valEp,
+                            inRange
+                        });
+                    }
+                } catch(logErr){ /* ignore logging errors */ }
+                return inRange;
+            }
             const values = Array.isArray(predicate.values) ? predicate.values.map(v=>Filtering.normalizePredicateValue(v, predicate.fieldKey)) : [];
             const fv = Filtering.normalizePredicateValue(fieldValue == null ? '' : (''+fieldValue), predicate.fieldKey);
             if (!op || !values.length) return true;
