@@ -52,6 +52,24 @@
 }
 .gobo-itinerary-close:hover { color:#111; }
 
+/* Refresh button */
+.gobo-itinerary-refresh {
+  position: absolute;
+  top: 10px; /* slight vertical alignment tweak relative to close */
+  right: 48px; /* leave space for close button at far right */
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #2563eb;
+  padding: 4px;
+  transition: color .15s ease-in-out, transform .15s ease-in-out;
+}
+.gobo-itinerary-refresh:hover { color: #1d4ed8; }
+.gobo-itinerary-refresh.loading { opacity: .7; animation: goboItinSpin .9s linear infinite; }
+@keyframes goboItinSpin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
 .gobo-itinerary-title {
   margin: 0 0 4px;
   font-size: 20px;
@@ -121,5 +139,5 @@
   .gobo-itinerary-table tbody td { display:block; padding:6px 2px; }
   .gobo-itinerary-table tbody tr { border-bottom:1px solid #e5e7eb; }
   .gobo-itinerary-table tbody tr:last-child { border-bottom:none; }
+  .gobo-itinerary-refresh { right: 44px; } /* slightly closer on small screens */
 }
-

@@ -1,6 +1,6 @@
 (function(){
     const STORAGE_KEY = 'goob-itinerary-map';
-    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    const TWELVE_HOURS_MS = 6 * 60 * 60 * 1000;
     const DEBUG_ITIN = true; // toggle itinerary cache debug
     function dbg(...args){ if (DEBUG_ITIN) { try { console.debug('[ItineraryCache]', ...args); } catch(e){} } }
     const ItineraryCache = {
@@ -58,25 +58,45 @@
                                     // pricing-related fields added
                                     taxesAndFees: null,
                                     taxesAndFeesIncluded: null,
-                                    stateroomPricing: {}, // map of stateroom class id -> { price, currency, code }
+                                    stateroomPricing: {},
                                     bookingLink: '',
                                     startDate: '',
                                     endDate: '',
-                                    updatedAt: now
+                                    updatedAt: now,
+                                    hydratedAt: now // initial ingest treated as a hydration baseline
                                 };
                                 newEntries++;
                             } else {
+                                // Snapshot before changes for diff detection
+                                const beforeSnapshot = JSON.stringify({
+                                    itineraryCode: entry.itineraryCode,
+                                    sailDate: entry.sailDate,
+                                    offerCodes: [...entry.offerCodes],
+                                    shipName: entry.shipName,
+                                    shipCode: entry.shipCode,
+                                    itineraryDescription: entry.itineraryDescription
+                                });
                                 updatedEntries++;
+                                entry.hydratedAt = now; // re-ingest baseline
+                                // Opportunistic updates below will mutate entry; then we'll diff.
+                                if (!entry.itineraryCode && itineraryCode) entry.itineraryCode = itineraryCode;
+                                if (!entry.sailDate && sailDate) entry.sailDate = sailDate;
+                                if (!entry.shipName && (s.shipName || s.ship?.name)) entry.shipName = s.shipName || s.ship?.name;
+                                if (!entry.shipCode && s.ship?.code) entry.shipCode = s.ship.code;
+                                if (!entry.itineraryDescription && s.itineraryDescription) entry.itineraryDescription = s.itineraryDescription;
+                                if (offerCode && !entry.offerCodes.includes(offerCode)) entry.offerCodes.push(offerCode);
+                                const afterSnapshot = JSON.stringify({
+                                    itineraryCode: entry.itineraryCode,
+                                    sailDate: entry.sailDate,
+                                    offerCodes: [...entry.offerCodes],
+                                    shipName: entry.shipName,
+                                    shipCode: entry.shipCode,
+                                    itineraryDescription: entry.itineraryDescription
+                                });
+                                if (beforeSnapshot !== afterSnapshot) entry.updatedAt = now; // only content change bumps updatedAt
                             }
-                            if (offerCode && !entry.offerCodes.includes(offerCode)) { entry.offerCodes.push(offerCode); }
-                            // Opportunistically fill blanks
-                            if (!entry.shipName && (s.shipName || s.ship?.name)) entry.shipName = s.shipName || s.ship?.name;
-                            if (!entry.shipCode && s.ship?.code) entry.shipCode = s.ship.code;
-                            if (!entry.itineraryDescription && s.itineraryDescription) entry.itineraryDescription = s.itineraryDescription;
-                            // Keep itineraryCode/sailDate fields updated if they were blank and we used fallback
-                            if (!entry.itineraryCode && itineraryCode) entry.itineraryCode = itineraryCode;
-                            if (!entry.sailDate && sailDate) entry.sailDate = sailDate;
-                            entry.updatedAt = now;
+                            // For new entries we added offerCode above; for existing entries handled in diff section.
+                            if (!entry.offerCodes.includes(offerCode) && offerCode) entry.offerCodes.push(offerCode);
                         } catch(inner) { dbg('Error processing sailing', inner); }
                     });
                 } catch(e) { dbg('Error processing offer', e); }
@@ -93,7 +113,8 @@
                 keys.forEach(k => {
                     const e = this._cache[k];
                     if (!e) return;
-                    if (!e.enriched || !e.updatedAt || (now - e.updatedAt) > TWELVE_HOURS_MS) stale.push(k);
+                    const lastTouch = e.hydratedAt || e.updatedAt || 0;
+                    if (!e.enriched || !lastTouch || (now - lastTouch) > TWELVE_HOURS_MS) stale.push(k);
                 });
                 dbg('hydrateIfNeeded evaluated keys', { providedKeys: keys.length, stale: stale.length });
                 if (!stale.length) return;
@@ -145,6 +166,22 @@
                                 const key = s?.id?.trim();
                                 if (!key || !this._cache[key]) { localCruisesSkippedNoKey++; return; }
                                 const entry = this._cache[key];
+                                const beforeSnapshot = JSON.stringify({
+                                    shipName: entry.shipName,
+                                    shipCode: entry.shipCode,
+                                    itineraryDescription: entry.itineraryDescription,
+                                    destinationName: entry.destinationName,
+                                    departurePortName: entry.departurePortName,
+                                    totalNights: entry.totalNights,
+                                    days: entry.days,
+                                    type: entry.type,
+                                    bookingLink: entry.bookingLink,
+                                    startDate: entry.startDate,
+                                    endDate: entry.endDate,
+                                    taxesAndFees: entry.taxesAndFees,
+                                    taxesAndFeesIncluded: entry.taxesAndFeesIncluded,
+                                    stateroomPricing: entry.stateroomPricing
+                                });
                                 // Copy shared itinerary details onto each sailing entry
                                 entry.shipName = itin.ship?.name || entry.shipName;
                                 entry.shipCode = itin.ship?.code || entry.shipCode || '';
@@ -155,19 +192,14 @@
                                 entry.days = Array.isArray(itin.days) ? itin.days : entry.days;
                                 entry.type = itin.type || entry.type || '';
                                 entry.enriched = true;
-                                entry.updatedAt = Date.now();
-                                localAnyUpdated = true; localCruisesMatched++; localSailingsMatched++;
-                                // --- Pricing enrichment start ---
+                                // pricing enrichment
                                 try {
                                     if (s && typeof s === 'object') {
-                                        // booking / dates
                                         if (s.bookingLink && !entry.bookingLink) entry.bookingLink = s.bookingLink;
                                         if (s.startDate) entry.startDate = s.startDate;
                                         if (s.endDate) entry.endDate = s.endDate;
-                                        // taxes and fees
                                         if (s.taxesAndFees && typeof s.taxesAndFees.value === 'number') entry.taxesAndFees = s.taxesAndFees.value;
                                         if (typeof s.taxesAndFeesIncluded === 'boolean') entry.taxesAndFeesIncluded = s.taxesAndFeesIncluded;
-                                        // stateroom pricing
                                         if (Array.isArray(s.stateroomClassPricing)) {
                                             entry.stateroomPricing = entry.stateroomPricing || {};
                                             s.stateroomClassPricing.forEach(p => {
@@ -183,6 +215,28 @@
                                         }
                                     }
                                 } catch(priceErr){ dbg('Pricing enrichment error', priceErr); }
+                                // After enrichment diff detection
+                                const afterSnapshot = JSON.stringify({
+                                    shipName: entry.shipName,
+                                    shipCode: entry.shipCode,
+                                    itineraryDescription: entry.itineraryDescription,
+                                    destinationName: entry.destinationName,
+                                    departurePortName: entry.departurePortName,
+                                    totalNights: entry.totalNights,
+                                    days: entry.days,
+                                    type: entry.type,
+                                    bookingLink: entry.bookingLink,
+                                    startDate: entry.startDate,
+                                    endDate: entry.endDate,
+                                    taxesAndFees: entry.taxesAndFees,
+                                    taxesAndFeesIncluded: entry.taxesAndFeesIncluded,
+                                    stateroomPricing: entry.stateroomPricing
+                                });
+                                entry.hydratedAt = Date.now();
+                                if (beforeSnapshot !== afterSnapshot) {
+                                    entry.updatedAt = entry.hydratedAt; // true content change
+                                }
+                                localAnyUpdated = true; localCruisesMatched++; localSailingsMatched++;
                             });
                         } catch(updateErr) { dbg('Error updating cruise sailings', updateErr); }
                     });
@@ -207,6 +261,127 @@
                 return results;
             } catch(e) { dbg('hydrateIfNeeded error', e); }
         },
+        async hydrateAlways(subsetKeys) {
+            // Force hydration regardless of enriched/updatedAt age.
+            try {
+                this._ensureLoaded();
+                const keys = Array.isArray(subsetKeys) && subsetKeys.length ? subsetKeys : [];
+                if (!keys.length) { dbg('hydrateAlways: no keys provided'); return; }
+                dbg('hydrateAlways: forcing hydration for keys', keys);
+                console.log('[ItineraryCache] hydrateAlways start', keys);
+                let brandHost = 'www.royalcaribbean.com';
+                try { if (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') brandHost = App.Utils.detectBrand() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com'; } catch(e){}
+                const endpoint = `https://${brandHost}/graph`;
+                const query = 'query cruiseSearch_Cruises($filters:String,$qualifiers:String,$sort:CruiseSearchSort,$pagination:CruiseSearchPagination,$nlSearch:String){cruiseSearch(filters:$filters,qualifiers:$qualifiers,sort:$sort,pagination:$pagination,nlSearch:$nlSearch){results{cruises{id productViewLink masterSailing{itinerary{name code days{number type ports{activity arrivalTime departureTime port{code name region}}}departurePort{code name region}destination{code name}portSequence sailingNights ship{code name}totalNights type}}sailings{bookingLink id itinerary{code}sailDate startDate endDate taxesAndFees{value}taxesAndFeesIncluded stateroomClassPricing{price{value currency{code}}stateroomClass{id content{code}}}}}cruiseRecommendationId total}}}';
+                const CHUNK_SIZE = 30;
+                const chunks = [];
+                for (let i=0;i<keys.length;i+=CHUNK_SIZE) chunks.push(keys.slice(i,i+CHUNK_SIZE));
+                dbg('hydrateAlways: chunks prepared', { chunkCount: chunks.length, sizes: chunks.map(c=>c.length) });
+                let anyUpdated = false;
+                const chunkPromises = chunks.map(chunk => (async () => {
+                    let respJson = null; let status = null; let localAnyUpdated = false;
+                    let localCruisesSeen = 0; let localCruisesMatched = 0; let localCruisesSkippedNoKey = 0; let localSailingsSeen = 0; let localSailingsMatched = 0;
+                    try {
+                        const filtersValue = 'id:' + chunk.join(',');
+                        const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: CHUNK_SIZE*2, skip: 0 } } });
+                        console.log('[ItineraryCache] hydrateAlways fetch chunk', chunk);
+                        dbg('hydrateAlways: fetching chunk', { filtersValue: filtersValue.slice(0,120) + (filtersValue.length>120?'...':'') });
+                        const resp = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json', 'accept': 'application/json', 'apollographql-client-name': 'rci-NextGen-Cruise-Search', 'apollographql-query-name': 'cruiseSearch_Cruises', 'skip_authentication': 'true' }, body });
+                        status = resp.status;
+                        if (!resp.ok) { dbg('hydrateAlways: chunk fetch failed', { status }); return { localAnyUpdated, localCruisesSeen, localCruisesMatched, localCruisesSkippedNoKey, localSailingsSeen, localSailingsMatched }; }
+                        respJson = await resp.json();
+                    } catch(err) { dbg('hydrateAlways: network error', err); return { localAnyUpdated, localCruisesSeen, localCruisesMatched, localCruisesSkippedNoKey, localSailingsSeen, localSailingsMatched }; }
+                    const cruises = respJson?.data?.cruiseSearch?.results?.cruises || [];
+                    localCruisesSeen += cruises.length;
+                    cruises.forEach(c => {
+                        try {
+                            const itin = c?.masterSailing?.itinerary || {};
+                            const sailingList = Array.isArray(c?.sailings) ? c.sailings : [];
+                            if (!sailingList.length) return;
+                            sailingList.forEach(s => {
+                                localSailingsSeen++;
+                                const sailKey = s?.id?.trim();
+                                if (!sailKey || !this._cache[sailKey]) { localCruisesSkippedNoKey++; return; }
+                                const entry = this._cache[sailKey];
+                                const beforeSnapshot = JSON.stringify({
+                                    shipName: entry.shipName,
+                                    shipCode: entry.shipCode,
+                                    itineraryDescription: entry.itineraryDescription,
+                                    destinationName: entry.destinationName,
+                                    departurePortName: entry.departurePortName,
+                                    totalNights: entry.totalNights,
+                                    days: entry.days,
+                                    type: entry.type,
+                                    bookingLink: entry.bookingLink,
+                                    startDate: entry.startDate,
+                                    endDate: entry.endDate,
+                                    taxesAndFees: entry.taxesAndFees,
+                                    taxesAndFeesIncluded: entry.taxesAndFeesIncluded,
+                                    stateroomPricing: entry.stateroomPricing
+                                });
+                                entry.shipName = itin.ship?.name || entry.shipName;
+                                entry.shipCode = itin.ship?.code || entry.shipCode || '';
+                                entry.itineraryDescription = itin.name || entry.itineraryDescription;
+                                entry.destinationName = itin.destination?.name || entry.destinationName || '';
+                                entry.departurePortName = itin.departurePort?.name || entry.departurePortName || '';
+                                entry.totalNights = itin.totalNights || itin.sailingNights || entry.totalNights;
+                                entry.days = Array.isArray(itin.days) ? itin.days : entry.days;
+                                entry.type = itin.type || entry.type || '';
+                                entry.enriched = true;
+                                try { if (s && typeof s === 'object') {
+                                    if (s.bookingLink && !entry.bookingLink) entry.bookingLink = s.bookingLink;
+                                    if (s.startDate) entry.startDate = s.startDate;
+                                    if (s.endDate) entry.endDate = s.endDate;
+                                    if (s.taxesAndFees && typeof s.taxesAndFees.value === 'number') entry.taxesAndFees = s.taxesAndFees.value;
+                                    if (typeof s.taxesAndFeesIncluded === 'boolean') entry.taxesAndFeesIncluded = s.taxesAndFeesIncluded;
+                                    if (Array.isArray(s.stateroomClassPricing)) {
+                                        entry.stateroomPricing = entry.stateroomPricing || {};
+                                        s.stateroomClassPricing.forEach(p => { try {
+                                            const classId = p?.stateroomClass?.id || p?.stateroomClass?.content?.code; if (!classId) return;
+                                            const priceVal = (p && p.price && typeof p.price.value === 'number') ? p.price.value : null;
+                                            const currencyCode = p?.price?.currency?.code || null;
+                                            const simpleCode = p?.stateroomClass?.content?.code || null;
+                                            entry.stateroomPricing[classId] = { price: priceVal, currency: currencyCode, code: simpleCode };
+                                        } catch(inner){} });
+                                    }
+                                } } catch(priceErr){ dbg('hydrateAlways: pricing enrichment error', priceErr); }
+                                const afterSnapshot = JSON.stringify({
+                                    shipName: entry.shipName,
+                                    shipCode: entry.shipCode,
+                                    itineraryDescription: entry.itineraryDescription,
+                                    destinationName: entry.destinationName,
+                                    departurePortName: entry.departurePortName,
+                                    totalNights: entry.totalNights,
+                                    days: entry.days,
+                                    type: entry.type,
+                                    bookingLink: entry.bookingLink,
+                                    startDate: entry.startDate,
+                                    endDate: entry.endDate,
+                                    taxesAndFees: entry.taxesAndFees,
+                                    taxesAndFeesIncluded: entry.taxesAndFeesIncluded,
+                                    stateroomPricing: entry.stateroomPricing
+                                });
+                                entry.hydratedAt = Date.now();
+                                if (beforeSnapshot !== afterSnapshot) {
+                                    entry.updatedAt = entry.hydratedAt;
+                                }
+                                localAnyUpdated = true; localCruisesMatched++; localSailingsMatched++;
+                            });
+                        } catch(updateErr){ dbg('hydrateAlways: update error', updateErr); }
+                    });
+                    return { localAnyUpdated, localCruisesSeen, localCruisesMatched, localCruisesSkippedNoKey, localSailingsSeen, localSailingsMatched };
+                })());
+                const results = await Promise.all(chunkPromises);
+                results.forEach(r => { if (!r) return; if (r.localAnyUpdated) anyUpdated = true; });
+                if (anyUpdated) {
+                    this._persist();
+                    try { document.dispatchEvent(new CustomEvent('goboItineraryHydrated', { detail: { keys } })); } catch(e){}
+                }
+                dbg('hydrateAlways complete', { anyUpdated, keys });
+                console.log('[ItineraryCache] hydrateAlways complete', { anyUpdated, keys });
+                return results;
+            } catch(e) { dbg('hydrateAlways error', e); console.log('[ItineraryCache] hydrateAlways error', e); }
+        },
         _persist() {
             try { goboStorageSet(STORAGE_KEY, JSON.stringify(this._cache)); dbg('Cache persisted', { entries: Object.keys(this._cache).length }); } catch(e) { dbg('Persist error', e); }
         },
@@ -216,259 +391,71 @@
             try {
                 this._ensureLoaded();
                 const data = this._cache[key];
-
-                // Remove existing
                 const existing = document.getElementById('gobo-itinerary-modal');
                 if (existing) existing.remove();
-                // Remove any previous highlight left behind
                 try { document.querySelectorAll('.gobo-itinerary-highlight').forEach(el=>el.classList.remove('gobo-itinerary-highlight')); } catch(e){}
-
-                // Determine row to highlight (prefer provided source element)
                 let rowToHighlight = null;
                 try {
-                    if (sourceEl && sourceEl instanceof Element) {
-                        rowToHighlight = sourceEl.closest ? sourceEl.closest('tr') || sourceEl : sourceEl;
-                    }
-                    if (!rowToHighlight) {
-                        const cell = document.getElementById(key);
-                        if (cell) rowToHighlight = cell.closest ? cell.closest('tr') : null;
-                    }
-                } catch(e) { rowToHighlight = null; }
-
-                // Inject highlight style if not present
+                    if (sourceEl && sourceEl instanceof Element) rowToHighlight = sourceEl.closest ? sourceEl.closest('tr') || sourceEl : sourceEl;
+                    if (!rowToHighlight) { const cell = document.getElementById(key); if (cell) rowToHighlight = cell.closest ? cell.closest('tr') : null; }
+                } catch(e){}
                 try {
                     if (!document.getElementById('gobo-itinerary-highlight-style')) {
                         const style = document.createElement('style');
                         style.id = 'gobo-itinerary-highlight-style';
                         style.textContent = `
-                            .gobo-itinerary-highlight { 
-                                animation: gobo-itin-flash 1s ease-in-out; 
-                                background: rgba(255,245,170,0.9) !important; 
-                                transition: background 0.3s ease-in-out, box-shadow 0.3s ease-in-out; 
-                                box-shadow: 0 0 0 3px rgba(255,230,120,0.4) inset; 
-                            }
-                            @keyframes gobo-itin-flash { 0% { background: rgba(255,245,170,0.0); } 30% { background: rgba(255,245,170,0.95); } 100% { background: rgba(255,245,170,0.9); } }
+                            .gobo-itinerary-highlight { animation: gobo-itin-flash 1s ease-in-out; background: rgba(255,245,170,0.9) !important; transition: background .3s, box-shadow .3s; box-shadow: 0 0 0 3px rgba(255,230,120,0.4) inset; }
+                            @keyframes gobo-itin-flash { 0% { background: rgba(255,245,170,0.0);} 30% { background: rgba(255,245,170,0.95);} 100% { background: rgba(255,245,170,0.9);} }
                         `;
                         document.head.appendChild(style);
                     }
-                } catch(e) { /* ignore style injection errors */ }
-
-                // Apply highlight and scroll into view
-                // Keep highlight until user explicitly clicks a different itinerary row.
-                // We still remove any previous highlight at the start of showModal so
-                // clicking another row will clear the previous one.
-                const applyHighlight = () => {
-                    try {
-                        if (rowToHighlight && rowToHighlight.classList) {
-                            rowToHighlight.classList.add('gobo-itinerary-highlight');
-                            try { rowToHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e){}
-                        }
-                    } catch(e){}
-                };
-                // No auto-cleanup here. The highlight persists until a new row is clicked
-                // (which triggers showModal and clears previous highlights at the top).
-                if (rowToHighlight) applyHighlight();
-
-                if (!data) {
-                    dbg('showModal: no data for key', key);
-                    try { if (typeof App !== 'undefined' && App.ErrorHandler && typeof App.ErrorHandler.showError === 'function') { App.ErrorHandler.showError('Itinerary details are not available for this sailing. (Ghost offer!)\nThis offer cannot be redeemed online. You will need to call to book this offer.'); } } catch(e) { /* ignore toast error */ }
-                    return;
-                }
-
-                // Backdrop
-                const backdrop = document.createElement('div');
-                backdrop.id = 'gobo-itinerary-modal';
-                backdrop.className = 'gobo-itinerary-backdrop';
-                // Do not remove the highlight when the modal is closed — leave it until user clicks another row.
-                backdrop.addEventListener('click', (e)=> { if (e.target === backdrop) { backdrop.remove(); } });
-                // Panel
-                const panel = document.createElement('div');
-                panel.className = 'gobo-itinerary-panel';
-                // Close button
-                const closeBtn = document.createElement('button');
-                closeBtn.type = 'button';
-                closeBtn.className = 'gobo-itinerary-close';
-                closeBtn.textContent = '\u00d7';
-                closeBtn.setAttribute('aria-label','Close');
-                // Closing the modal should not clear the highlight — highlight stays until another row is clicked.
-                closeBtn.addEventListener('click', ()=> { backdrop.remove(); });
-                panel.appendChild(closeBtn);
-                // Title
-                const title = document.createElement('h2');
-                title.className = 'gobo-itinerary-title';
-                title.textContent = `${data.itineraryDescription || 'Itinerary'} (${data.totalNights || '?'} nights)`;
-                panel.appendChild(title);
-                // Subtitle
-                const subtitle = document.createElement('div');
-                subtitle.className = 'gobo-itinerary-subtitle';
-                subtitle.textContent = `${data.shipName || ''} • ${data.departurePortName || ''} • ${data.sailDate || ''}`;
-                panel.appendChild(subtitle);
-                // Booking link
-                if (data.bookingLink) {
-                    const linkWrap = document.createElement('div');
-                    const a = document.createElement('a');
-                    const host = (function(){ try { if (App && App.Utils && typeof App.Utils.detectBrand === 'function') return App.Utils.detectBrand() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com'; } catch(e){} return 'www.royalcaribbean.com'; })();
-                    a.href = `https://${host}${data.bookingLink}`;
-                    a.target = '_blank';
-                    a.rel = 'noopener noreferrer';
-                    a.textContent = 'Open Retail Booking Page';
-                    a.className = 'gobo-itinerary-link';
-                    linkWrap.appendChild(a);
-                    panel.appendChild(linkWrap);
-                }
-                // Pricing
+                } catch(e){}
+                if (rowToHighlight) { try { rowToHighlight.classList.add('gobo-itinerary-highlight'); rowToHighlight.scrollIntoView({ behavior:'smooth', block:'center'}); } catch(e){} }
+                if (!data) { dbg('showModal: no data for key', key); try { if (typeof App !== 'undefined' && App.ErrorHandler && typeof App.ErrorHandler.showError === 'function') App.ErrorHandler.showError('Itinerary details are not available for this sailing. (Ghost offer!)\nThis offer cannot be redeemed online. You will need to call to book this offer.'); } catch(e){} return; }
+                const backdrop = document.createElement('div'); backdrop.id='gobo-itinerary-modal'; backdrop.className='gobo-itinerary-backdrop'; backdrop.addEventListener('click',(e)=>{ if(e.target===backdrop) backdrop.remove(); });
+                const panel = document.createElement('div'); panel.className='gobo-itinerary-panel';
+                const closeBtn = document.createElement('button'); closeBtn.type='button'; closeBtn.className='gobo-itinerary-close'; closeBtn.textContent='\u00d7'; closeBtn.setAttribute('aria-label','Close'); closeBtn.addEventListener('click',()=>backdrop.remove()); panel.appendChild(closeBtn);
+                const refreshBtn = document.createElement('button'); refreshBtn.type='button'; refreshBtn.className='gobo-itinerary-refresh'; refreshBtn.textContent='\u21bb'; refreshBtn.setAttribute('aria-label','Refresh itinerary data'); refreshBtn.title='Refresh itinerary data';
+                refreshBtn.addEventListener('click', async (evt)=>{ evt.preventDefault(); if (refreshBtn.classList.contains('loading')) return; refreshBtn.classList.add('loading'); console.log('[ItineraryCache] refresh clicked', key); try { if (typeof ItineraryCache.hydrateAlways === 'function') { await ItineraryCache.hydrateAlways([key]); } else { await ItineraryCache.hydrateIfNeeded([key]); } } catch(err){ dbg('Refresh hydrate error', err); console.log('[ItineraryCache] refresh error', err); } refreshBtn.classList.remove('loading'); try { ItineraryCache.showModal(key, sourceEl); } catch(e){ dbg('Re-render after refresh failed', e); } }); panel.appendChild(refreshBtn);
+                const title = document.createElement('h2'); title.className='gobo-itinerary-title'; title.textContent=`${data.itineraryDescription || 'Itinerary'} (${data.totalNights || '?'} nights)`; panel.appendChild(title);
+                const subtitle = document.createElement('div'); subtitle.className='gobo-itinerary-subtitle'; subtitle.textContent=`${data.shipName || ''} • ${data.departurePortName || ''} • ${data.sailDate || ''}`; panel.appendChild(subtitle);
+                if (data.bookingLink) { const linkWrap=document.createElement('div'); const a=document.createElement('a'); const host=(function(){ try { if (App && App.Utils && typeof App.Utils.detectBrand==='function') return App.Utils.detectBrand()==='C'? 'www.celebritycruises.com':'www.royalcaribbean.com'; } catch(e){} return 'www.royalcaribbean.com'; })(); a.href=`https://${host}${data.bookingLink}`; a.target='_blank'; a.rel='noopener noreferrer'; a.textContent='Open Retail Booking Page'; a.className='gobo-itinerary-link'; linkWrap.appendChild(a); panel.appendChild(linkWrap); }
                 const priceKeys = Object.keys(data.stateroomPricing || {});
                 if (priceKeys.length) {
-                    const priceTitle = document.createElement('h3');
-                    priceTitle.className = 'gobo-itinerary-section-title';
-                    priceTitle.textContent = 'Stateroom Pricing';
-                    panel.appendChild(priceTitle);
-                    const pTable = document.createElement('table');
-                    pTable.className = 'gobo-itinerary-table';
-                    const thead = document.createElement('thead'); const thr = document.createElement('tr');
-                    ['Class','Price','Currency'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; thr.appendChild(th); });
-                    thead.appendChild(thr); pTable.appendChild(thead);
-                    const tb = document.createElement('tbody');
-                    // Mapping of short/various codes to friendly display names (what user sees)
-                    const codeMap = {
-                        I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior',
-                        O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View',
-                        B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony',
-                        D:'Suite', DLX:'Suite', DELUXE:'Suite', JS:'Suite', SU:'Suite', SUITE:'Suite'
-                    };
-                    // Canonical base category mapping used purely for sorting (do NOT change display names)
-                    const baseCategoryMap = {
-                        I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
-                        O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
-                        B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
-                        D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE'
-                    };
-                    function resolveDisplay(codeOrId){
-                        const raw = (codeOrId||'').toString().trim();
-                        const upper = raw.toUpperCase();
-                        return codeMap[upper] || raw;
-                    }
-                    function resolveCategory(codeOrId){
-                        const raw = (codeOrId||'').toString().trim();
-                        const upper = raw.toUpperCase();
-                        if (baseCategoryMap[upper]) return baseCategoryMap[upper];
-                        if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(upper)) return upper; // already canonical
-                        return null;
-                    }
-                    const sortOrder = { INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3 };
-                    priceKeys.sort((a,b)=>{
-                        const aRaw = data.stateroomPricing[a]?.code || a;
-                        const bRaw = data.stateroomPricing[b]?.code || b;
-                        const aCat = resolveCategory(aRaw);
-                        const bCat = resolveCategory(bRaw);
-                        const aRank = (aCat && aCat in sortOrder) ? sortOrder[aCat] : 100;
-                        const bRank = (bCat && bCat in sortOrder) ? sortOrder[bCat] : 100;
-                        if (aRank !== bRank) return aRank - bRank;
-                        // Same rank (either same category or both unknown) -> compare display labels alphabetically
-                        const aDisp = resolveDisplay(aRaw).toUpperCase();
-                        const bDisp = resolveDisplay(bRaw).toUpperCase();
-                        return aDisp.localeCompare(bDisp);
-                    });
-                    priceKeys.forEach(k=>{ const pr=data.stateroomPricing[k]; const tr=document.createElement('tr');
-                        const rawCode = pr.code || k || '';
-                        const classLabel = resolveDisplay(rawCode);
-                        const hasPrice = (typeof pr.price === 'number');
-                        // Prices returned are per-person for double occupancy; display should show total for two people.
-                        const priceVal = hasPrice ? (Number(pr.price) * 2).toFixed(2) : 'Sold Out';
-                        const currency = hasPrice ? (pr.currency || '') : '';
-                        [classLabel, priceVal, currency].forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if(i===1 && hasPrice) td.style.textAlign='right'; td.title = rawCode; if(i===1 && !hasPrice) td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
-                        tb.appendChild(tr); });
-                    pTable.appendChild(tb); panel.appendChild(pTable);
-                    if (data.taxesAndFees != null) {
-                        const tf = document.createElement('div');
-                        tf.className = 'gobo-itinerary-taxes';
-                        // Taxes/fees are per-person; show doubled amount for two people
-                        const taxesAmount = (typeof data.taxesAndFees === 'number') ? (Number(data.taxesAndFees) * 2) : data.taxesAndFees;
-                        const taxesText = (typeof taxesAmount === 'number') ? taxesAmount.toFixed(2) : taxesAmount;
-                        tf.textContent = `Taxes & Fees: ${taxesText} ${Object.values(data.stateroomPricing)[0]?.currency || ''} (${data.taxesAndFeesIncluded? 'Included' : 'Additional'}) - Prices are cheapest rate in category for two guests in a double-occupancy room.`;
-                        panel.appendChild(tf);
-                    }
+                    const priceTitle=document.createElement('h3'); priceTitle.className='gobo-itinerary-section-title'; priceTitle.textContent='Stateroom Pricing'; panel.appendChild(priceTitle);
+                    const pTable=document.createElement('table'); pTable.className='gobo-itinerary-table'; const thead=document.createElement('thead'); const thr=document.createElement('tr'); ['Class','Price','Currency'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; thr.appendChild(th); }); thead.appendChild(thr); pTable.appendChild(thead); const tbody=document.createElement('tbody');
+                    const codeMap={I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior', O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View', B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony', D:'Suite', DLX:'Suite', DELUXE:'Suite', JS:'Suite', SU:'Suite', SUITE:'Suite'};
+                    const baseCategoryMap={I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR', O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE', B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY', D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE'};
+                    function resolveDisplay(raw){ raw=(raw||'').toString().trim(); return codeMap[raw.toUpperCase()]||raw; }
+                    function resolveCategory(raw){ raw=(raw||'').toString().trim(); const up=raw.toUpperCase(); if (baseCategoryMap[up]) return baseCategoryMap[up]; if(['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
+                    const sortOrder={INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3};
+                    priceKeys.sort((a,b)=>{ const aRaw=data.stateroomPricing[a]?.code||a; const bRaw=data.stateroomPricing[b]?.code||b; const aCat=resolveCategory(aRaw); const bCat=resolveCategory(bRaw); const aRank=aCat!=null && aCat in sortOrder? sortOrder[aCat]:100; const bRank=bCat!=null && bCat in sortOrder? sortOrder[bCat]:100; if (aRank!==bRank) return aRank-bRank; return resolveDisplay(aRaw).toUpperCase().localeCompare(resolveDisplay(bRaw).toUpperCase()); });
+                    priceKeys.forEach(k=>{ const pr=data.stateroomPricing[k]; const tr=document.createElement('tr'); const rawCode=pr.code||k||''; const label=resolveDisplay(rawCode); const hasPrice=typeof pr.price==='number'; const priceVal=hasPrice? (Number(pr.price)*2).toFixed(2):'Sold Out'; const currency=hasPrice? (pr.currency||''):''; [label, priceVal, currency].forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if(i===1 && hasPrice) td.style.textAlign='right'; td.title=rawCode; if(i===1 && !hasPrice) td.className='gobo-itinerary-soldout'; tr.appendChild(td); }); tbody.appendChild(tr); });
+                    pTable.appendChild(tbody); panel.appendChild(pTable);
+                    if (data.taxesAndFees != null) { const tf=document.createElement('div'); tf.className='gobo-itinerary-taxes'; const taxesAmount=typeof data.taxesAndFees==='number'? (Number(data.taxesAndFees)*2):data.taxesAndFees; const taxesText=typeof taxesAmount==='number'? taxesAmount.toFixed(2):taxesAmount; tf.textContent=`Taxes & Fees: ${taxesText} ${Object.values(data.stateroomPricing)[0]?.currency||''} (${data.taxesAndFeesIncluded? 'Included':'Additional'}) - Prices are cheapest rate in category for two guests in a double-occupancy room.`; panel.appendChild(tf); }
                 }
-                // Day-by-day
                 if (Array.isArray(data.days) && data.days.length) {
-                    const dayTitle = document.createElement('h3');
-                    dayTitle.className = 'gobo-itinerary-section-title';
-                    dayTitle.textContent = 'Day-by-Day';
-                    panel.appendChild(dayTitle);
-                    const dTable = document.createElement('table');
-                    dTable.className = 'gobo-itinerary-table';
-                    const dh = document.createElement('thead'); const dhr=document.createElement('tr');
-                    // Add Day of Week and Date columns to show absolute calendar info for each sailing day
-                    ['Day','Day of Week','Date','Type','Port','Arrival','Departure'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; dhr.appendChild(th); });
-                    dh.appendChild(dhr); dTable.appendChild(dh);
-                    const db = document.createElement('tbody');
-                    data.days.forEach(day => { try { const tr=document.createElement('tr');
-                        // Compute calendar date for this day if startDate or sailDate is available.
-                        // Parse dates using the YYYY-MM-DD prefix (if present) and treat them as UTC dates
-                        // so local timezone offsets don't change the calendar day.
-                        let baseDateStr = data.startDate || data.sailDate || null;
-                        let computedDate = null;
-                        try {
-                            if (baseDateStr) {
-                                // Helper: construct a UTC date from a date string. Prefer the YYYY-MM-DD prefix
-                                function utcDateFromDateString(ds) {
-                                    if (!ds || typeof ds !== 'string') return null;
-                                    const m = ds.match(/^(\d{4})-(\d{2})-(\d{2})/);
-                                    if (m) {
-                                        const y = parseInt(m[1], 10);
-                                        const mo = parseInt(m[2], 10) - 1;
-                                        const d = parseInt(m[3], 10);
-                                        return new Date(Date.UTC(y, mo, d));
-                                    }
-                                    // Fallback: attempt to parse then normalize to the parsed date's Y/M/D in UTC
-                                    const parsed = new Date(ds);
-                                    if (isNaN(parsed.getTime())) return null;
-                                    return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
-                                }
-                                const baseUtc = utcDateFromDateString(baseDateStr);
-                                if (baseUtc) {
-                                    // day.number is typically 1-based; subtract 1 to offset from start date
-                                    const offset = (day && day.number && !isNaN(Number(day.number))) ? (Number(day.number) - 1) : 0;
-                                    computedDate = new Date(baseUtc);
-                                    // Use UTC methods to avoid timezone-shifts
-                                    computedDate.setUTCDate(computedDate.getUTCDate() + offset);
-                                }
-                            }
-                        } catch(e) { computedDate = null; }
-                        // Use UTC-based weekday so local timezone won't change the calendar day
-                        const dow = computedDate ? new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' }).format(computedDate) : '';
-                        // Use UTC-based formatting to keep the calendar day consistent across timezones.
-                        const dateFormatted = computedDate ? new Intl.DateTimeFormat(undefined, { year:'numeric', month:'short', day:'numeric', timeZone: 'UTC' }).format(computedDate) : '';
-                        const ports = Array.isArray(day.ports)? day.ports : [];
-                        let activity = ''; let arrival=''; let departure='';
-                        if (ports.length) {
-                            const p = ports[0];
-                            activity = (p.port && p.port.name) || '';
-                            arrival = p.arrivalTime || '';
-                            departure = p.departureTime || '';
-                        }
-                        const dayLabel = (day && (day.number != null)) ? String(day.number) : '';
-                        const cells = [dayLabel, dow, dateFormatted, day.type || '', activity, arrival, departure];
-                        cells.forEach(c=>{ const td=document.createElement('td'); td.textContent=c==null? '' : c; tr.appendChild(td); });
-                        db.appendChild(tr); } catch(inner){ /* ignore */ } });
+                    const dayTitle=document.createElement('h3'); dayTitle.className='gobo-itinerary-section-title'; dayTitle.textContent='Day-by-Day'; panel.appendChild(dayTitle);
+                    const dTable=document.createElement('table'); dTable.className='gobo-itinerary-table'; const dh=document.createElement('thead'); const dhr=document.createElement('tr'); ['Day','Day of Week','Date','Type','Port','Arrival','Departure'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; dhr.appendChild(th); }); dh.appendChild(dhr); dTable.appendChild(dh); const db=document.createElement('tbody');
+                    data.days.forEach(day=>{ try { const tr=document.createElement('tr'); let baseDateStr=data.startDate||data.sailDate||null; let computedDate=null; try { if (baseDateStr){ function utcDate(ds){ if(!ds||typeof ds!=='string') return null; const m=ds.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m){ return new Date(Date.UTC(+m[1], +m[2]-1, +m[3])); } const parsed=new Date(ds); if(isNaN(parsed.getTime())) return null; return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())); } const startUtc=utcDate(baseDateStr); if(startUtc){ const offset=(day && day.number && !isNaN(Number(day.number)))? Number(day.number)-1:0; computedDate=new Date(startUtc); computedDate.setUTCDate(computedDate.getUTCDate()+offset); } } } catch(e){}
+                        const dow=computedDate? new Intl.DateTimeFormat(undefined,{ weekday:'short', timeZone:'UTC'}).format(computedDate):'';
+                        const dateFmt=computedDate? new Intl.DateTimeFormat(undefined,{ year:'numeric', month:'short', day:'numeric', timeZone:'UTC'}).format(computedDate):'';
+                        const ports=Array.isArray(day.ports)? day.ports:[]; let activity=''; let arrival=''; let departure=''; if(ports.length){ const p=ports[0]; activity=(p.port && p.port.name)||''; arrival=p.arrivalTime||''; departure=p.departureTime||''; }
+                        const dayLabel=(day && day.number!=null)? String(day.number):'';
+                        [dayLabel,dow,dateFmt,day.type||'',activity,arrival,departure].forEach(val=>{ const td=document.createElement('td'); td.textContent=val||''; tr.appendChild(td); });
+                        db.appendChild(tr); } catch(inner){} });
                     dTable.appendChild(db); panel.appendChild(dTable);
                 }
-                // Offer codes
-                if (Array.isArray(data.offerCodes) && data.offerCodes.length) {
-                    const oc = document.createElement('div');
-                    oc.className = 'gobo-itinerary-offercodes';
-                    oc.textContent = 'Offer Codes: ' + data.offerCodes.join(', ');
-                    panel.appendChild(oc);
-                }
-                // Footer
-                const footer = document.createElement('div');
-                footer.className = 'gobo-itinerary-footer';
-                footer.textContent = 'Itinerary data last updated ' + (data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '');
+                if (Array.isArray(data.offerCodes) && data.offerCodes.length) { const oc=document.createElement('div'); oc.className='gobo-itinerary-offercodes'; oc.textContent='Offer Codes: ' + data.offerCodes.join(', '); panel.appendChild(oc); }
+                const footer=document.createElement('div'); footer.className='gobo-itinerary-footer';
+                const updatedStr=data.updatedAt? new Date(data.updatedAt).toLocaleString():'N/A';
+                const hydratedStr=data.hydratedAt? new Date(data.hydratedAt).toLocaleString():updatedStr;
+                footer.textContent=(data.hydratedAt && data.updatedAt && data.hydratedAt!==data.updatedAt)? `Data updated ${updatedStr} • Last refreshed ${hydratedStr}` : `Itinerary data last updated ${updatedStr}`;
                 panel.appendChild(footer);
-                backdrop.appendChild(panel);
-                document.body.appendChild(backdrop);
-            } catch(e) { dbg('showModal error', e); }
+                backdrop.appendChild(panel); document.body.appendChild(backdrop);
+            } catch(e){ dbg('showModal error', e); }
         }
     };
-    try { window.ItineraryCache = ItineraryCache; dbg('ItineraryCache exposed'); } catch(e) { /* ignore */ }
+    try { window.ItineraryCache = ItineraryCache; dbg('ItineraryCache exposed'); } catch(e){}
 })();
+
