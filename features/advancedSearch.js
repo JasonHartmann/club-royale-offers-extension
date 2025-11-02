@@ -63,7 +63,7 @@ const AdvancedSearch = {
                 return;
             }
             const allowedOps = new Set(['in', 'not in', 'contains', 'not contains']);
-            const restored = Array.isArray(parsed.predicates) ? parsed.predicates
+            state.advancedSearch.predicates = (Array.isArray(parsed.predicates) ? parsed.predicates
                 .filter(p => p && p.fieldKey && p.operator)
                 .map(p => {
                     let op = (p.operator || '').toLowerCase();
@@ -76,13 +76,11 @@ const AdvancedSearch = {
                         complete: !!p.complete
                     };
                 })
-                .filter(p => allowedOps.has(p.operator)) : [];
-            state.advancedSearch.predicates = restored;
+                .filter(p => allowedOps.has(p.operator)) : []);
             state._advRestoredProfiles.add(state.selectedProfileKey);
             setTimeout(() => {
                 try {
                     this.renderPredicates(state);
-                    // Fallback: if committed predicates exist but no boxes (headers may not be ready yet), inject summary boxes.
                     const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
                     const body = panel ? panel.querySelector('.adv-search-body') : null;
                     if (panel && body) {
@@ -90,7 +88,7 @@ const AdvancedSearch = {
                         const boxCount = body.querySelectorAll('.adv-predicate-box').length;
                         if (committedCount && boxCount === 0) {
                             this.renderCommittedFallback(state, body);
-                            this.ensureAddFieldDropdown(state); // ensure dropdown present too
+                            this.ensureAddFieldDropdown(state);
                         }
                     }
                 } catch (e) { /* ignore */ }
@@ -132,16 +130,49 @@ const AdvancedSearch = {
                     if (raw == null) return;
                     const norm = Filtering.normalizePredicateValue(raw, fieldKey);
                     if (!norm) return;
-                    set.add(norm);
-                } catch (e) { /* ignore row errors */
-                }
+                    // Use original (raw) casing for display, but dedupe by normalized form
+                    // If an equivalent (case-insensitive) already present, skip adding duplicate display variant
+                    if (![...set].some(existing => Filtering.normalizePredicateValue(existing, fieldKey) === norm)) {
+                        set.add(raw);
+                    }
+                } catch (e) { /* ignore row errors */ }
             });
-            const arr = Array.from(set).sort((a, b) => a.localeCompare(b));
+            let arr;
+            if (fieldKey === 'departureDayOfWeek') {
+                // Natural week ordering instead of default alphabetical
+                const weekOrder = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                const present = new Set(Array.from(set));
+                arr = weekOrder.filter(d => present.has(d));
+                // Any unexpected tokens (e.g., '-') appended at end, stable alphabetical for those only
+                const extras = Array.from(present).filter(v => !weekOrder.includes(v));
+                if (extras.length) arr = arr.concat(extras.sort((a,b)=>a.localeCompare(b)));
+            } else {
+                arr = Array.from(set).sort((a, b) => a.localeCompare(b));
+            }
             state._advFieldCache[cacheKey] = arr;
             return arr;
         } catch (e) {
             return [];
         }
+    },
+    enterEditMode(pred, state) {
+        try {
+            if (!pred || !state?.advancedSearch?.enabled) return;
+            if (!pred.complete) return; // already in edit mode
+            // Transition to incomplete to show operator/value editors
+            pred.complete = false;
+            // Schedule preview highlight
+            this.schedulePreview(state, pred, true);
+            // Focus predicate box after render
+            state._advFocusPredicateId = pred.id;
+            // Re-render UI
+            this.renderPredicates(state);
+            // Remove predicate from active filtering immediately (light refresh without spinner)
+            try { this.lightRefresh(state, { showSpinner: false }); } catch(e){ /* ignore */ }
+            // Update badge and persist new state
+            this.updateBadge(state);
+            this.debouncedPersist(state);
+        } catch(e){ /* ignore */ }
     },
     renderPredicateValueChips(box, pred, state) {
         const chipsWrap = document.createElement('div');
@@ -151,18 +182,28 @@ const AdvancedSearch = {
             const chip = document.createElement('span');
             chip.className = 'adv-chip';
             chip.textContent = val;
+            // If predicate is committed (complete), clicking the chip (not the remove button) should enter edit mode.
+            if (pred.complete) {
+                chip.title = 'Click to edit this filter';
+                chip.addEventListener('click', (e) => {
+                    if (e.target && e.target.classList && e.target.classList.contains('adv-chip-remove')) return;
+                    e.stopPropagation();
+                    this.enterEditMode(pred, state);
+                });
+            }
             // removed inline chip style
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.textContent = '\u2715';
             remove.className = 'adv-chip-remove'; // CSS targets .adv-chip button already; semantic alias
             // removed inline remove button styles
-            remove.addEventListener('click', () => {
+            remove.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent parent chip or box click from triggering edit mode
                 const idx = pred.values.indexOf(val);
                 if (idx !== -1) pred.values.splice(idx, 1);
                 pred.values = pred.values.slice();
                 if (pred.complete) {
-                    if (!pred.values.length) pred.complete = false;
+                    if (!pred.values.length) pred.complete = false; // becomes editable if all values removed
                     // Committed predicate changed: refresh with spinner
                     this.lightRefresh(state, { showSpinner: true });
                 } else {
@@ -170,6 +211,7 @@ const AdvancedSearch = {
                     this.schedulePreview(state, pred, true);
                 }
                 AdvancedSearch.renderPredicates(state);
+                AdvancedSearch.debouncedPersist(state);
             });
             chip.appendChild(remove);
             chipsWrap.appendChild(chip);
@@ -268,6 +310,17 @@ const AdvancedSearch = {
                     if (state._advPreviewPredicateId === pred.id) box.classList.add('adv-predicate-preview');
                     box.setAttribute('data-predicate-id', pred.id);
                     box.tabIndex = -1;
+                    // Box click enters edit mode if predicate is complete (excluding clicks on interactive controls)
+                    if (pred.complete) {
+                        box.title = 'Click to edit filter';
+                        box.addEventListener('click', (e) => {
+                            const t = e.target;
+                            if (!t) return;
+                            if (t.closest('button.adv-delete-btn') || t.closest('button.adv-chip-remove')) return; // ignore delete/remove
+                            e.stopPropagation();
+                            this.enterEditMode(pred, state);
+                        });
+                    }
                     const label = document.createElement('span');
                     label.className = 'adv-predicate-field-label';
                     label.textContent = fieldMeta ? fieldMeta.label : pred.fieldKey;
@@ -332,7 +385,7 @@ const AdvancedSearch = {
                     } else if (pred.complete) {
                         const summary = document.createElement('span'); summary.textContent = pred.operator; summary.className='adv-summary'; box.appendChild(summary); this.renderPredicateValueChips(box,pred,state);
                     }
-                    const del = document.createElement('button'); del.type='button'; del.textContent='\u2716'; del.setAttribute('aria-label','Delete filter'); del.className='adv-delete-btn'; del.addEventListener('click', () => { const idx = state.advancedSearch.predicates.findIndex(p=>p.id===pred.id); if (idx!==-1) state.advancedSearch.predicates.splice(idx,1); if (state._advPreviewPredicateId===pred.id){ state._advPreviewPredicateId=null; if(state._advPreviewTimer){ clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; } } const nextIncomplete = state.advancedSearch.predicates.find(p=>!p.complete); if (nextIncomplete) this.schedulePreview(state,nextIncomplete); try{ this.lightRefresh(state,{showSpinner:true}); }catch(e){} try{ this.renderPredicates(state);}catch(e){} if (state.advancedSearch.enabled && state.advancedSearch.predicates.length===0){ setTimeout(()=>{ try{ const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); }catch(e){} },0);} this.debouncedPersist(state); }); box.appendChild(del);
+                    const del = document.createElement('button'); del.type='button'; del.textContent='\u2716'; del.setAttribute('aria-label','Delete filter'); del.className='adv-delete-btn'; del.addEventListener('click', (e) => { e.stopPropagation(); const idx = state.advancedSearch.predicates.findIndex(p=>p.id===pred.id); if (idx!==-1) state.advancedSearch.predicates.splice(idx,1); if (state._advPreviewPredicateId===pred.id){ state._advPreviewPredicateId=null; if(state._advPreviewTimer){ clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; } } const nextIncomplete = state.advancedSearch.predicates.find(p=>!p.complete); if (nextIncomplete) this.schedulePreview(state,nextIncomplete); try{ this.lightRefresh(state,{showSpinner:true}); }catch(e){} try{ this.renderPredicates(state);}catch(e){} if (state.advancedSearch.enabled && state.advancedSearch.predicates.length===0){ setTimeout(()=>{ try{ const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); }catch(err){} },0);} this.debouncedPersist(state); }); box.appendChild(del);
                     body.appendChild(box); renderedAny = true;
                 } catch(perr){ console.warn('[AdvancedSearch] predicate render error', perr); }
             });
@@ -556,7 +609,6 @@ const AdvancedSearch = {
             if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return;
             const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
             if (!panel) return;
-            const body = panel.querySelector('.adv-search-body');
             const headerCount = Array.isArray(state.headers) ? state.headers.filter(h=>h && h.key && h.label).length : 0;
             if (headerCount > 2) { this._logDebug('scheduleRerenderIfColumnsPending:headersReadyNoAction', { headerCount }); return; }
             if (state._advRerenderPolling) { this._logDebug('scheduleRerenderIfColumnsPending:alreadyPolling'); return; }
@@ -566,7 +618,7 @@ const AdvancedSearch = {
                 try {
                     const hc = Array.isArray(state.headers) ? state.headers.filter(h=>h && h.key && h.label).length : 0;
                     state._advRerenderPolling.lastHeaderCount = hc;
-                    const done = hc > 2 || state._advRerenderPolling.attempts >= 12; // ~12 * 120ms ≈ 1.4s
+                    const done = hc > 2 || state._advRerenderPolling.attempts >= 12;
                     this._logDebug('scheduleRerenderIfColumnsPending:poll', { attempt: state._advRerenderPolling.attempts, headerCount: hc, done });
                     if (hc > 2) {
                         delete state._advRerenderPolling;
@@ -590,7 +642,7 @@ const AdvancedSearch = {
     _attachRenderCompleteHookOnce() {
         if (AdvancedSearch._renderCompleteHookAttached) return;
         try {
-            document.addEventListener('tableRenderComplete', (ev) => {
+            document.addEventListener('tableRenderComplete', () => {
                 try {
                     const state = App?.TableRenderer?.lastState;
                     if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return;
@@ -620,7 +672,7 @@ const AdvancedSearch = {
                 try { Spinner.showSpinner(); this._logDebug('lightRefresh:spinnerShown'); } catch(e){ this._logDebug('lightRefresh:spinnerShowError', e); }
                 spinnerSessionId = Date.now().toString(36)+Math.random().toString(36).slice(2);
                 AdvancedSearch._activeSpinnerSession = spinnerSessionId;
-                const listener = (ev) => {
+                const listener = () => {
                     try {
                         if (AdvancedSearch._activeSpinnerSession !== spinnerSessionId) return;
                         Spinner.hideSpinner && Spinner.hideSpinner();
