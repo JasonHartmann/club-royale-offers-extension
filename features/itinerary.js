@@ -17,8 +17,8 @@
         // Returns { type:'ITIN'|'SHIPDATE'|null, itineraryCode:null|string, shipCode:null|string, sailDate:null|string }
         if (typeof key !== 'string') return {type: null, itineraryCode: null, shipCode: null, sailDate: null};
         if (key.startsWith('IC_')) {
+            // Support retained only for legacy entries; new itineraryCode keys are no longer generated.
             const raw = key.slice(3); // remove IC_
-            // Find terminal YYYY-MM-DD pattern
             const m = raw.match(/(\d{4}-\d{2}-\d{2})$/);
             if (!m) return {type: 'ITIN', itineraryCode: raw, shipCode: null, sailDate: null};
             const sailDate = m[1];
@@ -51,37 +51,13 @@
                         this._cache = {};
                     }
                     dbg('Loaded cache from storage', {entries: Object.keys(this._cache).length});
-                    // Backward compatibility key normalization: convert legacy composite keys <itineraryCode>_<sailDate> lacking prefix
+                    // Purge legacy itineraryCode composite keys (IC_) – we no longer support them.
                     try {
-                        const legacyKeys = Object.keys(this._cache).filter(k => !k.startsWith('IC_') && !k.startsWith('SD_') && k.includes('_'));
-                        legacyKeys.forEach(oldKey => {
-                            const entry = this._cache[oldKey];
-                            if (!entry) return;
-                            // Heuristic: last 3 parts might form YYYY-MM-DD (allow underscores elsewhere inside itineraryCode if any)
-                            const dateMatch = oldKey.match(/(\d{4}-\d{2}-\d{2})$/);
-                            if (dateMatch && entry && entry.sailDate) {
-                                const sailDate = entry.sailDate || dateMatch[1];
-                                const itinCode = entry.itineraryCode || oldKey.replace('_' + sailDate, '');
-                                const shipCode = entry.shipCode || '';
-                                let newKey = null;
-                                let keyType = null;
-                                if (itinCode) {
-                                    newKey = `IC_${itinCode}_${sailDate}`;
-                                    keyType = 'ITIN';
-                                } else if (shipCode) {
-                                    newKey = `SD_${shipCode}_${sailDate}`;
-                                    keyType = 'SHIPDATE';
-                                }
-                                if (newKey && !this._cache[newKey]) {
-                                    entry.keyType = keyType;
-                                    this._cache[newKey] = entry;
-                                    delete this._cache[oldKey];
-                                    dbg('Migrated legacy key', {oldKey, newKey});
-                                }
-                            }
-                        });
-                    } catch (migErr) {
-                        dbg('Legacy key migration error', migErr);
+                        const legacyItinKeys = Object.keys(this._cache).filter(k => k.startsWith('IC_'));
+                        legacyItinKeys.forEach(k => delete this._cache[k]);
+                        if (legacyItinKeys.length) dbg('Purged legacy itineraryCode keys', {count: legacyItinKeys.length});
+                    } catch (purgeErr) {
+                        dbg('Legacy itinerary purge error', purgeErr);
                     }
                 } else {
                     dbg('No existing cache found in storage');
@@ -113,7 +89,6 @@
                         sailingsProcessed++;
                         try {
                             const rawId = s?.id && String(s.id).trim();
-                            const itineraryCode = (s && s.itineraryCode) ? String(s.itineraryCode).trim() : '';
                             const sailDate = (s && s.sailDate) ? String(s.sailDate).trim() : '';
                             const shipCode = s?.shipCode ? String(s.shipCode).trim() : '';
                             let key = null;
@@ -121,26 +96,23 @@
                             if (rawId) {
                                 key = rawId;
                                 keyType = 'ID';
-                            } else if (itineraryCode && sailDate) {
-                                key = `IC_${itineraryCode}_${sailDate}`;
-                                keyType = 'ITIN';
-                            } else if (shipCode && sailDate) {
+                            } else if (shipCode && sailDate) { // itineraryCode support removed
                                 key = `SD_${shipCode}_${sailDate}`;
                                 keyType = 'SHIPDATE';
                             }
                             if (!key) {
-                                dbg('Skipping sailing missing id/composites', {itineraryCode, sailDate, shipCode});
+                                dbg('Skipping sailing missing id/shipCode+sailDate', {sailDate, shipCode});
                                 return;
                             }
                             let entry = this._cache[key];
                             if (!entry) {
                                 entry = this._cache[key] = {
                                     keyType,
-                                    itineraryCode,
+                                    itineraryCode: '', // retained field for backward compatibility; not populated
                                     sailDate,
                                     shipCode,
                                     offerCodes: [],
-                                    shipName: s.shipName || s.ship?.name || '',
+                                    shipName: s.shipName || '',
                                     itineraryDescription: s.itineraryDescription || '',
                                     destinationName: '',
                                     departurePortName: '',
@@ -159,9 +131,7 @@
                                 };
                                 newEntries++;
                             } else {
-                                // Snapshot before changes for diff detection
                                 const beforeSnapshot = JSON.stringify({
-                                    itineraryCode: entry.itineraryCode,
                                     sailDate: entry.sailDate,
                                     offerCodes: [...entry.offerCodes],
                                     shipName: entry.shipName,
@@ -170,25 +140,21 @@
                                 });
                                 updatedEntries++;
                                 entry.hydratedAt = now; // re-ingest baseline
-                                // Opportunistic updates below will mutate entry; then we'll diff.
                                 if (!entry.keyType) entry.keyType = keyType;
-                                if (!entry.itineraryCode && itineraryCode) entry.itineraryCode = itineraryCode;
                                 if (!entry.sailDate && sailDate) entry.sailDate = sailDate;
-                                if (!entry.shipName && (s.shipName || s.ship?.name)) entry.shipName = s.shipName || s.ship?.name;
+                                if (!entry.shipName && s.shipName) entry.shipName = s.shipName;
                                 if (!entry.shipCode && shipCode) entry.shipCode = shipCode;
                                 if (!entry.itineraryDescription && s.itineraryDescription) entry.itineraryDescription = s.itineraryDescription;
                                 if (offerCode && !entry.offerCodes.includes(offerCode)) entry.offerCodes.push(offerCode);
                                 const afterSnapshot = JSON.stringify({
-                                    itineraryCode: entry.itineraryCode,
                                     sailDate: entry.sailDate,
                                     offerCodes: [...entry.offerCodes],
                                     shipName: entry.shipName,
                                     shipCode: entry.shipCode,
                                     itineraryDescription: entry.itineraryDescription
                                 });
-                                if (beforeSnapshot !== afterSnapshot) entry.updatedAt = now; // only content change bumps updatedAt
+                                if (beforeSnapshot !== afterSnapshot) entry.updatedAt = now;
                             }
-                            // For new entries we added offerCode above; for existing entries handled in diff section.
                             if (!entry.offerCodes.includes(offerCode) && offerCode) entry.offerCodes.push(offerCode);
                         } catch (inner) {
                             dbg('Error processing sailing', inner);
@@ -219,13 +185,13 @@
                 this._ensureLoaded();
                 const now = Date.now();
                 if (mode === 'always') {
-                    targetKeys = Array.isArray(subsetKeys) && subsetKeys.length ? subsetKeys : [];
+                    targetKeys = Array.isArray(subsetKeys) && subsetKeys.length ? subsetKeys.filter(k => !k.startsWith('IC_')) : [];
                     if (!targetKeys.length) {
-                        dbg('hydrateAlways: no keys provided');
+                        dbg('hydrateAlways: no keys provided (after itinerary filter)');
                         return;
                     }
                 } else { // ifNeeded
-                    const provided = Array.isArray(subsetKeys) && subsetKeys.length ? subsetKeys : Object.keys(this._cache);
+                    const provided = (Array.isArray(subsetKeys) && subsetKeys.length ? subsetKeys : Object.keys(this._cache)).filter(k => !k.startsWith('IC_'));
                     const stale = [];
                     provided.forEach(k => {
                         const e = this._cache[k];
@@ -233,7 +199,7 @@
                         const lastTouch = e.hydratedAt || e.updatedAt || 0;
                         if (!e.enriched || !lastTouch || (now - lastTouch) > TWELVE_HOURS_MS) stale.push(k);
                     });
-                    dbg('hydrateIfNeeded evaluated keys', {providedKeys: provided.length, stale: stale.length});
+                    dbg('hydrateIfNeeded evaluated keys (itinerary keys ignored)', {providedKeys: provided.length, stale: stale.length});
                     if (!stale.length) return; // nothing to do
                     targetKeys = stale;
                 }
@@ -246,29 +212,22 @@
                 const endpoint = `https://${brandHost}/graph`;
                 const query = 'query cruiseSearch_Cruises($filters:String,$qualifiers:String,$sort:CruiseSearchSort,$pagination:CruiseSearchPagination,$nlSearch:String){cruiseSearch(filters:$filters,qualifiers:$qualifiers,sort:$sort,pagination:$pagination,nlSearch:$nlSearch){results{cruises{id productViewLink masterSailing{itinerary{name code days{number type ports{activity arrivalTime departureTime port{code name region}}}departurePort{code name region}destination{code name}portSequence sailingNights ship{code name}totalNights type}}sailings{bookingLink id itinerary{code}sailDate startDate endDate taxesAndFees{value}taxesAndFeesIncluded stateroomClassPricing{price{value currency{code}}stateroomClass{id content{code}}}}}cruiseRecommendationId total}}}';
                 const idKeys = [];
-                const itinKeys = [];
                 const shipDateKeys = [];
                 targetKeys.forEach(k => {
-                    if (k.startsWith('IC_')) itinKeys.push(k); else if (k.startsWith('SD_')) shipDateKeys.push(k); else idKeys.push(k);
+                    if (k.startsWith('SD_')) shipDateKeys.push(k); else idKeys.push(k);
                 });
-                // Single fetch throttle logic
+                // Single fetch throttle logic (simplified – itinerary keys removed)
                 if (DEBUG_SINGLE_FETCH) {
                     let chosen = null;
-                    if (idKeys.length) chosen = idKeys[0]; else if (itinKeys.length) chosen = itinKeys[1]; else if (shipDateKeys.length) chosen = shipDateKeys[1];
+                    if (idKeys.length) chosen = idKeys[0]; else if (shipDateKeys.length) chosen = shipDateKeys[0];
                     if (chosen) {
                         dbg(`DEBUG_SINGLE_FETCH active (${mode})`, {chosen});
                         if (idKeys.includes(chosen)) {
                             idKeys.splice(0, idKeys.length, chosen);
-                            itinKeys.length = 0;
-                            shipDateKeys.length = 0;
-                        } else if (itinKeys.includes(chosen)) {
-                            itinKeys.splice(0, itinKeys.length, chosen);
-                            idKeys.length = 0;
                             shipDateKeys.length = 0;
                         } else if (shipDateKeys.includes(chosen)) {
                             shipDateKeys.splice(0, shipDateKeys.length, chosen);
                             idKeys.length = 0;
-                            itinKeys.length = 0;
                         }
                     }
                 }
@@ -330,44 +289,8 @@
                     });
                     return {localAnyUpdated};
                 })());
-                // Composite itinerary promises
-                const itinPromises = (!DEBUG_SINGLE_FETCH || idKeys.length === 0) ? itinKeys.map(compKey => (async () => {
-                    const parsed = _parseComposite(compKey);
-                    let localUpdated = false;
-                    if (!parsed.itineraryCode || !parsed.sailDate) return {localUpdated};
-                    if (HARD_SINGLE_FETCH_LIMIT && self._fetchCount >= 1) {
-                        dbg(`HARD_SINGLE_FETCH_LIMIT: skipping additional itinerary fetch (${mode})`);
-                        return {localUpdated};
-                    }
-                    const filtersValue = mode === 'ifNeeded' ? `itineraryCode:${parsed.itineraryCode},startDate:${parsed.sailDate}` : `itineraryCode:${parsed.itineraryCode},sailDate:${parsed.sailDate}`;
-                    const cruises = await postFilters(filtersValue, 10) || [];
-                    cruises.forEach(c => {
-                        try {
-                            const itin = c?.masterSailing?.itinerary || {};
-                            (Array.isArray(c?.sailings) ? c.sailings : []).forEach(s => {
-                                const sDate = s?.sailDate || '';
-                                const sCode = s?.itinerary?.code || '';
-                                if (sDate === parsed.sailDate && sCode === parsed.itineraryCode) {
-                                    self._enrichEntryFromSailing(compKey, itin, s);
-                                    const newId = s?.id?.trim();
-                                    if (newId && !self._cache[newId]) self._cache[newId] = {
-                                        ...self._cache[compKey],
-                                        keyType: 'ID'
-                                    };
-                                    localUpdated = true;
-                                }
-                            });
-                        } catch (inner) {
-                        }
-                    });
-                    if (!localUpdated) {
-                        const e = self._cache[compKey];
-                        if (e) e.hydratedAt = Date.now();
-                    }
-                    return {localUpdated};
-                })()) : [];
-                // Composite ship-date promises
-                const shipPromises = (!DEBUG_SINGLE_FETCH || (idKeys.length === 0 && itinKeys.length === 0)) ? shipDateKeys.map(compKey => (async () => {
+                // Composite ship-date promises (itinerary composite removed)
+                const shipPromises = (!DEBUG_SINGLE_FETCH || idKeys.length === 0) ? shipDateKeys.map(compKey => (async () => {
                     const parsed = _parseComposite(compKey);
                     let localUpdated = false;
                     if (!parsed.shipCode || !parsed.sailDate) return {localUpdated};
@@ -382,7 +305,7 @@
                             const itin = c?.masterSailing?.itinerary || {};
                             (Array.isArray(c?.sailings) ? c.sailings : []).forEach(s => {
                                 const sDate = s?.sailDate || '';
-                                const sShip = (s?.shipCode || s?.ship?.code || '');
+                                const sShip = s?.shipCode || '';
                                 if (sDate === parsed.sailDate && sShip === parsed.shipCode) {
                                     self._enrichEntryFromSailing(compKey, itin, s);
                                     const newId = s?.id?.trim();
@@ -402,7 +325,7 @@
                     }
                     return {localUpdated};
                 })()) : [];
-                const results = await Promise.all([...idPromises, ...itinPromises, ...shipPromises]);
+                const results = await Promise.all([...idPromises, ...shipPromises]);
                 results.forEach(r => {
                     if (!r) return;
                     if (r.localAnyUpdated || r.localUpdated) anyUpdated = true;
@@ -410,7 +333,7 @@
                 if (anyUpdated) {
                     this._persist();
                     try {
-                        const detailKeys = mode === 'ifNeeded' ? targetKeys : targetKeys;
+                        const detailKeys = targetKeys;
                         document.dispatchEvent(new CustomEvent('goboItineraryHydrated', {detail: {keys: detailKeys}}));
                     } catch (e) {
                     }
@@ -418,7 +341,6 @@
                 dbg(`Hydration complete (${mode}, possibly throttled)`, {
                     anyUpdated,
                     idCount: idKeys.length,
-                    itinCount: itinKeys.length,
                     shipDateCount: shipDateKeys.length,
                     throttled: DEBUG_SINGLE_FETCH,
                     fetchCount: this._fetchCount
@@ -623,7 +545,7 @@
                 panel.appendChild(refreshBtn);
                 const title = document.createElement('h2');
                 title.className = 'gobo-itinerary-title';
-                title.textContent = `${data.itineraryDescription || 'Itinerary'} (${data.totalNights || '?'} nights)`;
+                title.textContent = `${data.itineraryDescription || 'Itinerary'} (${data.totalNights || '?' } nights)`;
                 panel.appendChild(title);
                 const subtitle = document.createElement('div');
                 subtitle.className = 'gobo-itinerary-subtitle';
