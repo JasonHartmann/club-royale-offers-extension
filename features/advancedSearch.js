@@ -102,9 +102,69 @@ const AdvancedSearch = {
             }, 0);
         } catch (e) { /* ignore restore errors */ }
     },
+    triggerVisitsHydration(state) {
+        try {
+            if (!state) return;
+            const offersArr = state.fullOriginalOffers || state.originalOffers || [];
+            if ((!offersArr || !offersArr.length) && (state._advVisitsHydrationRetries || 0) < 8) {
+                state._advVisitsHydrationRetries = (state._advVisitsHydrationRetries || 0) + 1;
+                // Defer and retry after offers expected to load
+                setTimeout(() => { this.triggerVisitsHydration(state); }, 600 + state._advVisitsHydrationRetries * 100);
+                return;
+            }
+            if (state._advVisitsHydrationStarted) return;
+            state._advVisitsHydrationStarted = true;
+            // Collect composite keys (SD_<shipCode>_<YYYY-MM-DD>) from offers to focus hydration
+            const keys = new Set();
+            offersArr.forEach(o => {
+                try {
+                    const sailings = o?.campaignOffer?.sailings || [];
+                    sailings.forEach(s => {
+                        const shipCode = (s?.shipCode || '').trim();
+                        const sailDate = (s?.sailDate || '').trim().slice(0,10);
+                        if (shipCode && sailDate) keys.add(`SD_${shipCode}_${sailDate}`);
+                    });
+                } catch(e){ /* ignore */ }
+            });
+            // Kick off hydration if possible
+            try {
+                if (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.hydrateIfNeeded === 'function' && keys.size) {
+                    ItineraryCache.hydrateIfNeeded(Array.from(keys));
+                }
+            } catch(e){ /* ignore */ }
+            // Fallback re-render attempt after short delay in case event did not fire
+            setTimeout(() => {
+                try {
+                    const ports = (AdvancedItinerarySearch && AdvancedItinerarySearch.listAllPorts) ? AdvancedItinerarySearch.listAllPorts(state) : [];
+                    if (ports && ports.length) {
+                        AdvancedSearch.renderPredicates(state);
+                    } else if ((state._advVisitsHydrationRetries || 0) < 8) {
+                        // Retry hydration attempt if still no ports but attempts remain
+                        delete state._advVisitsHydrationStarted;
+                        this.triggerVisitsHydration(state);
+                    }
+                } catch(e){ /* ignore */ }
+            }, 1200);
+        } catch(e){ /* ignore */ }
+    },
     getCachedFieldValues(fieldKey, state) {
         try {
             if (!fieldKey) return [];
+            if (fieldKey === 'visits') {
+                let ports = [];
+                try { ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : []; } catch(e){ ports = []; }
+                if (!ports || !ports.length) {
+                    // Avoid caching empty visits results so future attempts can re-evaluate.
+                    // Initiate hydration if not yet started.
+                    this.triggerVisitsHydration(state);
+                    return []; // no cache write
+                }
+                // Cache successful non-empty result for performance
+                state._advFieldCache = state._advFieldCache || {};
+                const cacheKey = `VISITS::${state.selectedProfileKey||'default'}::${ports.length}`;
+                state._advFieldCache[cacheKey] = ports.slice();
+                return ports.slice();
+            }
             const visibleLen = Array.isArray(state.sortedOffers) ? state.sortedOffers.length : 0;
             const originalLen = Array.isArray(state.fullOriginalOffers) ? state.fullOriginalOffers.length : (Array.isArray(state.originalOffers) ? state.originalOffers.length : 0);
             let committedSig = '';
@@ -411,25 +471,60 @@ const AdvancedSearch = {
                             const selectWrap = document.createElement('div'); selectWrap.className = 'adv-stack-col';
                             const sel = document.createElement('select'); sel.multiple = true; sel.size = 6; sel.className = 'adv-values-multiselect';
                             const values = this.getCachedFieldValues(pred.fieldKey, state) || [];
-                            const alreadySelected = new Set(pred.values.map(v => Filtering.normalizePredicateValue(v, pred.fieldKey)));
-                            const CHUNK_SYNC_THRESHOLD = 250, CHUNK_SIZE = 300;
-                            if (values.length <= CHUNK_SYNC_THRESHOLD) {
-                                values.forEach(v => { const opt = document.createElement('option'); opt.value = v; opt.textContent = v; opt.selected = alreadySelected.has(v); sel.appendChild(opt); });
+                            if (pred.fieldKey === 'visits' && (!values || !values.length)) {
+                                // Increment poll attempts
+                                state._advVisitsPollAttempts = (state._advVisitsPollAttempts || 0) + 1;
+                                sel.disabled = true;
+                                sel.title = 'Loading itinerary ports…';
+                                const optLoading = document.createElement('option'); optLoading.value=''; optLoading.textContent='Loading ports…'; sel.appendChild(optLoading);
+                                selectWrap.appendChild(sel);
+                                const help = document.createElement('div'); help.className='adv-help-text';
+                                if (state._advVisitsPollAttempts <= 5) {
+                                    help.textContent='Hydrating itinerary data to load port destinations.';
+                                } else {
+                                    help.textContent='Ports not available yet. Click Refresh Ports to retry hydration.';
+                                    const retryBtn = document.createElement('button'); retryBtn.type='button'; retryBtn.textContent='Refresh Ports'; retryBtn.className='adv-refresh-ports-btn';
+                                    retryBtn.addEventListener('click', () => {
+                                        try {
+                                            state._advVisitsPollAttempts = 0; // reset
+                                            delete state._advVisitsHydrationStarted; // allow re-trigger
+                                            this.triggerVisitsHydration(state);
+                                            setTimeout(() => { try { this.renderPredicates(state); } catch(e){} }, 800);
+                                        } catch(e){ /* ignore */ }
+                                    });
+                                    selectWrap.appendChild(retryBtn);
+                                }
+                                selectWrap.appendChild(help);
+                                box.appendChild(selectWrap);
+                                // Schedule a refresh attempt if under retry cap
+                                if (state._advVisitsPollAttempts <= 5) {
+                                    setTimeout(() => { try { this.renderPredicates(state); } catch(e){} }, 1200);
+                                }
                             } else {
-                                sel.classList.add('loading'); let idx = 0;
-                                const addChunk = () => {
-                                    if (!sel.isConnected) return; const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
-                                    while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); opt.value = v; opt.textContent = v; opt.selected = alreadySelected.has(v); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
-                                    sel.appendChild(frag);
-                                    if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else sel.classList.remove('loading');
-                                }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
+                                const alreadySelected = new Set(pred.values.map(v => Filtering.normalizePredicateValue(v, pred.fieldKey)));
+                                const CHUNK_SYNC_THRESHOLD = 250, CHUNK_SIZE = 300;
+                                if (values.length <= CHUNK_SYNC_THRESHOLD) {
+                                    values.forEach(v => { const opt = document.createElement('option'); opt.value = v; opt.textContent = v; opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); sel.appendChild(opt); });
+                                } else {
+                                    sel.classList.add('loading'); let idx = 0;
+                                    const addChunk = () => {
+                                        if (!sel.isConnected) return; const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
+                                        while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); opt.value = v; opt.textContent = v; opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
+                                        sel.appendChild(frag);
+                                        if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else sel.classList.remove('loading');
+                                    }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
+                                }
+                                sel.addEventListener('change', () => { const chosen = Array.from(sel.selectedOptions).map(o => Filtering.normalizePredicateValue(o.value, pred.fieldKey)); pred.values = Array.from(new Set(chosen)); this.schedulePreview(state, pred); this.renderPredicates(state); });
+                                sel.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (pred.values && pred.values.length) this.attemptCommitPredicate(pred, state); } else if (e.key === 'Escape') { e.preventDefault(); this.renderPredicates(state); } else if (e.key === 'Tab' && pred.values && pred.values.length) { this.attemptCommitPredicate(pred, state); } });
+                                selectWrap.appendChild(sel);
+                                const help = document.createElement('div'); help.className = 'adv-help-text';
+                                if (pred.fieldKey === 'visits') {
+                                    help.textContent = 'Select one or more ports visited by the sailing.';
+                                } else {
+                                    try { const isMac = /Mac/i.test(navigator.platform || ''); const modKey = isMac ? 'Cmd' : 'Ctrl'; help.textContent = `Select one or more exact values. Use ${modKey}+Click to select or deselect multiple.`; } catch(e){ help.textContent = 'Select one or more exact values. Use Ctrl+Click to select or deselect multiple.'; }
+                                }
+                                selectWrap.appendChild(help); box.appendChild(selectWrap);
                             }
-                            sel.addEventListener('change', () => { const chosen = Array.from(sel.selectedOptions).map(o => Filtering.normalizePredicateValue(o.value, pred.fieldKey)); pred.values = Array.from(new Set(chosen)); this.schedulePreview(state, pred); this.renderPredicates(state); });
-                            sel.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (pred.values && pred.values.length) this.attemptCommitPredicate(pred, state); } else if (e.key === 'Escape') { e.preventDefault(); this.renderPredicates(state); } else if (e.key === 'Tab' && pred.values && pred.values.length) { this.attemptCommitPredicate(pred, state); } });
-                            selectWrap.appendChild(sel);
-                            const help = document.createElement('div'); help.className = 'adv-help-text';
-                            try { const isMac = /Mac/i.test(navigator.platform || ''); const modKey = isMac ? 'Cmd' : 'Ctrl'; help.textContent = `Select one or more exact values. Use ${modKey}+Click to select or deselect multiple.`; } catch(e){ help.textContent = 'Select one or more exact values. Use Ctrl+Click to select or deselect multiple.'; }
-                            selectWrap.appendChild(help); box.appendChild(selectWrap);
                         } else if (pred.operator === 'contains' || pred.operator === 'not contains') {
                             const tokenWrap = document.createElement('div'); tokenWrap.className = 'adv-stack-col';
                             const input = document.createElement('input'); input.type = 'text'; input.placeholder = 'Enter substring & press Enter';
@@ -985,3 +1080,20 @@ const AdvancedSearch = {
 // Attach render completion hook early
 try { AdvancedSearch._attachRenderCompleteHookOnce(); } catch(e) { /* ignore */ }
 try { if (typeof window !== 'undefined' && window.location && window.location.search && /[?&]advdbg=1/.test(window.location.search)) { AdvancedSearch._debug = true; console.info('[AdvancedSearch] Debug auto-enabled via advdbg=1 query param'); } } catch(e) { /* ignore */ }
+
+try {
+    document.addEventListener('goboItineraryHydrated', () => {
+        try {
+            if (AdvancedSearch && AdvancedSearch._advFieldCache) {
+                Object.keys(AdvancedSearch._advFieldCache).forEach(k => {
+                    // cacheKey format: profile|fieldKey|... we check second segment or substring
+                    if (k.includes('|visits|')) delete AdvancedSearch._advFieldCache[k];
+                });
+                const state = App?.TableRenderer?.lastState;
+                if (state && state.advancedSearch?.enabled) {
+                    AdvancedSearch.renderPredicates(state);
+                }
+            }
+        } catch(e){ /* ignore */ }
+    });
+} catch(e){ /* ignore */ }

@@ -40,6 +40,7 @@
         "utils/apiClient.js",
         "features/storageShim.js",
         "features/itinerary.js",
+        "features/advancedItinerarySearch.js",
         "features/profileIdManager.js",
         "features/buttonManager.js",
         "features/spinner.js",

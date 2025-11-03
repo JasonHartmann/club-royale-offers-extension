@@ -58,6 +58,25 @@ const Filtering = {
         try {
             let op = (predicate.operator||'').toLowerCase();
             if (op === 'starts with') op = 'contains';
+            // Visits field requires set membership evaluation against individual ports
+            if (predicate.fieldKey === 'visits') {
+                const selected = Array.isArray(predicate.values) ? predicate.values.map(v=>Filtering.normalizePredicateValue(v, 'visits')) : [];
+                if (!op || !selected.length) return true; // incomplete passes
+                let ports = [];
+                try {
+                    if (typeof AdvancedItinerarySearch !== 'undefined' && AdvancedItinerarySearch && typeof AdvancedItinerarySearch.getPortsForSailing === 'function') {
+                        ports = AdvancedItinerarySearch.getPortsForSailing(sailing);
+                    }
+                } catch(e){ ports = []; }
+                const normPorts = ports.map(p=>Filtering.normalizePredicateValue(p,'visits'));
+                const portSet = new Set(normPorts);
+                if (op === 'in') return selected.some(v => portSet.has(v)); // any selected port present
+                if (op === 'not in') return selected.every(v => !portSet.has(v)); // none of selected ports present
+                const joined = normPorts.join('|');
+                if (op === 'contains') return selected.some(v => joined.includes(v)); // substring across concatenated list
+                if (op === 'not contains') return selected.every(v => !joined.includes(v));
+                return true;
+            }
             if (op === 'date range') {
                 // Expect predicate.values = [startISO, endISO] inclusive; ISO = YYYY-MM-DD
                 if (!Array.isArray(predicate.values) || predicate.values.length !== 2) return true; // incomplete treated as pass
@@ -177,6 +196,15 @@ const Filtering = {
                     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
                     return days[d.getUTCDay()] || '-';
                 } catch(e){ return '-'; }
+            }
+            case 'visits': {
+                try {
+                    if (typeof AdvancedItinerarySearch !== 'undefined' && AdvancedItinerarySearch && typeof AdvancedItinerarySearch.getPortsForSailing === 'function') {
+                        const ports = AdvancedItinerarySearch.getPortsForSailing(sailing);
+                        return ports && ports.length ? ports.join(', ') : '-';
+                    }
+                } catch(e){ /* ignore */ }
+                return '-';
             }
             default:
                 return offer[key];

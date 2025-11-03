@@ -11,7 +11,8 @@
     App.FilterUtils.getAdvancedOnlyFields = function() {
         try {
             return [
-                { key: 'departureDayOfWeek', label: 'Departure Day of Week' }
+                { key: 'departureDayOfWeek', label: 'Departure Day of Week' },
+                { key: 'visits', label: 'Visits' }
             ];
         } catch(e) { return []; }
     };
