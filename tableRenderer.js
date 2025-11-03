@@ -87,10 +87,13 @@ const TableRenderer = {
                         if (sailingId) {
                             keySet.add(sailingId);
                         } else {
-                            const ic = s?.itineraryCode;
-                            const sd = s?.sailDate;
+                            const ic = s?.itineraryCode ? String(s.itineraryCode).trim() : '';
+                            const sd = s?.sailDate ? String(s.sailDate).trim() : '';
+                            const sc = s?.shipCode ? String(s.shipCode).trim() : '';
                             if (ic && sd) {
-                                keySet.add(`${String(ic).trim()}_${String(sd).trim()}`);
+                                keySet.add(`IC_${ic}_${sd}`);
+                            } else if (sc && sd) {
+                                keySet.add(`SD_${sc}_${sd}`);
                             }
                         }
                     });

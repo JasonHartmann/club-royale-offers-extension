@@ -14,9 +14,15 @@
         if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
         const {nights, destination} = Utils.parseItinerary(itinerary);
-        const itineraryClass = sailing.itineraryCode + "_" + sailing.sailDate;
-        // Primary itinerary key should match ItineraryCache key (prefer sailing.id when present)
-        const itineraryKey = (sailing && sailing.id && String(sailing.id).trim()) || itineraryClass;
+        // Build stable itinerary key: prefer sailing.id; else itineraryCode+sailDate; else shipCode+sailDate.
+        let itineraryKey;
+        try {
+            const idPart = (sailing && sailing.id && String(sailing.id).trim()) || '';
+            const itinCode = (sailing && sailing.itineraryCode) ? String(sailing.itineraryCode).trim() : '';
+            const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim() : '';
+            const shipCodeRaw = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : (sailing && sailing.ship && sailing.shipCode ? String(sailing.shipCode).trim() : '');
+            if (idPart) itineraryKey = idPart; else if (itinCode && sailDate) itineraryKey = `IC_${itinCode}_${sailDate}`; else if (shipCodeRaw && sailDate) itineraryKey = `SD_${shipCodeRaw}_${sailDate}`; else itineraryKey = (itinCode && sailDate) ? `${itinCode}_${sailDate}` : (sailDate || 'itinerary');
+        } catch(e) { itineraryKey = 'itinerary'; }
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
         // Generate separate links/buttons for each code if rawCode contains '/'

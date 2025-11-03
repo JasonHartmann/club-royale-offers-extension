@@ -96,7 +96,7 @@ const Utils = {
                     }
                 }
             });
-            // Build/update shared itinerary cache (keys: <itineraryCode>_<sailDate>) persisted in extension storage
+            // Build/update shared itinerary cache (keys: ID or IC_<itineraryCode>_<sailDate> / SD_<shipCode>_<sailDate>) persisted in extension storage
             try {
                 ItineraryCache.buildOrUpdateFromOffers(data);
             } catch(e) { /* ignore cache build errors */ }

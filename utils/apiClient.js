@@ -10,7 +10,7 @@ const ApiClient = {
             let refSailings = cloneSailings(getSailingsArray(refreshedOffer));
 
             // Helper to derive ship code
-            const ship = (s) => (s.shipCode || s.ship?.shipCode || s.ship?.code || '').toString().toUpperCase();
+            const ship = (s) => (s.shipCode || '').toString().toUpperCase();
             // Key builder (ship + sailDate)
             const sailingKey = (s) => {
                 const sc = ship(s);
@@ -120,9 +120,9 @@ const ApiClient = {
                 const before = co.sailings.length;
                 try {
                     const filtered = co.sailings.filter(s => {
-                        const sShipCode = (s.shipCode || s.ship?.shipCode || s.ship?.code || '').toString().toUpperCase();
+                        const sShipCode = (s.shipCode || '').toString().toUpperCase();
                         return !co.excludedSailings.some(ex => {
-                            const exShipCode = (ex.shipCode || ex.ship?.shipCode || ex.ship?.code || '').toString().toUpperCase();
+                            const exShipCode = (ex.shipCode || '').toString().toUpperCase();
                             return !!(exShipCode && ex.sailDate && sShipCode && s.sailDate && exShipCode === sShipCode && ex.sailDate === s.sailDate);
                         });
                     });
@@ -260,7 +260,7 @@ const ApiClient = {
                             const originalSailings = Array.isArray(origCO.sailings) ? origCO.sailings : [];
                             const superset = originalSailings.map(s => ({ ...s }));
                             const keyFor = (s) => {
-                                const shipCode = (s.shipCode || s.ship?.shipCode || s.ship?.code || '').toString().toUpperCase();
+                                const shipCode = (s.shipCode || '').toString().toUpperCase();
                                 const sailDate = (s.sailDate || '').toString();
                                 return (shipCode && sailDate) ? `${shipCode}|${sailDate}` : null;
                             };
