@@ -14,15 +14,13 @@
         if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
         const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
         const {nights, destination} = Utils.parseItinerary(itinerary);
-        // Build stable itinerary key: prefer sailing.id; else itineraryCode+sailDate; else shipCode+sailDate.
+        // Build stable itinerary key: ONLY shipCode+sailDate (SD_<shipCode>_<YYYY-MM-DD>)
         let itineraryKey;
         try {
-            const idPart = (sailing && sailing.id && String(sailing.id).trim()) || '';
-            const itinCode = (sailing && sailing.itineraryCode) ? String(sailing.itineraryCode).trim() : '';
-            const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim() : '';
-            const shipCodeRaw = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : (sailing && sailing.ship && sailing.shipCode ? String(sailing.shipCode).trim() : '');
-            if (idPart) itineraryKey = idPart; else if (itinCode && sailDate) itineraryKey = `IC_${itinCode}_${sailDate}`; else if (shipCodeRaw && sailDate) itineraryKey = `SD_${shipCodeRaw}_${sailDate}`; else itineraryKey = (itinCode && sailDate) ? `${itinCode}_${sailDate}` : (sailDate || 'itinerary');
-        } catch(e) { itineraryKey = 'itinerary'; }
+            const sailDate = sailing?.sailDate ? String(sailing.sailDate).trim().slice(0,10) : '';
+            const shipCode = sailing?.shipCode ? String(sailing.shipCode).trim() : '';
+            itineraryKey = (shipCode && sailDate) ? `SD_${shipCode}_${sailDate}` : (sailDate ? `SD_UNKNOWN_${sailDate}` : 'SD_UNKNOWN');
+        } catch(e) { itineraryKey = 'SD_UNKNOWN'; }
         const perksStr = Utils.computePerks(offer, sailing);
         const rawCode = offer.campaignOffer?.offerCode || '-';
         // Generate separate links/buttons for each code if rawCode contains '/'
@@ -159,20 +157,13 @@
                         let embeddedPid = sailing && (sailing.__profileId !== undefined ? sailing.__profileId : (offer.__favoriteMeta && offer.__favoriteMeta.profileId));
                         try { Favorites.removeFavorite(offer, sailing, embeddedPid); } catch(err){ console.debug('[trash-favorite] remove error', err); }
                         try {
-                            // Fully refresh favorites view so numbering re-computes
-                            if (App && App.TableRenderer && typeof Favorites.loadProfileObject === 'function') {
-                                const refreshed = Favorites.loadProfileObject();
-                                App.TableRenderer.loadProfile('goob-favorites', refreshed);
-                            } else {
-                                // Fallback: remove row only
-                                row.remove();
-                            }
-                        } catch(err) { row.remove(); }
+                            // Remove row from DOM immediately for responsiveness
+                            row.parentElement && row.parentElement.removeChild(row);
+                        } catch(remErr){ /* ignore */ }
                     });
                 }
-            } catch(e) { /* ignore */ }
+            } catch(e){ /* ignore */ }
         }
         return row;
     };
-
 })();

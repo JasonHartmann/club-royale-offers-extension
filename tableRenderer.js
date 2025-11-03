@@ -78,36 +78,27 @@ const TableRenderer = {
             try {
                 this.caching = true;
                 const keySet = new Set();
-                console.log('[ItineraryCache] updateView', payload.data.offers);
-                payload.data.offers.forEach(o => {
+                console.log('[ItineraryCache] recacheItineraries begin');
+                const offers = payload && payload.data && Array.isArray(payload.data.offers) ? payload.data.offers : [];
+                offers.forEach(o => {
                     const sailings = o?.campaignOffer?.sailings;
                     if (!Array.isArray(sailings)) return;
                     sailings.forEach(s => {
-                        const sailingId = s?.id && String(s.id).trim();
-                        if (sailingId) {
-                            keySet.add(sailingId);
-                        } else {
-                            const ic = s?.itineraryCode ? String(s.itineraryCode).trim() : '';
-                            const sd = s?.sailDate ? String(s.sailDate).trim() : '';
+                        try {
+                            const sd = s?.sailDate ? String(s.sailDate).trim().slice(0,10) : '';
                             const sc = s?.shipCode ? String(s.shipCode).trim() : '';
-                            if (ic && sd) {
-                                keySet.add(`IC_${ic}_${sd}`);
-                            } else if (sc && sd) {
-                                keySet.add(`SD_${sc}_${sd}`);
-                            }
-                        }
+                            if (sc && sd) keySet.add(`SD_${sc}_${sd}`);
+                        } catch(inner){ /* ignore single sailing errors */ }
                     });
                 });
                 if (keySet.size) {
-                    console.log('[ItineraryCache] hydrating', keySet);
+                    console.log('[ItineraryCache] hydrating ship/date keys', { count: keySet.size });
                     await ItineraryCache.hydrateIfNeeded(Array.from(keySet));
-                    // Return a snapshot of the full map so updateItineraries can operate on it directly
                     if (ItineraryCache && typeof ItineraryCache.all === 'function') return ItineraryCache.all();
                 }
-                // If nothing to hydrate just return current map (may be empty)
                 if (ItineraryCache && typeof ItineraryCache.all === 'function') return ItineraryCache.all();
             } catch (e) {
-                /* ignore hydration trigger errors */
+                console.warn('[ItineraryCache] recacheItineraries error', e);
             } finally {
                 this.caching = false;
             }
