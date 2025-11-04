@@ -299,19 +299,41 @@ const AdvancedSearch = {
             remove.className = 'adv-chip-remove'; // CSS targets .adv-chip button already; semantic alias
             // removed inline remove button styles
             remove.addEventListener('click', (e) => {
-                e.stopPropagation(); // prevent parent chip or box click from triggering edit mode
+                e.stopPropagation();
                 const idx = pred.values.indexOf(val);
                 if (idx !== -1) pred.values.splice(idx, 1);
                 pred.values = pred.values.slice();
                 if (pred.complete) {
-                    if (!pred.values.length) pred.complete = false; // becomes editable if all values removed
-                    // Committed predicate changed: refresh with spinner
+                    if (!pred.values.length) pred.complete = false;
                     this.lightRefresh(state, { showSpinner: true });
                 } else {
-                    // Only update highlight; no table refresh
+                    // Inline update for IN/NOT IN to avoid re-render scroll jump
+                    if (pred.operator === 'in' || pred.operator === 'not in') {
+                        try {
+                            const parentBox = box.closest('.adv-predicate-box');
+                            if (parentBox) {
+                                // Remove this chip
+                                const chipEl = e.target.closest('.adv-chip'); if (chipEl) chipEl.remove();
+                                // Update commit button state
+                                const commitBtn = parentBox.querySelector('button.adv-commit-btn');
+                                if (commitBtn) commitBtn.disabled = !(pred.values && pred.values.length);
+                                // If no values left create placeholder and remove chips container
+                                if (!pred.values.length) {
+                                    const chipsWrap = parentBox.querySelector('.adv-value-chips'); if (chipsWrap) chipsWrap.remove();
+                                    const existingPlaceholder = parentBox.querySelector('.adv-placeholder');
+                                    if (!existingPlaceholder) {
+                                        const ph = document.createElement('span'); ph.textContent='No values selected'; ph.className='adv-placeholder';
+                                        if (commitBtn) parentBox.insertBefore(ph, commitBtn); else parentBox.appendChild(ph);
+                                    }
+                                }
+                            }
+                        } catch(errInline){ /* ignore */ }
+                    }
                     this.schedulePreview(state, pred, true);
                 }
-                AdvancedSearch.renderPredicates(state);
+                if (pred.complete || !(pred.operator === 'in' || pred.operator === 'not in')) {
+                    AdvancedSearch.renderPredicates(state);
+                }
                 AdvancedSearch.debouncedPersist(state);
             });
             chip.appendChild(remove);
@@ -511,11 +533,67 @@ const AdvancedSearch = {
                                         if (!sel.isConnected) return; const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); opt.value = v; opt.textContent = v; opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
                                         sel.appendChild(frag);
-                                        if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else sel.classList.remove('loading');
+                                        if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else { sel.classList.remove('loading'); }
                                     }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
                                 }
-                                sel.addEventListener('change', () => { const chosen = Array.from(sel.selectedOptions).map(o => Filtering.normalizePredicateValue(o.value, pred.fieldKey)); pred.values = Array.from(new Set(chosen)); this.schedulePreview(state, pred); this.renderPredicates(state); });
-                                sel.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (pred.values && pred.values.length) this.attemptCommitPredicate(pred, state); } else if (e.key === 'Escape') { e.preventDefault(); this.renderPredicates(state); } else if (e.key === 'Tab' && pred.values && pred.values.length) { this.attemptCommitPredicate(pred, state); } });
+                                sel.addEventListener('change', () => {
+                                    // Inline update without full render to prevent scroll jump
+                                    const chosen = Array.from(sel.selectedOptions).map(o => Filtering.normalizePredicateValue(o.value, pred.fieldKey));
+                                    pred.values = Array.from(new Set(chosen));
+                                    this.schedulePreview(state, pred);
+                                    // Update commit button enabled state
+                                    let commitBtn = null;
+                                    try { commitBtn = box.querySelector('button.adv-commit-btn'); if (commitBtn) commitBtn.disabled = !(pred.values && pred.values.length); } catch(e){ /* ignore */ }
+                                    // Update chips inline keeping original order (chips before commit button)
+                                    try {
+                                        const existingChips = box.querySelector('.adv-value-chips');
+                                        if (existingChips) existingChips.remove();
+                                        const existingPlaceholder = box.querySelector('.adv-placeholder');
+                                        if (pred.values && pred.values.length) {
+                                            if (existingPlaceholder) existingPlaceholder.remove();
+                                            const chipsWrap = document.createElement('div'); chipsWrap.className='adv-value-chips';
+                                            pred.values.forEach(val => {
+                                                const chip = document.createElement('span'); chip.className='adv-chip'; chip.textContent = val;
+                                                // remove button
+                                                const removeBtn = document.createElement('button'); removeBtn.type='button'; removeBtn.textContent='\u2715'; removeBtn.className='adv-chip-remove';
+                                                removeBtn.addEventListener('click', (e) => {
+                                                    e.stopPropagation();
+                                                    const idx = pred.values.indexOf(val);
+                                                    if (idx !== -1) pred.values.splice(idx,1);
+                                                    pred.values = pred.values.slice();
+                                                    // update preview
+                                                    this.schedulePreview(state, pred, true);
+                                                    // Inline update post removal
+                                                    try {
+                                                        chip.remove();
+                                                        if (!pred.values.length) {
+                                                            if (commitBtn) commitBtn.disabled = true;
+                                                            const ph = document.createElement('span'); ph.textContent='No values selected'; ph.className='adv-placeholder'; box.insertBefore(ph, commitBtn || null);
+                                                            chipsWrap.remove();
+                                                        } else if (commitBtn) {
+                                                            commitBtn.disabled = false;
+                                                        }
+                                                    } catch(errInline){ /* ignore */ }
+                                                    // Persist without full re-render
+                                                    this.debouncedPersist(state);
+                                                });
+                                                chip.appendChild(removeBtn);
+                                                chipsWrap.appendChild(chip);
+                                            });
+                                            // Insert chips before commit button if present, else append at end
+                                            if (commitBtn && commitBtn.parentElement === box) {
+                                                box.insertBefore(chipsWrap, commitBtn);
+                                            } else {
+                                                box.appendChild(chipsWrap);
+                                            }
+                                        } else if (!existingPlaceholder) {
+                                            const placeholder = document.createElement('span');
+                                            placeholder.textContent = 'No values selected';
+                                            placeholder.className = 'adv-placeholder';
+                                            box.insertBefore(placeholder, commitBtn || null);
+                                        }
+                                    } catch(e){ /* ignore chip update errors */ }
+                                });
                                 selectWrap.appendChild(sel);
                                 const help = document.createElement('div'); help.className = 'adv-help-text';
                                 if (pred.fieldKey === 'visits') {
