@@ -12,7 +12,8 @@
         try {
             return [
                 { key: 'departureDayOfWeek', label: 'Departure Day of Week' },
-                { key: 'visits', label: 'Visits' }
+                { key: 'visits', label: 'Visits' },
+                { key: 'suiteUpgradePrice', label: 'Suite Upgrade Price' }
             ];
         } catch(e) { return []; }
     };

@@ -62,7 +62,7 @@ const AdvancedSearch = {
                 state._advRestoredProfiles.add(state.selectedProfileKey);
                 return;
             }
-            const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range']);
+            const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range', 'less than']);
             state.advancedSearch.predicates = (Array.isArray(parsed.predicates) ? parsed.predicates
                 .filter(p => p && p.fieldKey && p.operator)
                 .map(p => {
@@ -423,6 +423,7 @@ const AdvancedSearch = {
             const dateFieldKeys = new Set(['offerDate','expiration','sailDate']);
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
+            // NOTE: 'less than' only applies to numeric fields (currently suiteUpgradePrice)
             // date fields: add date range operator
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
@@ -442,7 +443,8 @@ const AdvancedSearch = {
                 try {
                     const fieldMeta = allFields.find(h => h.key === pred.fieldKey);
                     const isDateField = dateFieldKeys.has(pred.fieldKey);
-                    const opsForField = isDateField ? allowedOperators.concat(['date range']) : allowedOperators;
+                    const opsForField = isDateField ? allowedOperators.concat(['date range']) : (pred.fieldKey === 'suiteUpgradePrice' ? baseOperators.concat(['less than']) : baseOperators);
+                    const isNumericField = (pred.fieldKey === 'suiteUpgradePrice');
                     const box = document.createElement('div');
                     box.className = 'adv-predicate-box';
                     if (state._advPreviewPredicateId === pred.id) box.classList.add('adv-predicate-preview');
@@ -612,6 +614,19 @@ const AdvancedSearch = {
                             tokenWrap.appendChild(input);
                             const help = document.createElement('div'); help.className='adv-help-text'; help.textContent = (pred.operator==='contains'?'Add substrings; any match passes.':'Add substrings; none must appear.'); tokenWrap.appendChild(help);
                             box.appendChild(tokenWrap); setTimeout(()=>{ try{ input.focus(); }catch(e){} },0);
+                        } else if (pred.operator === 'less than' && isNumericField) {
+                            const numWrap = document.createElement('div'); numWrap.className='adv-stack-col';
+                            const input = document.createElement('input'); input.type='number'; input.min='0'; input.step='0.01'; input.placeholder='Enter amount';
+                            if (pred.values && pred.values.length) input.value = pred.values[0];
+                            input.addEventListener('input', () => {
+                                pred.values = input.value ? [input.value] : [];
+                                this.schedulePreview(state, pred);
+                                const commitBtn = box.querySelector('button.adv-commit-btn'); if (commitBtn) commitBtn.disabled = !(pred.values && pred.values.length);
+                            });
+                            input.addEventListener('keydown', (e)=>{ if (e.key==='Enter' && pred.values && pred.values.length) { e.preventDefault(); this.attemptCommitPredicate(pred,state); } });
+                            numWrap.appendChild(input);
+                            const help = document.createElement('div'); help.className='adv-help-text'; help.textContent='Filters sailings with estimated suite upgrade price below this amount.'; numWrap.appendChild(help);
+                            box.appendChild(numWrap);
                         }
                         if (pred.operator !== 'date range') {
                             if (pred.values && pred.values.length) this.renderPredicateValueChips(box, pred, state); else { const placeholder = document.createElement('span'); placeholder.textContent='No values selected'; placeholder.className='adv-placeholder'; box.appendChild(placeholder); }

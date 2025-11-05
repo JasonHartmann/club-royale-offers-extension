@@ -18,6 +18,8 @@
         AccordionBuilder,
         SortUtils,
         TableRenderer,
+        ItineraryCache,
+        AdvancedItinerarySearch,
         Breadcrumbs,
         AdvancedSearch,
         Utils,

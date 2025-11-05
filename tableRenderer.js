@@ -94,9 +94,15 @@ const TableRenderer = {
                 if (keySet.size) {
                     console.log('[ItineraryCache] hydrating ship/date keys', { count: keySet.size });
                     await ItineraryCache.hydrateIfNeeded(Array.from(keySet));
-                    if (ItineraryCache && typeof ItineraryCache.all === 'function') return ItineraryCache.all();
+                    // Resolve ItineraryCache safely. Prefer App-linked version, then global window, then a typeof check to avoid ReferenceError.
+                    const IC = (typeof window !== 'undefined' && window.App && window.App.ItineraryCache) ? window.App.ItineraryCache : ((typeof window !== 'undefined' && window.ItineraryCache) ? window.ItineraryCache : (typeof ItineraryCache !== 'undefined' ? ItineraryCache : undefined));
+                    if (IC && typeof IC.hydrateIfNeeded === 'function') {
+                        await IC.hydrateIfNeeded(Array.from(keySet));
+                        if (typeof IC.all === 'function') return IC.all();
+                    }
                 }
-                if (ItineraryCache && typeof ItineraryCache.all === 'function') return ItineraryCache.all();
+                const IC2 = (typeof window !== 'undefined' && window.App && window.App.ItineraryCache) ? window.App.ItineraryCache : ((typeof window !== 'undefined' && window.ItineraryCache) ? window.ItineraryCache : (typeof ItineraryCache !== 'undefined' ? ItineraryCache : undefined));
+                if (IC2 && typeof IC2.all === 'function') return IC2.all();
             } catch (e) {
                 console.warn('[ItineraryCache] recacheItineraries error', e);
             } finally {

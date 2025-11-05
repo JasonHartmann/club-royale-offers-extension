@@ -1,7 +1,12 @@
 const Filtering = {
-
+    // Debug flag (toggle below to enable/disable debug logging by editing this file)
+    DEBUG: true,
+    _dbg(){ if (Filtering.DEBUG && typeof console !== 'undefined') { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
     filterOffers(state, offers) {
         console.time('Filtering.filterOffers');
+        console.debug('[Filtering] filterOffers ENTRY', { offersLen: Array.isArray(offers) ? offers.length : 0, advancedEnabled: !!(state && state.advancedSearch && state.advancedSearch.enabled) });
+        // Reset per-run stats for numeric predicates
+        Filtering._lessThanStats = { total:0, incomplete:0, invalidTarget:0, missingActual:0, passed:0, failed:0, samples:[] };
         // Hidden groups (GLOBAL)
         const hiddenGroups = Filtering.loadHiddenGroups();
         let working = offers;
@@ -25,10 +30,43 @@ const Filtering = {
         // Advanced Search layer
         try {
             if (state && state.advancedSearch && state.advancedSearch.enabled) {
+                // If there is a numeric suiteUpgradePrice predicate active, ensure itinerary pricing is hydrated
+                try {
+                    const hasSuitePred = Array.isArray(state.advancedSearch.predicates) && state.advancedSearch.predicates.some(p => p && p.fieldKey === 'suiteUpgradePrice');
+                    if (hasSuitePred) {
+                        Filtering._dbg && Filtering._dbg('suiteUpgradePrice predicate detected', { predicates: state.advancedSearch.predicates });
+                        try { console.debug('[Filtering] suiteUpgradePrice predicate present; ensure pricing should already be hydrated (no rehydrate)'); } catch(e){}
+                    }
+                    // Do NOT attempt to rehydrate here: the ItineraryCache should already be populated by upstream logic.
+                    // Emit a compact diagnostic so we can examine whether pricing should be present.
+                    if (hasSuitePred) {
+                        try {
+                            const icAll = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.all === 'function') ? ItineraryCache.all() : null;
+                            const icCount = icAll && typeof icAll === 'object' ? Object.keys(icAll).length : null;
+                            Filtering._dbg && Filtering._dbg('suiteUpgradePrice: skipping hydration; ItineraryCache presence', { hasItineraryCache: !!icAll, itineraryCacheSize: icCount });
+                        } catch(e) { /* ignore */ }
+                    }
+                } catch(e) { /* ignore hydration orchestration errors */ }
                 working = Filtering.applyAdvancedSearch(working, state);
+                // No re-run override; trust current cached pricing and let predicates evaluate normally
             }
         } catch(e) { console.warn('[Filtering][AdvancedSearch] applyAdvancedSearch failed', e); }
         console.timeEnd('Filtering.filterOffers');
+        if (Filtering.DEBUG && Filtering._lessThanStats && Filtering._lessThanStats.total) {
+            try {
+                const s = Filtering._lessThanStats;
+                Filtering._dbg('lessThan:summary', {
+                    total:s.total,
+                    incomplete:s.incomplete,
+                    invalidTarget:s.invalidTarget,
+                    missingActual:s.missingActual,
+                    passed:s.passed,
+                    failed:s.failed,
+                    sampleCount:s.samples.length,
+                    samples:s.samples
+                });
+            } catch(e){ /* ignore */ }
+        }
         return working;
     },
     applyAdvancedSearch(offers, state) {
@@ -58,6 +96,44 @@ const Filtering = {
         try {
             let op = (predicate.operator||'').toLowerCase();
             if (op === 'starts with') op = 'contains';
+            if (op === 'less than') {
+                // Initialize stats object if not present
+                if (!Filtering._lessThanStats) Filtering._lessThanStats = { total:0, incomplete:0, invalidTarget:0, missingActual:0, passed:0, failed:0, samples:[] };
+                const stats = Filtering._lessThanStats;
+                stats.total++;
+                const targetRaw = Array.isArray(predicate.values) && predicate.values.length ? predicate.values[0] : null;
+                if (targetRaw == null || targetRaw === '') {
+                    stats.incomplete++;
+                    if (stats.samples.length < 15) stats.samples.push({reason:'incomplete', fieldValue});
+                    // Avoid per-row debug spam; sample captured above
+                    return true;
+                }
+                const targetNum = Number(targetRaw);
+                if (!isFinite(targetNum)) {
+                    stats.invalidTarget++;
+                    if (stats.samples.length < 15) stats.samples.push({reason:'invalidTarget', targetRaw, fieldValue});
+                    // Avoid per-row debug spam; sample captured above
+                    return true;
+                }
+                const actualNum = Number(fieldValue);
+                if (!isFinite(actualNum)) {
+                    // Per product logic: suiteUpgradePrice should only be empty for sold-out rooms.
+                    // For 'less than' comparisons we should exclude rows without a numeric value.
+                    stats.missingActual++;
+                    if (stats.samples.length < 15) stats.samples.push({reason:'missingActual', targetNum, rawFieldValue: fieldValue});
+                    // Avoid a console.debug for every missing actual; only log a lightweight marker every 250 missing occurrences
+                    Filtering._missingActualLogCounter = (Filtering._missingActualLogCounter || 0) + 1;
+                    if (Filtering._missingActualLogCounter <= 5 || Filtering._missingActualLogCounter % 250 === 0) {
+                        Filtering._dbg('lessThan:missingActual sample', { predicateId: predicate.id, fieldKey: predicate.fieldKey, rawFieldValue: fieldValue, targetNum, occurrence: Filtering._missingActualLogCounter });
+                    }
+                    return false;
+                }
+                const result = actualNum < targetNum;
+                if (result) stats.passed++; else stats.failed++;
+                if (stats.samples.length < 15) stats.samples.push({reason:'evaluated', actualNum, targetNum, passed:result});
+                // small-volume per-row logging suppressed to avoid flooding; rely on aggregated summary
+                return result;
+            }
             // Visits field requires set membership evaluation against individual ports
             if (predicate.fieldKey === 'visits') {
                 const selected = Array.isArray(predicate.values) ? predicate.values.map(v=>Filtering.normalizePredicateValue(v, 'visits')) : [];
@@ -199,12 +275,35 @@ const Filtering = {
             }
             case 'visits': {
                 try {
-                    if (typeof AdvancedItinerarySearch !== 'undefined' && AdvancedItinerarySearch && typeof AdvancedItinerarySearch.getPortsForSailing === 'function') {
-                        const ports = AdvancedItinerarySearch.getPortsForSailing(sailing);
-                        return ports && ports.length ? ports.join(', ') : '-';
-                    }
-                } catch(e){ /* ignore */ }
-                return '-';
+                    const ports = AdvancedItinerarySearch.getPortsForSailing(sailing);
+                    return ports && ports.length ? ports.join(', ') : '-';
+                } catch(e){ return '-'; }
+            }
+            case 'suiteUpgradePrice': {
+                try {
+                    const val = App.PricingUtils.computeSuiteUpgradePrice(offer, sailing);
+                    // Debugging: surface unexpected nulls so we can trace why pricing is not computed
+                    try {
+                        const meta = { offerCode: offer?.campaignOffer?.offerCode || null, ship: sailing?.shipName || null, sailDate: sailing?.sailDate || null };
+                        // Cap unconditional console.debug to avoid flooding: first 25 nulls and first 25 computed values are logged.
+                        if (val == null) {
+                            Filtering._suiteNullLogCount = (Filtering._suiteNullLogCount || 0) + 1;
+                            if (Filtering._suiteNullLogCount <= 25) {
+                                try { console.debug('[Filtering][suiteUpgradePrice] compute returned null (sample)', meta); } catch(e){}
+                            }
+                            // Always capture a lightweight debug when global debug is enabled
+                            try { Filtering._dbg && Filtering._dbg('[Filtering][suiteUpgradePrice] compute returned null (dbg)', meta); } catch(e){}
+                        } else {
+                            Filtering._suiteComputedLogCount = (Filtering._suiteComputedLogCount || 0) + 1;
+                            if (Filtering._suiteComputedLogCount <= 25) {
+                                try { console.debug('[Filtering][suiteUpgradePrice] computed (sample)', Object.assign({}, meta, { value: Number(val).toFixed ? Number(val).toFixed(2) : val })); } catch(e){}
+                            }
+                            try { Filtering._dbg && Filtering._dbg('[Filtering][suiteUpgradePrice] computed (dbg)', Object.assign({}, meta, { value: Number(val).toFixed ? Number(val).toFixed(2) : val })); } catch(e){}
+                        }
+                    } catch(e) { /* ignore logging errors */ }
+                    if (val == null) return '-';
+                    return Number(val.toFixed(2));
+                } catch(e){ return '-'; }
             }
             default:
                 return offer[key];
@@ -362,5 +461,32 @@ const Filtering = {
             console.debug('[Filtering] updateHiddenGroupsList: No hidden groups to display (GLOBAL)');
         }
         console.debug('[Filtering] updateHiddenGroupsList EXIT (GLOBAL)');
+    },
+    // Debug helper: prints first `limit` offers (or uses state.originalOffers) with pricing diagnostics
+    printSuitePricingDiagnostics(state, offers, limit = 40) {
+        try {
+            const source = Array.isArray(offers) ? offers : (state && (state.originalOffers || state.fullOriginalOffers || state.sortedOffers) ? (state.originalOffers || state.fullOriginalOffers || state.sortedOffers) : []);
+            const list = (source || []).slice(0, limit).map((w, idx) => {
+                try {
+                    const offer = w && w.offer;
+                    const sailing = w && w.sailing;
+                    const shipCode = sailing && sailing.shipCode ? (''+sailing.shipCode).trim() : '';
+                    const sailDate = sailing && sailing.sailDate ? (''+sailing.sailDate).slice(0,10) : '';
+                    const key = `SD_${shipCode}_${sailDate}`;
+                    const entry = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.get === 'function') ? ItineraryCache.get(key) : null;
+                    const entryExists = !!entry && entry.stateroomPricing && Object.keys(entry.stateroomPricing || {}).length > 0;
+                    let computed = null;
+                    try { computed = App && App.PricingUtils ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing) : null; } catch(e) { computed = `ERR:${e && e.message}`; }
+                    return {
+                        idx, offerCode: offer?.campaignOffer?.offerCode || null,
+                        shipCode, shipName: sailing?.shipName || null, sailDate,
+                        itineraryKey: key, itineraryPresent: entryExists,
+                        computedSuiteUpgrade: computed
+                    };
+                } catch(e){ return { idx, err:true, e }; }
+            });
+            try { console.table(list); } catch(e){ console.debug('[Filtering.printSuitePricingDiagnostics] table', list); }
+            return list;
+        } catch(e) { console.warn('[Filtering.printSuitePricingDiagnostics] failed', e); return null; }
     },
 };

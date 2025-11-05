@@ -139,3 +139,4 @@ Keep tab-related changes inside `updateBreadcrumb()`; avoid duplicating enumerat
 ### Avoid adding comments unless **vital** to describe complex logic. 
 ### Do not add useless comments like "Removed XYZ".
 
+# IMPORTANT: You will carefully make this change like a senior developer. Extract common shared code where possible into utility modules. Refactor where necessary. If your changes make a module too large, create new modules. Minimize context usage.

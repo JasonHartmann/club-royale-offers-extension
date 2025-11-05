@@ -4,6 +4,20 @@
 // Each favorited sailing keeps its original offer wrapper but only the selected sailing inside campaignOffer.sailings[]
 (function(){
     const STORAGE_KEY = 'goob-favorites';
+    // In-memory cached profile to reduce repeated storage lookups during table rendering
+    let _cachedProfile = null;
+    let _cachedProfileStamp = 0;
+    const CACHE_TTL_MS = 60 * 1000; // 1 minute TTL (adjust if needed)
+    function invalidateCache(){ _cachedProfile = null; _cachedProfileStamp = 0; }
+    function getCachedProfile(){
+        const now = Date.now();
+        if (!_cachedProfile || (now - _cachedProfileStamp) > CACHE_TTL_MS) {
+            try { _cachedProfile = loadProfileObject(); _cachedProfileStamp = now; } catch(e){ _cachedProfile = { data:{offers:[]}, savedAt: now }; _cachedProfileStamp = now; }
+        }
+        return _cachedProfile;
+    }
+    // Listen for storage updates to favorites key to invalidate cache immediately
+    try { document.addEventListener('goboStorageUpdated', (ev) => { try { if (ev && ev.detail && ev.detail.key === STORAGE_KEY) invalidateCache(); } catch(e){} }); } catch(e){ /* ignore */ }
 
     function getRawStorage() {
         try { return (typeof goboStorageGet === 'function' ? goboStorageGet(STORAGE_KEY) : localStorage.getItem(STORAGE_KEY)); } catch(e){ return null; }
@@ -39,7 +53,7 @@
     function saveProfileObject(profile) {
         profile.savedAt = Date.now();
         setRawStorage(profile);
-        // Invalidate any cached DOM/profile in App.ProfileCache
+        invalidateCache(); // ensure subsequent reads use fresh data
         try { if (App && App.ProfileCache && App.ProfileCache['goob-favorites']) delete App.ProfileCache['goob-favorites']; } catch(e){ /* ignore */ }
     }
 
@@ -50,7 +64,7 @@
     }
 
     function isFavorite(offer, sailing, profileId) {
-        const profile = loadProfileObject();
+        const profile = getCachedProfile(); // use cached profile instead of loading each call
         const offers = profile.data.offers || [];
         const requestedPid = profileId; // may be undefined/null
         let isCombinedContext = (typeof requestedPid === 'string' && requestedPid.includes('-'));
@@ -210,7 +224,8 @@
         getSailingKey,
         ensureProfileExists,
         loadProfileObject,
-        addFavorite, // newly exported
-        removeFavorite // newly exported
+        addFavorite,
+        removeFavorite,
+        invalidateCache // exported for manual debugging if needed
     };
 })();

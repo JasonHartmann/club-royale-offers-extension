@@ -115,6 +115,8 @@
                 a.href = '#';
                 a.className = 'gobo-itinerary-link';
                 a.dataset.itineraryKey = itineraryKey;
+                // Attach offer category (raw room label) so the itinerary modal can compute estimates
+                try { a.dataset.offerCategory = (offer.campaignOffer && offer.campaignOffer.category) ? String(offer.campaignOffer.category) : (sailing.roomType || ''); } catch(e) {}
                 a.textContent = text || destination || itineraryKey;
                 a.addEventListener('click', (ev) => {
                     ev.preventDefault();
