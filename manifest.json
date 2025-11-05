@@ -50,6 +50,7 @@
         "features/filtering.js",
         "features/whatsNew.js",
         "features/advancedSearch.js",
+        "features/advancedSearchAddField.js",
         "features/breadcrumbs.js",
         "styles.js",
         "modal.js",

@@ -46,7 +46,8 @@
                 if (typeof raw === 'string') {
                     const cleaned = raw.replace(/[^0-9.\-]/g, '');
                     if (cleaned === '' || cleaned === '.' || cleaned === '-') return NaN;
-                    return Number(cleaned);
+                    const n = Number(cleaned);
+                    return isFinite(n) ? n : NaN;
                 }
                 return NaN;
             } catch(e){ return NaN; }
@@ -54,10 +55,20 @@
         pricingKeys.forEach(k => {
             try {
                 const pr = entry.stateroomPricing[k];
+                if (!pr) return;
                 const code = pr && (pr.code || k) || '';
                 const cat = resolveCategory(code);
-                const rawPrice = pr && (pr.price ?? pr.amount ?? pr.priceAmount);
+                const rawPrice = pr && (pr.price ?? pr.amount ?? pr.priceAmount ?? pr.priceAmt ?? pr.priceamount);
                 const parsed = parsePriceRaw(rawPrice);
+                // Capture and cap parse failures so we can inspect why prices are missing/invalid
+                try {
+                    if (!isFinite(parsed)) {
+                        App.PricingUtils._parseNaNCount = (App.PricingUtils._parseNaNCount || 0) + 1;
+                        if (App.PricingUtils._parseNaNCount <= 50) {
+                            try { console.debug('[PricingUtils] parsePriceRaw:NaN sample', { key:k, code, rawPrice, parsed }); } catch(e){}
+                        }
+                    }
+                } catch(e){}
                 if (cat === broadCat && isFinite(parsed)) {
                     const val = Number(parsed) * 2; // always dual occupancy
                     if (min == null || val < min) {
@@ -65,7 +76,7 @@
                         min = val;
                     }
                 }
-            } catch(e){ /* ignore */ }
+            } catch(e){ /* ignore per-slot errors */ }
         });
         dbg('cheapestPriceForCategory:end', { broadCat, min });
         return min;
@@ -75,21 +86,23 @@
     // Returns number or null if not computable.
     App.PricingUtils.computeSuiteUpgradePrice = function(offer, sailing){
         try {
-            const shipCode = (sailing.shipCode || '').trim();
-            const sailDate = (sailing.sailDate || '').trim().slice(0,10);
+            const shipCode = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : '';
+            const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim().slice(0,10) : '';
             // Require sailDate and ItineraryCache. Do NOT require shipCode here —
             // we have a fallback that can resolve entries by sailDate + shipName.
             if (!sailDate || typeof ItineraryCache === 'undefined') {
                 dbg('computeSuiteUpgradePrice:missingPrereqs', { shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined' });
-                // Unconditional, limited logging to help root-cause
+                // Limited logging to help root-cause
                 try {
                     App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1;
                     if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] missing prereqs for computeSuiteUpgradePrice', { shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined', offerCategory: offer?.category, sailingRoomType: sailing?.roomType });
                 } catch(e){}
                 return null;
             }
+
             const key = `SD_${shipCode}_${sailDate}`;
             let entry = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.get === 'function') ? ItineraryCache.get(key) : (App && App.ItineraryCache && typeof App.ItineraryCache.get === 'function' ? App.ItineraryCache.get(key) : null);
+
             // Fallback: if no shipCode or entry missing, try to find an entry by sailDate + shipName match
             if ((!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length) && (!shipCode || !entry)) {
                 try {
@@ -109,6 +122,7 @@
                     }
                 } catch(e) { /* ignore fallback errors */ }
             }
+
             if (!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length) {
                 dbg('computeSuiteUpgradePrice:noPricingEntry', { key, hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
                 try {
@@ -134,7 +148,7 @@
                                 pricingKeys.forEach(pk => {
                                     try {
                                         const p = entry.stateroomPricing[pk];
-                                        console.debug('[PricingUtils][DETAILED] pricing sample', { key: pk, code: p && p.code, price: p && p.price, priceType: typeof (p && p.price) });
+                                        console.debug('[PricingUtils][DETAILED] pricing sample', { key: pk, code: p && p.code, price: p && (p.price ?? p.amount ?? p.priceAmount), priceType: typeof (p && (p.price ?? p.amount ?? p.priceAmount)) });
                                     } catch(e){}
                                 });
                             }
@@ -143,6 +157,7 @@
                 } catch(e){}
                 return null;
             }
+
             // taxesAndFees in the entry may be a string; parse robustly
             let taxesNumber = 0;
             try {
@@ -155,20 +170,91 @@
                     else taxesNumber = 0;
                 } else taxesNumber = 0;
             } catch(e) { taxesNumber = 0; }
-            const offerCategoryRaw = sailing.roomType || offer?.category || '';
+
+            const offerCategoryRaw = (sailing && sailing.roomType) || (offer && offer.category) || '';
             const offerBroad = resolveCategory(offerCategoryRaw) || null;
             const suiteBroad = 'DELUXE';
             const suitePriceNum = cheapestPriceForCategory(entry, suiteBroad);
+
             if (suitePriceNum == null) {
                 dbg('computeSuiteUpgradePrice:noSuitePricing', { key, suiteBroad });
                 try { App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1; if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no suite pricing in entry', key, { suiteBroad, pricingKeys: Object.keys(entry.stateroomPricing || {}) }); } catch(e){}
-                // Additional hint: maybe prices are strings; dump a limited sample of pricing entries to inspect shape
-                try {
-                    App.PricingUtils._noSuiteLogCount = (App.PricingUtils._noSuiteLogCount || 0) + 1;
-                    if (App.PricingUtils._noSuiteLogCount <= 50) {
-                        const keys = Object.keys(entry.stateroomPricing || {}).slice(0,20);
-                        const sample = keys.map(k => {
-                            try {
-                                const p = entry.stateroomPricing[k] || {};
-                                return { k, code: p.code, rawPrice: p.price, priceType: typeof p.price };
+                return null;
+            }
 
+            // If the offer is already a DELUXE (suite) the upgrade price is just taxes & fees
+            if (offerBroad === suiteBroad) {
+                dbg('computeSuiteUpgradePrice:offerIsSuite', { offerBroad, taxesNumber });
+                return Number(taxesNumber);
+            }
+
+            // Determine the price for the offer's category (dual occupancy), falling back to attempt to use the exact offer price if available
+            let offerCategoryPrice = null;
+            if (offerBroad) {
+                offerCategoryPrice = cheapestPriceForCategory(entry, offerBroad);
+                dbg('computeSuiteUpgradePrice:offerCategoryPriceResolved', { offerBroad, offerCategoryPrice });
+            }
+            // If still null, attempt a heuristic: choose the cheapest non-suite category price (best-effort)
+            if (offerCategoryPrice == null) {
+                try {
+                    const nonSuiteCats = WIDE_CATS.filter(c => c !== 'DELUXE');
+                    let best = null;
+                    nonSuiteCats.forEach(cat => {
+                        try {
+                            const p = cheapestPriceForCategory(entry, cat);
+                            if (p != null && isFinite(p)) {
+                                if (best == null || p < best) best = p;
+                            }
+                        } catch(e){}
+                    });
+                    if (best != null) {
+                        offerCategoryPrice = best;
+                        dbg('computeSuiteUpgradePrice:offerCategoryPriceFallbackToCheapestNonSuite', { offerCategoryPrice });
+                        App.PricingUtils._fallbackUsed = (App.PricingUtils._fallbackUsed || 0) + 1;
+                    }
+                } catch(e){}
+            }
+            // If still null, try to parse a price from offer object (many shapes tolerated)
+            if (offerCategoryPrice == null) {
+                try {
+                    const tryVals = [offer && offer.price, offer && offer.priceAmount, offer && offer.amount, offer && offer.cabinPrice, offer && offer.totalPrice];
+                    for (let i=0;i<tryVals.length;i++) {
+                        const v = tryVals[i];
+                        if (v == null) continue;
+                        let num = NaN;
+                        if (typeof v === 'number') num = Number(v);
+                        else if (typeof v === 'string') {
+                            const cleaned = v.replace(/[^0-9.\-]/g,'');
+                            num = Number(cleaned);
+                        }
+                        if (isFinite(num)) { offerCategoryPrice = Number(num); break; }
+                    }
+                    // If parsed found, ensure dual occupancy semantics (the entry-based prices are already dual-occupied)
+                    if (offerCategoryPrice != null && isFinite(offerCategoryPrice)) {
+                        // Heuristic: if the parsed offer price looks like a per-person amount (small) it's ambiguous — but we can't be sure.
+                        // We'll assume the value represents the full price for the cabin and will NOT multiply again.
+                        dbg('computeSuiteUpgradePrice:offerPriceParsed', { offerCategoryPrice });
+                    }
+                } catch(e) { /* ignore */ }
+            }
+
+            // At this point, we must have suitePriceNum and ideally offerCategoryPrice.
+            // If offerCategoryPrice is null, we can't compute a meaningful difference so return null.
+            if (offerCategoryPrice == null || !isFinite(offerCategoryPrice)) {
+                dbg('computeSuiteUpgradePrice:cannotResolveOfferCategoryPrice', { offerBroad, offerCategoryPrice });
+                return null;
+            }
+
+            // Compute delta: how much more the suite costs vs the offer category (already dual occupancy numbers)
+            const delta = Math.max(0, Number(suitePriceNum) - Number(offerCategoryPrice));
+            const upgradeEstimate = Number(delta) + Number(taxesNumber);
+            dbg('computeSuiteUpgradePrice:computed', { suitePriceNum, offerCategoryPrice, delta, taxesNumber, upgradeEstimate });
+            return Number(upgradeEstimate);
+
+        } catch(e) {
+            try { console.error('[PricingUtils] computeSuiteUpgradePrice:unexpected', e); } catch(err){}
+            return null;
+        }
+    };
+
+})();

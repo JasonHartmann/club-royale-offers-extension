@@ -414,7 +414,7 @@ const AdvancedSearch = {
             body.innerHTML = '';
             const {predicates} = state.advancedSearch;
             const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
-            let advOnly = [];
+            let advOnly;
             try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch (e) { advOnly = []; }
             if (!Array.isArray(advOnly)) advOnly = [];
             const headerKeysSet = new Set(headerFields.map(h => h.key));
@@ -645,15 +645,10 @@ const AdvancedSearch = {
                     body.appendChild(box); renderedAny = true;
                 } catch(perr){ console.warn('[AdvancedSearch] predicate render error', perr); }
             });
-            const hasIncomplete = predicates.some(p => !p.complete);
+            // hasIncomplete not used here
             if (state.advancedSearch.enabled) {
-                const addWrapper = document.createElement('div'); addWrapper.className='adv-add-field-wrapper';
-                const select = document.createElement('select'); select.className='adv-add-field-select';
-                const defaultOpt = document.createElement('option'); defaultOpt.value=''; defaultOpt.textContent='Add Field…'; select.appendChild(defaultOpt);
-                allFields.filter(h=>h.key!=='favorite').forEach(h => { const opt=document.createElement('option'); opt.value=h.key; opt.textContent=h.label; select.appendChild(opt); });
-                if (hasIncomplete) { select.disabled=true; select.title='Finish current filter to add another field'; select.setAttribute('aria-disabled','true'); addWrapper.classList.add('adv-add-disabled'); } else { select.removeAttribute('aria-disabled'); }
-                select.addEventListener('change', () => { if (select.disabled) return; const val = select.value; if(!val) return; if (state.advancedSearch.predicates.some(p=>!p.complete)) return; const pred = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), fieldKey: val, operator: null, values: [], complete:false }; state.advancedSearch.predicates.push(pred); state._advFocusOperatorId = pred.id; this.renderPredicates(state); this.debouncedPersist(state); });
-                addWrapper.appendChild(select); body.appendChild(addWrapper);
+                // Inject richer Add Field control (popup + hidden select for compatibility)
+                AdvancedSearch._injectAddFieldControl(body, allFields.filter(h=>h.key!=='favorite'), state);
             }
             if (!predicates.length && state.advancedSearch.enabled) {
                 const empty = document.createElement('div'); empty.className='adv-search-empty-inline'; empty.textContent = headersReady ? 'Select a field to start building a filter.' : 'Loading columns…'; body.appendChild(empty);
@@ -681,11 +676,16 @@ const AdvancedSearch = {
                     let body = panel.querySelector('.adv-search-body');
                     if (!body) { body = document.createElement('div'); body.className='adv-search-body'; panel.appendChild(body); }
                     if (!panel.querySelector('select.adv-add-field-select')) {
-                        const fallback = document.createElement('div'); fallback.className='adv-add-field-wrapper adv-error-fallback';
-                        const sel = document.createElement('select'); sel.className='adv-add-field-select';
-                        const opt = document.createElement('option'); opt.value=''; opt.textContent='Add Field…'; sel.appendChild(opt);
-                        sel.addEventListener('change', () => { const val = sel.value; if(!val) return; const pred = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), fieldKey: val, operator:null, values:[], complete:false }; state.advancedSearch.predicates.push(pred); this.renderPredicates(state); this.debouncedPersist(state); });
-                        fallback.appendChild(sel); body.appendChild(fallback);
+                        // Recovery: compute available fields locally and inject our richer Add Field control
+                        try {
+                            const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
+                            let advOnly;
+                            try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch(e){ advOnly = []; }
+                            const headerKeysSet = new Set(headerFields.map(h => h.key));
+                            const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
+                            const allFieldsLocal = headerFields.concat(advFiltered);
+                            AdvancedSearch._injectAddFieldControl(body, allFieldsLocal.filter(h=>h.key!=='favorite'), state);
+                        } catch(injectErr) { this._logDebug('renderPredicates:fallbackInjectError', injectErr); }
                     }
                     const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
                     if (committedCount && body.querySelectorAll('.adv-predicate-box').length===0) this.renderCommittedFallback(state, body);
@@ -829,9 +829,8 @@ const AdvancedSearch = {
                 return;
             }
             // Build field list only if we are enabled and no incomplete predicates blocking
-            const hasIncomplete = state.advancedSearch.predicates.some(p => !p.complete);
             const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
-            let advOnly = [];
+            let advOnly;
             try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch(e){ advOnly = []; }
             if (!Array.isArray(advOnly)) advOnly = [];
             const headerKeysSet = new Set(headerFields.map(h => h.key));
@@ -841,14 +840,14 @@ const AdvancedSearch = {
             wrapper.className = 'adv-add-field-wrapper adv-recovery-wrapper';
             const sel = document.createElement('select');
             sel.className = 'adv-add-field-select';
-            const opt = document.createElement('option'); opt.value=''; opt.textContent='Add Field…'; sel.appendChild(opt);
-            allFields.forEach(f => { const o = document.createElement('option'); o.value=f.key; o.textContent=f.label; sel.appendChild(o); });
+            const opt = document.createElement('option'); opt.value = ''; opt.textContent = 'Add Field…'; sel.appendChild(opt);
+            allFields.forEach(f => { const o=document.createElement('option'); o.value = f.key; o.textContent = f.label || f.key; sel.appendChild(o); });
             if (hasIncomplete) {
                 sel.disabled = true; sel.title = 'Finish current filter to add another field'; wrapper.classList.add('adv-add-disabled'); sel.setAttribute('aria-disabled','true');
             }
             sel.addEventListener('change', () => {
                 if (sel.disabled) return; const val = sel.value; if(!val) return; if (state.advancedSearch.predicates.some(p=>!p.complete)) return;
-                const pred = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), fieldKey: val, operator: null, values: [], complete:false };
+                const pred = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), fieldKey: val, operator: null, values: [], complete: false };
                 state.advancedSearch.predicates.push(pred);
                 state._advFocusOperatorId = pred.id;
                 this._logDebug('ensureAddFieldDropdown:newPredicateAdded', { fieldKey: val, totalPredicates: state.advancedSearch.predicates.length });
@@ -909,7 +908,19 @@ const AdvancedSearch = {
                     AdvancedSearch._logDebug('renderCompleteHook:event', { dropdownPresent, headerCount });
                     if (!dropdownPresent) {
                         AdvancedSearch.renderPredicates(state);
-                        if (!panel.querySelector('select.adv-add-field-select')) AdvancedSearch.scheduleRerenderIfColumnsPending(state);
+                        // If still missing, build body and allFields locally and inject popup control
+                        if (!panel.querySelector('select.adv-add-field-select')) {
+                            try {
+                                const body = panel.querySelector('.adv-search-body') || (function(){ const b=document.createElement('div'); b.className='adv-search-body'; panel.appendChild(b); return b; })();
+                                const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
+                                let advOnly;
+                                try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch(e){ advOnly = []; }
+                                const headerKeysSet = new Set(headerFields.map(h => h.key));
+                                const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
+                                const allFields = headerFields.concat(advFiltered);
+                                AdvancedSearch._injectAddFieldControl(body, allFields.filter(h=>h.key!=='favorite'), state);
+                            } catch(innerErr) { AdvancedSearch._logDebug('renderCompleteHook:injectError', innerErr); }
+                        }
                     }
                 } catch (e) { /* ignore */ }
             });
@@ -1147,7 +1158,7 @@ const AdvancedSearch = {
             renderCalendars();
         } catch(e) { /* ignore date range UI errors */ }
     },
-    debugDumpDateField(fieldKey, state) {
+    _debugDumpDateField(fieldKey, state) {
         try {
             if (!fieldKey) { console.debug('[AdvancedSearch][debugDumpDateField] fieldKey required'); return; }
             const base = state?.fullOriginalOffers || state?.originalOffers || state?.sortedOffers || [];
@@ -1163,7 +1174,7 @@ const AdvancedSearch = {
                     rows.push({ rawIso, formatted });
                 } catch(eRow){ /* ignore */ }
             });
-            console.group(`[AdvancedSearch][debugDumpDateField] ${fieldKey} (${rows.length} unique variants)`);
+            console.group(`[AdvancedSearch][_debugDumpDateField] ${fieldKey} (${rows.length} unique variants)`);
             rows.slice().sort((a,b)=> (a.rawIso||'').localeCompare(b.rawIso||''))
                 .forEach(r => console.log('rawIso:', r.rawIso, 'formatted:', r.formatted));
             console.groupEnd();

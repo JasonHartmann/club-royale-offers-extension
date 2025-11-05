@@ -22,6 +22,7 @@
         AdvancedItinerarySearch,
         Breadcrumbs,
         AdvancedSearch,
+        AdvancedSearchAddField,
         Utils,
         OfferCodeLookup,
         Filtering,

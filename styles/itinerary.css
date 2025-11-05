@@ -100,6 +100,11 @@
   font-weight: 600;
   background: #f9fafb;
 }
+/* Ensure Price (2nd) and You Pay (3rd) headers align with numeric data */
+.gobo-itinerary-table thead th:nth-child(2),
+.gobo-itinerary-table thead th:nth-child(3) {
+  text-align: right;
+}
 .gobo-itinerary-table tbody td {
   padding: 4px 6px;
   border-bottom: 1px solid #eee;
