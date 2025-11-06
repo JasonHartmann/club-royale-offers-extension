@@ -12,8 +12,8 @@ Key rules (short)
 4. When adding new feature modules, update `manifest.json` so their script appears before `app.js` in the `content_scripts[js]` array.
 5. Prefer top-level `const ModuleName = { ... }` modules that are then merged into `App` in `app.js`.
 6. Keep global exposures explicit: write `window.ModuleName = ModuleName;` within the feature file if necessary for runtime access.
-
-7. Avoid adding defensive runtime null/`if` checks around module usage in consumer modules (for example, avoid `if (window.X) window.X.doThing()` everywhere).
+7. ALWAYS place styles in CSS under /styles rather than inline
+8. Avoid adding defensive runtime null/`if` checks around module usage in consumer modules (for example, avoid `if (window.X) window.X.doThing()` everywhere).
    - Instead, ensure the module is loaded before the consumer by updating `manifest.json` ordering or by defining modules as bare identifiers included in `app.js`.
    - The preferred pattern is to guarantee load order and call module functions directly (e.g., `ModuleName.init()`), not to scatter runtime guards.
    - If you cannot guarantee load order, do not silently wrap calls with `if` checks that hide bugs; either reorder scripts, add a getter in `app.js`, or ask the repo owner for guidance.

@@ -87,7 +87,8 @@
 .adv-add-section-title { font-size: 12px; color: #111827; margin: 4px 0 6px 0; }
 .adv-add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
 .adv-add-field-item { padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adv-add-field-item:hover, .adv-add-field-item:focus { background: #f3f6fb; outline: none; }
+.adv-add-field-item:hover { background: #f3f6fb; }
+.adv-add-field-item:focus { outline: 2px solid #2563eb; outline-offset: 2px; background: transparent; }
 .adv-add-field-item[title] { position: relative; }
 .adv-add-section.computed { border-left: 3px solid #f59e0b; padding-left: 8px; }
 .adv-add-field-popup .adv-help-text { display: none; }

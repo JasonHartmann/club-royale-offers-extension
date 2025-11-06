@@ -648,7 +648,13 @@ const AdvancedSearch = {
             // hasIncomplete not used here
             if (state.advancedSearch.enabled) {
                 // Inject richer Add Field control (popup + hidden select for compatibility)
-                AdvancedSearch._injectAddFieldControl(body, allFields.filter(h=>h.key!=='favorite'), state);
+                try {
+                    if (window.AdvancedSearchAddField && typeof AdvancedSearchAddField.inject === 'function') {
+                        AdvancedSearchAddField.inject(body, allFields.filter(h => h.key !== 'favorite'), state);
+                    } else if (typeof AdvancedSearch._injectAddFieldControl === 'function') {
+                        AdvancedSearch._injectAddFieldControl(body, allFields.filter(h => h.key !== 'favorite'), state);
+                    }
+                } catch (e) { /* ignore injection errors */ }
             }
             if (!predicates.length && state.advancedSearch.enabled) {
                 const empty = document.createElement('div'); empty.className='adv-search-empty-inline'; empty.textContent = headersReady ? 'Select a field to start building a filter.' : 'Loading columns…'; body.appendChild(empty);
@@ -684,7 +690,13 @@ const AdvancedSearch = {
                             const headerKeysSet = new Set(headerFields.map(h => h.key));
                             const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
                             const allFieldsLocal = headerFields.concat(advFiltered);
-                            AdvancedSearch._injectAddFieldControl(body, allFieldsLocal.filter(h=>h.key!=='favorite'), state);
+                            try {
+                                if (window.AdvancedSearchAddField && typeof AdvancedSearchAddField.inject === 'function') {
+                                    AdvancedSearchAddField.inject(body, allFieldsLocal.filter(h => h.key !== 'favorite'), state);
+                                } else if (typeof AdvancedSearch._injectAddFieldControl === 'function') {
+                                    AdvancedSearch._injectAddFieldControl(body, allFieldsLocal.filter(h => h.key !== 'favorite'), state);
+                                }
+                            } catch(injectErr2) { this._logDebug('renderPredicates:fallbackInjectError', injectErr2); }
                         } catch(injectErr) { this._logDebug('renderPredicates:fallbackInjectError', injectErr); }
                     }
                     const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
@@ -918,8 +930,14 @@ const AdvancedSearch = {
                                 const headerKeysSet = new Set(headerFields.map(h => h.key));
                                 const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
                                 const allFields = headerFields.concat(advFiltered);
-                                AdvancedSearch._injectAddFieldControl(body, allFields.filter(h=>h.key!=='favorite'), state);
-                            } catch(innerErr) { AdvancedSearch._logDebug('renderCompleteHook:injectError', innerErr); }
+                                try {
+                                    if (window.AdvancedSearchAddField && typeof AdvancedSearchAddField.inject === 'function') {
+                                        AdvancedSearchAddField.inject(body, allFields.filter(h => h.key !== 'favorite'), state);
+                                    } else if (typeof AdvancedSearch._injectAddFieldControl === 'function') {
+                                        AdvancedSearch._injectAddFieldControl(body, allFields.filter(h => h.key !== 'favorite'), state);
+                                    }
+                                } catch(injectErr) { this._logDebug('renderCompleteHook:injectError', injectErr); }
+                            } catch(injectErr) { this._logDebug('renderCompleteHook:injectError', injectErr); }
                         }
                     }
                 } catch (e) { /* ignore */ }
@@ -1201,3 +1219,4 @@ try {
         } catch(e){ /* ignore */ }
     });
 } catch(e){ /* ignore */ }
+

@@ -4,7 +4,7 @@
 // Matches project module pattern (top-level const exported and attached to window)
 
 const AdvancedSearchAddField = {
-    _log(...args) { try { if (window.AdvancedSearch && window.AdvancedSearch._logDebug) window.AdvancedSearch._logDebug(...args); else console.debug('[AdvAddField]', ...args); } catch(e){} },
+    _log(...args) { try { if (window.AdvancedSearch && window.AdvancedSearch._logDebug) window.AdvancedSearch._logDebug(...args); else console.log('[AdvAddField]', ...args); } catch(e){} },
 
     inject(body, allFields, state) {
         try {
@@ -39,7 +39,7 @@ const AdvancedSearchAddField = {
             wrapper.appendChild(btn);
 
             const popup = document.createElement('div'); popup.className = 'adv-add-field-popup';
-            popup.style.position = 'absolute'; popup.style.left = '0'; popup.style.top = 'calc(100% + 6px)'; popup.style.minWidth = '260px';
+            popup.style.position = 'absolute'; popup.style.left = '0'; popup.style.top = 'calc(100% + 6px)'; popup.style.minWidth = '390px';
             popup.style.background = '#fff'; popup.style.border = '1px solid #e5e7eb'; popup.style.boxShadow = '0 6px 18px rgba(15,23,42,0.08)'; popup.style.padding = '8px'; popup.style.borderRadius = '8px'; popup.style.zIndex = 9999; popup.style.display = 'none';
 
             const buildSection = (title, items, sectionClass) => {
@@ -55,14 +55,30 @@ const AdvancedSearchAddField = {
                     it.addEventListener('click', (e)=>{
                         e.stopPropagation();
                         const val = item.key; if (!val) return;
-                        if (state && state.advancedSearch && Array.isArray(state.advancedSearch.predicates) && state.advancedSearch.predicates.some(p=>!p.complete)) return;
+                        // Decide on the authoritative state object
+                        const liveState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                        const s = (state && state.advancedSearch) ? state : (liveState && liveState.advancedSearch) ? liveState : (state || liveState);
+                        try { AdvancedSearchAddField._log('injectAddField:click', { fieldKey: val, injectedStateHasPreds: !!(state && state.advancedSearch && Array.isArray(state.advancedSearch.predicates)), liveStateHasPreds: !!(liveState && liveState.advancedSearch && Array.isArray(liveState.advancedSearch.predicates)) }); } catch(e){}
+                        if (s && s.advancedSearch && Array.isArray(s.advancedSearch.predicates) && s.advancedSearch.predicates.some(p=>!p.complete)) {
+                            try { AdvancedSearchAddField._log('injectAddField:blockedByIncomplete', { preds: s.advancedSearch.predicates }); } catch(e){}
+                            return;
+                        }
                         const pred = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), fieldKey: val, operator: null, values: [], complete: false };
-                        state.advancedSearch = state.advancedSearch || { enabled: true, predicates: [] };
-                        state.advancedSearch.predicates.push(pred);
-                        state._advFocusOperatorId = pred.id;
-                        try { AdvancedSearchAddField._log('injectAddField:added', { fieldKey: val }); } catch(e){}
-                        try { if (window.AdvancedSearch && typeof window.AdvancedSearch.renderPredicates === 'function') window.AdvancedSearch.renderPredicates(state); } catch(e){}
-                        try { if (window.AdvancedSearch && typeof window.AdvancedSearch.debouncedPersist === 'function') window.AdvancedSearch.debouncedPersist(state); } catch(e){}
+                        s.advancedSearch = s.advancedSearch || { enabled: true, predicates: [] };
+                        s.advancedSearch.predicates.push(pred);
+                        s._advFocusOperatorId = pred.id;
+                        try { AdvancedSearchAddField._log('injectAddField:added', { fieldKey: val, predId: pred.id, totalPreds: s.advancedSearch.predicates.length }); } catch(e){}
+                        // Trigger UI refresh (prefer window.AdvancedSearch, then AdvancedSearch, then TableRenderer/App.TableRenderer)
+                        try {
+                            if (window && window.AdvancedSearch && typeof window.AdvancedSearch.renderPredicates === 'function') { AdvancedSearchAddField._log('injectAddField:usingWindowAdvancedSearch.renderPredicates'); window.AdvancedSearch.renderPredicates(s); }
+                            else if (typeof AdvancedSearch !== 'undefined' && typeof AdvancedSearch.renderPredicates === 'function') { AdvancedSearchAddField._log('injectAddField:usingAdvancedSearch.renderPredicates'); AdvancedSearch.renderPredicates(s); }
+                            else if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.updateView === 'function') { AdvancedSearchAddField._log('injectAddField:usingTableRenderer.updateView'); TableRenderer.updateView(s); }
+                            else if (liveState && App && App.TableRenderer && typeof App.TableRenderer.updateView === 'function') { AdvancedSearchAddField._log('injectAddField:usingApp.TableRenderer.updateView'); App.TableRenderer.updateView(s); }
+                        } catch(e){ AdvancedSearchAddField._log('injectAddField:refreshError', e); }
+                        try {
+                            if (window && window.AdvancedSearch && typeof window.AdvancedSearch.debouncedPersist === 'function') { window.AdvancedSearch.debouncedPersist(s); AdvancedSearchAddField._log('injectAddField:calledWindow.debouncedPersist'); }
+                            else if (typeof AdvancedSearch !== 'undefined' && typeof AdvancedSearch.debouncedPersist === 'function') { AdvancedSearch.debouncedPersist(s); AdvancedSearchAddField._log('injectAddField:calledAdvancedSearch.debouncedPersist'); }
+                        } catch(e){ AdvancedSearchAddField._log('injectAddField:persistError', e); }
                         closePopup();
                     });
                     it.addEventListener('keydown', (e)=>{
@@ -83,11 +99,33 @@ const AdvancedSearchAddField = {
             wrapper.appendChild(popup);
             body.appendChild(wrapper);
 
-            const openPopup = ()=>{ popup.style.display='block'; btn.setAttribute('aria-expanded','true'); setTimeout(()=>{ const first = popup.querySelector('.adv-add-field-item'); if (first) first.focus(); }, 10); };
-            const closePopup = ()=>{ popup.style.display='none'; btn.setAttribute('aria-expanded','false'); };
+            // Open popup; only focus first item when requested (keyboard open)
+            const openPopup = (focusFirst) => {
+                popup.style.display = 'block';
+                btn.setAttribute('aria-expanded', 'true');
+                if (focusFirst) {
+                    setTimeout(() => {
+                        const first = popup.querySelector('.adv-add-field-item');
+                        if (first) first.focus();
+                    }, 10);
+                }
+            };
+            const closePopup = () => { popup.style.display = 'none'; btn.setAttribute('aria-expanded', 'false'); };
             let onDocClick;
-            btn.addEventListener('click', (e)=>{ e.stopPropagation(); if (popup.style.display==='block'){ closePopup(); } else { openPopup(); onDocClick = (ev)=>{ if (!wrapper.contains(ev.target)) { closePopup(); document.removeEventListener('click', onDocClick); } }; document.addEventListener('click', onDocClick); } });
-            btn.addEventListener('keydown', (e)=>{ if (e.key==='ArrowDown' || e.key==='Enter' || e.key===' ') { e.preventDefault(); openPopup(); } else if (e.key==='Escape') { closePopup(); } });
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (popup.style.display === 'block') { closePopup(); }
+                else {
+                    openPopup(false);
+                    onDocClick = (ev) => { if (!wrapper.contains(ev.target)) { closePopup(); document.removeEventListener('click', onDocClick); } };
+                    document.addEventListener('click', onDocClick);
+                }
+            });
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault(); openPopup(true);
+                } else if (e.key === 'Escape') { closePopup(); }
+            });
 
             const hasIncomplete = state && state.advancedSearch && Array.isArray(state.advancedSearch.predicates) && state.advancedSearch.predicates.some(p=>!p.complete);
             if (hasIncomplete) { btn.disabled = true; btn.title = 'Finish current filter to add another field'; hiddenSel.disabled = true; }
@@ -103,23 +141,4 @@ const AdvancedSearchAddField = {
 // Expose globally
 window.AdvancedSearchAddField = AdvancedSearchAddField;
 
-// Try to attach to AdvancedSearch if it already exists, otherwise poll briefly
-try {
-    if (window.AdvancedSearch) {
-        window.AdvancedSearch._injectAddFieldControl = AdvancedSearchAddField.inject;
-        AdvancedSearchAddField._log('Attached addField injector to AdvancedSearch');
-    } else {
-        let attempts = 0;
-        const timer = setInterval(()=>{
-            attempts++;
-            if (window.AdvancedSearch) {
-                window.AdvancedSearch._injectAddFieldControl = AdvancedSearchAddField.inject;
-                AdvancedSearchAddField._log('Attached addField injector to AdvancedSearch (delayed)');
-                clearInterval(timer);
-            } else if (attempts > 30) {
-                clearInterval(timer);
-                AdvancedSearchAddField._log('AdvancedSearch not found after polling; addField injector available as AdvancedSearchAddField.inject');
-            }
-        }, 200);
-    }
-} catch(e){ /* ignore */ }
+// Note: Do not attach to AdvancedSearch directly. Consumers should call AdvancedSearchAddField.inject(body, allFields, state) when needed.
