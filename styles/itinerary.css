@@ -136,6 +136,13 @@
   color: #666;
 }
 
+/* Current category style */
+.gobo-itinerary-current-category,
+.gobo-itinerary-current-category td {
+  color: #059669 !important; /* bold green (emerald) */
+  font-weight: 700 !important;
+}
+
 /* Responsive tweaks */
 @media (max-width: 540px) {
   .gobo-itinerary-panel { padding: 16px 16px 24px; }

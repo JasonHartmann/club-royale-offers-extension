@@ -514,79 +514,79 @@
                 }
                 const priceKeys = Object.keys(data.stateroomPricing || {});
                 if (priceKeys.length) {
-                    const priceTitle = document.createElement('h3');
-                    priceTitle.className = 'gobo-itinerary-section-title';
-                    priceTitle.textContent = 'Stateroom Pricing';
-                    panel.appendChild(priceTitle);
-                    const pTable = document.createElement('table');
-                    pTable.className = 'gobo-itinerary-table';
-                    const thead = document.createElement('thead');
-                    const thr = document.createElement('tr');
-                    // Add new "You Pay (ESTIMATED)" column right after Price
-                    ['Class', 'Price', 'You Pay (ESTIMATED)', 'Currency'].forEach((h,i) => { const th = document.createElement('th'); th.textContent = h; if (i === 1 || i === 2) th.style.textAlign = 'right'; thr.appendChild(th); });
-                    thead.appendChild(thr);
-                    pTable.appendChild(thead);
-                    const tbody = document.createElement('tbody');
+                    // Build flat list of pricing entries for easier lookup (defer creating header until after computations)
                     const codeMap = { I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior', O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View', B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony', D:'Suite', DLX:'Suite', DELUXE:'Suite', JS:'Suite', SU:'Suite', SUITE:'Suite' };
                     const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR', O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE', B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY', D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE' };
                     function resolveDisplay(raw){ raw=(raw||'').trim(); return codeMap[raw.toUpperCase()]||raw; }
                     function resolveCategory(raw){ raw=(raw||'').trim(); const up=raw.toUpperCase(); if (baseCategoryMap[up]) return baseCategoryMap[up]; if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
                     const sortOrder = {INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3};
 
-                    // Precompute useful values for the "You Pay (ESTIMATED)" column
                     const taxesNumber = (typeof data.taxesAndFees === 'number') ? Number(data.taxesAndFees) * 2 : 0;
-                    // Build flat list of pricing entries for easier lookup
-                    const priceEntries = priceKeys.map(k => {
-                        const pr = data.stateroomPricing[k] || {};
-                        return {
-                            key: k,
-                            code: (pr.code || k || '').toString().trim(),
-                            priceNum: (typeof pr.price === 'number') ? Number(pr.price) * 2 : null,
-                            currency: pr.currency || ''
-                        };
-                    });
+                    const priceEntries = priceKeys.map(k => { const pr = data.stateroomPricing[k] || {}; return { key:k, code:(pr.code||k||'').toString().trim(), priceNum:(typeof pr.price==='number')?Number(pr.price)*2:null, currency: pr.currency||'' }; });
 
-                    // Try to determine the offer category from the source element (if present) or from the row
+                    // Offer category detection (same logic as before)
                     let offerCategoryRaw = '';
                     try { if (sourceEl && sourceEl instanceof Element) offerCategoryRaw = String(sourceEl.dataset && sourceEl.dataset.offerCategory ? sourceEl.dataset.offerCategory : '').trim(); } catch(e){}
                     if (!offerCategoryRaw) {
-                        try {
-                            const row = sourceEl && sourceEl.closest ? sourceEl.closest('tr') : null;
-                            if (row) {
-                                const tds = Array.from(row.querySelectorAll('td'));
-                                for (let td of tds) {
-                                    const txt = (td.textContent || '').trim();
-                                    if (!txt) continue;
-                                    if (resolveCategory(txt) !== null) { offerCategoryRaw = txt; break; }
-                                }
-                            }
-                        } catch(e){}
+                        try { const row = sourceEl && sourceEl.closest ? sourceEl.closest('tr') : null; if (row) { const tds = Array.from(row.querySelectorAll('td')); for (let td of tds) { const txt=(td.textContent||'').trim(); if (!txt) continue; if (resolveCategory(txt) !== null) { offerCategoryRaw = txt; break; } } } } catch(e){}
                     }
 
-                    // Helper: find best matching price entry for a given raw category string
-                    function findOfferPriceEntry(rawCat) {
-                        if (!rawCat) return null;
-                        const target = rawCat.toString().trim().toUpperCase();
-                        // Prefer exact code match
-                        let exact = priceEntries.find(pe => (pe.code||'').toString().trim().toUpperCase() === target);
-                        if (exact) return exact;
-                        // Next prefer display match (resolveDisplay)
-                        exact = priceEntries.find(pe => (resolveDisplay(pe.code||'') || '').toUpperCase() === target);
-                        if (exact) return exact;
-                        // Finally, match by resolved broad category and pick the cheapest entry in that bucket
-                        const targetBucket = resolveCategory(rawCat);
-                        if (!targetBucket) return null;
-                        const bucket = priceEntries.filter(pe => resolveCategory(pe.code) === targetBucket && pe.priceNum != null);
-                        if (!bucket.length) return null;
-                        bucket.sort((a,b)=>a.priceNum - b.priceNum);
-                        return bucket[0];
-                    }
+                    // Detect 1 Guest offer
+                    let isOneGuestOffer = false;
+                    try { if (sourceEl && sourceEl instanceof Element) { const row = sourceEl.closest ? sourceEl.closest('tr') : null; if (row) { for (let td of Array.from(row.querySelectorAll('td'))) { const txt=(td.textContent||'').trim(); if (/^1\s+Guest\b/i.test(txt)) { isOneGuestOffer = true; break; } } } } } catch(e){}
 
+                    function findOfferPriceEntry(rawCat){ if(!rawCat) return null; const target=rawCat.toString().trim().toUpperCase(); let exact = priceEntries.find(pe => (pe.code||'').toString().trim().toUpperCase()===target); if(exact) return exact; exact = priceEntries.find(pe => (resolveDisplay(pe.code||'')||'').toUpperCase()===target); if(exact) return exact; const bucketCat = resolveCategory(rawCat); if(!bucketCat) return null; const bucket = priceEntries.filter(pe => resolveCategory(pe.code)===bucketCat && pe.priceNum!=null); if(!bucket.length) return null; bucket.sort((a,b)=>a.priceNum-b.priceNum); return bucket[0]; }
                     const offerPriceEntry = findOfferPriceEntry(offerCategoryRaw);
-                    const offerPriceNum = offerPriceEntry && typeof offerPriceEntry.priceNum === 'number' ? offerPriceEntry.priceNum : null;
                     const currencyFallback = Object.values(data.stateroomPricing)[0]?.currency || '';
+                    const effectiveOfferPriceNum = (offerPriceEntry && typeof offerPriceEntry.priceNum === 'number') ? Number(offerPriceEntry.priceNum) : null;
 
+                    // Single-guest offer value computation (with assumed $200 discount)
+                    const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
+                    let singleGuestOfferValue = null; // offerValue = personFare - discount
+                    if (isOneGuestOffer && offerPriceEntry && typeof offerPriceEntry.priceNum === 'number') {
+                        const baseOfferPriceNum = Number(offerPriceEntry.priceNum); // B_offer
+                        const T = Number(taxesNumber); // dual-occupancy taxes total
+                        // Derivation:
+                        // B_cat = 1.4 * P_cat - discount1 + T
+                        // offerValue_cat = P_cat - discount1
+                        // From B_cat: P_cat = (B_cat + discount1 - T)/1.4
+                        // Thus offerValue_cat = (B_cat + discount1 - T)/1.4 - discount1
+                        const numerator = baseOfferPriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - T;
+                        const ov = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
+                        if (isFinite(ov) && ov > 0) singleGuestOfferValue = ov;
+                    }
+
+                    // Dual-guest (regular) offer value: difference between base category price and You Pay (which is taxesNumber for that category in dual occupancy logic)
+                    let dualGuestOfferValue = null;
+                    if (!isOneGuestOffer && offerPriceEntry && typeof offerPriceEntry.priceNum === 'number' && isFinite(taxesNumber)) {
+                        const diff = Number(offerPriceEntry.priceNum) - Number(taxesNumber);
+                        dualGuestOfferValue = isFinite(diff) && diff > 0 ? diff : 0;
+                    }
+
+                    // Now create header and inject Offer Value span for either scenario
+                    const priceTitle = document.createElement('h3');
+                    priceTitle.className = 'gobo-itinerary-section-title';
+                    priceTitle.textContent = 'Stateroom Pricing';
+                    if ((isOneGuestOffer && singleGuestOfferValue != null) || (!isOneGuestOffer && dualGuestOfferValue != null)) {
+                        try {
+                            const offerValueEl = document.createElement('span');
+                            offerValueEl.className = 'gobo-itinerary-offervalue';
+                            offerValueEl.style.cssText = 'float:right;font-weight:normal;font-size:0.85em;';
+                            const valNum = isOneGuestOffer ? singleGuestOfferValue : dualGuestOfferValue;
+                            const label = isOneGuestOffer ? 'Offer Value (est.)' : 'Offer Value';
+                            offerValueEl.textContent = `${label}: ${valNum.toFixed(2)} ${currencyFallback}`;
+                            offerValueEl.title = isOneGuestOffer ? 'Estimated single-guest offer value derived from base price, assumed $200 discount, and taxes.' : 'Difference between base category price (dual occupancy) and estimated You Pay.';
+                            priceTitle.appendChild(offerValueEl);
+                        } catch(e) { dbg('OfferValue span inject error', e); }
+                    }
+                    panel.appendChild(priceTitle);
+
+                    // Proceed to build table
                     priceKeys.sort((a,b)=>{ const aRaw=data.stateroomPricing[a]?.code||a; const bRaw=data.stateroomPricing[b]?.code||b; const aCat=resolveCategory(aRaw); const bCat=resolveCategory(bRaw); const aRank=aCat!=null&&aCat in sortOrder?sortOrder[aCat]:100; const bRank=bCat!=null&&bCat in sortOrder?sortOrder[bCat]:100; if (aRank!==bRank) return aRank-bRank; return resolveDisplay(aRaw).toUpperCase().localeCompare(resolveDisplay(bRaw).toUpperCase()); });
+                    const pTable = document.createElement('table'); pTable.className='gobo-itinerary-table';
+                    const thead = document.createElement('thead'); const thr=document.createElement('tr'); ['Class','Price','You Pay (ESTIMATED)','Currency'].forEach((h,i)=>{ const th=document.createElement('th'); th.textContent=h; if(i===1||i===2) th.style.textAlign='right'; thr.appendChild(th); }); thead.appendChild(thr); pTable.appendChild(thead);
+                    const tbody = document.createElement('tbody');
+
                     priceKeys.forEach(k=>{
                         const pr=data.stateroomPricing[k];
                         const tr=document.createElement('tr');
@@ -594,43 +594,24 @@
                         const label=resolveDisplay(rawCode);
                         const hasPrice=typeof pr.price==='number';
                         const priceVal=hasPrice?(Number(pr.price)*2).toFixed(2):'Sold Out';
-                        const currency=hasPrice?(pr.currency||'') : (currencyFallback||'');
-
-                        // Compute estimated "You Pay" value
-                        let youPayDisplay = '';
-                        if (!hasPrice) {
-                            youPayDisplay = 'Sold Out';
-                        } else {
-                            const currentPriceNum = Number(pr.price) * 2;
-                            let estimatedNum = 0;
-                            if (offerPriceNum != null) {
-                                const currentMatchesOffer = (offerPriceEntry && ((offerPriceEntry.key === k) || ((offerPriceEntry.code||'').toString().trim().toUpperCase() === (rawCode||'').toString().trim().toUpperCase()) || (resolveCategory(offerPriceEntry.code) && resolveCategory(offerPriceEntry.code) === resolveCategory(rawCode))));
-                                if (currentMatchesOffer) {
-                                    estimatedNum = taxesNumber;
-                                } else {
-                                    let diff = currentPriceNum - offerPriceNum;
-                                    if (isNaN(diff) || diff < 0) diff = 0;
-                                    estimatedNum = diff + taxesNumber;
-                                }
-                            } else {
-                                estimatedNum = taxesNumber;
+                        const currency=hasPrice?(pr.currency||''):(currencyFallback||'');
+                        try { const resolvedThis=resolveCategory(rawCode)||resolveDisplay(rawCode||''); const resolvedTarget=resolveCategory(offerCategoryRaw)||(offerCategoryRaw||'').toUpperCase(); if (resolvedTarget && (String(resolvedThis).toUpperCase()===String(resolvedTarget).toUpperCase() || resolveDisplay(rawCode).toUpperCase()===(offerCategoryRaw||'').toUpperCase())) tr.classList.add('gobo-itinerary-current-category'); } catch(e){}
+                        let youPayDisplay='';
+                        if(!hasPrice) { youPayDisplay='Sold Out'; } else {
+                            const currentPriceNum=Number(pr.price)*2; let estimatedNum=0;
+                            if(isOneGuestOffer && singleGuestOfferValue!=null){
+                                // Reverted single-guest estimation: use base category derived offerValue and subtract from each category base price.
+                                // estimated single guest price for category = max(taxesNumber, currentPriceNum - singleGuestOfferValue)
+                                let calc = currentPriceNum - singleGuestOfferValue;
+                                if(!isFinite(calc) || calc < Number(taxesNumber)) calc = Number(taxesNumber);
+                                estimatedNum = calc;
                             }
-                            youPayDisplay = typeof estimatedNum === 'number' ? estimatedNum.toFixed(2) : String(estimatedNum);
+                            else if(effectiveOfferPriceNum!=null){ const currentMatchesOffer=(offerPriceEntry && ((offerPriceEntry.key===k)||((offerPriceEntry.code||'').toString().trim().toUpperCase()===(rawCode||'').toString().trim().toUpperCase()) || (resolveCategory(offerPriceEntry.code)&&resolveCategory(offerPriceEntry.code)===resolveCategory(rawCode)))); if(currentMatchesOffer){ estimatedNum=taxesNumber; } else { let diff=currentPriceNum - effectiveOfferPriceNum; if(isNaN(diff)||diff<0) diff=0; estimatedNum=diff + taxesNumber; } }
+                            else { estimatedNum=taxesNumber; }
+                            youPayDisplay = typeof estimatedNum==='number'?estimatedNum.toFixed(2):String(estimatedNum);
                         }
-
-                        // Append columns: Class, Price, You Pay (ESTIMATED), Currency
-                        const vals = [label, priceVal, youPayDisplay, currency];
-                        vals.forEach((val,i)=>{
-                            const td = document.createElement('td');
-                            td.textContent = val;
-                            // Right-align Price (index 1) when price present, and right-align You Pay (index 2) when it's a numeric value (not 'Sold Out')
-                            if ((i === 1 && hasPrice) || (i === 2 && val !== 'Sold Out')) td.style.textAlign = 'right';
-                            td.title = rawCode;
-                            // Preserve existing sold-out styling for Price and You Pay
-                            if (i === 1 && !hasPrice) td.className = 'gobo-itinerary-soldout';
-                            if (i === 2 && val === 'Sold Out') td.className = 'gobo-itinerary-soldout';
-                            tr.appendChild(td);
-                        });
+                        const vals=[label,priceVal,youPayDisplay,currency];
+                        vals.forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if((i===1&&hasPrice)||(i===2&&val!=='Sold Out')) td.style.textAlign='right'; td.title=rawCode; if(i===1&&!hasPrice) td.className='gobo-itinerary-soldout'; if(i===2&&val==='Sold Out') td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
                         tbody.appendChild(tr);
                     });
                     pTable.appendChild(tbody); panel.appendChild(pTable);
