@@ -70,23 +70,35 @@ const Filtering = {
         return working;
     },
     applyAdvancedSearch(offers, state) {
-        // Only apply when panel enabled
         if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return offers;
-        const basePreds = (state.advancedSearch && Array.isArray(state.advancedSearch.predicates)) ? state.advancedSearch.predicates : [];
-        // Only include fully committed predicates (no preview inclusion)
-        const committed = basePreds.filter(p=>p && p.complete && p.fieldKey && p.operator && Array.isArray(p.values) && p.values.length);
-        const preds = committed;
-        if (!preds.length) return offers; // nothing to do
+        const basePreds = Array.isArray(state.advancedSearch.predicates) ? state.advancedSearch.predicates : [];
+        // Filter to committed predicates only
+        let committed = basePreds.filter(p => p && p.complete && p.fieldKey && p.operator && Array.isArray(p.values) && p.values.length);
+        // Remove any predicates whose fieldKey is no longer present (upgrade* keys fully removed)
+        try {
+            const headerKeys = new Set((state.headers||[]).map(h=>h && h.key).filter(Boolean));
+            let advOnly = [];
+            try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch(e){ advOnly = []; }
+            const advKeys = new Set(advOnly.map(f=>f.key));
+            committed = committed.filter(p => headerKeys.has(p.fieldKey) || advKeys.has(p.fieldKey));
+        } catch(e){ /* ignore field presence check errors */ }
+        if (!committed.length) return offers;
         const labelToKey = {};
         try { (state.headers||[]).forEach(h=>{ if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; }); } catch(e){}
-        return offers.filter(wrapper => Filtering.matchesAdvancedPredicates(wrapper, preds, labelToKey, state));
+        return offers.filter(wrapper => Filtering.matchesAdvancedPredicates(wrapper, committed, labelToKey, state));
     },
     matchesAdvancedPredicates(wrapper, predicates, labelToKey, state) {
         try {
             return predicates.every(pred => {
                 try {
                     const key = pred.fieldKey || labelToKey[pred.fieldKey?.toLowerCase()] || pred.fieldKey;
-                    const rawVal = Filtering.getOfferColumnValue(wrapper.offer, wrapper.sailing, key);
+                    // Use adjusted pricing variant when taxes/fees excluded
+                    let rawVal;
+                    if (Filtering.getOfferColumnValueForFiltering) {
+                        rawVal = Filtering.getOfferColumnValueForFiltering(wrapper.offer, wrapper.sailing, key, state);
+                    } else {
+                        rawVal = Filtering.getOfferColumnValue(wrapper.offer, wrapper.sailing, key);
+                    }
                     return Filtering.evaluatePredicate(pred, rawVal, wrapper.offer, wrapper.sailing);
                 } catch(e){ return false; }
             });
@@ -308,21 +320,15 @@ const Filtering = {
             case 'minInteriorPrice':
             case 'minOutsidePrice':
             case 'minBalconyPrice':
-            case 'minSuitePrice':
-            case 'upgradeInteriorToSuite':
-            case 'upgradeOutsideToSuite':
-            case 'upgradeBalconyToSuite': {
+            case 'minSuitePrice': {
                 try {
                     const shipCode = (sailing.shipCode || '').toString().trim();
                     const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);
                     const keySD = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
                     let entry = keySD && typeof ItineraryCache !== 'undefined' && ItineraryCache.get ? ItineraryCache.get(keySD) : null;
-                    if (!entry) {
-                        try { if (shipCode && sailDate && ItineraryCache && typeof ItineraryCache.getByShipDate === 'function') entry = ItineraryCache.getByShipDate(shipCode, sailDate); } catch(e){}
-                    }
+                    if (!entry) { try { if (shipCode && sailDate && ItineraryCache && typeof ItineraryCache.getByShipDate === 'function') entry = ItineraryCache.getByShipDate(shipCode, sailDate); } catch(e){} }
                     if (!entry || !entry.pricingDerived) return '-';
                     const pd = entry.pricingDerived;
-                    // Broad category resolution for offer's room type
                     const rawOfferCat = (sailing.roomType || offer?.category || '').toString().trim();
                     const catMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
                         O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
@@ -344,9 +350,6 @@ const Filtering = {
                         case 'minOutsidePrice': { const v = youPayFor('OUTSIDE'); return v!=null?Number(v.toFixed(2)):'-'; }
                         case 'minBalconyPrice': { const v = youPayFor('BALCONY'); return v!=null?Number(v.toFixed(2)):'-'; }
                         case 'minSuitePrice': { const v = youPayFor('DELUXE'); return v!=null?Number(v.toFixed(2)):'-'; }
-                        case 'upgradeInteriorToSuite': { const v = (pd.upgradeDelta?.INTERIOR?.DELUXE!=null)? (pd.upgradeDelta.INTERIOR.DELUXE + taxes): null; return v!=null?Number(v.toFixed(2)):'-'; }
-                        case 'upgradeOutsideToSuite': { const v = (pd.upgradeDelta?.OUTSIDE?.DELUXE!=null)? (pd.upgradeDelta.OUTSIDE.DELUXE + taxes): null; return v!=null?Number(v.toFixed(2)):'-'; }
-                        case 'upgradeBalconyToSuite': { const v = (pd.upgradeDelta?.BALCONY?.DELUXE!=null)? (pd.upgradeDelta.BALCONY.DELUXE + taxes): null; return v!=null?Number(v.toFixed(2)):'-'; }
                     }
                     return '-';
                 } catch(e){ return '-'; }
@@ -354,6 +357,64 @@ const Filtering = {
             default:
                 return offer[key];
         }
+    },
+    // New variant used by AdvancedSearch suggestion + predicate evaluation when tax flag toggled
+    getOfferColumnValueForFiltering(offer, sailing, key, state) {
+        try {
+            const includeTF = state && state.advancedSearch && (state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false);
+            const pricingKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice']);
+            if (includeTF || !pricingKeys.has(key)) return Filtering.getOfferColumnValue(offer, sailing, key);
+            if (key === 'suiteUpgradePrice') {
+                // Original returns delta + taxes. Recompute raw without taxes.
+                const baseVal = App && App.PricingUtils && App.PricingUtils.computeSuiteUpgradePrice ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing) : null;
+                if (baseVal == null) return '-';
+                // Retrieve taxes to subtract
+                let taxesNumber = 0;
+                try {
+                    const shipCode = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : '';
+                    const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim().slice(0,10) : '';
+                    const keySD = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
+                    let entry = keySD && ItineraryCache && typeof ItineraryCache.get === 'function' ? ItineraryCache.get(keySD) : null;
+                    if (entry && entry.taxesAndFees != null) {
+                        if (typeof entry.taxesAndFees === 'number') taxesNumber = entry.taxesAndFees * 2; else if (typeof entry.taxesAndFees === 'string') { const cleaned = entry.taxesAndFees.replace(/[^0-9.\-]/g,''); const num=Number(cleaned); if (isFinite(num)) taxesNumber = num*2; }
+                    }
+                } catch(e){ /* ignore tax parse errors */ }
+                const noTaxVal = Number(baseVal) - Number(taxesNumber);
+                return isFinite(noTaxVal) ? Number(noTaxVal.toFixed(2)) : '-';
+            }
+            // Recompute min* without taxes
+            try {
+                const shipCode = (sailing.shipCode || '').toString().trim();
+                const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);
+                const keySD = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
+                let entry = keySD && typeof ItineraryCache !== 'undefined' && ItineraryCache.get ? ItineraryCache.get(keySD) : null;
+                if (!entry) { try { if (shipCode && sailDate && ItineraryCache && typeof ItineraryCache.getByShipDate === 'function') entry = ItineraryCache.getByShipDate(shipCode, sailDate); } catch(e){} }
+                if (!entry || !entry.pricingDerived) return '-';
+                const pd = entry.pricingDerived;
+                const rawOfferCat = (sailing.roomType || offer?.category || '').toString().trim();
+                const catMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
+                    O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
+                    B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
+                    D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
+                const resolveBroad = (raw)=>{ if(!raw) return null; const up=raw.toUpperCase(); return catMap[up]|| (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null); };
+                const offerBroad = resolveBroad(rawOfferCat);
+                const offerMin = offerBroad ? pd.categories[offerBroad] : null;
+                function youPayForNoTax(broad){
+                    const catMin = pd.categories[broad];
+                    if (catMin == null || offerMin == null) return null;
+                    if (offerBroad === broad) return 0; // same category: previously taxes only; now zero when excluding taxes
+                    const diff = catMin - offerMin; // upgrade cost difference
+                    return (diff > 0 ? diff : 0); // exclude taxes
+                }
+                switch (key) {
+                    case 'minInteriorPrice': { const v = youPayForNoTax('INTERIOR'); return v!=null?Number(v.toFixed(2)):'-'; }
+                    case 'minOutsidePrice': { const v = youPayForNoTax('OUTSIDE'); return v!=null?Number(v.toFixed(2)):'-'; }
+                    case 'minBalconyPrice': { const v = youPayForNoTax('BALCONY'); return v!=null?Number(v.toFixed(2)):'-'; }
+                    case 'minSuitePrice': { const v = youPayForNoTax('DELUXE'); return v!=null?Number(v.toFixed(2)):'-'; }
+                }
+            } catch(e){ return '-'; }
+            return '-';
+        } catch(e){ return Filtering.getOfferColumnValue(offer, sailing, key); }
     },
     // Load hidden groups (GLOBAL now). Performs one-time migration from per-profile keys.
     loadHiddenGroups() {

@@ -18,14 +18,15 @@ const AdvancedSearchAddField = {
                 suiteUpgradePrice: { title: 'Suite Upgrade Price', hint: 'Estimated suite upgrade price (computed)' },
                 visits: { title: 'Ports Visited', hint: 'Ports for the sailing itinerary (computed)' },
                 favorite: { title: 'Favorite', hint: 'Favorite flag' },
-                minInteriorPrice: { title: 'Min Interior You Pay', hint: 'You Pay amount (taxes or upgrade + taxes) for Interior vs offer category' },
-                minOutsidePrice: { title: 'Min Ocean View You Pay', hint: 'You Pay amount (taxes if base, else upgrade diff + taxes) for Ocean View' },
-                minBalconyPrice: { title: 'Min Balcony You Pay', hint: 'You Pay amount (taxes or upgrade diff + taxes) for Balcony' },
-                minSuitePrice: { title: 'Min Suite You Pay', hint: 'You Pay amount (taxes or upgrade diff + taxes) for Suite' },
-                upgradeInteriorToSuite: { title: 'Interior→Suite You Pay', hint: 'Upgrade Interior to Suite (delta + taxes)' },
-                upgradeOutsideToSuite: { title: 'Ocean View→Suite You Pay', hint: 'Upgrade Ocean View to Suite (delta + taxes)' },
-                upgradeBalconyToSuite: { title: 'Balcony→Suite You Pay', hint: 'Upgrade Balcony to Suite (delta + taxes)' }
+                minInteriorPrice: { title: 'Interior Price', hint: 'You Pay amount for Interior vs offer category' },
+                minOutsidePrice: { title: 'Ocean View Price', hint: 'You Pay amount for Ocean View' },
+                minBalconyPrice: { title: 'Balcony Price', hint: 'You Pay amount for Balcony' },
+                minSuitePrice: { title: 'Suite Price', hint: 'You Pay amount for Suite' }
             };
+
+            // Exclude removed upgrade-to-suite filters entirely from add-field options
+            const removedKeys = new Set(['upgradeInteriorToSuite','upgradeOutsideToSuite','upgradeBalconyToSuite']);
+            allFields = allFields.filter(f => !removedKeys.has(f.key));
 
             // cleanup prior wrapper
             const prev = body.querySelector('.adv-popup-wrapper'); if (prev) prev.remove();

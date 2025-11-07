@@ -37,7 +37,8 @@ const AdvancedSearch = {
                         operator: p.operator,
                         values: p.values.slice(),
                         complete: !!p.complete
-                    }))
+                    })),
+                includeTaxesAndFeesInPriceFilters: state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false // default true
             };
             const key = this.storageKey(state.selectedProfileKey);
             sessionStorage.setItem(key, JSON.stringify(payload));
@@ -62,6 +63,8 @@ const AdvancedSearch = {
                 state._advRestoredProfiles.add(state.selectedProfileKey);
                 return;
             }
+            // Restore includeTaxes flag (default true)
+            state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
             const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range', 'less than']);
             state.advancedSearch.predicates = (Array.isArray(parsed.predicates) ? parsed.predicates
                 .filter(p => p && p.fieldKey && p.operator)
@@ -154,12 +157,9 @@ const AdvancedSearch = {
                 let ports = [];
                 try { ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : []; } catch(e){ ports = []; }
                 if (!ports || !ports.length) {
-                    // Avoid caching empty visits results so future attempts can re-evaluate.
-                    // Initiate hydration if not yet started.
                     this.triggerVisitsHydration(state);
-                    return []; // no cache write
+                    return [];
                 }
-                // Cache successful non-empty result for performance
                 state._advFieldCache = state._advFieldCache || {};
                 const cacheKey = `VISITS::${state.selectedProfileKey||'default'}::${ports.length}`;
                 state._advFieldCache[cacheKey] = ports.slice();
@@ -176,7 +176,9 @@ const AdvancedSearch = {
             } catch (e) {
                 committedSig = '';
             }
-            const cacheKey = [state.selectedProfileKey || 'default', fieldKey, originalLen, 'vis', visibleLen, committedSig].join('|');
+            // Include taxes flag in cache signature so toggling recalculates suggestions
+            const includeTF = state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false ? 'T' : 'NT';
+            const cacheKey = [state.selectedProfileKey || 'default', fieldKey, originalLen, 'vis', visibleLen, committedSig, includeTF].join('|');
             state._advFieldCache = state._advFieldCache || {};
             if (state._advFieldCache[cacheKey]) return state._advFieldCache[cacheKey];
             let source;
@@ -192,12 +194,11 @@ const AdvancedSearch = {
             const set = new Set();
             source.forEach(w => {
                 try {
-                    const raw = Filtering.getOfferColumnValue(w.offer, w.sailing, fieldKey);
+                    // Use filtering variant so suggestions reflect tax flag
+                    const raw = (Filtering.getOfferColumnValueForFiltering ? Filtering.getOfferColumnValueForFiltering(w.offer, w.sailing, fieldKey, state) : Filtering.getOfferColumnValue(w.offer, w.sailing, fieldKey));
                     if (raw == null) return;
                     const norm = Filtering.normalizePredicateValue(raw, fieldKey);
                     if (!norm) return;
-                    // Use original (raw) casing for display, but dedupe by normalized form
-                    // If an equivalent (case-insensitive) already present, skip adding duplicate display variant
                     if (![...set].some(existing => Filtering.normalizePredicateValue(existing, fieldKey) === norm)) {
                         set.add(raw);
                     }
@@ -205,11 +206,9 @@ const AdvancedSearch = {
             });
             let arr;
             if (fieldKey === 'departureDayOfWeek') {
-                // Natural week ordering instead of default alphabetical
                 const weekOrder = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
                 const present = new Set(Array.from(set));
                 arr = weekOrder.filter(d => present.has(d));
-                // Any unexpected tokens (e.g., '-') appended at end, stable alphabetical for those only
                 const extras = Array.from(present).filter(v => !weekOrder.includes(v));
                 if (extras.length) arr = arr.concat(extras.sort((a,b)=>a.localeCompare(b)));
             } else {
@@ -424,9 +423,7 @@ const AdvancedSearch = {
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
             // Numeric pricing fields that support 'less than'
-            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','upgradeInteriorToSuite','upgradeOutsideToSuite','upgradeBalconyToSuite']);
-            // NOTE: 'less than' only applies to numeric fields (currently suiteUpgradePrice)
-            // date fields: add date range operator
+            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice']);
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
                 this._logDebug('renderPredicates:headersNotReady', { headerCount: headerFields.length });
@@ -447,7 +444,6 @@ const AdvancedSearch = {
                     const isDateField = dateFieldKeys.has(pred.fieldKey);
                     const isNumericField = numericFieldKeys.has(pred.fieldKey);
                     const opsForField = isDateField ? allowedOperators.concat(['date range']) : (isNumericField ? baseOperators.concat(['less than']) : baseOperators);
-                    const isSuiteUpgradePriceField = (pred.fieldKey === 'suiteUpgradePrice');
                     const box = document.createElement('div');
                     box.className = 'adv-predicate-box';
                     if (state._advPreviewPredicateId === pred.id) box.classList.add('adv-predicate-preview');
@@ -636,9 +632,7 @@ const AdvancedSearch = {
                                 case 'minOutsidePrice': helpMsg = 'Ocean View You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
                                 case 'minBalconyPrice': helpMsg = 'Balcony You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
                                 case 'minSuitePrice': helpMsg = 'Suite You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
-                                case 'upgradeInteriorToSuite': helpMsg = 'Interior → Suite (delta + taxes) below this amount.'; break;
-                                case 'upgradeOutsideToSuite': helpMsg = 'Ocean View → Suite (delta + taxes) below this amount.'; break;
-                                case 'upgradeBalconyToSuite': helpMsg = 'Balcony → Suite (delta + taxes) below this amount.'; break;
+                                // Removed retired upgrade-to-suite help messages
                             }
                             help.textContent = helpMsg;
                             numWrap.appendChild(help);
@@ -922,46 +916,6 @@ const AdvancedSearch = {
             setTimeout(poll, 120);
         } catch (e) { /* ignore */ }
     },
-    _attachRenderCompleteHookOnce() {
-        if (AdvancedSearch._renderCompleteHookAttached) return;
-        try {
-            document.addEventListener('tableRenderComplete', () => {
-                try {
-                    const state = App?.TableRenderer?.lastState;
-                    if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return;
-                    const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
-                    if (!panel) return;
-                    const dropdownPresent = !!panel.querySelector('select.adv-add-field-select');
-                    const headerCount = Array.isArray(state.headers) ? state.headers.filter(h=>h && h.key && h.label).length : 0;
-                    AdvancedSearch._logDebug('renderCompleteHook:event', { dropdownPresent, headerCount });
-                    if (!dropdownPresent) {
-                        AdvancedSearch.renderPredicates(state);
-                        // If still missing, build body and allFields locally and inject popup control
-                        if (!panel.querySelector('select.adv-add-field-select')) {
-                            try {
-                                const body = panel.querySelector('.adv-search-body') || (function(){ const b=document.createElement('div'); b.className='adv-search-body'; panel.appendChild(b); return b; })();
-                                const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
-                                let advOnly;
-                                try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch(e){ advOnly = []; }
-                                const headerKeysSet = new Set(headerFields.map(h => h.key));
-                                const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
-                                const allFields = headerFields.concat(advFiltered);
-                                try {
-                                    if (window.AdvancedSearchAddField && typeof AdvancedSearchAddField.inject === 'function') {
-                                        AdvancedSearchAddField.inject(body, allFields.filter(h => h.key !== 'favorite'), state);
-                                    } else if (typeof AdvancedSearch._injectAddFieldControl === 'function') {
-                                        AdvancedSearch._injectAddFieldControl(body, allFields.filter(h => h.key !== 'favorite'), state);
-                                    }
-                                } catch(injectErr) { this._logDebug('renderCompleteHook:injectError', injectErr); }
-                            } catch(injectErr) { this._logDebug('renderCompleteHook:injectError', injectErr); }
-                        }
-                    }
-                } catch (e) { /* ignore */ }
-            });
-            AdvancedSearch._renderCompleteHookAttached = true;
-            AdvancedSearch._logDebug('_attachRenderCompleteHookOnce:attached');
-        } catch (e) { /* ignore */ }
-    },
     lightRefresh(state, opts) {
         const showSpinner = !!(opts && opts.showSpinner);
         try {
@@ -1039,6 +993,29 @@ const AdvancedSearch = {
                 setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
             });
             header.appendChild(clearBtn);
+            // Include Taxes & Fees checkbox
+            const includeWrap = document.createElement('label');
+            includeWrap.className = 'adv-include-taxes-wrap';
+            includeWrap.style.marginLeft = '12px';
+            includeWrap.style.display = 'inline-flex';
+            includeWrap.style.alignItems = 'center';
+            includeWrap.style.gap = '4px';
+            const includeCb = document.createElement('input');
+            includeCb.type = 'checkbox';
+            includeCb.title = 'Toggle inclusion of Taxes & Fees in price-based filters';
+            includeCb.checked = state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false; // default true
+            includeCb.addEventListener('change', () => {
+                state.advancedSearch.includeTaxesAndFeesInPriceFilters = includeCb.checked;
+                // Invalidate cached field values so suggestions reflect new pricing basis
+                try { if (state._advFieldCache) Object.keys(state._advFieldCache).forEach(k => { if (k.includes('min') || k.includes('upgrade') || k.includes('suiteUpgradePrice')) delete state._advFieldCache[k]; }); } catch(e){}
+                this.lightRefresh(state, { showSpinner: true });
+                this.debouncedPersist(state);
+            });
+            const includeSpan = document.createElement('span');
+            includeSpan.textContent = 'Include T&F in Price Filters';
+            includeWrap.appendChild(includeCb);
+            includeWrap.appendChild(includeSpan);
+            header.appendChild(includeWrap);
             const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
             if (committedCount) {
                 const badge = document.createElement('span'); badge.className='adv-badge'; badge.textContent = committedCount + ' active'; header.appendChild(badge);
@@ -1191,48 +1168,5 @@ const AdvancedSearch = {
             container.appendChild(wrapper);
             renderCalendars();
         } catch(e) { /* ignore date range UI errors */ }
-    },
-    _debugDumpDateField(fieldKey, state) {
-        try {
-            if (!fieldKey) { console.debug('[AdvancedSearch][debugDumpDateField] fieldKey required'); return; }
-            const base = state?.fullOriginalOffers || state?.originalOffers || state?.sortedOffers || [];
-            const seen = new Set();
-            const rows = [];
-            base.forEach(w => {
-                try {
-                    const rawIso = (fieldKey === 'offerDate' ? w.offer?.campaignOffer?.startDate : fieldKey === 'expiration' ? w.offer?.campaignOffer?.reserveByDate : fieldKey === 'sailDate' ? w.sailing?.sailDate : null) || null;
-                    const formatted = Filtering.getOfferColumnValue(w.offer, w.sailing, fieldKey);
-                    const keySig = rawIso + '|' + formatted;
-                    if (seen.has(keySig)) return;
-                    seen.add(keySig);
-                    rows.push({ rawIso, formatted });
-                } catch(eRow){ /* ignore */ }
-            });
-            console.group(`[AdvancedSearch][_debugDumpDateField] ${fieldKey} (${rows.length} unique variants)`);
-            rows.slice().sort((a,b)=> (a.rawIso||'').localeCompare(b.rawIso||''))
-                .forEach(r => console.log('rawIso:', r.rawIso, 'formatted:', r.formatted));
-            console.groupEnd();
-        } catch(e){ console.warn('[AdvancedSearch][debugDumpDateField] error', e); }
-    },
+    }
 };
-// Attach render completion hook early
-try { AdvancedSearch._attachRenderCompleteHookOnce(); } catch(e) { /* ignore */ }
-try { if (typeof window !== 'undefined' && window.location && window.location.search && /[?&]advdbg=1/.test(window.location.search)) { AdvancedSearch._debug = true; console.info('[AdvancedSearch] Debug auto-enabled via advdbg=1 query param'); } } catch(e) { /* ignore */ }
-
-try {
-    document.addEventListener('goboItineraryHydrated', () => {
-        try {
-            if (AdvancedSearch && AdvancedSearch._advFieldCache) {
-                Object.keys(AdvancedSearch._advFieldCache).forEach(k => {
-                    // cacheKey format: profile|fieldKey|... we check second segment or substring
-                    if (k.includes('|visits|')) delete AdvancedSearch._advFieldCache[k];
-                });
-                const state = App?.TableRenderer?.lastState;
-                if (state && state.advancedSearch?.enabled) {
-                    AdvancedSearch.renderPredicates(state);
-                }
-            }
-        } catch(e){ /* ignore */ }
-    });
-} catch(e){ /* ignore */ }
-

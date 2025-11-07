@@ -35,6 +35,50 @@
             if (!byShip) byShip = this._shipDateIndex[shipCode] = {};
             byShip[sailDate] = compositeKey;
         },
+        // Add enrichment helper (was referenced but not defined) so entries become enriched and stop triggering repeated hydration
+        _enrichEntryFromSailing(compositeKey, itineraryObj, sailingObj) {
+            try {
+                if (!compositeKey) return;
+                this._ensureLoaded();
+                const entry = this._cache[compositeKey];
+                if (!entry) return;
+                const itin = itineraryObj || {};
+                const sail = sailingObj || {};
+                // Taxes & fees
+                if (sail.taxesAndFees != null && entry.taxesAndFees == null) entry.taxesAndFees = sail.taxesAndFees;
+                if (typeof sail.taxesAndFeesIncluded === 'boolean' && entry.taxesAndFeesIncluded == null) entry.taxesAndFeesIncluded = sail.taxesAndFeesIncluded;
+                // Stateroom pricing (normalize into { code:{ price, currency } })
+                try {
+                    if (Array.isArray(sail.stateroomClassPricing) && sail.stateroomClassPricing.length) {
+                        sail.stateroomClassPricing.forEach(p => {
+                            try {
+                                const code = (p?.stateroomClass?.content?.code || p?.stateroomClass?.id || '').toString().trim();
+                                const priceVal = p?.price?.value ?? p?.priceAmount ?? p?.price ?? null;
+                                const currency = p?.price?.currency?.code || p?.currency || '';
+                                if (code && priceVal != null && isFinite(priceVal)) {
+                                    if (!entry.stateroomPricing) entry.stateroomPricing = {};
+                                    // Only overwrite if we have no existing price or new price is lower (prefer cheapest seen)
+                                    const existing = entry.stateroomPricing[code];
+                                    if (!existing || (typeof existing.price === 'number' && priceVal < existing.price)) {
+                                        entry.stateroomPricing[code] = { code, price: Number(priceVal), currency };
+                                    }
+                                }
+                            } catch (innerPrice) { /* ignore single pricing row errors */ }
+                        });
+                    }
+                } catch (pricingErr) { /* ignore pricing block errors */ }
+                // Enrichment of itinerary-level meta
+                const daysArr = Array.isArray(itin.days) ? itin.days : null;
+                if (daysArr && !entry.days) entry.days = daysArr;
+                if (itin.type && !entry.type) entry.type = itin.type;
+                if (itin.days && !entry.totalNights && typeof itin.days.length === 'number') {
+                    // optional fallback: number of days minus 1 overnight logic (keep existing if already set)
+                }
+                // Mark enriched & touch hydrated timestamp
+                entry.enriched = true;
+                entry.hydratedAt = Date.now();
+            } catch (e) { /* swallow enrichment errors */ }
+        },
         getByShipDate(shipCode, sailDate) {
             this._ensureLoaded();
             if (!shipCode || !sailDate) return null;
