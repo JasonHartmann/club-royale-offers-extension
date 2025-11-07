@@ -1,5 +1,5 @@
 /* Column sizing & per-column presentation rules split from original table.css */
-/* Includes widths for all 15 columns (Favorite .. Trade-in Value) */
+/* Updated for 16 columns (Favorite .. Perks) including new Value column after Trade */
 
 /* Favorite */
 .table-auto th[data-key="favorite"], .accordion-table th[data-key="favorite"],
@@ -9,22 +9,23 @@
 /* Dates / ShipClass / SailDate grouped width rules */
 .table-auto th[data-key="offerDate"], .accordion-table th[data-key="offerDate"], .table-auto td:nth-child(3), .accordion-table td:nth-child(3),
 .table-auto th[data-key="expiration"], .accordion-table th[data-key="expiration"], .table-auto td:nth-child(4), .accordion-table td:nth-child(4),
-.table-auto th[data-key="shipClass"], .accordion-table th[data-key="shipClass"], .table-auto td:nth-child(7), .accordion-table td:nth-child(7),
-.table-auto th[data-key="sailDate"], .accordion-table th[data-key="sailDate"], .table-auto td:nth-child(9), .accordion-table td:nth-child(9) { width:90px; min-width:70px; max-width:110px; white-space:nowrap; }
-/* Trade-in Value (new column) -> column index 5 in row markup */
+.table-auto th[data-key="shipClass"], .accordion-table th[data-key="shipClass"], .table-auto td:nth-child(8), .accordion-table td:nth-child(8),
+.table-auto th[data-key="sailDate"], .accordion-table th[data-key="sailDate"], .table-auto td:nth-child(10), .accordion-table td:nth-child(10) { width:90px; min-width:70px; max-width:110px; white-space:nowrap; }
+/* Trade-in Value -> column index 5 */
 .table-auto th[data-key="tradeInValue"], .accordion-table th[data-key="tradeInValue"], .table-auto td:nth-child(5), .accordion-table td:nth-child(5) { width:75px; min-width:75px; max-width:75px; white-space:nowrap; }
-/* Offer Name & Ship */
-.table-auto th[data-key="offerName"], .accordion-table th[data-key="offerName"], .table-auto td:nth-child(6), .accordion-table td:nth-child(6),
-.table-auto th[data-key="ship"], .accordion-table th[data-key="ship"], .table-auto td:nth-child(8), .accordion-table td:nth-child(8) { min-width:100px; width:25%; word-break:break-word; white-space:normal; }
-/* Ship Class was handled above in grouped rule */
-/* Departure Port */
-.table-auto th[data-key="departurePort"], .accordion-table th[data-key="departurePort"], .table-auto td:nth-child(10), .accordion-table td:nth-child(10) { min-width:100px; width:10%; max-width:240px;  word-break:break-word; white-space:normal; }
-/* Nights */
-.table-auto th[data-key="nights"], .accordion-table th[data-key="nights"], .table-auto td:nth-child(11), .accordion-table td:nth-child(11) { width:90px; min-width:70px; max-width:90px; text-align:center; white-space:nowrap; }
-/* Destination */
-.table-auto th[data-key="destination"], .accordion-table th[data-key="destination"], .table-auto td:nth-child(12), .accordion-table td:nth-child(12) { min-width:120px; width:40%; word-break:break-word; white-space:normal; }
-/* Category & Guests */
-.table-auto th[data-key="category"], .accordion-table th[data-key="category"], .table-auto td:nth-child(13), .accordion-table td:nth-child(13),
-.table-auto th[data-key="guests"], .accordion-table th[data-key="guests"], .table-auto td:nth-child(14), .accordion-table td:nth-child(14) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
-/* Perks */
-.table-auto th[data-key="perks"], .accordion-table th[data-key="perks"], .table-auto td:nth-child(15), .accordion-table td:nth-child(15) { width:140px; min-width:90px; max-width:200px; }
+/* Offer Value -> column index 6 */
+.table-auto th[data-key="offerValue"], .accordion-table th[data-key="offerValue"], .table-auto td:nth-child(6), .accordion-table td:nth-child(6) { width:80px; min-width:80px; max-width:90px; white-space:nowrap; }
+/* Offer Name & Ship (indices shift: offerName 7, ship 9) */
+.table-auto th[data-key="offerName"], .accordion-table th[data-key="offerName"], .table-auto td:nth-child(7), .accordion-table td:nth-child(7),
+.table-auto th[data-key="ship"], .accordion-table th[data-key="ship"], .table-auto td:nth-child(9), .accordion-table td:nth-child(9) { min-width:100px; width:25%; word-break:break-word; white-space:normal; }
+/* Departure Port now index 11 */
+.table-auto th[data-key="departurePort"], .accordion-table th[data-key="departurePort"], .table-auto td:nth-child(11), .accordion-table td:nth-child(11) { min-width:100px; width:10%; max-width:240px;  word-break:break-word; white-space:normal; }
+/* Nights index 12 */
+.table-auto th[data-key="nights"], .accordion-table th[data-key="nights"], .table-auto td:nth-child(12), .accordion-table td:nth-child(12) { width:90px; min-width:70px; max-width:90px; text-align:center; white-space:nowrap; }
+/* Destination index 13 */
+.table-auto th[data-key="destination"], .accordion-table th[data-key="destination"], .table-auto td:nth-child(13), .accordion-table td:nth-child(13) { min-width:120px; width:40%; word-break:break-word; white-space:normal; }
+/* Category & Guests indices 14 & 15 */
+.table-auto th[data-key="category"], .accordion-table th[data-key="category"], .table-auto td:nth-child(14), .accordion-table td:nth-child(14),
+.table-auto th[data-key="guests"], .accordion-table th[data-key="guests"], .table-auto td:nth-child(15), .accordion-table td:nth-child(15) { width:110px; min-width:90px; max-width:140px; white-space:nowrap; }
+/* Perks now index 16 */
+.table-auto th[data-key="perks"], .accordion-table th[data-key="perks"], .table-auto td:nth-child(16), .accordion-table td:nth-child(16) { width:140px; min-width:90px; max-width:200px; }

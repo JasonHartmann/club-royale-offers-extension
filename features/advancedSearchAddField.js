@@ -141,6 +141,13 @@ const AdvancedSearchAddField = {
             const observer = new MutationObserver(()=>{ if (!document.body.contains(wrapper)) { try{ document.removeEventListener('click', onDocClick); } catch(e){} observer.disconnect(); } });
             observer.observe(document.body, { childList: true, subtree: true });
 
+            // Ensure offerValue field appears (headers supply it; fallback injection if custom list used)
+            if (typeof AdvancedSearchAddField !== 'undefined' && AdvancedSearchAddField && Array.isArray(AdvancedSearchAddField._extraFields)) {
+                if (!AdvancedSearchAddField._extraFields.some(f => f && f.key === 'offerValue')) {
+                    AdvancedSearchAddField._extraFields.push({ key:'offerValue', label:'Value' });
+                }
+            }
+
             return wrapper;
         } catch (e) { AdvancedSearchAddField._log('_injectAddFieldControl:error', e); return null; }
     }

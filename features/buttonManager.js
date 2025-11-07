@@ -60,6 +60,7 @@ const ButtonManager = {
                 button.style.zIndex = '10';
                 console.debug('Button centered in banner div');
             }
+            // Value column (offerValue) added – no button adjustments required.
             console.debug('Button added to DOM');
         } catch (error) {
             console.debug('Failed to add button:', error.message);

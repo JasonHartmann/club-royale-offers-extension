@@ -78,6 +78,88 @@ const Utils = {
         const s = String(rawTrade).trim();
         return s === '' ? '-' : s;
     },
+    // New: compute raw offer value (numeric) based on itinerary pricing + guest occupancy
+    computeOfferValue(offer, sailing) {
+        try {
+            if (!offer || !sailing) return null;
+            // Detect single guest offer from sailing flag (GOBO indicates 1 guest path already used elsewhere)
+            const isOneGuestOffer = !!sailing.isGOBO;
+            const shipCode = (sailing.shipCode || '').toString().trim();
+            const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);
+            if (!shipCode || !sailDate) return null;
+            const key = `SD_${shipCode}_${sailDate}`;
+            const entry = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.get === 'function') ? ItineraryCache.get(key) : null;
+            if (!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length) return null;
+            // Parse taxes (dual occupancy semantics like itinerary modal)
+            let taxesNumber = 0;
+            try {
+                const rawTaxes = entry.taxesAndFees;
+                if (typeof rawTaxes === 'number') taxesNumber = Number(rawTaxes) * 2; else if (typeof rawTaxes === 'string') {
+                    const cleaned = rawTaxes.replace(/[^0-9.\-]/g,'')
+                    const num = Number(cleaned); if (isFinite(num)) taxesNumber = num * 2;
+                }
+            } catch(e){ taxesNumber = 0; }
+            // Category resolution helpers (reuse itinerary logic trimmed)
+            const codeMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
+                O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
+                B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
+                D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
+            const resolveBroad = raw => { if(!raw) return null; const up = String(raw).trim().toUpperCase(); return codeMap[up] || (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up) ? up : null); };
+            // Offer category raw (prefer sailing.roomType then offer.category)
+            const offerCategoryRaw = (sailing.roomType || offer.category || offer.campaignOffer?.category || '').toString().trim();
+            const offerBroad = resolveBroad(offerCategoryRaw);
+            // Build price entries list
+            const priceEntries = Object.keys(entry.stateroomPricing).map(k => {
+                const pr = entry.stateroomPricing[k] || {};
+                let rawPrice = pr.price;
+                if (rawPrice == null) rawPrice = pr.amount || pr.priceAmount || pr.priceAmt || pr.priceamount;
+                let priceNum = null;
+                if (typeof rawPrice === 'number') priceNum = Number(rawPrice) * 2; // ensure dual occupancy
+                else if (typeof rawPrice === 'string') {
+                    const cleaned = rawPrice.replace(/[^0-9.\-]/g,'')
+                    const num = Number(cleaned); if (isFinite(num)) priceNum = num * 2;
+                }
+                return { key:k, code:(pr.code||k||'').toString().trim(), priceNum };
+            });
+            if (!priceEntries.length) return null;
+            // Find offer price entry
+            function findOfferPriceEntry(rawCat){
+                if (!rawCat) return null;
+                const target = rawCat.toString().trim().toUpperCase();
+                let exact = priceEntries.find(pe => pe.code.toUpperCase() === target);
+                if (exact && exact.priceNum != null) return exact;
+                // Try broad category cheapest
+                const broad = resolveBroad(rawCat);
+                if (!broad) return null;
+                const bucket = priceEntries.filter(pe => resolveBroad(pe.code) === broad && pe.priceNum != null);
+                if (!bucket.length) return null;
+                bucket.sort((a,b) => a.priceNum - b.priceNum);
+                return bucket[0];
+            }
+            const offerPriceEntry = findOfferPriceEntry(offerCategoryRaw);
+            if (!offerPriceEntry || offerPriceEntry.priceNum == null || !isFinite(offerPriceEntry.priceNum)) return null;
+            const offerBasePriceNum = Number(offerPriceEntry.priceNum); // dual occupancy base category cheapest price
+            if (isOneGuestOffer) {
+                // Single guest heuristic (mirrors itinerary modal): derive offer value from assumed discount
+                const SINGLE_GUEST_DISCOUNT_ASSUMED = 200; // constant from itinerary.js
+                const numerator = offerBasePriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - taxesNumber;
+                const val = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
+                if (isFinite(val) && val > 0) return val;
+                return null;
+            } else {
+                // Dual guest: Offer Value is difference between base category price and estimated "You Pay" (taxes)
+                const diff = offerBasePriceNum - taxesNumber;
+                return (isFinite(diff) && diff > 0) ? diff : null;
+            }
+        } catch(e){ return null; }
+    },
+    formatOfferValue(raw) {
+        if (raw == null || !isFinite(raw)) return '-';
+        try {
+            const num = Number(raw);
+            return '$' + num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        } catch(e){ return '-'; }
+    },
     // Normalize fetched offers data: trim and standardize capitalization
     normalizeOffers(data) {
         if (data && Array.isArray(data.offers)) {

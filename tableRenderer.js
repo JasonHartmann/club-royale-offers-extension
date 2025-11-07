@@ -195,6 +195,7 @@ const TableRenderer = {
                 { key: 'offerDate', label: 'Rcvd' },
                 { key: 'expiration', label: 'Expires' },
                 { key: 'tradeInValue', label: 'Trade' },
+                { key: 'offerValue', label: 'Value' },
                 { key: 'offerName', label: 'Name' },
                 { key: 'shipClass', label: 'Class' },
                 { key: 'ship', label: 'Ship' },
@@ -431,6 +432,7 @@ const TableRenderer = {
                     { key: 'offerDate', label: 'Rcvd' },
                     { key: 'expiration', label: 'Expires' },
                     { key: 'tradeInValue', label: 'Trade' },
+                    { key: 'offerValue', label: 'Value' },
                     { key: 'offerName', label: 'Name' },
                     { key: 'shipClass', label: 'Class' },
                     { key: 'ship', label: 'Ship' },
@@ -518,14 +520,25 @@ const TableRenderer = {
     rebuildProfileView(key, existingState, payload, switchToken) {
         console.debug('[tableRenderer] rebuildProfileView ENTRY', { key, hasExistingState: !!existingState, payloadProvided: !!payload, switchToken });
         const baseState = existingState || {};
-        // Ensure headers include favorite column
+        // Ensure headers include favorite column AND newly added offerValue after tradeInValue
         try {
             if (!baseState.headers) baseState.headers = [];
             const hasFav = baseState.headers.some(h => h.key === 'favorite');
             if (!hasFav) {
-                baseState.headers = [ { key: 'favorite', label: '★' }, ...baseState.headers ];
+                baseState.headers = [ { key: 'favorite', label: '\u2605' }, ...baseState.headers ];
             }
-        } catch(e) { /* ignore */ }
+            const hasOfferValue = baseState.headers.some(h => h.key === 'offerValue');
+            if (!hasOfferValue) {
+                const tradeIdx = baseState.headers.findIndex(h => h.key === 'tradeInValue');
+                if (tradeIdx !== -1) baseState.headers.splice(tradeIdx + 1, 0, { key: 'offerValue', label: 'Value' });
+                else {
+                    // Fallback: append near offerName if tradeInValue missing (legacy state)
+                    const offerNameIdx = baseState.headers.findIndex(h => h.key === 'offerName');
+                    if (offerNameIdx !== -1) baseState.headers.splice(offerNameIdx, 0, { key: 'offerValue', label: 'Value' });
+                    else baseState.headers.push({ key: 'offerValue', label: 'Value' });
+                }
+            }
+        } catch(e) { /* ignore header repair errors */ }
         const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken, profileId: App.ProfileIdMap ? App.ProfileIdMap[key] : null };
         if (!state.advancedSearch) state.advancedSearch = { enabled:false, predicates: [] };
         // Ensure core structures

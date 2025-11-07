@@ -110,6 +110,15 @@ const SortUtils = {
                     }
                     break;
                 }
+                case 'offerValue': {
+                    try {
+                        const aNum = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(a.offer, a.sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(a.offer, a.sailing) : null);
+                        const bNum = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(b.offer, b.sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(b.offer, b.sailing) : null);
+                        if (isFinite(aNum) && isFinite(bNum)) { aValue = aNum; bValue = bNum; }
+                        else { aValue = isFinite(aNum)?aNum: -Infinity; bValue = isFinite(bNum)?bNum: -Infinity; }
+                    } catch(e){ aValue = -Infinity; bValue = -Infinity; }
+                    break;
+                }
              }
             if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;

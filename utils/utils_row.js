@@ -37,6 +37,12 @@
         // Trade-in value extraction & formatting (inserted between Expiration and Name columns)
         const rawTrade = offer.campaignOffer?.tradeInValue;
         const tradeDisplay = (typeof App !== 'undefined' && App.Utils && App.Utils.formatTradeValue) ? App.Utils.formatTradeValue(rawTrade) : (function(rt){ if (rt===undefined||rt===null||rt==='') return '-'; const cleaned=String(rt).replace(/[^0-9.\-]/g,''); const parsed = cleaned===''?NaN:parseFloat(cleaned); if(!isNaN(parsed)) return Number.isInteger(parsed)?`$${parsed.toLocaleString()}`:`$${parsed.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}`; return String(rt); })(rawTrade);
+        // New Value column (Offer Value)
+        let valueDisplay = '-';
+        try {
+            const rawVal = (App && App.Utils && typeof App.Utils.computeOfferValue === 'function') ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null);
+            valueDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawVal) : (Utils.formatOfferValue ? Utils.formatOfferValue(rawVal) : (rawVal!=null?`$${Number(rawVal).toFixed(2)}`:'-'));
+        } catch(e){ valueDisplay='-'; }
         // Favorite / ID column setup
         const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
         let favCellHtml;
@@ -94,6 +100,7 @@
             <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
             <td class="border p-2">${tradeDisplay}</td>
+            <td class="border p-2">${valueDisplay}</td>
             <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
             <td class="border p-2">${shipClass}</td>
             <td class="border p-2">${sailing.shipName || '-'}</td>

@@ -19,6 +19,12 @@ This Chrome extension enhances the Royal Caribbean Club Royale Offers page by ad
 - **Export to CSV**: Download your offers as a CSV file for offline analysis.
 - **Responsive UI**: Table columns are sized for readability.
 
+## New Column: Value
+Displays estimated Offer Value per sailing:
+- Dual Guest offers: Base category cheapest dual-occupancy price minus Taxes & Fees.
+- Single Guest offers (GOBO): Derived using single guest heuristic (assumed $200 discount) mirroring itinerary modal logic.
+Included in sorting, grouping, filtering (Advanced Search supports less than / greater than), and CSV export.
+
 ## Advanced Search & Date Range Filtering
 
 The Advanced Search panel (toggle button near breadcrumbs) lets you layer multiple filters. Newly added:

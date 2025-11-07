@@ -423,7 +423,7 @@ const AdvancedSearch = {
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
             // Numeric pricing fields that support 'less than'
-            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights']);
+            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights','offerValue']);
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
                 this._logDebug('renderPredicates:headersNotReady', { headerCount: headerFields.length });

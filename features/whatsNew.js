@@ -125,6 +125,10 @@
                     title:'Get Help',
                     body:'Follow us on Facebook for updates or support!',
                 },
+                {
+                    title:'Offer Value Column',
+                    description:'New Value column shows estimated monetary value of the offer (difference between base category price and taxes for dual occupancy; heuristic for single guest offers). Included in sorting, grouping, filtering, Advanced Search, and CSV export.'
+                }
             ];
         },
         _initAndBegin(){

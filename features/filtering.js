@@ -297,6 +297,12 @@ const Filtering = {
                 return perksStr;
             case 'tradeInValue':
                 return App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue);
+            case 'offerValue': {
+                try {
+                    const raw = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null);
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(e){ return '-'; }
+            }
             // Advanced-only virtual fields (not in table headers)
             case 'departureDayOfWeek': {
                 try {
