@@ -632,13 +632,13 @@ const AdvancedSearch = {
                             let helpMsg = 'Filters rows with value below this amount.';
                             switch (pred.fieldKey) {
                                 case 'suiteUpgradePrice': helpMsg = 'Suite upgrade price below this amount.'; break;
-                                case 'minInteriorPrice': helpMsg = 'Minimum Interior category dual-occupancy price below this amount.'; break;
-                                case 'minOutsidePrice': helpMsg = 'Minimum Ocean View category dual-occupancy price below this amount.'; break;
-                                case 'minBalconyPrice': helpMsg = 'Minimum Balcony category dual-occupancy price below this amount.'; break;
-                                case 'minSuitePrice': helpMsg = 'Minimum Suite (Deluxe) category price below this amount.'; break;
-                                case 'upgradeInteriorToSuite': helpMsg = 'Interior -> Suite upgrade (delta + taxes) below this amount.'; break;
-                                case 'upgradeOutsideToSuite': helpMsg = 'Ocean View -> Suite upgrade (delta + taxes) below this amount.'; break;
-                                case 'upgradeBalconyToSuite': helpMsg = 'Balcony -> Suite upgrade (delta + taxes) below this amount.'; break;
+                                case 'minInteriorPrice': helpMsg = 'Interior You Pay (taxes if base else upgrade diff + taxes) below this amount.'; break;
+                                case 'minOutsidePrice': helpMsg = 'Ocean View You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
+                                case 'minBalconyPrice': helpMsg = 'Balcony You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
+                                case 'minSuitePrice': helpMsg = 'Suite You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
+                                case 'upgradeInteriorToSuite': helpMsg = 'Interior → Suite (delta + taxes) below this amount.'; break;
+                                case 'upgradeOutsideToSuite': helpMsg = 'Ocean View → Suite (delta + taxes) below this amount.'; break;
+                                case 'upgradeBalconyToSuite': helpMsg = 'Balcony → Suite (delta + taxes) below this amount.'; break;
                             }
                             help.textContent = helpMsg;
                             numWrap.appendChild(help);

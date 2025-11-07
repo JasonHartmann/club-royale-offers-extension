@@ -18,13 +18,13 @@ const AdvancedSearchAddField = {
                 suiteUpgradePrice: { title: 'Suite Upgrade Price', hint: 'Estimated suite upgrade price (computed)' },
                 visits: { title: 'Ports Visited', hint: 'Ports for the sailing itinerary (computed)' },
                 favorite: { title: 'Favorite', hint: 'Favorite flag' },
-                minInteriorPrice: { title: 'Min Interior Price', hint: 'Lowest Interior category dual-occupancy price' },
-                minOutsidePrice: { title: 'Min Outside Price', hint: 'Lowest Ocean View category dual-occupancy price' },
-                minBalconyPrice: { title: 'Min Balcony Price', hint: 'Lowest Balcony category dual-occupancy price' },
-                minSuitePrice: { title: 'Min Suite Price', hint: 'Lowest Suite (Deluxe) category dual-occupancy price' },
-                upgradeInteriorToSuite: { title: 'Upgrade Interior->Suite', hint: 'Interior to Suite delta + taxes (dual occupancy)' },
-                upgradeOutsideToSuite: { title: 'Upgrade Outside->Suite', hint: 'Ocean View to Suite delta + taxes (dual occupancy)' },
-                upgradeBalconyToSuite: { title: 'Upgrade Balcony->Suite', hint: 'Balcony to Suite delta + taxes (dual occupancy)' }
+                minInteriorPrice: { title: 'Min Interior You Pay', hint: 'You Pay amount (taxes or upgrade + taxes) for Interior vs offer category' },
+                minOutsidePrice: { title: 'Min Ocean View You Pay', hint: 'You Pay amount (taxes if base, else upgrade diff + taxes) for Ocean View' },
+                minBalconyPrice: { title: 'Min Balcony You Pay', hint: 'You Pay amount (taxes or upgrade diff + taxes) for Balcony' },
+                minSuitePrice: { title: 'Min Suite You Pay', hint: 'You Pay amount (taxes or upgrade diff + taxes) for Suite' },
+                upgradeInteriorToSuite: { title: 'Interior→Suite You Pay', hint: 'Upgrade Interior to Suite (delta + taxes)' },
+                upgradeOutsideToSuite: { title: 'Ocean View→Suite You Pay', hint: 'Upgrade Ocean View to Suite (delta + taxes)' },
+                upgradeBalconyToSuite: { title: 'Balcony→Suite You Pay', hint: 'Upgrade Balcony to Suite (delta + taxes)' }
             };
 
             // cleanup prior wrapper
