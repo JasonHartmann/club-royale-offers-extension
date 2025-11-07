@@ -305,6 +305,40 @@ const Filtering = {
                     return Number(val.toFixed(2));
                 } catch(e){ return '-'; }
             }
+            case 'minInteriorPrice':
+            case 'minOutsidePrice':
+            case 'minBalconyPrice':
+            case 'minSuitePrice':
+            case 'upgradeInteriorToSuite':
+            case 'upgradeOutsideToSuite':
+            case 'upgradeBalconyToSuite': {
+                try {
+                    const shipCode = (sailing.shipCode || '').toString().trim();
+                    const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);
+                    const keySD = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
+                    let entry = keySD && typeof ItineraryCache !== 'undefined' && ItineraryCache.get ? ItineraryCache.get(keySD) : null;
+                    if (!entry) {
+                        // Fallback via getByShipDate if available
+                        try { if (shipCode && sailDate && ItineraryCache && typeof ItineraryCache.getByShipDate === 'function') entry = ItineraryCache.getByShipDate(shipCode, sailDate); } catch(e){}
+                    }
+                    if (entry && entry.pricingDerived) {
+                        const pd = entry.pricingDerived;
+                        switch (key) {
+                            case 'minInteriorPrice': return pd.categories.INTERIOR != null ? Number(pd.categories.INTERIOR.toFixed(2)) : '-';
+                            case 'minOutsidePrice': return pd.categories.OUTSIDE != null ? Number(pd.categories.OUTSIDE.toFixed(2)) : '-';
+                            case 'minBalconyPrice': return pd.categories.BALCONY != null ? Number(pd.categories.BALCONY.toFixed(2)) : '-';
+                            case 'minSuitePrice': return pd.categories.DELUXE != null ? Number(pd.categories.DELUXE.toFixed(2)) : '-';
+                            case 'upgradeInteriorToSuite': {
+                                const v = pd.upgradeDelta?.INTERIOR?.DELUXE; return (v != null) ? Number((v + pd.taxesAndFeesDual).toFixed(2)) : '-'; }
+                            case 'upgradeOutsideToSuite': {
+                                const v = pd.upgradeDelta?.OUTSIDE?.DELUXE; return (v != null) ? Number((v + pd.taxesAndFeesDual).toFixed(2)) : '-'; }
+                            case 'upgradeBalconyToSuite': {
+                                const v = pd.upgradeDelta?.BALCONY?.DELUXE; return (v != null) ? Number((v + pd.taxesAndFeesDual).toFixed(2)) : '-'; }
+                        }
+                    }
+                    return '-';
+                } catch(e){ return '-'; }
+            }
             default:
                 return offer[key];
         }

@@ -17,7 +17,14 @@ const AdvancedSearchAddField = {
                 sailDate: { title: 'Sail Date', hint: 'Departure date for the sailing' },
                 suiteUpgradePrice: { title: 'Suite Upgrade Price', hint: 'Estimated suite upgrade price (computed)' },
                 visits: { title: 'Ports Visited', hint: 'Ports for the sailing itinerary (computed)' },
-                favorite: { title: 'Favorite', hint: 'Favorite flag' }
+                favorite: { title: 'Favorite', hint: 'Favorite flag' },
+                minInteriorPrice: { title: 'Min Interior Price', hint: 'Lowest Interior category dual-occupancy price' },
+                minOutsidePrice: { title: 'Min Outside Price', hint: 'Lowest Ocean View category dual-occupancy price' },
+                minBalconyPrice: { title: 'Min Balcony Price', hint: 'Lowest Balcony category dual-occupancy price' },
+                minSuitePrice: { title: 'Min Suite Price', hint: 'Lowest Suite (Deluxe) category dual-occupancy price' },
+                upgradeInteriorToSuite: { title: 'Upgrade Interior->Suite', hint: 'Interior to Suite delta + taxes (dual occupancy)' },
+                upgradeOutsideToSuite: { title: 'Upgrade Outside->Suite', hint: 'Ocean View to Suite delta + taxes (dual occupancy)' },
+                upgradeBalconyToSuite: { title: 'Upgrade Balcony->Suite', hint: 'Balcony to Suite delta + taxes (dual occupancy)' }
             };
 
             // cleanup prior wrapper

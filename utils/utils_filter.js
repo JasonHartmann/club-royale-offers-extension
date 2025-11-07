@@ -13,7 +13,14 @@
             return [
                 { key: 'departureDayOfWeek', label: 'Departure Day of Week' },
                 { key: 'visits', label: 'Visits' },
-                { key: 'suiteUpgradePrice', label: 'Suite Upgrade Price' }
+                { key: 'suiteUpgradePrice', label: 'Suite Upgrade Price' },
+                { key: 'minInteriorPrice', label: 'Min Interior Price' },
+                { key: 'minOutsidePrice', label: 'Min Outside Price' },
+                { key: 'minBalconyPrice', label: 'Min Balcony Price' },
+                { key: 'minSuitePrice', label: 'Min Suite Price' },
+                { key: 'upgradeInteriorToSuite', label: 'Upgrade Interior->Suite' },
+                { key: 'upgradeOutsideToSuite', label: 'Upgrade Outside->Suite' },
+                { key: 'upgradeBalconyToSuite', label: 'Upgrade Balcony->Suite' }
             ];
         } catch(e) { return []; }
     };

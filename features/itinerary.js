@@ -330,93 +330,82 @@
         },
         async hydrateIfNeeded(subsetKeys) { return this._hydrateInternal(subsetKeys, 'ifNeeded'); },
         async hydrateAlways(subsetKeys) { return this._hydrateInternal(subsetKeys, 'always'); },
-        _enrichEntryFromSailing(key, itin, s) {
+        _computeDerivedPricing(entry) {
             try {
-                const entry = this._cache[key];
-                if (!entry) return;
-                const beforeSnapshot = JSON.stringify({
-                    shipName: entry.shipName,
-                    shipCode: entry.shipCode,
-                    itineraryDescription: entry.itineraryDescription,
-                    destinationName: entry.destinationName,
-                    destinationCode: entry.destinationCode,
-                    departurePortName: entry.departurePortName,
-                    departurePortCode: entry.departurePortCode,
-                    totalNights: entry.totalNights,
-                    days: entry.days,
-                    type: entry.type,
-                    portSequence: entry.portSequence,
-                    cruiseId: entry.cruiseId,
-                    productViewLink: entry.productViewLink,
-                    bookingLink: entry.bookingLink,
-                    startDate: entry.startDate,
-                    endDate: entry.endDate,
-                    taxesAndFees: entry.taxesAndFees,
-                    taxesAndFeesIncluded: entry.taxesAndFeesIncluded,
-                    stateroomPricing: entry.stateroomPricing
+                if (!entry || !entry.stateroomPricing) return;
+                // Avoid recompute unless pricing changed (simple hash of keys+prices)
+                const keys = Object.keys(entry.stateroomPricing);
+                const sigParts = [];
+                keys.forEach(k => {
+                    try {
+                        const pr = entry.stateroomPricing[k];
+                        const priceVal = pr && typeof pr.price === 'number' ? pr.price : (pr && typeof pr.amount === 'number' ? pr.amount : null);
+                        sigParts.push(`${pr && (pr.code || k)}:${priceVal}`);
+                    } catch(e){}
                 });
-                const itinShipObj = itin?.ship || {};
-                if (itinShipObj.name && !entry.shipName) entry.shipName = itinShipObj.name;
-                if (itinShipObj.code && !entry.shipCode) entry.shipCode = itinShipObj.code;
-                if (itin?.name && !entry.itineraryDescription) entry.itineraryDescription = itin.name;
-                if (itin?.destination?.name && !entry.destinationName) entry.destinationName = itin.destination.name;
-                if (itin?.destination?.code && !entry.destinationCode) entry.destinationCode = itin.destination.code;
-                if (itin?.departurePort?.name && !entry.departurePortName) entry.departurePortName = itin.departurePort.name;
-                if (itin?.departurePort?.code && !entry.departurePortCode) entry.departurePortCode = itin.departurePort.code;
-                if ((itin?.totalNights || itin?.sailingNights) && !entry.totalNights) entry.totalNights = itin.totalNights || itin.sailingNights;
-                if (Array.isArray(itin?.days) && !entry.days) entry.days = itin.days;
-                if (itin?.type && !entry.type) entry.type = itin.type;
-                if (itin?.portSequence && !entry.portSequence) entry.portSequence = itin.portSequence;
-                entry.enriched = true;
+                const signature = sigParts.sort().join('|');
+                if (entry._pricingDerivedSig === signature && entry.pricingDerived) return; // no changes
+                // Mapping logic (reuse simplified version of popup + PricingUtils maps)
+                const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
+                    O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
+                    B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
+                    D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE' };
+                function resolveCat(raw){ if(!raw) return null; const up = String(raw).trim().toUpperCase(); return baseCategoryMap[up] || (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null); }
+                const catMin = { INTERIOR:null, OUTSIDE:null, BALCONY:null, DELUXE:null };
+                const currencyCounts = {};
+                keys.forEach(k => {
+                    try {
+                        const pr = entry.stateroomPricing[k];
+                        if (!pr) return;
+                        const code = pr.code || k;
+                        const cat = resolveCat(code);
+                        const raw = pr.price ?? pr.amount ?? pr.priceAmount;
+                        if (typeof raw !== 'number') return; // assume already single guest per-person price => later always *2 like popup
+                        const dual = Number(raw) * 2; // store dual occupancy baseline
+                        if (cat && (catMin[cat] == null || dual < catMin[cat])) catMin[cat] = dual;
+                        if (pr.currency) currencyCounts[pr.currency] = (currencyCounts[pr.currency]||0)+1;
+                    } catch(e){}
+                });
+                const baseCurrency = Object.keys(currencyCounts).sort((a,b)=>currencyCounts[b]-currencyCounts[a])[0] || null;
+                // Taxes (dual)
+                let taxesDual = 0;
                 try {
-                    if (s && typeof s === 'object') {
-                        if (s.bookingLink && !entry.bookingLink) entry.bookingLink = s.bookingLink;
-                        if (s.startDate && !entry.startDate) entry.startDate = s.startDate;
-                        if (s.endDate && !entry.endDate) entry.endDate = s.endDate;
-                        if (s.taxesAndFees && typeof s.taxesAndFees.value === 'number') entry.taxesAndFees = s.taxesAndFees.value;
-                        if (typeof s.taxesAndFeesIncluded === 'boolean') entry.taxesAndFeesIncluded = s.taxesAndFeesIncluded;
-                        if (Array.isArray(s.stateroomClassPricing)) {
-                            entry.stateroomPricing = entry.stateroomPricing || {};
-                            s.stateroomClassPricing.forEach(p => {
-                                try {
-                                    const classId = p?.stateroomClass?.id || p?.stateroomClass?.content?.code;
-                                    if (!classId) return;
-                                    const priceVal = (p?.price && typeof p.price.value === 'number') ? p.price.value : null;
-                                    const currencyCode = p?.price?.currency?.code || null;
-                                    const simpleCode = p?.stateroomClass?.content?.code || null;
-                                    if (!entry.stateroomPricing[classId] || (priceVal !== null && entry.stateroomPricing[classId].price == null)) {
-                                        entry.stateroomPricing[classId] = { price: priceVal, currency: currencyCode, code: simpleCode };
-                                    }
-                                } catch (innerP) {}
-                            });
-                        }
-                    }
-                } catch (priceErr) { dbg('Pricing enrichment error', priceErr); }
-                entry.hydratedAt = Date.now();
-                const afterSnapshot = JSON.stringify({
-                    shipName: entry.shipName,
-                    shipCode: entry.shipCode,
-                    itineraryDescription: entry.itineraryDescription,
-                    destinationName: entry.destinationName,
-                    destinationCode: entry.destinationCode,
-                    departurePortName: entry.departurePortName,
-                    departurePortCode: entry.departurePortCode,
-                    totalNights: entry.totalNights,
-                    days: entry.days,
-                    type: entry.type,
-                    portSequence: entry.portSequence,
-                    cruiseId: entry.cruiseId,
-                    productViewLink: entry.productViewLink,
-                    bookingLink: entry.bookingLink,
-                    startDate: entry.startDate,
-                    endDate: entry.endDate,
-                    taxesAndFees: entry.taxesAndFees,
-                    taxesAndFeesIncluded: entry.taxesAndFeesIncluded,
-                    stateroomPricing: entry.stateroomPricing
+                    if (typeof entry.taxesAndFees === 'number') taxesDual = entry.taxesAndFees * 2;
+                    else if (typeof entry.taxesAndFees === 'string') {
+                        const cleaned = entry.taxesAndFees.replace(/[^0-9.\-]/g,'');
+                        const t = Number(cleaned); if (isFinite(t)) taxesDual = t * 2; }
+                } catch(e){}
+                // Build upgrade deltas matrix (FROM -> TO additional + taxes "you pay" semantics depend on chosen offer later)
+                const categories = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
+                const upgradeDelta = {};
+                categories.forEach(from => {
+                    upgradeDelta[from] = {};
+                    categories.forEach(to => {
+                        const fromVal = catMin[from];
+                        const toVal = catMin[to];
+                        if (fromVal == null || toVal == null) upgradeDelta[from][to] = null; else upgradeDelta[from][to] = Math.max(0, toVal - fromVal);
+                    });
                 });
-                if (beforeSnapshot !== afterSnapshot) entry.updatedAt = entry.hydratedAt;
-                if (entry.keyType === 'SHIPDATE') this._indexShipDate(entry.shipCode, entry.sailDate, key);
-            } catch (e) { dbg('_enrichEntryFromSailing error', e); }
+                entry.pricingDerived = {
+                    categories: { ...catMin },
+                    taxesAndFeesDual: taxesDual,
+                    baseCurrency,
+                    upgradeDelta, // raw difference (dual occupancy) between min category prices
+                    computedAt: Date.now()
+                };
+                entry._pricingDerivedSig = signature;
+            } catch(e) { /* ignore derived pricing errors */ }
+        },
+        computeAllDerivedPricing() {
+            try {
+                this._ensureLoaded();
+                Object.keys(this._cache).forEach(k => {
+                    try { const e = this._cache[k]; if (e && e.stateroomPricing && Object.keys(e.stateroomPricing).length) this._computeDerivedPricing(e); } catch(inner){}
+                });
+                // Persist after batch to save signature state
+                this._persist();
+                try { document.dispatchEvent(new CustomEvent('goboItineraryPricingComputed')); } catch(e){}
+            } catch(e){}
         },
         _persist() {
             try { goboStorageSet(STORAGE_KEY, JSON.stringify(this._cache)); dbg('Cache persisted', { entries: Object.keys(this._cache).length }); } catch (e) { dbg('Persist error', e); }
@@ -515,8 +504,8 @@
                 const priceKeys = Object.keys(data.stateroomPricing || {});
                 if (priceKeys.length) {
                     // Build flat list of pricing entries for easier lookup (defer creating header until after computations)
-                    const codeMap = { I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior', O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View', B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony', D:'Suite', DLX:'Suite', DELUXE:'Suite', JS:'Suite', SU:'Suite', SUITE:'Suite' };
-                    const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR', O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE', B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY', D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE' };
+                    const codeMap = { I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior', O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View', B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony', D:'Suite', DLX:'Suite', DELUXE:'Suite', JS:'Suite', SU:'Suite', SUITE:'Suite', JUNIOR:'Suite', 'JR':'Suite', 'JR.':'Suite', 'JR-SUITE':'Suite', 'JR SUITE':'Suite', 'JUNIOR SUITE':'Suite', 'JRSUITE':'Suite', 'JR SUITES':'Suite', 'JUNIOR SUITES':'Suite' };
+                    const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR', O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE', B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY', D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
                     function resolveDisplay(raw){ raw=(raw||'').trim(); return codeMap[raw.toUpperCase()]||raw; }
                     function resolveCategory(raw){ raw=(raw||'').trim(); const up=raw.toUpperCase(); if (baseCategoryMap[up]) return baseCategoryMap[up]; if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
                     const sortOrder = {INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3};

@@ -423,6 +423,8 @@ const AdvancedSearch = {
             const dateFieldKeys = new Set(['offerDate','expiration','sailDate']);
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
+            // Numeric pricing fields that support 'less than'
+            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','upgradeInteriorToSuite','upgradeOutsideToSuite','upgradeBalconyToSuite']);
             // NOTE: 'less than' only applies to numeric fields (currently suiteUpgradePrice)
             // date fields: add date range operator
             const headersReady = headerFields.length > 2;
@@ -443,8 +445,9 @@ const AdvancedSearch = {
                 try {
                     const fieldMeta = allFields.find(h => h.key === pred.fieldKey);
                     const isDateField = dateFieldKeys.has(pred.fieldKey);
-                    const opsForField = isDateField ? allowedOperators.concat(['date range']) : (pred.fieldKey === 'suiteUpgradePrice' ? baseOperators.concat(['less than']) : baseOperators);
-                    const isNumericField = (pred.fieldKey === 'suiteUpgradePrice');
+                    const isNumericField = numericFieldKeys.has(pred.fieldKey);
+                    const opsForField = isDateField ? allowedOperators.concat(['date range']) : (isNumericField ? baseOperators.concat(['less than']) : baseOperators);
+                    const isSuiteUpgradePriceField = (pred.fieldKey === 'suiteUpgradePrice');
                     const box = document.createElement('div');
                     box.className = 'adv-predicate-box';
                     if (state._advPreviewPredicateId === pred.id) box.classList.add('adv-predicate-preview');
@@ -625,7 +628,20 @@ const AdvancedSearch = {
                             });
                             input.addEventListener('keydown', (e)=>{ if (e.key==='Enter' && pred.values && pred.values.length) { e.preventDefault(); this.attemptCommitPredicate(pred,state); } });
                             numWrap.appendChild(input);
-                            const help = document.createElement('div'); help.className='adv-help-text'; help.textContent='Filters sailings with estimated suite upgrade price below this amount.'; numWrap.appendChild(help);
+                            const help = document.createElement('div'); help.className='adv-help-text';
+                            let helpMsg = 'Filters rows with value below this amount.';
+                            switch (pred.fieldKey) {
+                                case 'suiteUpgradePrice': helpMsg = 'Suite upgrade price below this amount.'; break;
+                                case 'minInteriorPrice': helpMsg = 'Minimum Interior category dual-occupancy price below this amount.'; break;
+                                case 'minOutsidePrice': helpMsg = 'Minimum Ocean View category dual-occupancy price below this amount.'; break;
+                                case 'minBalconyPrice': helpMsg = 'Minimum Balcony category dual-occupancy price below this amount.'; break;
+                                case 'minSuitePrice': helpMsg = 'Minimum Suite (Deluxe) category price below this amount.'; break;
+                                case 'upgradeInteriorToSuite': helpMsg = 'Interior -> Suite upgrade (delta + taxes) below this amount.'; break;
+                                case 'upgradeOutsideToSuite': helpMsg = 'Ocean View -> Suite upgrade (delta + taxes) below this amount.'; break;
+                                case 'upgradeBalconyToSuite': helpMsg = 'Balcony -> Suite upgrade (delta + taxes) below this amount.'; break;
+                            }
+                            help.textContent = helpMsg;
+                            numWrap.appendChild(help);
                             box.appendChild(numWrap);
                         }
                         if (pred.operator !== 'date range') {
