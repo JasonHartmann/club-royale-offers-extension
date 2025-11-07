@@ -229,6 +229,12 @@ function mergeProfiles(profileA, profileB) {
             if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) return false;
             const isGOBOA = sailingA.isGOBO === true;
             const isGOBOB = matchObj.sailingB.isGOBO === true;
+            // NEW: propagate GTY if either sailing is GTY
+            const isGTYA = sailingA.isGTY === true;
+            const isGTYB = matchObj.sailingB.isGTY === true;
+            if (isGTYA || isGTYB) {
+                sailingA.isGTY = true;
+            }
             const roomTypeA = sailingA.roomType || '';
             const roomTypeB = matchObj.sailingB.roomType || '';
             if (isGOBOA || isGOBOB) {
@@ -325,4 +331,3 @@ function getAssetUrl(path) {
     if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) return chrome.runtime.getURL(path);
     return path;
 }
-

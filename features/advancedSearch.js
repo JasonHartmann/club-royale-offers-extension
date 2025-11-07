@@ -65,7 +65,7 @@ const AdvancedSearch = {
             }
             // Restore includeTaxes flag (default true)
             state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
-            const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range', 'less than']);
+            const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range', 'less than', 'greater than']);
             state.advancedSearch.predicates = (Array.isArray(parsed.predicates) ? parsed.predicates
                 .filter(p => p && p.fieldKey && p.operator)
                 .map(p => {
@@ -423,7 +423,7 @@ const AdvancedSearch = {
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
             // Numeric pricing fields that support 'less than'
-            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice']);
+            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights']);
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
                 this._logDebug('renderPredicates:headersNotReady', { headerCount: headerFields.length });
@@ -443,7 +443,7 @@ const AdvancedSearch = {
                     const fieldMeta = allFields.find(h => h.key === pred.fieldKey);
                     const isDateField = dateFieldKeys.has(pred.fieldKey);
                     const isNumericField = numericFieldKeys.has(pred.fieldKey);
-                    const opsForField = isDateField ? allowedOperators.concat(['date range']) : (isNumericField ? baseOperators.concat(['less than']) : baseOperators);
+                    const opsForField = isDateField ? allowedOperators.concat(['date range']) : (isNumericField ? baseOperators.concat(['less than','greater than']) : baseOperators);
                     const box = document.createElement('div');
                     box.className = 'adv-predicate-box';
                     if (state._advPreviewPredicateId === pred.id) box.classList.add('adv-predicate-preview');
@@ -613,7 +613,7 @@ const AdvancedSearch = {
                             tokenWrap.appendChild(input);
                             const help = document.createElement('div'); help.className='adv-help-text'; help.textContent = (pred.operator==='contains'?'Add substrings; any match passes.':'Add substrings; none must appear.'); tokenWrap.appendChild(help);
                             box.appendChild(tokenWrap); setTimeout(()=>{ try{ input.focus(); }catch(e){} },0);
-                        } else if (pred.operator === 'less than' && isNumericField) {
+                        } else if ((pred.operator === 'less than' || pred.operator === 'greater than') && isNumericField) {
                             const numWrap = document.createElement('div'); numWrap.className='adv-stack-col';
                             const input = document.createElement('input'); input.type='number'; input.min='0'; input.step='0.01'; input.placeholder='Enter amount';
                             if (pred.values && pred.values.length) input.value = pred.values[0];
@@ -625,14 +625,15 @@ const AdvancedSearch = {
                             input.addEventListener('keydown', (e)=>{ if (e.key==='Enter' && pred.values && pred.values.length) { e.preventDefault(); this.attemptCommitPredicate(pred,state); } });
                             numWrap.appendChild(input);
                             const help = document.createElement('div'); help.className='adv-help-text';
-                            let helpMsg = 'Filters rows with value below this amount.';
+                            let helpMsg;
+                            if (pred.operator === 'less than') helpMsg = 'Filters rows with value below this amount.'; else helpMsg = 'Filters rows with value above this amount.';
                             switch (pred.fieldKey) {
-                                case 'suiteUpgradePrice': helpMsg = 'Suite upgrade price below this amount.'; break;
-                                case 'minInteriorPrice': helpMsg = 'Interior You Pay (taxes if base else upgrade diff + taxes) below this amount.'; break;
-                                case 'minOutsidePrice': helpMsg = 'Ocean View You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
-                                case 'minBalconyPrice': helpMsg = 'Balcony You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
-                                case 'minSuitePrice': helpMsg = 'Suite You Pay (taxes or upgrade diff + taxes) below this amount.'; break;
-                                // Removed retired upgrade-to-suite help messages
+                                case 'suiteUpgradePrice': helpMsg = (pred.operator==='less than' ? 'Suite upgrade price below this amount.' : 'Suite upgrade price above this amount.'); break;
+                                case 'minInteriorPrice': helpMsg = (pred.operator==='less than' ? 'Interior You Pay below this amount.' : 'Interior You Pay above this amount.'); break;
+                                case 'minOutsidePrice': helpMsg = (pred.operator==='less than' ? 'Ocean View You Pay below this amount.' : 'Ocean View You Pay above this amount.'); break;
+                                case 'minBalconyPrice': helpMsg = (pred.operator==='less than' ? 'Balcony You Pay below this amount.' : 'Balcony You Pay above this amount.'); break;
+                                case 'minSuitePrice': helpMsg = (pred.operator==='less than' ? 'Suite You Pay below this amount.' : 'Suite You Pay above this amount.'); break;
+                                case 'nights': helpMsg = (pred.operator==='less than' ? 'Sailing nights below this number.' : 'Sailing nights above this number.'); break;
                             }
                             help.textContent = helpMsg;
                             numWrap.appendChild(help);
@@ -996,10 +997,6 @@ const AdvancedSearch = {
             // Include Taxes & Fees checkbox
             const includeWrap = document.createElement('label');
             includeWrap.className = 'adv-include-taxes-wrap';
-            includeWrap.style.marginLeft = '12px';
-            includeWrap.style.display = 'inline-flex';
-            includeWrap.style.alignItems = 'center';
-            includeWrap.style.gap = '4px';
             const includeCb = document.createElement('input');
             includeCb.type = 'checkbox';
             includeCb.title = 'Toggle inclusion of Taxes & Fees in price-based filters';

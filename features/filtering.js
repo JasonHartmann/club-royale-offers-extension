@@ -117,23 +117,18 @@ const Filtering = {
                 if (targetRaw == null || targetRaw === '') {
                     stats.incomplete++;
                     if (stats.samples.length < 15) stats.samples.push({reason:'incomplete', fieldValue});
-                    // Avoid per-row debug spam; sample captured above
                     return true;
                 }
                 const targetNum = Number(targetRaw);
                 if (!isFinite(targetNum)) {
                     stats.invalidTarget++;
                     if (stats.samples.length < 15) stats.samples.push({reason:'invalidTarget', targetRaw, fieldValue});
-                    // Avoid per-row debug spam; sample captured above
                     return true;
                 }
                 const actualNum = Number(fieldValue);
                 if (!isFinite(actualNum)) {
-                    // Per product logic: suiteUpgradePrice should only be empty for sold-out rooms.
-                    // For 'less than' comparisons we should exclude rows without a numeric value.
                     stats.missingActual++;
                     if (stats.samples.length < 15) stats.samples.push({reason:'missingActual', targetNum, rawFieldValue: fieldValue});
-                    // Avoid a console.debug for every missing actual; only log a lightweight marker every 250 missing occurrences
                     Filtering._missingActualLogCounter = (Filtering._missingActualLogCounter || 0) + 1;
                     if (Filtering._missingActualLogCounter <= 5 || Filtering._missingActualLogCounter % 250 === 0) {
                         Filtering._dbg('lessThan:missingActual sample', { predicateId: predicate.id, fieldKey: predicate.fieldKey, rawFieldValue: fieldValue, targetNum, occurrence: Filtering._missingActualLogCounter });
@@ -143,7 +138,37 @@ const Filtering = {
                 const result = actualNum < targetNum;
                 if (result) stats.passed++; else stats.failed++;
                 if (stats.samples.length < 15) stats.samples.push({reason:'evaluated', actualNum, targetNum, passed:result});
-                // small-volume per-row logging suppressed to avoid flooding; rely on aggregated summary
+                return result;
+            }
+            if (op === 'greater than') {
+                if (!Filtering._greaterThanStats) Filtering._greaterThanStats = { total:0, incomplete:0, invalidTarget:0, missingActual:0, passed:0, failed:0, samples:[] };
+                const stats = Filtering._greaterThanStats;
+                stats.total++;
+                const targetRaw = Array.isArray(predicate.values) && predicate.values.length ? predicate.values[0] : null;
+                if (targetRaw == null || targetRaw === '') {
+                    stats.incomplete++;
+                    if (stats.samples.length < 15) stats.samples.push({reason:'incomplete', fieldValue});
+                    return true;
+                }
+                const targetNum = Number(targetRaw);
+                if (!isFinite(targetNum)) {
+                    stats.invalidTarget++;
+                    if (stats.samples.length < 15) stats.samples.push({reason:'invalidTarget', targetRaw, fieldValue});
+                    return true;
+                }
+                const actualNum = Number(fieldValue);
+                if (!isFinite(actualNum)) {
+                    stats.missingActual++;
+                    if (stats.samples.length < 15) stats.samples.push({reason:'missingActual', targetNum, rawFieldValue: fieldValue});
+                    Filtering._missingActualLogCounterGT = (Filtering._missingActualLogCounterGT || 0) + 1;
+                    if (Filtering._missingActualLogCounterGT <= 5 || Filtering._missingActualLogCounterGT % 250 === 0) {
+                        Filtering._dbg && Filtering._dbg('greaterThan:missingActual sample', { predicateId: predicate.id, fieldKey: predicate.fieldKey, rawFieldValue: fieldValue, targetNum, occurrence: Filtering._missingActualLogCounterGT });
+                    }
+                    return false;
+                }
+                const result = actualNum > targetNum;
+                if (result) stats.passed++; else stats.failed++;
+                if (stats.samples.length < 15) stats.samples.push({reason:'evaluated', actualNum, targetNum, passed:result});
                 return result;
             }
             // Visits field requires set membership evaluation against individual ports

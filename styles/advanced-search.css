@@ -93,3 +93,6 @@
 .adv-add-section.computed { border-left: 3px solid #f59e0b; padding-left: 8px; }
 .adv-add-field-popup .adv-help-text { display: none; }
 /* End Add Field popup styles */
+
+.adv-include-taxes-wrap { margin-left:12px; display:inline-flex; align-items:center; gap:4px; }
+.adv-include-taxes-wrap span { font-size:11px; }
