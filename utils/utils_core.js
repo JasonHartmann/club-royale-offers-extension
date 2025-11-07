@@ -1,3 +1,56 @@
+let _offerValueStats = null;
+function _initOfferValueStats() {
+    _offerValueStats = {
+        totalRows: 0,
+        computed: 0,
+        missing: 0,
+        matchMiss: 0,
+        reasons: {
+            cacheMiss: 0,
+            fallbackByShipName: 0,
+            fallbackShipNameFailed: 0,
+            noPricingEntry: 0,
+            taxesMissing: 0,
+            offerBroadNull: 0,
+            bucketEmpty: 0,
+            offerBasePriceNull: 0,
+            computeError: 0
+        },
+        samples: {
+            noPricingEntry: [],
+            offerBasePriceNull: [],
+            bucketEmpty: [],
+            matchMiss: []
+        }
+    };
+}
+function _recordReason(reason, offer, sailing) {
+    if (!_offerValueStats) return;
+    if (_offerValueStats.reasons[reason] === undefined) _offerValueStats.reasons[reason] = 0;
+    _offerValueStats.reasons[reason]++;
+    const code = (offer?.campaignOffer?.offerCode || '').trim();
+    const sailISO = (sailing?.sailDate || '').toString().trim().slice(0,10);
+    const shipName = (sailing?.shipName || '').trim();
+    if (_offerValueStats.samples[reason] && _offerValueStats.samples[reason].length < 5) {
+        _offerValueStats.samples[reason].push({ code, sailISO, shipName });
+    }
+}
+function _logOfferValueSummary(tag='OfferValueSummary') {
+    if (!_offerValueStats) return;
+    const s = _offerValueStats;
+    const missingPct = s.totalRows ? ((s.missing / s.totalRows) * 100).toFixed(1) : '0.0';
+    const computedPct = s.totalRows ? ((s.computed / s.totalRows) * 100).toFixed(1) : '0.0';
+    const summary = {
+        totalRows: s.totalRows,
+        computed: `${s.computed} (${computedPct}%)`,
+        missing: `${s.missing} (${missingPct}%)`,
+        matchMiss: s.matchMiss,
+        reasons: s.reasons,
+        samples: s.samples
+    };
+    try { console.info(`[${tag}]`, summary); } catch(e){}
+}
+
 const Utils = {
     // Centralized brand detection (R = Royal, C = Celebrity)
     detectBrand() {
@@ -82,83 +135,197 @@ const Utils = {
     computeOfferValue(offer, sailing) {
         try {
             if (!offer || !sailing) return null;
-            // Detect single guest offer from sailing flag (GOBO indicates 1 guest path already used elsewhere)
             const isOneGuestOffer = !!sailing.isGOBO;
             const shipCode = (sailing.shipCode || '').toString().trim();
             const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);
-            if (!shipCode || !sailDate) return null;
-            const key = `SD_${shipCode}_${sailDate}`;
-            const entry = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.get === 'function') ? ItineraryCache.get(key) : null;
-            if (!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length) return null;
-            // Parse taxes (dual occupancy semantics like itinerary modal)
+            if (!sailDate) { _recordReason('computeError', offer, sailing); return null; }
+            const key = shipCode ? `SD_${shipCode}_${sailDate}` : null;
+            let entry = key && typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.get === 'function' ? ItineraryCache.get(key) : null;
+            if (!entry) _recordReason('cacheMiss', offer, sailing);
+            if ((!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length)) {
+                try {
+                    const all = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.all === 'function') ? ItineraryCache.all() : null;
+                    const shipNameLc = (sailing.shipName || '').trim().toLowerCase();
+                    if (all && typeof all === 'object') {
+                        const candidates = Object.values(all).filter(e => e && e.sailDate && String(e.sailDate).slice(0,10) === sailDate);
+                        let found = candidates.find(c => c.shipName && String(c.shipName).trim().toLowerCase() === shipNameLc);
+                        if (!found && candidates.length) found = candidates[0];
+                        if (found) { entry = found; _recordReason('fallbackByShipName', offer, sailing); }
+                        else _recordReason('fallbackShipNameFailed', offer, sailing);
+                    }
+                } catch(e){ _recordReason('computeError', offer, sailing); }
+            }
+            let sailingPricingFallback = null;
+            try {
+                if ((!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length) && Array.isArray(sailing.stateroomClassPricing) && sailing.stateroomClassPricing.length) {
+                    sailingPricingFallback = sailing.stateroomClassPricing;
+                }
+            } catch(e){ _recordReason('computeError', offer, sailing); }
+            if ((!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length) && !sailingPricingFallback) { _recordReason('noPricingEntry', offer, sailing); return null; }
             let taxesNumber = 0;
             try {
-                const rawTaxes = entry.taxesAndFees;
-                if (typeof rawTaxes === 'number') taxesNumber = Number(rawTaxes) * 2; else if (typeof rawTaxes === 'string') {
-                    const cleaned = rawTaxes.replace(/[^0-9.\-]/g,'')
-                    const num = Number(cleaned); if (isFinite(num)) taxesNumber = num * 2;
-                }
+                let rawTaxes = entry && entry.taxesAndFees;
+                if (rawTaxes == null && sailing.taxesAndFees != null) rawTaxes = sailing.taxesAndFees;
+                if (rawTaxes && typeof rawTaxes === 'object' && rawTaxes.value != null) rawTaxes = rawTaxes.value;
+                if (typeof rawTaxes === 'number') taxesNumber = Number(rawTaxes) * 2;
+                else if (typeof rawTaxes === 'string') { const cleaned = rawTaxes.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) taxesNumber = num * 2; }
             } catch(e){ taxesNumber = 0; }
-            // Category resolution helpers (reuse itinerary logic trimmed)
-            const codeMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
-                O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
-                B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
-                D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
-            const resolveBroad = raw => { if(!raw) return null; const up = String(raw).trim().toUpperCase(); return codeMap[up] || (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up) ? up : null); };
-            // Offer category raw (prefer sailing.roomType then offer.category)
-            const offerCategoryRaw = (sailing.roomType || offer.category || offer.campaignOffer?.category || '').toString().trim();
-            const offerBroad = resolveBroad(offerCategoryRaw);
-            // Build price entries list
-            const priceEntries = Object.keys(entry.stateroomPricing).map(k => {
-                const pr = entry.stateroomPricing[k] || {};
-                let rawPrice = pr.price;
-                if (rawPrice == null) rawPrice = pr.amount || pr.priceAmount || pr.priceAmt || pr.priceamount;
-                let priceNum = null;
-                if (typeof rawPrice === 'number') priceNum = Number(rawPrice) * 2; // ensure dual occupancy
-                else if (typeof rawPrice === 'string') {
-                    const cleaned = rawPrice.replace(/[^0-9.\-]/g,'')
-                    const num = Number(cleaned); if (isFinite(num)) priceNum = num * 2;
-                }
-                return { key:k, code:(pr.code||k||'').toString().trim(), priceNum };
-            });
-            if (!priceEntries.length) return null;
-            // Find offer price entry
-            function findOfferPriceEntry(rawCat){
-                if (!rawCat) return null;
-                const target = rawCat.toString().trim().toUpperCase();
-                let exact = priceEntries.find(pe => pe.code.toUpperCase() === target);
-                if (exact && exact.priceNum != null) return exact;
-                // Try broad category cheapest
-                const broad = resolveBroad(rawCat);
-                if (!broad) return null;
-                const bucket = priceEntries.filter(pe => resolveBroad(pe.code) === broad && pe.priceNum != null);
-                if (!bucket.length) return null;
-                bucket.sort((a,b) => a.priceNum - b.priceNum);
-                return bucket[0];
+            if (!taxesNumber) _recordReason('taxesMissing', offer, sailing);
+            let categoriesMap = null;
+            try { if (entry && entry.pricingDerived && entry.pricingDerived.categories) categoriesMap = entry.pricingDerived.categories; } catch(e){ }
+            // Heuristic classification for stateroom codes (broader mapping than original)
+            function classifyBroad(code) {
+                if (!code) return null;
+                const up = String(code).trim().toUpperCase();
+                // Explicit suite / deluxe indicators
+                if (/SUITE|JRSUITE|JR\s?SUITE|JS|SU\b|DLX|DELUXE/.test(up)) return 'DELUXE';
+                // Balcony indicators
+                if (/BALC|BALCONY|BK\b|^\d+B$|BALK?/.test(up) || /\bB$/.test(up)) return 'BALCONY';
+                // Ocean / Outside indicators
+                if (/OCEAN|OUTSIDE|OV|\bO\b|\bN$/.test(up) || /\d+N$/.test(up) || /\d+O$/.test(up)) return 'OUTSIDE';
+                // Interior indicators
+                if (/INTERIOR|INSIDE|INT|\bI\b|\d+V$|\d+I$|\bV$/.test(up)) return 'INTERIOR';
+                return null; // unknown
             }
-            const offerPriceEntry = findOfferPriceEntry(offerCategoryRaw);
-            if (!offerPriceEntry || offerPriceEntry.priceNum == null || !isFinite(offerPriceEntry.priceNum)) return null;
-            const offerBasePriceNum = Number(offerPriceEntry.priceNum); // dual occupancy base category cheapest price
+            const offerCategoryRaw = (sailing.roomType || offer.category || offer.campaignOffer?.category || '').toString().trim();
+            let offerBroad = classifyBroad(offerCategoryRaw);
+            if (!offerBroad) {
+                // Try parsing from offer name fragments
+                const nameStr = (offer.campaignOffer?.name || '').toString();
+                offerBroad = classifyBroad(nameStr);
+            }
+            if (!offerBroad) _recordReason('offerBroadNull', offer, sailing);
+            let offerBasePriceNum = null;
+            if (categoriesMap && offerBroad && categoriesMap[offerBroad] != null) {
+                offerBasePriceNum = categoriesMap[offerBroad];
+            } else {
+                const rawPricingSource = sailingPricingFallback || (entry ? entry.stateroomPricing : {});
+                const priceEntries = [];
+                if (Array.isArray(rawPricingSource)) {
+                    rawPricingSource.forEach(p => {
+                        try {
+                            const code = (p?.stateroomClass?.content?.code || p?.stateroomClass?.id || '').toString().trim();
+                            const priceVal = p?.price?.value ?? p?.priceAmount ?? p?.price ?? null;
+                            if (code && priceVal != null && isFinite(priceVal)) priceEntries.push({ code, dual: Number(priceVal) * 2 });
+                        } catch(e){}
+                    });
+                } else {
+                    Object.keys(rawPricingSource || {}).forEach(k => {
+                        try {
+                            const pr = rawPricingSource[k];
+                            const code = (pr && (pr.code || k) || '').toString().trim();
+                            const rawPrice = pr && (pr.price ?? pr.amount ?? pr.priceAmount ?? pr.priceAmt ?? pr.priceamount);
+                            if (code && rawPrice != null) {
+                                let dual = null;
+                                if (typeof rawPrice === 'number') dual = rawPrice * 2; else if (typeof rawPrice === 'string') { const cleaned = rawPrice.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) dual = num * 2; }
+                                if (dual != null) priceEntries.push({ code, dual });
+                            }
+                        } catch(e){}
+                    });
+                }
+                if (priceEntries.length) {
+                    // Build minima per broad category via heuristic classification
+                    const minima = { INTERIOR:null, OUTSIDE:null, BALCONY:null, DELUXE:null };
+                    priceEntries.forEach(pe => {
+                        const broad = classifyBroad(pe.code);
+                        if (broad && (minima[broad] == null || pe.dual < minima[broad])) minima[broad] = pe.dual;
+                    });
+                    // If offerBroad resolved, use its min directly
+                    if (offerBroad && minima[offerBroad] != null) {
+                        offerBasePriceNum = minima[offerBroad];
+                    } else {
+                        // Fallback: choose cheapest non-null among non-suite first
+                        const order = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
+                        for (const cat of order) {
+                            if (minima[cat] != null) { offerBasePriceNum = minima[cat]; break; }
+                        }
+                        if (offerBasePriceNum == null) _recordReason('bucketEmpty', offer, sailing);
+                    }
+                } else {
+                    _recordReason('bucketEmpty', offer, sailing);
+                }
+            }
+            if (offerBasePriceNum == null || !isFinite(offerBasePriceNum)) { _recordReason('offerBasePriceNull', offer, sailing); return null; }
             if (isOneGuestOffer) {
-                // Single guest heuristic (mirrors itinerary modal): derive offer value from assumed discount
-                const SINGLE_GUEST_DISCOUNT_ASSUMED = 200; // constant from itinerary.js
+                const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
                 const numerator = offerBasePriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - taxesNumber;
                 const val = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
-                if (isFinite(val) && val > 0) return val;
-                return null;
-            } else {
-                // Dual guest: Offer Value is difference between base category price and estimated "You Pay" (taxes)
-                const diff = offerBasePriceNum - taxesNumber;
-                return (isFinite(diff) && diff > 0) ? diff : null;
+                return (isFinite(val) && val>0)?val:null;
             }
-        } catch(e){ return null; }
+            const diff = offerBasePriceNum - taxesNumber;
+            return (isFinite(diff) && diff>0)?diff:null;
+        } catch(e){ _recordReason('computeError', offer, sailing); return null; }
     },
-    formatOfferValue(raw) {
-        if (raw == null || !isFinite(raw)) return '-';
+    refreshOfferValues() {
         try {
-            const num = Number(raw);
-            return '$' + num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        } catch(e){ return '-'; }
+            const rows = document.querySelectorAll('table.table-auto tbody tr, .accordion-table tbody tr');
+            if (!rows || !rows.length) return;
+            if (!_offerValueStats) _initOfferValueStats();
+            const state = (window.App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+            // Build quick lookup map by compound key to speed matching fallback (offerCode|sailDateISO|shipName)
+            let compoundMap = null;
+            if (state && Array.isArray(state.sortedOffers)) {
+                compoundMap = new Map();
+                state.sortedOffers.forEach(({offer, sailing}, i) => {
+                    try {
+                        const code = (offer.campaignOffer?.offerCode || '').trim();
+                        const sailISO = (sailing.sailDate || '').toString().trim().slice(0,10);
+                        const shipName = (sailing.shipName || '').trim();
+                        if (code && sailISO && shipName) compoundMap.set(code+'|'+sailISO+'|'+shipName, i);
+                    } catch(e){}
+                });
+            }
+            rows.forEach(r => {
+                try {
+                    const cells = r.querySelectorAll('td');
+                    if (cells.length < 6) return;
+                    const valCell = cells[5];
+                    if (!valCell) return;
+                    const code = (r.dataset.offerCode || '').trim();
+                    const sailISO = (r.dataset.sailDate || '').trim();
+                    const shipName = (r.dataset.shipName || '').trim();
+                    if (!_offerValueStats) _initOfferValueStats();
+                    _offerValueStats.totalRows++;
+                    if (valCell.textContent && valCell.textContent.trim() !== '-') {
+                        _offerValueStats.computed++;
+                        return;
+                    }
+                    let matchObj = null;
+                    if (state && Array.isArray(state.sortedOffers)) {
+                        // Prefer direct index if present
+                        if (r.dataset.offerIndex && state.sortedOffers[Number(r.dataset.offerIndex)]) {
+                            matchObj = state.sortedOffers[Number(r.dataset.offerIndex)];
+                        } else if (compoundMap) {
+                            const idx = compoundMap.get(code+'|'+sailISO+'|'+shipName);
+                            if (idx != null) matchObj = state.sortedOffers[idx];
+                        } else {
+                            // Fallback linear search (should rarely occur now)
+                            matchObj = state.sortedOffers.find(w => {
+                                try {
+                                    const mCode = (w.offer.campaignOffer?.offerCode || '').trim();
+                                    const mISO = (w.sailing.sailDate || '').toString().trim().slice(0,10);
+                                    const mShip = (w.sailing.shipName || '').trim();
+                                    return code && sailISO && shipName && code === mCode && sailISO === mISO && shipName === mShip;
+                                } catch(e){ return false; }
+                            });
+                        }
+                    }
+                    if (!matchObj) {
+                        _offerValueStats.matchMiss++;
+                        if (_offerValueStats.samples.matchMiss.length < 5) _offerValueStats.samples.matchMiss.push({ code, sailISO, shipName });
+                        _offerValueStats.missing++;
+                        return;
+                    }
+                    const rawVal = Utils.computeOfferValue(matchObj.offer, matchObj.sailing);
+                    if (rawVal != null && isFinite(rawVal)) {
+                        valCell.textContent = App.Utils.formatOfferValue(rawVal);
+                        _offerValueStats.computed++;
+                    } else {
+                        _offerValueStats.missing++;
+                    }
+                } catch(e){ _offerValueStats.missing++; }
+            });
+        } catch(e){ /* ignore */ }
     },
     // Normalize fetched offers data: trim and standardize capitalization
     normalizeOffers(data) {
@@ -263,4 +430,19 @@ const Utils = {
 // Expose globally for other scripts that may reference window.Utils
 if (typeof window !== 'undefined') {
     try { window.Utils = Utils; } catch(e) { /* ignore in strict environments */ }
+    // Attach post-render listeners once
+    try {
+        if (!window._offerValueListenersAttached) {
+            const triggerRefresh = () => {
+                _initOfferValueStats();
+                try { Utils.refreshOfferValues(); } catch(e){}
+                setTimeout(() => { try { Utils.refreshOfferValues(); } catch(e){} }, 500);
+                setTimeout(() => { try { Utils.refreshOfferValues(); _logOfferValueSummary(); } catch(e){} }, 1500);
+            };
+            document.addEventListener('tableRenderComplete', triggerRefresh);
+            document.addEventListener('goboItineraryHydrated', triggerRefresh);
+            document.addEventListener('goboItineraryPricingComputed', triggerRefresh);
+            window._offerValueListenersAttached = true;
+        }
+    } catch(e){}
 }

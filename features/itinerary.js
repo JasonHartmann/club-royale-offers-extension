@@ -44,9 +44,19 @@
                 if (!entry) return;
                 const itin = itineraryObj || {};
                 const sail = sailingObj || {};
-                // Taxes & fees
-                if (sail.taxesAndFees != null && entry.taxesAndFees == null) entry.taxesAndFees = sail.taxesAndFees;
-                if (typeof sail.taxesAndFeesIncluded === 'boolean' && entry.taxesAndFeesIncluded == null) entry.taxesAndFeesIncluded = sail.taxesAndFeesIncluded;
+                // Taxes & fees (normalize to numeric single-guest value if object)
+                try {
+                    if (sail.taxesAndFees != null && entry.taxesAndFees == null) {
+                        let t = sail.taxesAndFees;
+                        if (t && typeof t === 'object' && t.value != null) t = t.value;
+                        if (typeof t === 'string') {
+                            const cleaned = t.replace(/[^0-9.\-]/g,'');
+                            const num = Number(cleaned); if (isFinite(num)) t = num; else t = null;
+                        }
+                        if (typeof t === 'number' && isFinite(t)) entry.taxesAndFees = t; // per-person numeric
+                    }
+                    if (typeof sail.taxesAndFeesIncluded === 'boolean' && entry.taxesAndFeesIncluded == null) entry.taxesAndFeesIncluded = sail.taxesAndFeesIncluded;
+                } catch(e){}
                 // Stateroom pricing (normalize into { code:{ price, currency } })
                 try {
                     if (Array.isArray(sail.stateroomClassPricing) && sail.stateroomClassPricing.length) {
@@ -554,7 +564,17 @@
                     function resolveCategory(raw){ raw=(raw||'').trim(); const up=raw.toUpperCase(); if (baseCategoryMap[up]) return baseCategoryMap[up]; if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
                     const sortOrder = {INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3};
 
-                    const taxesNumber = (typeof data.taxesAndFees === 'number') ? Number(data.taxesAndFees) * 2 : 0;
+                    // Robust taxes parsing (per-person) then convert to dual occupancy
+                    let taxesPerPerson = null;
+                    try {
+                        let tRaw = data.taxesAndFees;
+                        if (tRaw && typeof tRaw === 'object' && tRaw.value != null) tRaw = tRaw.value;
+                        if (typeof tRaw === 'number') taxesPerPerson = isFinite(tRaw) ? Number(tRaw) : null;
+                        else if (typeof tRaw === 'string') {
+                            const cleaned = tRaw.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) taxesPerPerson = num; }
+                    } catch(e){ taxesPerPerson = null; }
+                    const taxesNumber = (taxesPerPerson != null) ? taxesPerPerson * 2 : 0;
+
                     const priceEntries = priceKeys.map(k => { const pr = data.stateroomPricing[k] || {}; return { key:k, code:(pr.code||k||'').toString().trim(), priceNum:(typeof pr.price==='number')?Number(pr.price)*2:null, currency: pr.currency||'' }; });
 
                     // Offer category detection (same logic as before)
@@ -650,7 +670,16 @@
                     pTable.appendChild(tbody); panel.appendChild(pTable);
                 }
                 if (data.taxesAndFees != null) {
-                    const tf = document.createElement('div'); tf.className='gobo-itinerary-taxes'; const taxesAmount = typeof data.taxesAndFees==='number'?(Number(data.taxesAndFees)*2):data.taxesAndFees; const taxesText = typeof taxesAmount==='number'?taxesAmount.toFixed(2):taxesAmount; tf.textContent = `Taxes & Fees: ${taxesText} ${Object.values(data.stateroomPricing)[0]?.currency||''} (${data.taxesAndFeesIncluded?'Included':'Additional'}) - Prices are cheapest rate in category for two guests in a double-occupancy room.`; panel.appendChild(tf);
+                    const tf = document.createElement('div'); tf.className='gobo-itinerary-taxes';
+                    let perPerson = data.taxesAndFees;
+                    if (perPerson && typeof perPerson === 'object' && perPerson.value != null) perPerson = perPerson.value;
+                    if (typeof perPerson === 'string') {
+                        const cleaned = perPerson.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) perPerson = num; }
+                    let dual = (typeof perPerson === 'number' && isFinite(perPerson)) ? perPerson * 2 : null;
+                    const taxesText = dual != null ? dual.toFixed(2) : '-';
+                    const currency = (function(){ try { const first = Object.values(data.stateroomPricing||{})[0]; return first && first.currency ? first.currency : (first && first.currencyCode ? first.currencyCode : ''); } catch(e){ return ''; } })();
+                    tf.textContent = `Taxes & Fees: ${taxesText} ${currency} (${data.taxesAndFeesIncluded?'Included':'Additional'}) - Prices reflect cheapest dual-occupancy category rates.`;
+                    panel.appendChild(tf);
                 }
                 if (Array.isArray(data.days) && data.days.length) {
                     const dayTitle = document.createElement('h3'); dayTitle.className='gobo-itinerary-section-title'; dayTitle.textContent='Day-by-Day'; panel.appendChild(dayTitle);

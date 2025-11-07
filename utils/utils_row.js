@@ -4,6 +4,14 @@
 
     Utils.createOfferRow = function ({offer, sailing}, isNewest = false, isExpiringSoon = false, idx = null) {
         const row = document.createElement('tr');
+        // Attach identifying data attributes for recomputation of offerValue
+        try {
+            row.dataset.offerCode = (offer.campaignOffer?.offerCode || '').toString().trim();
+            row.dataset.sailDate = (sailing.sailDate || '').toString().trim().slice(0,10); // raw ISO slice
+            row.dataset.shipName = (sailing.shipName || '').toString().trim();
+            row.dataset.shipCode = (sailing.shipCode || '').toString().trim();
+            if (idx !== null && idx !== undefined) row.dataset.offerIndex = String(idx);
+        } catch(e){}
         row.className = 'hover:bg-gray-50';
         if (isNewest) row.classList.add('newest-offer-row');
         if (isExpiringSoon) row.classList.add('expiring-soon-row');
