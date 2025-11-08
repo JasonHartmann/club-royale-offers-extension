@@ -1,6 +1,27 @@
 // Advanced Search feature module extracted from breadcrumbs.js
 // Responsible for state management, predicate rendering, persistence, and panel scaffold.
 
+// Safari/iOS private mode can throw on sessionStorage access; provide a guarded facade.
+const __advSession = (() => {
+    try {
+        const testKey = '__adv_test__';
+        sessionStorage.setItem(testKey, '1');
+        sessionStorage.removeItem(testKey);
+        return {
+            getItem: (k) => { try { return sessionStorage.getItem(k); } catch(e){ return null; } },
+            setItem: (k,v) => { try { sessionStorage.setItem(k,v); } catch(e){} },
+            removeItem: (k) => { try { sessionStorage.removeItem(k); } catch(e){} }
+        };
+    } catch(e) {
+        const mem = {};
+        return {
+            getItem: (k) => Object.prototype.hasOwnProperty.call(mem,k) ? mem[k] : null,
+            setItem: (k,v) => { mem[k] = String(v); },
+            removeItem: (k) => { delete mem[k]; }
+        };
+    }
+})();
+
 const AdvancedSearch = {
     // Debug flag (set AdvancedSearch._debug = true or window.ADV_SEARCH_DEBUG = true to enable)
     _debug: true,
@@ -41,9 +62,8 @@ const AdvancedSearch = {
                 includeTaxesAndFeesInPriceFilters: state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false // default true
             };
             const key = this.storageKey(state.selectedProfileKey);
-            sessionStorage.setItem(key, JSON.stringify(payload));
-        } catch (e) { /* ignore persistence errors */
-        }
+            __advSession.setItem(key, JSON.stringify(payload));
+        } catch (e) { /* ignore persistence errors */ }
     },
     restorePredicates(state) {
         try {
@@ -52,7 +72,7 @@ const AdvancedSearch = {
             state._advRestoredProfiles = state._advRestoredProfiles || new Set();
             if (state._advRestoredProfiles.has(state.selectedProfileKey)) return; // already restored
             const key = this.storageKey(state.selectedProfileKey);
-            const raw = sessionStorage.getItem(key);
+            const raw = __advSession.getItem(key);
             if (!raw) {
                 state._advRestoredProfiles.add(state.selectedProfileKey);
                 return;
@@ -1010,7 +1030,7 @@ const AdvancedSearch = {
                 try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
                 this.renderPredicates(state);
                 this.updateBadge(state);
-                try { const key = this.storageKey(state.selectedProfileKey); sessionStorage.removeItem(key); } catch(e){}
+                try { const key = this.storageKey(state.selectedProfileKey); __advSession.removeItem(key); } catch(e){}
                 setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
             });
             header.appendChild(clearBtn);

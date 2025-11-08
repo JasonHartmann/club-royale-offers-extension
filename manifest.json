@@ -10,10 +10,12 @@
     }
   },
   "permissions": ["storage"],
-  "icons": {
-    "48": "images/celebrity-icon.ico",
-    "128": "images/celebrity-icon.ico"
-  },
+  "host_permissions": [
+    "https://www.royalcaribbean.com/*",
+    "https://www.celebritycruises.com/*",
+    "https://royalcaribbean.com/*",
+    "https://celebritycruises.com/*"
+  ],
   "content_scripts": [
     {
       "matches": [
