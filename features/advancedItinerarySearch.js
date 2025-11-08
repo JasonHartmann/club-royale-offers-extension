@@ -87,11 +87,15 @@
         try {
             const cacheSigParts = [];
             try {
-                // Include number of cache keys + number of enriched keys as part of signature
+                // Include number of cache keys with offers + number of enriched-with-days keys (with offers) in signature
                 if (typeof ItineraryCache !== 'undefined' && ItineraryCache && ItineraryCache._cache) {
-                    const keys = Object.keys(ItineraryCache._cache).filter(k => k.startsWith('SD_'));
-                    const enrichedCount = keys.filter(k => ItineraryCache._cache[k] && ItineraryCache._cache[k].days).length;
-                    cacheSigParts.push(keys.length, enrichedCount);
+                    const keysAll = Object.keys(ItineraryCache._cache).filter(k => k.startsWith('SD_'));
+                    const keysWithOffers = keysAll.filter(k => {
+                        const e = ItineraryCache._cache[k];
+                        return e && Array.isArray(e.offerCodes) && e.offerCodes.length > 0;
+                    });
+                    const enrichedCount = keysWithOffers.filter(k => ItineraryCache._cache[k] && ItineraryCache._cache[k].days).length;
+                    cacheSigParts.push(keysWithOffers.length, enrichedCount);
                 }
             } catch(sigErr) { /* ignore */ }
             // Include count of offers (so new offers trigger refresh)
@@ -103,6 +107,8 @@
                 Object.keys(ItineraryCache._cache).forEach(k => {
                     const entry = ItineraryCache._cache[k];
                     if (!entry) return;
+                    // Skip entries that have no offers associated (pruned entries should be gone, but guard anyway)
+                    if (!Array.isArray(entry.offerCodes) || entry.offerCodes.length === 0) return;
                     let ports = _portsFromEntry(entry);
                     if ((!ports || !ports.length) && entry.itineraryDescription) {
                         try {
@@ -131,9 +137,12 @@
         } catch(e){ return []; }
     };
 
-    // Invalidate cached port list when itinerary hydration events fire
+    // Invalidate cached port list when itinerary hydration or prune events fire
     try {
         document.addEventListener('goboItineraryHydrated', () => {
+            AIS._allPortsCacheKey = null; // force rebuild next call
+        });
+        document.addEventListener('goboItineraryPruned', () => {
             AIS._allPortsCacheKey = null; // force rebuild next call
         });
     } catch(e){ /* ignore */ }

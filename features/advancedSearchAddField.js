@@ -15,7 +15,6 @@ const AdvancedSearchAddField = {
                 offerDate: { title: 'Received Date', hint: 'Date the offer was received' },
                 expiration: { title: 'Reserve By', hint: 'Offer reserve-by / expiration date' },
                 sailDate: { title: 'Sail Date', hint: 'Departure date for the sailing' },
-                suiteUpgradePrice: { title: 'Suite Upgrade Price', hint: 'Estimated suite upgrade price (computed)' },
                 visits: { title: 'Ports Visited', hint: 'Ports for the sailing itinerary (computed)' },
                 favorite: { title: 'Favorite', hint: 'Favorite flag' },
                 minInteriorPrice: { title: 'Interior Price', hint: 'You Pay amount for Interior vs offer category' },

@@ -13,7 +13,6 @@
             return [
                 { key: 'departureDayOfWeek', label: 'Departure Day of Week' },
                 { key: 'visits', label: 'Visits' },
-                { key: 'suiteUpgradePrice', label: 'Suite Upgrade Price' },
                 { key: 'minInteriorPrice', label: 'Min Interior Price' },
                 { key: 'minOutsidePrice', label: 'Min Outside Price' },
                 { key: 'minBalconyPrice', label: 'Min Balcony Price' },

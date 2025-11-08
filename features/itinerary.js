@@ -375,6 +375,8 @@
                     this._persist();
                     try { document.dispatchEvent(new CustomEvent('goboItineraryHydrated', { detail: { keys: targetKeys } })); } catch (e) {}
                 }
+                // Prune itineraries that have no offers associated after hydration (keeps cache lean)
+                try { this._pruneNoOffers(); } catch (e) { dbg('Prune after hydration error', e); }
                 dbg(`Hydration complete (${mode})`, { anyUpdated, shipGroupCount: shipGroups.length, fetchCount: this._fetchCount });
             } catch (e) {
                 dbg(`_hydrateInternal(${mode}) error`, e);
@@ -461,6 +463,40 @@
                 try { document.dispatchEvent(new CustomEvent('goboItineraryPricingComputed')); } catch(e){}
             } catch(e){}
         },
+        // Internal pruning: remove any SD_ itinerary entries that have zero offerCodes
+        _pruneNoOffers() {
+            try {
+                this._ensureLoaded();
+                let removed = 0;
+                const now = Date.now();
+                Object.keys(this._cache).forEach(k => {
+                    try {
+                        if (!k.startsWith('SD_')) return;
+                        const e = this._cache[k];
+                        const offers = e && Array.isArray(e.offerCodes) ? e.offerCodes : [];
+                        if (!offers.length) {
+                            // Remove from ship/date index first
+                            const parsed = _parseComposite(k);
+                            if (parsed.shipCode && parsed.sailDate && this._shipDateIndex[parsed.shipCode]) {
+                                try { delete this._shipDateIndex[parsed.shipCode][parsed.sailDate]; } catch (idxErr) {}
+                                if (Object.keys(this._shipDateIndex[parsed.shipCode]).length === 0) delete this._shipDateIndex[parsed.shipCode];
+                            }
+                            delete this._cache[k];
+                            removed++;
+                        }
+                    } catch (innerPrune) { /* ignore single entry prune errors */ }
+                });
+                if (removed) {
+                    this._persist();
+                    dbg('Pruned itineraries with no offers', { removed, remaining: Object.keys(this._cache).length });
+                    try { document.dispatchEvent(new CustomEvent('goboItineraryPruned', { detail: { removed, ts: now } })); } catch (evtErr) {}
+                } else {
+                    dbg('Prune check: no itineraries without offers to remove');
+                }
+            } catch (e) { dbg('Prune error', e); }
+        },
+        // Public wrapper if needed externally
+        pruneNoOffers() { return this._pruneNoOffers(); },
         _persist() {
             try { goboStorageSet(STORAGE_KEY, JSON.stringify(this._cache)); dbg('Cache persisted', { entries: Object.keys(this._cache).length }); } catch (e) { dbg('Persist error', e); }
         },

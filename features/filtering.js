@@ -30,25 +30,8 @@ const Filtering = {
         // Advanced Search layer
         try {
             if (state && state.advancedSearch && state.advancedSearch.enabled) {
-                // If there is a numeric suiteUpgradePrice predicate active, ensure itinerary pricing is hydrated
-                try {
-                    const hasSuitePred = Array.isArray(state.advancedSearch.predicates) && state.advancedSearch.predicates.some(p => p && p.fieldKey === 'suiteUpgradePrice');
-                    if (hasSuitePred) {
-                        Filtering._dbg && Filtering._dbg('suiteUpgradePrice predicate detected', { predicates: state.advancedSearch.predicates });
-                        try { console.debug('[Filtering] suiteUpgradePrice predicate present; ensure pricing should already be hydrated (no rehydrate)'); } catch(e){}
-                    }
-                    // Do NOT attempt to rehydrate here: the ItineraryCache should already be populated by upstream logic.
-                    // Emit a compact diagnostic so we can examine whether pricing should be present.
-                    if (hasSuitePred) {
-                        try {
-                            const icAll = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.all === 'function') ? ItineraryCache.all() : null;
-                            const icCount = icAll && typeof icAll === 'object' ? Object.keys(icAll).length : null;
-                            Filtering._dbg && Filtering._dbg('suiteUpgradePrice: skipping hydration; ItineraryCache presence', { hasItineraryCache: !!icAll, itineraryCacheSize: icCount });
-                        } catch(e) { /* ignore */ }
-                    }
-                } catch(e) { /* ignore hydration orchestration errors */ }
+                // Removed suiteUpgradePrice hydration logic (field deprecated)
                 working = Filtering.applyAdvancedSearch(working, state);
-                // No re-run override; trust current cached pricing and let predicates evaluate normally
             }
         } catch(e) { console.warn('[Filtering][AdvancedSearch] applyAdvancedSearch failed', e); }
         console.timeEnd('Filtering.filterOffers');
@@ -322,32 +305,7 @@ const Filtering = {
                     return ports && ports.length ? ports.join(', ') : '-';
                 } catch(e){ return '-'; }
             }
-            case 'suiteUpgradePrice': {
-                try {
-                    const val = App.PricingUtils.computeSuiteUpgradePrice(offer, sailing);
-                    // Debugging: surface unexpected nulls so we can trace why pricing is not computed
-                    try {
-                        const meta = { offerCode: offer?.campaignOffer?.offerCode || null, ship: sailing?.shipName || null, sailDate: sailing?.sailDate || null };
-                        // Cap unconditional console.debug to avoid flooding: first 25 nulls and first 25 computed values are logged.
-                        if (val == null) {
-                            Filtering._suiteNullLogCount = (Filtering._suiteNullLogCount || 0) + 1;
-                            if (Filtering._suiteNullLogCount <= 25) {
-                                try { console.debug('[Filtering][suiteUpgradePrice] compute returned null (sample)', meta); } catch(e){}
-                            }
-                            // Always capture a lightweight debug when global debug is enabled
-                            try { Filtering._dbg && Filtering._dbg('[Filtering][suiteUpgradePrice] compute returned null (dbg)', meta); } catch(e){}
-                        } else {
-                            Filtering._suiteComputedLogCount = (Filtering._suiteComputedLogCount || 0) + 1;
-                            if (Filtering._suiteComputedLogCount <= 25) {
-                                try { console.debug('[Filtering][suiteUpgradePrice] computed (sample)', Object.assign({}, meta, { value: Number(val).toFixed ? Number(val).toFixed(2) : val })); } catch(e){}
-                            }
-                            try { Filtering._dbg && Filtering._dbg('[Filtering][suiteUpgradePrice] computed (dbg)', Object.assign({}, meta, { value: Number(val).toFixed ? Number(val).toFixed(2) : val })); } catch(e){}
-                        }
-                    } catch(e) { /* ignore logging errors */ }
-                    if (val == null) return '-';
-                    return Number(val.toFixed(2));
-                } catch(e){ return '-'; }
-            }
+            // Removed suiteUpgradePrice handler (deprecated)
             case 'minInteriorPrice':
             case 'minOutsidePrice':
             case 'minBalconyPrice':
@@ -393,26 +351,9 @@ const Filtering = {
     getOfferColumnValueForFiltering(offer, sailing, key, state) {
         try {
             const includeTF = state && state.advancedSearch && (state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false);
-            const pricingKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice']);
+            const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice']);
             if (includeTF || !pricingKeys.has(key)) return Filtering.getOfferColumnValue(offer, sailing, key);
-            if (key === 'suiteUpgradePrice') {
-                // Original returns delta + taxes. Recompute raw without taxes.
-                const baseVal = App && App.PricingUtils && App.PricingUtils.computeSuiteUpgradePrice ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing) : null;
-                if (baseVal == null) return '-';
-                // Retrieve taxes to subtract
-                let taxesNumber = 0;
-                try {
-                    const shipCode = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : '';
-                    const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim().slice(0,10) : '';
-                    const keySD = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
-                    let entry = keySD && ItineraryCache && typeof ItineraryCache.get === 'function' ? ItineraryCache.get(keySD) : null;
-                    if (entry && entry.taxesAndFees != null) {
-                        if (typeof entry.taxesAndFees === 'number') taxesNumber = entry.taxesAndFees * 2; else if (typeof entry.taxesAndFees === 'string') { const cleaned = entry.taxesAndFees.replace(/[^0-9.\-]/g,''); const num=Number(cleaned); if (isFinite(num)) taxesNumber = num*2; }
-                    }
-                } catch(e){ /* ignore tax parse errors */ }
-                const noTaxVal = Number(baseVal) - Number(taxesNumber);
-                return isFinite(noTaxVal) ? Number(noTaxVal.toFixed(2)) : '-';
-            }
+            // Removed suiteUpgradePrice tax exclusion logic
             // Recompute min* without taxes
             try {
                 const shipCode = (sailing.shipCode || '').toString().trim();

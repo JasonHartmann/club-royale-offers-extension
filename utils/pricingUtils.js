@@ -70,7 +70,7 @@
                             try { console.debug('[PricingUtils] parsePriceRaw:NaN sample', { key:k, code, rawPrice, parsed }); } catch(e){}
                         }
                     }
-                } catch(e){}
+                } catch{}
                 if (cat === broadCat && isFinite(parsed)) {
                     const val = Number(parsed) * 2; // always dual occupancy
                     if (min == null || val < min) {
@@ -98,7 +98,7 @@
                 try {
                     App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1;
                     if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] missing prereqs for computeSuiteUpgradePrice', { shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined', offerCategory: offer?.category, sailingRoomType: sailing?.roomType });
-                } catch(e){}
+                } catch{}
                 return null;
             }
 
@@ -118,7 +118,7 @@
                             if (!found) found = candidates[0];
                             if (found) {
                                 entry = found;
-                                try { console.debug('[PricingUtils] fallback: resolved itinerary entry by sailDate+shipName', { keyTried: key, resolvedKey: entry && entry.sailDate ? `SD_${entry.shipCode}_${entry.sailDate}` : null, shipName, sailDate, candidateCount: candidates.length }); } catch(e){}
+                                try { console.debug('[PricingUtils] fallback: resolved itinerary entry by sailDate+shipName', { keyTried: key, resolvedKey: entry && entry.sailDate ? `SD_${entry.shipCode}_${entry.sailDate}` : null, shipName, sailDate, candidateCount: candidates.length }); } catch{}
                             }
                         }
                     }
@@ -151,12 +151,12 @@
                                     try {
                                         const p = entry.stateroomPricing[pk];
                                         console.debug('[PricingUtils][DETAILED] pricing sample', { key: pk, code: p && p.code, price: p && (p.price ?? p.amount ?? p.priceAmount), priceType: typeof (p && (p.price ?? p.amount ?? p.priceAmount)) });
-                                    } catch(e){}
+                                    } catch{}
                                 });
                             }
-                        } catch(e){}
+                        } catch{}
                     }
-                } catch(e){}
+                } catch{}
                 return null;
             }
 
@@ -180,7 +180,7 @@
 
             if (suitePriceNum == null) {
                 dbg('computeSuiteUpgradePrice:noSuitePricing', { key, suiteBroad });
-                try { App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1; if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no suite pricing in entry', key, { suiteBroad, pricingKeys: Object.keys(entry.stateroomPricing || {}) }); } catch(e){}
+                try { App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1; if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no suite pricing in entry', key, { suiteBroad, pricingKeys: Object.keys(entry.stateroomPricing || {}) }); } catch{}
                 return null;
             }
 
@@ -207,14 +207,14 @@
                             if (p != null && isFinite(p)) {
                                 if (best == null || p < best) best = p;
                             }
-                        } catch(e){}
+                        } catch{}
                     });
                     if (best != null) {
                         offerCategoryPrice = best;
                         dbg('computeSuiteUpgradePrice:offerCategoryPriceFallbackToCheapestNonSuite', { offerCategoryPrice });
                         App.PricingUtils._fallbackUsed = (App.PricingUtils._fallbackUsed || 0) + 1;
                     }
-                } catch(e){}
+                } catch{}
             }
             // If still null, try to parse a price from offer object (many shapes tolerated)
             if (offerCategoryPrice == null) {
@@ -237,7 +237,7 @@
                         // We'll assume the value represents the full price for the cabin and will NOT multiply again.
                         dbg('computeSuiteUpgradePrice:offerPriceParsed', { offerCategoryPrice });
                     }
-                } catch(e) { /* ignore */ }
+                } catch{} // removed variable in catch to suppress redundant initializer warning
             }
 
             // At this point, we must have suitePriceNum and ideally offerCategoryPrice.

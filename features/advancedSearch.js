@@ -239,6 +239,26 @@ const AdvancedSearch = {
             this.debouncedPersist(state);
         } catch(e){ /* ignore */ }
     },
+    _removePredicate(pred, state) {
+        try {
+            if (!pred || !state?.advancedSearch?.predicates) return;
+            const idx = state.advancedSearch.predicates.findIndex(p => p.id === pred.id);
+            if (idx === -1) return;
+            state.advancedSearch.predicates.splice(idx, 1);
+            if (state._advPreviewPredicateId === pred.id) {
+                state._advPreviewPredicateId = null;
+                if (state._advPreviewTimer) { clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; }
+            }
+            const nextIncomplete = state.advancedSearch.predicates.find(p => !p.complete);
+            if (nextIncomplete) this.schedulePreview(state, nextIncomplete);
+            try { this.lightRefresh(state, { showSpinner: true }); } catch (e) {}
+            try { this.renderPredicates(state); } catch (e) {}
+            if (state.advancedSearch.enabled && state.advancedSearch.predicates.length === 0) {
+                setTimeout(() => { try { const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); } catch (err) {} }, 0);
+            }
+            this.debouncedPersist(state);
+        } catch (e) { /* ignore removal errors */ }
+    },
     renderPredicateValueChips(box, pred, state) {
         const chipsWrap = document.createElement('div');
         chipsWrap.className = 'adv-value-chips'; // styling handled in CSS
@@ -268,10 +288,8 @@ const AdvancedSearch = {
             remove.className = 'adv-chip-remove';
             remove.addEventListener('click', (e) => {
                 e.stopPropagation();
-                pred.values = [];
-                pred.complete = false; // revert to edit mode
-                this.renderPredicates(state);
-                this.debouncedPersist(state);
+                // Remove entire predicate when date range chip (only chip) is removed
+                return this._removePredicate(pred, state);
             });
             chip.appendChild(remove);
             chipsWrap.appendChild(chip);
@@ -302,8 +320,11 @@ const AdvancedSearch = {
                 const idx = pred.values.indexOf(val);
                 if (idx !== -1) pred.values.splice(idx, 1);
                 pred.values = pred.values.slice();
+                const isLast = pred.values.length === 0;
+                if (isLast) { // remove entire predicate instead of leaving empty
+                    return this._removePredicate(pred, state);
+                }
                 if (pred.complete) {
-                    if (!pred.values.length) pred.complete = false;
                     this.lightRefresh(state, { showSpinner: true });
                 } else {
                     // Inline update for IN/NOT IN to avoid re-render scroll jump
@@ -423,7 +444,7 @@ const AdvancedSearch = {
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
             // Numeric pricing fields that support 'less than'
-            const numericFieldKeys = new Set(['suiteUpgradePrice','minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights','offerValue']);
+            const numericFieldKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights','offerValue']);
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
                 this._logDebug('renderPredicates:headersNotReady', { headerCount: headerFields.length });
@@ -628,7 +649,6 @@ const AdvancedSearch = {
                             let helpMsg;
                             if (pred.operator === 'less than') helpMsg = 'Filters rows with value below this amount.'; else helpMsg = 'Filters rows with value above this amount.';
                             switch (pred.fieldKey) {
-                                case 'suiteUpgradePrice': helpMsg = (pred.operator==='less than' ? 'Suite upgrade price below this amount.' : 'Suite upgrade price above this amount.'); break;
                                 case 'minInteriorPrice': helpMsg = (pred.operator==='less than' ? 'Interior You Pay below this amount.' : 'Interior You Pay above this amount.'); break;
                                 case 'minOutsidePrice': helpMsg = (pred.operator==='less than' ? 'Ocean View You Pay below this amount.' : 'Ocean View You Pay above this amount.'); break;
                                 case 'minBalconyPrice': helpMsg = (pred.operator==='less than' ? 'Balcony You Pay below this amount.' : 'Balcony You Pay above this amount.'); break;
@@ -652,7 +672,7 @@ const AdvancedSearch = {
                     } else if (pred.complete) {
                         const summary = document.createElement('span'); summary.textContent = pred.operator; summary.className='adv-summary'; box.appendChild(summary); this.renderPredicateValueChips(box,pred,state);
                     }
-                    const del = document.createElement('button'); del.type='button'; del.textContent='\u2716'; del.setAttribute('aria-label','Delete filter'); del.className='adv-delete-btn'; del.addEventListener('click', (e) => { e.stopPropagation(); const idx = state.advancedSearch.predicates.findIndex(p=>p.id===pred.id); if (idx!==-1) state.advancedSearch.predicates.splice(idx,1); if (state._advPreviewPredicateId===pred.id){ state._advPreviewPredicateId=null; if(state._advPreviewTimer){ clearTimeout(state._advPreviewTimer); delete state._advPreviewTimer; } } const nextIncomplete = state.advancedSearch.predicates.find(p=>!p.complete); if (nextIncomplete) this.schedulePreview(state,nextIncomplete); try{ this.lightRefresh(state,{showSpinner:true}); }catch(e){} try{ this.renderPredicates(state);}catch(e){} if (state.advancedSearch.enabled && state.advancedSearch.predicates.length===0){ setTimeout(()=>{ try{ const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); }catch(err){} },0);} this.debouncedPersist(state); }); box.appendChild(del);
+                    const del = document.createElement('button'); del.type='button'; del.textContent='\u2716'; del.setAttribute('aria-label','Delete filter'); del.className='adv-delete-btn'; del.addEventListener('click', (e) => { e.stopPropagation(); this._removePredicate(pred, state); }); box.appendChild(del);
                     body.appendChild(box); renderedAny = true;
                 } catch(perr){ console.warn('[AdvancedSearch] predicate render error', perr); }
             });
@@ -1004,7 +1024,7 @@ const AdvancedSearch = {
             includeCb.addEventListener('change', () => {
                 state.advancedSearch.includeTaxesAndFeesInPriceFilters = includeCb.checked;
                 // Invalidate cached field values so suggestions reflect new pricing basis
-                try { if (state._advFieldCache) Object.keys(state._advFieldCache).forEach(k => { if (k.includes('min') || k.includes('upgrade') || k.includes('suiteUpgradePrice')) delete state._advFieldCache[k]; }); } catch(e){}
+                try { if (state._advFieldCache) Object.keys(state._advFieldCache).forEach(k => { if (k.includes('min')) delete state._advFieldCache[k]; }); } catch(e){}
                 this.lightRefresh(state, { showSpinner: true });
                 this.debouncedPersist(state);
             });
