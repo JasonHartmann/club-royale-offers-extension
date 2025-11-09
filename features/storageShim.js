@@ -14,7 +14,7 @@
         /^goboProfileIdNext_v1$/,
         /^goboWhatsNewShown/
     ];
-    const DEBUG_STORAGE = true; // toggle for storage shim debug
+    const DEBUG_STORAGE = false; // set true to trace shim behavior during development
     function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
     function shouldManage(key) {
         const match = EXT_PREFIX_MATCHERS.some(rx => rx.test(key));
@@ -41,7 +41,11 @@
             pendingWrites.clear();
             try {
                 debugStore('flush: writing batch', Object.keys(batch));
-                extStorage.set(batch, () => { if (chrome && chrome.runtime && chrome.runtime.lastError) { debugStore('flush: lastError', chrome.runtime.lastError); } });
+                extStorage.set(batch, () => {
+                    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+                        debugStore('flush: lastError', chrome.runtime.lastError);
+                    }
+                });
             } catch(e) { debugStore('flush: exception', e); }
             flushScheduled = false;
         }, 25); // small debounce to collapse bursts
