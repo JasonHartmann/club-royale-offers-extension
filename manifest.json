@@ -10,6 +10,13 @@
     }
   },
   "permissions": ["storage"],
+  "icons": {
+    "48": "images/percex-48.png",
+    "128": "images/percex-128.png",
+    "256": "images/percex-256.png",
+    "512": "images/percex-512.png",
+    "1024": "images/percex-1024.png"
+  },
   "host_permissions": [
     "https://www.royalcaribbean.com/*",
     "https://www.celebritycruises.com/*",
@@ -71,8 +78,7 @@
       ],
       "matches": [
         "<all_urls>"
-      ],
-      "extension_pages": true
+      ]
     }
   ]
 }

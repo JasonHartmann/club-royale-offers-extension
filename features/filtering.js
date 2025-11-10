@@ -1,3 +1,280 @@
+const ADV_PRICE_KEY_TO_CATEGORY = {
+    minInteriorPrice: 'INTERIOR',
+    minOutsidePrice: 'OUTSIDE',
+    minBalconyPrice: 'BALCONY',
+    minSuitePrice: 'DELUXE'
+};
+
+const STATEROOM_CATEGORY_MAP = {
+    I: 'INTERIOR', IN: 'INTERIOR', INT: 'INTERIOR', INSIDE: 'INTERIOR', INTERIOR: 'INTERIOR',
+    O: 'OUTSIDE', OV: 'OUTSIDE', OB: 'OUTSIDE', E: 'OUTSIDE', OCEAN: 'OUTSIDE', OCEANVIEW: 'OUTSIDE', OUTSIDE: 'OUTSIDE',
+    B: 'BALCONY', BAL: 'BALCONY', BK: 'BALCONY', BALCONY: 'BALCONY',
+    D: 'DELUXE', DLX: 'DELUXE', DELUXE: 'DELUXE', JS: 'DELUXE', SU: 'DELUXE', SUITE: 'DELUXE', JUNIOR: 'DELUXE',
+    JR: 'DELUXE', 'JR.': 'DELUXE', 'JR-SUITE': 'DELUXE', 'JR SUITE': 'DELUXE', 'JUNIOR SUITE': 'DELUXE',
+    JRSUITE: 'DELUXE', 'JR SUITES': 'DELUXE', 'JUNIOR SUITES': 'DELUXE'
+};
+
+const STATEROOM_DISPLAY_MAP = {
+    I: 'Interior', IN: 'Interior', INT: 'Interior', INSIDE: 'Interior', INTERIOR: 'Interior',
+    O: 'Ocean View', OV: 'Ocean View', OB: 'Ocean View', E: 'Ocean View', OCEAN: 'Ocean View', OCEANVIEW: 'Ocean View', OUTSIDE: 'Ocean View',
+    B: 'Balcony', BAL: 'Balcony', BK: 'Balcony', BALCONY: 'Balcony',
+    D: 'Suite', DLX: 'Suite', DELUXE: 'Suite', JS: 'Suite', SU: 'Suite', SUITE: 'Suite', JUNIOR: 'Suite',
+    JR: 'Suite', 'JR.': 'Suite', 'JR-SUITE': 'Suite', 'JR SUITE': 'Suite', 'JUNIOR SUITE': 'Suite',
+    JRSUITE: 'Suite', 'JR SUITES': 'Suite', 'JUNIOR SUITES': 'Suite'
+};
+
+function coercePrice(raw) {
+    if (raw == null) return null;
+    if (typeof raw === 'number') return isFinite(raw) ? Number(raw) : null;
+    if (typeof raw === 'string') {
+        const cleaned = raw.replace(/[^0-9.\-]/g, '');
+        if (!cleaned) return null;
+        const num = Number(cleaned);
+        return isFinite(num) ? num : null;
+    }
+    return null;
+}
+
+function resolveBroadCategory(raw) {
+    if (!raw) return null;
+    const up = String(raw).trim().toUpperCase();
+    if (STATEROOM_CATEGORY_MAP[up]) return STATEROOM_CATEGORY_MAP[up];
+    if (['INTERIOR', 'OUTSIDE', 'BALCONY', 'DELUXE'].includes(up)) return up;
+    return null;
+}
+
+function resolveDisplayLabel(raw) {
+    if (!raw) return '';
+    const up = String(raw).trim().toUpperCase();
+    return STATEROOM_DISPLAY_MAP[up] || String(raw).trim();
+}
+
+function buildPriceEntries(entry, sailing) {
+    const entries = [];
+    const pushEntry = (code, basePrice, currency) => {
+        if (!code) return;
+        const coerced = coercePrice(basePrice);
+        if (coerced == null) return;
+        entries.push({
+            code: code.toString().trim(),
+            priceDual: Number(coerced) * 2,
+            currency: currency || ''
+        });
+    };
+
+    const rawPricing = (entry && entry.stateroomPricing) || {};
+    Object.keys(rawPricing).forEach(key => {
+        try {
+            const pr = rawPricing[key] || {};
+            const code = (pr.code || key || '').toString().trim();
+            const base = pr.price ?? pr.amount ?? pr.priceAmount ?? pr.priceAmt ?? pr.priceamount ?? pr.fare ?? null;
+            const currency = pr.currency || pr.currencyCode || '';
+            pushEntry(code, base, currency);
+        } catch (e) { /* ignore */ }
+    });
+
+    if (!entries.length && Array.isArray(sailing?.stateroomClassPricing)) {
+        sailing.stateroomClassPricing.forEach(pr => {
+            try {
+                const code = (pr?.stateroomClass?.content?.code || pr?.stateroomClass?.id || '').toString().trim();
+                const base = pr?.price?.value ?? pr?.priceAmount ?? pr?.price ?? pr?.fare ?? null;
+                const currency = pr?.price?.currency ?? pr?.currency ?? '';
+                pushEntry(code, base, currency);
+            } catch (e) { /* ignore */ }
+        });
+    }
+    return entries;
+}
+
+function deriveCategoryMinimums(priceEntries) {
+    const mins = { INTERIOR: null, OUTSIDE: null, BALCONY: null, DELUXE: null };
+    priceEntries.forEach(pe => {
+        const broad = resolveBroadCategory(pe.code);
+        if (!broad || pe.priceDual == null) return;
+        if (mins[broad] == null || pe.priceDual < mins[broad]) mins[broad] = pe.priceDual;
+    });
+    return mins;
+}
+
+function findOfferPriceEntry(priceEntries, rawCategory) {
+    if (!rawCategory) return null;
+    const target = rawCategory.toString().trim().toUpperCase();
+    if (!target) return null;
+    let match = priceEntries.find(pe => pe.code.toUpperCase() === target);
+    if (match) return match;
+    match = priceEntries.find(pe => resolveDisplayLabel(pe.code).toUpperCase() === target);
+    if (match) return match;
+    const bucket = resolveBroadCategory(rawCategory);
+    if (!bucket) return null;
+    const bucketEntries = priceEntries
+        .filter(pe => resolveBroadCategory(pe.code) === bucket && pe.priceDual != null)
+        .sort((a, b) => a.priceDual - b.priceDual);
+    return bucketEntries.length ? bucketEntries[0] : null;
+}
+
+function computeDualTaxes(entry, sailing, derived) {
+    if (derived && typeof derived.taxesAndFeesDual === 'number' && isFinite(derived.taxesAndFeesDual)) {
+        return Number(derived.taxesAndFeesDual);
+    }
+    let rawTaxes = entry && entry.taxesAndFees != null ? entry.taxesAndFees : sailing?.taxesAndFees;
+    if (rawTaxes && typeof rawTaxes === 'object' && rawTaxes.value != null) rawTaxes = rawTaxes.value;
+    const coerced = coercePrice(rawTaxes);
+    return coerced != null ? Number(coerced) * 2 : 0;
+}
+
+function detectSingleGuestScenario(offer, sailing) {
+    const isTruthyFlag = (val) => {
+        if (val === true) return true;
+        if (typeof val === 'number') return Number(val) === 1;
+        if (typeof val === 'string') {
+            const trimmed = val.trim().toLowerCase();
+            if (!trimmed) return false;
+            if (trimmed === 'true' || trimmed === '1' || trimmed === 'yes') return true;
+        }
+        return false;
+    };
+    const labelIndicatesSingle = (val) => {
+        if (typeof val !== 'string') return false;
+        return /^\s*1\s*guest/i.test(val.trim());
+    };
+    try {
+        if (isTruthyFlag(sailing?.isGOBO)) return true;
+        const occupancyHints = [
+            sailing?.guestOccupancy,
+            sailing?.guestCount,
+            sailing?.guestCapacity,
+            offer?.guestOccupancy,
+            offer?.guestCount,
+            offer?.campaignOffer?.guestOccupancy,
+            offer?.campaignOffer?.guestCount
+        ];
+        if (occupancyHints.some(isTruthyFlag)) return true;
+        const guestLabels = [
+            sailing?.guests,
+            offer?.guests,
+            offer?.campaignOffer?.guests,
+            offer?.campaignOffer?.guestLabel
+        ];
+        if (guestLabels.some(labelIndicatesSingle)) return true;
+        const state = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+        if (state && Array.isArray(state.sortedOffers)) {
+            const offerCode = (offer?.campaignOffer?.offerCode || '').trim().toUpperCase();
+            const sailDate = (sailing?.sailDate || '').toString().trim().slice(0, 10);
+            const ship = (sailing?.shipCode || sailing?.shipName || '').toString().trim().toUpperCase();
+            if (offerCode && sailDate && ship) {
+                const match = state.sortedOffers.find(({ offer: o, sailing: s }) => {
+                    if (!o || !s) return false;
+                    const oCode = (o?.campaignOffer?.offerCode || '').trim().toUpperCase();
+                    if (oCode !== offerCode) return false;
+                    const sDate = (s?.sailDate || '').toString().trim().slice(0, 10);
+                    if (sDate !== sailDate) return false;
+                    const sShip = (s?.shipCode || s?.shipName || '').toString().trim().toUpperCase();
+                    return sShip === ship;
+                });
+                if (match) {
+                    if (isTruthyFlag(match.sailing?.isGOBO)) return true;
+                    if (labelIndicatesSingle(match.sailing?.guests)) return true;
+                }
+            }
+        }
+    } catch (e) { /* ignore detection errors */ }
+    return false;
+}
+
+function computeAdvancedMinPrice(offer, sailing, key, includeTaxes) {
+    try {
+        const broadKey = ADV_PRICE_KEY_TO_CATEGORY[key];
+        if (!broadKey) return '-';
+        if (!sailing) return '-';
+        const shipCode = (sailing.shipCode || '').toString().trim();
+        const sailDate = (sailing.sailDate || '').toString().trim().slice(0, 10);
+        if (!sailDate) return '-';
+        const cacheKey = shipCode ? `SD_${shipCode}_${sailDate}` : null;
+        let entry = cacheKey && typeof ItineraryCache !== 'undefined' && ItineraryCache.get ? ItineraryCache.get(cacheKey) : null;
+        if (!entry && shipCode && typeof ItineraryCache !== 'undefined' && ItineraryCache.getByShipDate) {
+            try { entry = ItineraryCache.getByShipDate(shipCode, sailDate); } catch (e) { entry = null; }
+        }
+        if (!entry || !entry.pricingDerived) return '-';
+        const derived = entry.pricingDerived;
+        const priceEntries = buildPriceEntries(entry, sailing);
+        const categoryMins = deriveCategoryMinimums(priceEntries);
+        const getCategoryMin = (broad) => {
+            if (!broad) return null;
+            if (derived.categories && derived.categories[broad] != null) return derived.categories[broad];
+            if (categoryMins[broad] != null) return categoryMins[broad];
+            return null;
+        };
+        const taxesDual = computeDualTaxes(entry, sailing, derived);
+        const offerCategoryRaw = (sailing.roomType || offer?.category || offer?.campaignOffer?.category || offer?.campaignOffer?.name || '').toString().trim();
+        let offerBroad = resolveBroadCategory(offerCategoryRaw);
+        if (!offerBroad && offer?.campaignOffer?.name) offerBroad = resolveBroadCategory(offer.campaignOffer.name);
+        const offerPriceEntry = findOfferPriceEntry(priceEntries, offerCategoryRaw)
+            || (offer?.campaignOffer?.category ? findOfferPriceEntry(priceEntries, offer.campaignOffer.category) : null)
+            || (offer?.campaignOffer?.name ? findOfferPriceEntry(priceEntries, offer.campaignOffer.name) : null);
+        let offerBaseDual = offerPriceEntry && typeof offerPriceEntry.priceDual === 'number' ? offerPriceEntry.priceDual : null;
+        if (offerBaseDual == null && offerBroad) {
+            const fallback = getCategoryMin(offerBroad);
+            if (fallback != null) offerBaseDual = fallback;
+        }
+        if (offerBaseDual == null) {
+            const fallback = Object.values(categoryMins).filter(v => v != null).sort((a, b) => a - b)[0];
+            if (fallback != null) offerBaseDual = fallback;
+        }
+
+        let computedOfferValue = null;
+        try {
+            if (App && App.Utils && typeof App.Utils.computeOfferValue === 'function') {
+                const rawVal = App.Utils.computeOfferValue(offer, sailing);
+                if (rawVal != null && isFinite(rawVal) && rawVal > 0) computedOfferValue = Number(rawVal);
+            } else if (typeof Utils !== 'undefined' && Utils && typeof Utils.computeOfferValue === 'function') {
+                const rawVal = Utils.computeOfferValue(offer, sailing);
+                if (rawVal != null && isFinite(rawVal) && rawVal > 0) computedOfferValue = Number(rawVal);
+            }
+        } catch (e) { computedOfferValue = null; }
+
+        const isOneGuestOffer = detectSingleGuestScenario(offer, sailing);
+
+        let singleGuestOfferValue = null;
+        if (isOneGuestOffer) {
+            if (computedOfferValue != null && isFinite(computedOfferValue)) {
+                singleGuestOfferValue = Number(computedOfferValue);
+            } else if (offerBaseDual != null && isFinite(offerBaseDual)) {
+                const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
+                const numerator = offerBaseDual + SINGLE_GUEST_DISCOUNT_ASSUMED - taxesDual;
+                const calc = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
+                if (isFinite(calc) && calc > 0) singleGuestOfferValue = calc;
+            }
+        }
+
+        const categoryMinDual = getCategoryMin(broadKey);
+        if (categoryMinDual == null) return '-';
+
+        if (isOneGuestOffer && singleGuestOfferValue != null) {
+            let estimated = categoryMinDual - singleGuestOfferValue;
+            if (!isFinite(estimated) || estimated < taxesDual) estimated = taxesDual;
+            const value = includeTaxes ? estimated : Math.max(0, estimated - taxesDual);
+            return Number(value.toFixed(2));
+        }
+
+        if (offerBaseDual == null || !isFinite(offerBaseDual)) return '-';
+        if (offerBroad && offerBroad === broadKey) {
+            const value = includeTaxes ? taxesDual : 0;
+            return Number(value.toFixed(2));
+        }
+
+        let diff = categoryMinDual - offerBaseDual;
+        if (!isFinite(diff) || diff <= 0) {
+            const value = includeTaxes ? taxesDual : 0;
+            return Number(value.toFixed(2));
+        }
+
+        const finalValue = includeTaxes ? diff + taxesDual : diff;
+        return Number(finalValue.toFixed(2));
+    } catch (e) {
+        return '-';
+    }
+}
+
 const Filtering = {
     // Debug flag (toggle below to enable/disable debug logging by editing this file)
     DEBUG: true,
@@ -310,38 +587,8 @@ const Filtering = {
             case 'minOutsidePrice':
             case 'minBalconyPrice':
             case 'minSuitePrice': {
-                try {
-                    const shipCode = (sailing.shipCode || '').toString().trim();
-                    const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);
-                    const keySD = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
-                    let entry = keySD && typeof ItineraryCache !== 'undefined' && ItineraryCache.get ? ItineraryCache.get(keySD) : null;
-                    if (!entry) { try { if (shipCode && sailDate && ItineraryCache && typeof ItineraryCache.getByShipDate === 'function') entry = ItineraryCache.getByShipDate(shipCode, sailDate); } catch(e){} }
-                    if (!entry || !entry.pricingDerived) return '-';
-                    const pd = entry.pricingDerived;
-                    const rawOfferCat = (sailing.roomType || offer?.category || '').toString().trim();
-                    const catMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
-                        O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
-                        B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
-                        D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
-                    const resolveBroad = (raw)=>{ if(!raw) return null; const up=raw.toUpperCase(); return catMap[up]|| (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null); };
-                    const offerBroad = resolveBroad(rawOfferCat);
-                    const offerMin = offerBroad ? pd.categories[offerBroad] : null;
-                    const taxes = typeof pd.taxesAndFeesDual === 'number' ? pd.taxesAndFeesDual : 0;
-                    function youPayFor(broad){
-                        const catMin = pd.categories[broad];
-                        if (catMin == null || offerMin == null) return null;
-                        if (offerBroad === broad) return taxes; // same category: just taxes
-                        const diff = catMin - offerMin; // upgrade cost difference
-                        return (diff > 0 ? diff : 0) + taxes;
-                    }
-                    switch (key) {
-                        case 'minInteriorPrice': { const v = youPayFor('INTERIOR'); return v!=null?Number(v.toFixed(2)):'-'; }
-                        case 'minOutsidePrice': { const v = youPayFor('OUTSIDE'); return v!=null?Number(v.toFixed(2)):'-'; }
-                        case 'minBalconyPrice': { const v = youPayFor('BALCONY'); return v!=null?Number(v.toFixed(2)):'-'; }
-                        case 'minSuitePrice': { const v = youPayFor('DELUXE'); return v!=null?Number(v.toFixed(2)):'-'; }
-                    }
-                    return '-';
-                } catch(e){ return '-'; }
+                const computed = computeAdvancedMinPrice(offer, sailing, key, true);
+                return computed === '-' ? '-' : computed;
             }
             default:
                 return offer[key];
@@ -353,39 +600,8 @@ const Filtering = {
             const includeTF = state && state.advancedSearch && (state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false);
             const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice']);
             if (includeTF || !pricingKeys.has(key)) return Filtering.getOfferColumnValue(offer, sailing, key);
-            // Removed suiteUpgradePrice tax exclusion logic
-            // Recompute min* without taxes
-            try {
-                const shipCode = (sailing.shipCode || '').toString().trim();
-                const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);
-                const keySD = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
-                let entry = keySD && typeof ItineraryCache !== 'undefined' && ItineraryCache.get ? ItineraryCache.get(keySD) : null;
-                if (!entry) { try { if (shipCode && sailDate && ItineraryCache && typeof ItineraryCache.getByShipDate === 'function') entry = ItineraryCache.getByShipDate(shipCode, sailDate); } catch(e){} }
-                if (!entry || !entry.pricingDerived) return '-';
-                const pd = entry.pricingDerived;
-                const rawOfferCat = (sailing.roomType || offer?.category || '').toString().trim();
-                const catMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
-                    O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
-                    B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
-                    D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
-                const resolveBroad = (raw)=>{ if(!raw) return null; const up=raw.toUpperCase(); return catMap[up]|| (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null); };
-                const offerBroad = resolveBroad(rawOfferCat);
-                const offerMin = offerBroad ? pd.categories[offerBroad] : null;
-                function youPayForNoTax(broad){
-                    const catMin = pd.categories[broad];
-                    if (catMin == null || offerMin == null) return null;
-                    if (offerBroad === broad) return 0; // same category: previously taxes only; now zero when excluding taxes
-                    const diff = catMin - offerMin; // upgrade cost difference
-                    return (diff > 0 ? diff : 0); // exclude taxes
-                }
-                switch (key) {
-                    case 'minInteriorPrice': { const v = youPayForNoTax('INTERIOR'); return v!=null?Number(v.toFixed(2)):'-'; }
-                    case 'minOutsidePrice': { const v = youPayForNoTax('OUTSIDE'); return v!=null?Number(v.toFixed(2)):'-'; }
-                    case 'minBalconyPrice': { const v = youPayForNoTax('BALCONY'); return v!=null?Number(v.toFixed(2)):'-'; }
-                    case 'minSuitePrice': { const v = youPayForNoTax('DELUXE'); return v!=null?Number(v.toFixed(2)):'-'; }
-                }
-            } catch(e){ return '-'; }
-            return '-';
+            const computed = computeAdvancedMinPrice(offer, sailing, key, false);
+            return computed === '-' ? '-' : computed;
         } catch(e){ return Filtering.getOfferColumnValue(offer, sailing, key); }
     },
     // Load hidden groups (GLOBAL now). Performs one-time migration from per-profile keys.
