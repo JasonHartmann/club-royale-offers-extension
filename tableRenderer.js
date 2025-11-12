@@ -113,19 +113,86 @@ const TableRenderer = {
             }
         }
     }, loadProfile(key, payload) {
-        // Redirect legacy key to branded variant if present
+        // Legacy -> branded migration with ID preservation BEFORE ensureIds allocates new ID
         try {
-            if (/^gobo-(?!R-|C-)[^\s]+$/.test(key) && typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') {
-                const brand = App.Utils.detectBrand();
+            if (/^gobo-(?!R-|C-)[^\s]+$/.test(key)) {
                 const suffix = key.slice(5);
+                let existingId = null;
+                try {
+                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.map) existingId = ProfileIdManager.map[key];
+                    if (existingId == null) {
+                        const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
+                        if (rawMap) { const parsedMap = JSON.parse(rawMap); existingId = parsedMap ? parsedMap[key] : null; }
+                    }
+                } catch(eId){ existingId = null; }
+                // Detect brand from payload offers (fallback R)
+                let brand = 'R';
+                try {
+                    const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
+                    if (raw) {
+                        const pl = JSON.parse(raw);
+                        const offers = pl?.data?.offers;
+                        if (Array.isArray(offers)) {
+                            outer: for (const off of offers) {
+                                const sailings = off?.campaignOffer?.sailings;
+                                if (Array.isArray(sailings)) {
+                                    for (const s of sailings) {
+                                        const sn = (s?.shipName || '').trim();
+                                        if (/^Celebrity\s/i.test(sn)) { brand='C'; break outer; }
+                                        else if (sn) { brand='R'; }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch(eBrand){ brand='R'; }
                 const brandedKey = `gobo-${brand}-${suffix}`;
-                const exists = (typeof goboStorageGet === 'function' ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey));
-                if (exists) {
-                    console.debug('[tableRenderer] Redirecting legacy profile key to branded key', { legacy:key, branded:brandedKey });
-                    key = brandedKey; // use branded key going forward
+                const brandedExists = (typeof goboStorageGet === 'function') ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey);
+                if (!brandedExists) {
+                    // Migrate storage payload
+                    try {
+                        const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
+                        if (rawLegacy) {
+                            const legacyPayload = JSON.parse(rawLegacy);
+                            legacyPayload.brand = brand;
+                            legacyPayload.migratedFromLegacy = true;
+                            if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(legacyPayload)); else localStorage.setItem(brandedKey, JSON.stringify(legacyPayload));
+                        }
+                    } catch(ePl){ /* ignore */ }
+                    // Update ID map preserving existingId
+                    if (existingId != null) {
+                        try {
+                            // Update in-memory map directly
+                            if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                                ProfileIdManager.map[brandedKey] = existingId;
+                                delete ProfileIdManager.map[key];
+                                ProfileIdManager.persist();
+                            } else {
+                                // Direct storage map manipulation
+                                const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
+                                let parsedMap = rawMap ? JSON.parse(rawMap) : {};
+                                parsedMap[brandedKey] = existingId;
+                                delete parsedMap[key];
+                                const serialized = JSON.stringify(parsedMap);
+                                if (typeof goboStorageSet === 'function') goboStorageSet('goboProfileIdMap_v1', serialized); else localStorage.setItem('goboProfileIdMap_v1', serialized);
+                            }
+                        } catch(eMap){ /* ignore */ }
+                    }
+                    // Remove legacy key to avoid duplicate migration later
+                    try { if (typeof goboStorageRemove === 'function') goboStorageRemove(key); else localStorage.removeItem(key); } catch(eRm){ /* ignore */ }
                 }
+                // Point key to branded version now
+                key = brandedKey;
             }
-        } catch(e){ /* ignore redirect errors */ }
+        } catch(migErr){ /* ignore legacy migration errors */ }
+        // Ensure stable ID for this key immediately (after migration) WITHOUT allocating a new one if preserved
+        try {
+            if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                const alreadyId = ProfileIdManager.map[key];
+                if (alreadyId == null) ProfileIdManager.ensureIds([key]); // allocate only if missing
+                App.ProfileIdMap = { ...ProfileIdManager.map };
+            }
+        } catch(e){ /* ignore */ }
         const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
         this.currentSwitchToken = switchToken;
         // Ensure profileId map exists
