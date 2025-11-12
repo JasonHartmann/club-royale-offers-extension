@@ -124,14 +124,45 @@ const Breadcrumbs = {
                             existingBranded.add(newKey);
                             profileKeys.push(newKey);
                             migratedCount++;
-                            // Preserve profile ID: transfer mapping from legacyKey to newKey if present
-                            const existingId = idMap[legacyKey];
+                            // Preserve profile ID: try storage map then in-memory map fallback
+                            let existingId = idMap[legacyKey];
+                            if (existingId == null && typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.map) {
+                                existingId = ProfileIdManager.map[legacyKey];
+                            }
                             if (existingId != null) {
-                                if (idMap[newKey] == null) {
-                                    idMap[newKey] = existingId; // assign same ID
-                                }
+                                if (idMap[newKey] == null) idMap[newKey] = existingId; // assign same ID
                                 delete idMap[legacyKey]; // remove old key mapping WITHOUT freeing ID
                                 idMapChanged = true;
+                                // Update in-memory map immediately to avoid ensureIds allocating a new one later
+                                try {
+                                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                                        ProfileIdManager.map[newKey] = existingId;
+                                        delete ProfileIdManager.map[legacyKey];
+                                    }
+                                } catch(midErr){ /* ignore */ }
+                                // If current profile is this legacy key, update App.CurrentProfile & selectedProfileKey
+                                try {
+                                    if (App.CurrentProfile && App.CurrentProfile.key === legacyKey) {
+                                        App.CurrentProfile.key = newKey;
+                                        if (App.TableRenderer && App.TableRenderer.lastState) App.TableRenderer.lastState.selectedProfileKey = newKey;
+                                    }
+                                } catch(curErr){ /* ignore */ }
+                                // Normalize any linked accounts referencing this legacy key
+                                try {
+                                    let linked = getLinkedAccounts();
+                                    let changed = false;
+                                    linked = linked.map(acc => {
+                                        if (acc.key === legacyKey) { changed = true; return { ...acc, key: newKey }; }
+                                        return acc;
+                                    });
+                                    // Deduplicate if both legacy + branded existed
+                                    const seen = new Set();
+                                    linked = linked.filter(acc => { const k = acc.key; if (seen.has(k)) { changed = true; return false; } seen.add(k); return true; });
+                                    if (changed) {
+                                        setLinkedAccounts(linked);
+                                        if (linked.length === 2) { try { updateCombinedOffersCache(); } catch(eu) { /* ignore */ } }
+                                    }
+                                } catch(linkErr){ /* ignore */ }
                             }
                             // Remove legacy key so it cannot resurrect the branded one on subsequent renders
                             try { if (typeof goboStorageRemove === 'function') goboStorageRemove(legacyKey); else localStorage.removeItem(legacyKey); } catch(remErr) { /* ignore */ }
@@ -142,9 +173,7 @@ const Breadcrumbs = {
                             const serialized = JSON.stringify(idMap);
                             if (typeof goboStorageSet === 'function') goboStorageSet('goboProfileIdMap_v1', serialized); else localStorage.setItem('goboProfileIdMap_v1', serialized);
                             if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.ready) {
-                                ProfileIdManager.map = { ...ProfileIdManager.map, ...idMap };
-                                legacyCandidates.forEach(lk => { if (!/^gobo-(R|C)-/.test(lk)) delete ProfileIdManager.map[lk]; });
-                                ProfileIdManager.persist();
+                                ProfileIdManager.persist(); // storage already updated, just persist in-memory sequence counters
                             }
                         } catch(e){ console.warn('[breadcrumbs] Failed to persist updated idMap during migration', e); }
                     }
@@ -304,14 +333,23 @@ const Breadcrumbs = {
                         let badgeText = 'C';
                         let badgeClass = 'profile-id-badge-combined';
                         try {
-                            const linked = getLinkedAccounts();
+                            const linked = getLinkedAccounts().map(acc => ({ ...acc, key: resolveLinkKey(acc.key) }));
                             if (linked.length >= 2) {
-                                const ids = linked.slice(0, 2).map(acc => App.ProfileIdMap?.[acc.key] || 0);
+                                // Ensure ProfileIdMap has IDs for normalized keys
+                                const ids = linked.slice(0, 2).map(acc => {
+                                    const k = acc.key;
+                                    return (App.ProfileIdMap && App.ProfileIdMap[k]) || (ProfileIdManager && ProfileIdManager.map && ProfileIdManager.map[k]) || '?';
+                                });
+                                // If any missing IDs, attempt to ensure
+                                if (ids.some(id => id === '?')) {
+                                    try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) { ProfileIdManager.ensureIds(linked.slice(0,2).map(acc=>acc.key)); App.ProfileIdMap = { ...ProfileIdManager.map }; } } catch(eEns) { /* ignore */ }
+                                    for (let i=0;i<ids.length;i++) if (ids[i] === '?') ids[i] = (App.ProfileIdMap && App.ProfileIdMap[linked[i].key]) || '?';
+                                }
                                 badgeText = `${ids[0]}+${ids[1]}`;
-                                badgeClass += ` profile-id-badge-combined-${ids[0] + ids[1]}`;
+                                const sum = (Number(ids[0])||0) + (Number(ids[1])||0);
+                                if (!isNaN(sum) && sum>0) badgeClass += ` profile-id-badge-combined-${sum}`;
                             }
-                        } catch (e) {
-                        }
+                        } catch (e) { /* ignore */ }
                         const badge = document.createElement('span');
                         badge.className = badgeClass;
                         badge.textContent = badgeText;
@@ -770,5 +808,3 @@ const Breadcrumbs = {
         }
     }
 };
-
-
