@@ -32,6 +32,21 @@ const Breadcrumbs = {
         // Build tabs (unchanged)
         try {
             const profiles = [];
+            // Helper to normalize a key for linking (prefer branded variant if present)
+            function resolveLinkKey(rawKey){
+                try {
+                    if (/^gobo-(R|C)-/.test(rawKey)) return rawKey; // already branded
+                    // If legacy, attempt to find branded variant (R or C)
+                    const suffix = rawKey.replace(/^gobo-/, '');
+                    const rKey = `gobo-R-${suffix}`; const cKey = `gobo-C-${suffix}`;
+                    // Prefer whichever exists in storage
+                    const rExists = (typeof goboStorageGet === 'function' ? goboStorageGet(rKey) : localStorage.getItem(rKey));
+                    if (rExists) return rKey;
+                    const cExists = (typeof goboStorageGet === 'function' ? goboStorageGet(cKey) : localStorage.getItem(cKey));
+                    if (cExists) return cKey;
+                } catch(e){ /* ignore */ }
+                return rawKey; // fallback unchanged
+            }
             try {
                 if (window.Favorites && Favorites.ensureProfileExists) Favorites.ensureProfileExists();
             } catch (e) {/* ignore */
@@ -45,26 +60,159 @@ const Breadcrumbs = {
                         if (k && k.startsWith('gobo-')) profileKeys.push(k);
                     }
                 }
-            } catch (e) {/* ignore */
+            } catch (e) {/* ignore */ }
+            // Migration: promote legacy profile keys (gobo-<userKey>) to brand-aware (gobo-R- / gobo-C-)
+            try {
+                const migrationFlag = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLegacyProfileMigrationDone') : localStorage.getItem('goboLegacyProfileMigrationDone'));
+                // If migration already completed once, skip unless new legacy candidates without branded counterparts exist
+                let profileKeysSnapshot = [...profileKeys];
+                let legacyCandidatesInitial = profileKeysSnapshot.filter(k => /^gobo-(?!R-|C-)[^\s]+$/.test(k));
+                if (migrationFlag === '1') {
+                    // Filter out legacy keys that already have branded variants to avoid duplication; we won't migrate again
+                    const brandedSuffixes = new Set(profileKeysSnapshot.filter(k => /^gobo-[RC]-/.test(k)).map(k => k.replace(/^gobo-[RC]-/, '')));
+                    legacyCandidatesInitial = legacyCandidatesInitial.filter(k => !brandedSuffixes.has(k.slice(5)));
+                    // If no unmigrated legacy candidates remain, skip full migration block
+                    if (!legacyCandidatesInitial.length) throw new Error('skip-migration');
+                }
+                const legacyCandidates = legacyCandidatesInitial;
+                if (legacyCandidates.length) {
+                    const existingBranded = new Set(profileKeys.filter(k => /^gobo-[RC]-/.test(k)));
+                    // Load existing ProfileId map so we can preserve IDs
+                    let idMap = {};
+                    try {
+                        const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
+                        if (rawMap) idMap = JSON.parse(rawMap) || {};
+                    } catch(e){ idMap = {}; }
+                    let idMapChanged = false;
+                    function inferBrandFromPayload(rawKey) {
+                        try {
+                            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(rawKey) : localStorage.getItem(rawKey));
+                            if (!raw) return 'R';
+                            const payload = JSON.parse(raw);
+                            const offers = payload?.data?.offers;
+                            if (Array.isArray(offers) && offers.length) {
+                                for (const off of offers) {
+                                    const sailings = off?.campaignOffer?.sailings;
+                                    if (Array.isArray(sailings)) {
+                                        for (const s of sailings) {
+                                            const sn = (s?.shipName || '').toString().trim();
+                                            if (/^Celebrity\s/i.test(sn)) return 'C';
+                                            if (sn) return 'R';
+                                        }
+                                    }
+                                }
+                            }
+                        } catch(e){ /* ignore parse */ }
+                        return 'R';
+                    }
+                    let migratedCount = 0;
+                    legacyCandidates.forEach(legacyKey => {
+                        const suffix = legacyKey.slice(5);
+                        const rKey = `gobo-R-${suffix}`; const cKey = `gobo-C-${suffix}`;
+                        if (existingBranded.has(rKey) || existingBranded.has(cKey)) return; // branded already exists
+                        const brand = inferBrandFromPayload(legacyKey);
+                        const newKey = `gobo-${brand}-${suffix}`;
+                        if (existingBranded.has(newKey)) return; // safety
+                        try {
+                            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(legacyKey) : localStorage.getItem(legacyKey));
+                            if (!raw) return;
+                            const payload = JSON.parse(raw);
+                            if (!payload || !payload.data) return;
+                            payload.brand = brand;
+                            payload.migratedFromLegacy = true;
+                            if (typeof goboStorageSet === 'function') goboStorageSet(newKey, JSON.stringify(payload)); else localStorage.setItem(newKey, JSON.stringify(payload));
+                            existingBranded.add(newKey);
+                            profileKeys.push(newKey);
+                            migratedCount++;
+                            // Preserve profile ID: transfer mapping from legacyKey to newKey if present
+                            const existingId = idMap[legacyKey];
+                            if (existingId != null) {
+                                if (idMap[newKey] == null) {
+                                    idMap[newKey] = existingId; // assign same ID
+                                }
+                                delete idMap[legacyKey]; // remove old key mapping WITHOUT freeing ID
+                                idMapChanged = true;
+                            }
+                            // Remove legacy key so it cannot resurrect the branded one on subsequent renders
+                            try { if (typeof goboStorageRemove === 'function') goboStorageRemove(legacyKey); else localStorage.removeItem(legacyKey); } catch(remErr) { /* ignore */ }
+                        } catch(e){ /* ignore single migration error */ }
+                    });
+                    if (idMapChanged) {
+                        try {
+                            const serialized = JSON.stringify(idMap);
+                            if (typeof goboStorageSet === 'function') goboStorageSet('goboProfileIdMap_v1', serialized); else localStorage.setItem('goboProfileIdMap_v1', serialized);
+                            if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.ready) {
+                                ProfileIdManager.map = { ...ProfileIdManager.map, ...idMap };
+                                legacyCandidates.forEach(lk => { if (!/^gobo-(R|C)-/.test(lk)) delete ProfileIdManager.map[lk]; });
+                                ProfileIdManager.persist();
+                            }
+                        } catch(e){ console.warn('[breadcrumbs] Failed to persist updated idMap during migration', e); }
+                    }
+                    if (migratedCount) {
+                        try { if (typeof goboStorageSet === 'function') goboStorageSet('goboLegacyProfileMigrationDone', '1'); else localStorage.setItem('goboLegacyProfileMigrationDone','1'); } catch(e){/* ignore */}
+                        profileKeys = Array.from(new Set(profileKeys));
+                        console.debug('[breadcrumbs] Migrated legacy profiles (IDs preserved)', { migratedCount });
+                    }
+                }
+            } catch(migErr){ if (migErr && migErr.message === 'skip-migration') { /* intentionally skipped */ } else { console.warn('[breadcrumbs] legacy profile migration error', migErr); } }
+            // NEW: group profiles by base user identifier ignoring brand prefix so both R & C show separately
+            function parseProfileKey(k){
+                // Patterns: gobo-<brand>-<userKey> OR legacy gobo-<userKey>
+                if(!/^gobo-/.test(k)) return null;
+                const rest = k.slice(5);
+                const parts = rest.split('-');
+                if(parts.length>=2 && (parts[0]==='R' || parts[0]==='C')){
+                    const brand = parts[0];
+                    const userKey = parts.slice(1).join('-');
+                    return { brand, userKey, legacy:false, full:k };
+                }
+                return { brand:null, userKey:rest, legacy:true, full:k };
             }
+            const parsedProfiles = profileKeys.map(parseProfileKey).filter(Boolean);
+            // Build a map userKey -> { legacy: <obj?>, brands: {R: obj, C: obj} }
+            const userMap = new Map();
+            parsedProfiles.forEach(p => {
+                const entry = userMap.get(p.userKey) || { legacy:null, brands:{} };
+                if (p.legacy) entry.legacy = p; else entry.brands[p.brand] = p;
+                userMap.set(p.userKey, entry);
+            });
+            // Expand into final profile keys list: Prefer brand-specific; include legacy only if no branded exists
+            profileKeys = [];
+            userMap.forEach(entry => {
+                const hasR = !!entry.brands.R; const hasC = !!entry.brands.C; const hasLegacy = !!entry.legacy;
+                if (hasR) profileKeys.push(entry.brands.R.full);
+                if (hasC) profileKeys.push(entry.brands.C.full);
+                if (!hasR && !hasC && hasLegacy) profileKeys.push(entry.legacy.full); // show legacy only when no branded variant
+            });
+            // Deduplicate while preserving order
+            profileKeys = Array.from(new Set(profileKeys));
+            // RE-ADD favorites key if it exists (was excluded from brand grouping)
             try {
                 const favRaw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites'));
-                if (favRaw) profileKeys.push('goob-favorites');
-            } catch (e) {/* ignore */
-            }
-            profileKeys = Array.from(new Set(profileKeys));
+                if (favRaw && !profileKeys.includes('goob-favorites')) profileKeys.push('goob-favorites');
+            } catch(e){ /* ignore favorites detection errors */ }
             profileKeys.forEach(k => {
                 try {
-                    const payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k)));
+                    const rawStored = (typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k));
+                    const payload = rawStored ? JSON.parse(rawStored) : null;
                     if (payload && payload.data && payload.savedAt) {
+                        const parsed = parseProfileKey(k);
+                        let label;
+                        if (k === 'goob-favorites') {
+                            label = 'Favorites';
+                        } else {
+                            // Use userKey portion only (exclude brand prefix) for branded keys; legacy keeps same behavior.
+                            const userKey = parsed ? parsed.userKey : k.replace(/^gobo-/, '');
+                            // Convert underscores back to '@' like previous logic (best-effort email reconstruction)
+                            label = userKey.replace(/_/g, '@');
+                        }
                         profiles.push({
                             key: k,
-                            label: k === 'goob-favorites' ? 'Favorites' : k.replace(/^gobo-/, '').replace(/_/g, '@'),
+                            label,
                             savedAt: k === 'goob-favorites' ? null : payload.savedAt
                         });
                     }
-                } catch (e) {/* ignore */
-                }
+                } catch (e) {/* ignore */ }
             });
             if (profiles.length) {
                 try {
@@ -173,6 +321,21 @@ const Breadcrumbs = {
                         labelDiv = wrapper;
                     }
                     if (/^gobo-/.test(storageKey)) {
+                        // Brand badge logic
+                        let brandBadge = null;
+                        const brandParse = parseProfileKey(storageKey);
+                        if (brandParse && brandParse.brand) {
+                            brandBadge = brandParse.brand; // 'R' or 'C'
+                        } else {
+                            // Attempt to read brand from payload
+                            try {
+                                const rawPayload = (typeof goboStorageGet === 'function' ? goboStorageGet(storageKey) : localStorage.getItem(storageKey));
+                                if (rawPayload) {
+                                    const parsedPayload = JSON.parse(rawPayload);
+                                    if (parsedPayload && parsedPayload.brand && (parsedPayload.brand==='R' || parsedPayload.brand==='C')) brandBadge = parsedPayload.brand;
+                                }
+                            } catch(eb){ /* ignore */ }
+                        }
                         try {
                             const pid = App.ProfileIdMap ? App.ProfileIdMap[storageKey] : null;
                             if (pid) {
@@ -183,12 +346,19 @@ const Breadcrumbs = {
                                 const wrapper = document.createElement('div');
                                 wrapper.style.display = 'flex';
                                 wrapper.style.alignItems = 'center';
+                                if (brandBadge) {
+                                    const brandSpan = document.createElement('span');
+                                    brandSpan.className = 'profile-brand-badge';
+                                    brandSpan.textContent = brandBadge;
+                                    brandSpan.style.cssText = 'background:#004c97;color:#fff;font-size:10px;font-weight:600;padding:2px 4px;border-radius:4px;margin-right:4px;';
+                                    if (brandBadge==='C') brandSpan.style.background = '#222';
+                                    wrapper.appendChild(brandSpan);
+                                }
                                 wrapper.appendChild(badge);
                                 wrapper.appendChild(labelDiv);
                                 labelDiv = wrapper;
                             }
-                        } catch (e) {/* ignore */
-                        }
+                        } catch (e) {/* ignore */ }
                     }
                     const loyaltyDiv = document.createElement('div');
                     loyaltyDiv.className = 'profile-tab-loyalty';
@@ -218,25 +388,29 @@ const Breadcrumbs = {
                         iconContainer.style.gap = '2px';
                         iconContainer.style.marginLeft = '4px';
                         const linkIcon = document.createElement('span');
-                        const isLinked = getLinkedAccounts().some(acc => acc.key === storageKey);
+                        const isLinked = getLinkedAccounts().some(acc => acc.key === storageKey || acc.key === resolveLinkKey(storageKey) || resolveLinkKey(acc.key) === storageKey);
                         linkIcon.innerHTML = isLinked ? `<img src="${getAssetUrl('images/link.png')}" width="16" height="16" alt="Linked" style="vertical-align:middle;" />` : `<img src="${getAssetUrl('images/link_off.png')}" width="16" height="16" alt="Unlinked" style="vertical-align:middle;" />`;
                         linkIcon.style.cursor = 'pointer';
                         linkIcon.title = isLinked ? 'Unlink account' : 'Link account';
                         linkIcon.style.marginBottom = '2px';
                         linkIcon.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            let updated = getLinkedAccounts();
-                            if (isLinked) {
-                                updated = updated.filter(acc => acc.key !== storageKey);
+                            const linkKey = resolveLinkKey(storageKey);
+                            let updated = getLinkedAccounts().map(acc => ({...acc, key: resolveLinkKey(acc.key)}));
+                            // Deduplicate after normalization
+                            const seen = new Set();
+                            updated = updated.filter(acc => { if (seen.has(acc.key)) return false; seen.add(acc.key); return true; });
+                            const currentlyLinked = updated.some(acc => acc.key === linkKey);
+                            if (currentlyLinked) {
+                                updated = updated.filter(acc => acc.key !== linkKey);
                                 if (updated.length < 2) {
                                     try {
                                         if (typeof goboStorageRemove === 'function') goboStorageRemove('goob-combined'); else localStorage.removeItem('goob-combined');
                                         if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked'];
-                                    } catch (err) {
-                                    }
+                                    } catch (err) { /* ignore */ }
                                 }
                             } else {
-                                if (updated.length >= 2) return;
+                                if (updated.length >= 2) return; // already have two linked
                                 let email = p.label;
                                 try {
                                     const payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(storageKey) : localStorage.getItem(storageKey)));

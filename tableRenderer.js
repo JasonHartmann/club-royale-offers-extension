@@ -113,6 +113,19 @@ const TableRenderer = {
             }
         }
     }, loadProfile(key, payload) {
+        // Redirect legacy key to branded variant if present
+        try {
+            if (/^gobo-(?!R-|C-)[^\s]+$/.test(key) && typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') {
+                const brand = App.Utils.detectBrand();
+                const suffix = key.slice(5);
+                const brandedKey = `gobo-${brand}-${suffix}`;
+                const exists = (typeof goboStorageGet === 'function' ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey));
+                if (exists) {
+                    console.debug('[tableRenderer] Redirecting legacy profile key to branded key', { legacy:key, branded:brandedKey });
+                    key = brandedKey; // use branded key going forward
+                }
+            }
+        } catch(e){ /* ignore redirect errors */ }
         const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
         this.currentSwitchToken = switchToken;
         // Ensure profileId map exists
@@ -346,6 +359,7 @@ const TableRenderer = {
         try {
             // Always determine current user's key
             let currentKey = null;
+            let baseSuffix = null;
             try {
                 const sessionRaw = localStorage.getItem('persist:session');
                 if (sessionRaw) {
@@ -354,8 +368,20 @@ const TableRenderer = {
                     if (user) {
                         const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
                         const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                        currentKey = `gobo-${usernameKey}`;
-                        selectedProfileKey = currentKey;
+                        baseSuffix = usernameKey;
+                        currentKey = `gobo-${usernameKey}`; // legacy form first
+                        // Prefer branded variant if available
+                        try {
+                            if (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') {
+                                const brand = App.Utils.detectBrand();
+                                const brandedKey = `gobo-${brand}-${usernameKey}`;
+                                const exists = (typeof goboStorageGet === 'function' ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey));
+                                if (exists) {
+                                    currentKey = brandedKey;
+                                    console.debug('[tableRenderer] Using branded profile key instead of legacy', { brandedKey, legacyKey:`gobo-${usernameKey}` });
+                                }
+                            }
+                        } catch(e){ /* ignore brand selection errors */ }
                     }
                 }
             } catch (e) { /* ignore */ }

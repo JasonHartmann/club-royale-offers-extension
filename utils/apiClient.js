@@ -307,23 +307,36 @@ const ApiClient = {
             // attach savedAt so downstream UI can compare against DOM cache timestamps
             try { if (normalizedData && typeof normalizedData === 'object') normalizedData.savedAt = Date.now(); } catch(e){}
             console.debug('[apiClient] Offers data normalized');
-            // Persist normalized data so it can be accessed across logins by key: gobo-<username>
+            // Persist normalized data so it can be accessed across logins by key: gobo-<brand>-<username>
             try {
-                console.debug('[apiClient] Persisting normalized offers to localStorage');
+                console.debug('[apiClient] Persisting normalized offers to storage (brand aware)');
                 const rawKey = (user && (user.username || user.userName || user.email || user.name || user.accountId)) ? String(user.username || user.userName || user.email || user.name || user.accountId) : 'unknown';
                 const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                const storageKey = `gobo-${usernameKey}`;
-                const payload = { savedAt: Date.now(), data: normalizedData };
-                if (typeof goboStorageSet === 'function') goboStorageSet(storageKey, JSON.stringify(payload)); else localStorage.setItem(storageKey, JSON.stringify(payload));
-                console.debug(`[apiClient] Saved normalized offers to storage key: ${storageKey}`);
-
+                // brandCode already resolved earlier
+                const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : 'R';
+                const legacyKey = `gobo-${usernameKey}`; // backward-compatible
+                const brandedKey = `gobo-${brandCode}-${usernameKey}`;
+                const payload = { savedAt: Date.now(), data: normalizedData, brand: brandCode };
+                // Write branded key
+                if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(payload)); else localStorage.setItem(brandedKey, JSON.stringify(payload));
+                // If legacy key exists already, leave it untouched; else optionally seed it for a transition (commented out for now)
+                try {
+                    const legacyExisting = (typeof goboStorageGet === 'function') ? goboStorageGet(legacyKey) : localStorage.getItem(legacyKey);
+                    if (!legacyExisting) {
+                        // Optional: seed legacy for older versions still expecting it
+                        const legacyPayload = { savedAt: payload.savedAt, data: normalizedData, brand: brandCode, legacySeed: true };
+                        if (typeof goboStorageSet === 'function') goboStorageSet(legacyKey, JSON.stringify(legacyPayload)); else localStorage.setItem(legacyKey, JSON.stringify(legacyPayload));
+                        console.debug('[apiClient] Seeded legacy profile key', legacyKey);
+                    }
+                } catch(seedErr){ /* ignore seed errors */ }
+                console.debug(`[apiClient] Saved normalized offers to branded key: ${brandedKey}`);
                 // If this account is part of linked accounts, update combined offers and clear cache
                 if (typeof updateCombinedOffersCache === 'function') {
                     updateCombinedOffersCache();
                     console.debug('[apiClient] updateCombinedOffersCache called after account data update');
                 }
             } catch (e) {
-                console.warn('[apiClient] Failed to persist normalized offers to localStorage', e);
+                console.warn('[apiClient] Failed to persist normalized offers (brand aware)', e);
             }
             console.debug('[apiClient] Rendering offers table');
             App.TableRenderer.displayTable(normalizedData);

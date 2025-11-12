@@ -2,13 +2,36 @@
 // Encapsulates logic to open a new tab performing a POST lookup for an offer code.
 const OfferCodeLookup = {
   _initialized: false,
-  _royalEndpoint: 'https://image.RoyalCaribbeanMarketing.com/lib/fe9415737666017570/m/1/',
+  _royalEndpoint: 'https://club-royale-offers-lookup.onrender.com/?code=',
   _celebrityEndpoint: 'https://www.bluechipcluboffers.com/CertificateOfferCodeLookUp.asp',
+  _warnKey: 'goboOfferCodeLookupWarned_v1', // stored via extension storage shim
   _getEndpoint() {
     const brand = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function')
       ? App.Utils.detectBrand()
       : ((location && location.hostname && location.hostname.includes('celebritycruises.com')) ? 'C' : 'R');
     return brand === 'C' ? this._celebrityEndpoint : this._royalEndpoint;
+  },
+  _hasAcknowledgedWarning() {
+    try {
+      const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(this._warnKey) : null;
+      return !!raw; // any truthy value means acknowledged
+    } catch(e){ return false; }
+  },
+  _markAcknowledged() {
+    try {
+      if (typeof goboStorageSet === 'function') goboStorageSet(this._warnKey, '1');
+      else if (typeof localStorage !== 'undefined') localStorage.setItem(this._warnKey, '1');
+    } catch(e){ /* ignore */ }
+  },
+  _showFirstTimeWarning() {
+    try {
+      const brand = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : 'R';
+      const siteDesc = brand === 'C' ? 'a Celebrity Cruises partner site' : 'an external Club Royale lookup service';
+      const msg = `External Offer Code Lookup\n\nThis action will open ${siteDesc} in a new browser tab.\n\nContinue?`;
+      const proceed = window.confirm(msg);
+      if (proceed) this._markAcknowledged();
+      return proceed;
+    } catch(e){ return true; }
   },
   init() {
     if (this._initialized) return;
@@ -27,6 +50,9 @@ const OfferCodeLookup = {
       } catch (err) {}
       const code = a.getAttribute('data-offer-code');
       if (!code || code === '-') return;
+      if (!this._hasAcknowledgedWarning()) {
+        if (!this._showFirstTimeWarning()) return; // user cancelled
+      }
       this.openPostInNewTab(code);
     };
     // Capture both regular clicks and auxiliary (middle) clicks. Use capture to reduce chance of duplicate handlers.
@@ -42,7 +68,7 @@ const OfferCodeLookup = {
         : ((location && location.hostname && location.hostname.includes('celebritycruises.com')) ? 'C' : 'R');
       if (brand === 'R') {
         // Royal: open GET for image URL
-        const url = endpoint + code + '.jpg';
+        const url = endpoint + code;
         window.open(url, '_blank');
       } else {
         // Celebrity: use POST as before

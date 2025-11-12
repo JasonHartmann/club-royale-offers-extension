@@ -14,7 +14,7 @@
         return '1.5';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '3'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links
+    const TOUR_REVISION = '4'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup by AJ Goldsman
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 40; // up to ~8s (200ms interval) waiting for elements
 
@@ -102,6 +102,12 @@
                     body: 'New column showing trade-in value for eligible sailings.',
                 },
                 {
+                    id:'offerCodeLookupExternal',
+                    target:()=> document.querySelector('.offer-code-link') || document.querySelector('th[data-key="offerCode"]') || document.body,
+                    title:'Offer Code Lookup Upgrade',
+                    body:'Offer Code links now open AJ Goldsman\'s external lookup tool for richer details. First click shows a one-time safety warning.',
+                },
+                {
                     id:'advancedSearchPreview',
                     target:()=> document.querySelector('button.adv-search-button') || document.querySelector('#advanced-search-panel') || document.body,
                     title:'Advanced Search (Preview)',
@@ -126,8 +132,10 @@
                     body:'Follow us on Facebook for updates or support!',
                 },
                 {
+                    id:'offerValueColumn',
+                    target:()=> document.querySelector('th[data-key="offerValue"]') || document.body,
                     title:'Offer Value Column',
-                    description:'New Value column shows estimated monetary value of the offer (difference between base category price and taxes for dual occupancy; heuristic for single guest offers). Included in sorting, grouping, filtering, Advanced Search, and CSV export.'
+                    body:'Shows estimated monetary value of the offer (dual occupancy base minus taxes; heuristic for single guest). Usable in sorting, grouping, filtering & CSV export.',
                 }
             ];
         },
