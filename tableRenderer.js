@@ -118,13 +118,34 @@ const TableRenderer = {
             if (/^gobo-(?!R-|C-)[^\s]+$/.test(key)) {
                 const suffix = key.slice(5);
                 let existingId = null;
+                let idSource = 'none';
+                // Attempt retrieval from in-memory map
                 try {
-                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.map) existingId = ProfileIdManager.map[key];
-                    if (existingId == null) {
-                        const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
-                        if (rawMap) { const parsedMap = JSON.parse(rawMap); existingId = parsedMap ? parsedMap[key] : null; }
+                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.map && ProfileIdManager.map[key] != null) {
+                        existingId = ProfileIdManager.map[key]; idSource='inMemory';
                     }
-                } catch(eId){ existingId = null; }
+                } catch(e){ /* ignore */ }
+                // Attempt persisted storage map
+                if (existingId == null) {
+                    try {
+                        const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
+                        if (rawMap) {
+                            const parsedMap = JSON.parse(rawMap);
+                            if (parsedMap && parsedMap[key] != null) { existingId = parsedMap[key]; idSource='storedMap'; }
+                        }
+                    } catch(e){ /* ignore */ }
+                }
+                // Attempt DOM badge fallback (legacy tab may already be rendered before migration)
+                if (existingId == null) {
+                    try {
+                        const badgeEl = document.querySelector(`.profile-tab[data-storage-key="${key}"] .profile-id-badge`);
+                        if (badgeEl) {
+                            const txt = badgeEl.textContent.trim();
+                            const num = Number(txt);
+                            if (!isNaN(num) && num > 0) { existingId = num; idSource='domBadge'; }
+                        }
+                    } catch(e){ /* ignore */ }
+                }
                 // Detect brand from payload offers (fallback R)
                 let brand = 'R';
                 try {
@@ -133,12 +154,12 @@ const TableRenderer = {
                         const pl = JSON.parse(raw);
                         const offers = pl?.data?.offers;
                         if (Array.isArray(offers)) {
-                            outer: for (const off of offers) {
+                            outerBrand: for (const off of offers) {
                                 const sailings = off?.campaignOffer?.sailings;
                                 if (Array.isArray(sailings)) {
                                     for (const s of sailings) {
                                         const sn = (s?.shipName || '').trim();
-                                        if (/^Celebrity\s/i.test(sn)) { brand='C'; break outer; }
+                                        if (/^Celebrity\s/i.test(sn)) { brand='C'; break outerBrand; }
                                         else if (sn) { brand='R'; }
                                     }
                                 }
@@ -148,6 +169,7 @@ const TableRenderer = {
                 } catch(eBrand){ brand='R'; }
                 const brandedKey = `gobo-${brand}-${suffix}`;
                 const brandedExists = (typeof goboStorageGet === 'function') ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey);
+                let removedLegacy = false;
                 if (!brandedExists) {
                     // Migrate storage payload
                     try {
@@ -156,19 +178,19 @@ const TableRenderer = {
                             const legacyPayload = JSON.parse(rawLegacy);
                             legacyPayload.brand = brand;
                             legacyPayload.migratedFromLegacy = true;
+                            legacyPayload.originalProfileId = existingId != null ? existingId : undefined;
+                            legacyPayload.profileIdSource = idSource;
                             if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(legacyPayload)); else localStorage.setItem(brandedKey, JSON.stringify(legacyPayload));
                         }
                     } catch(ePl){ /* ignore */ }
-                    // Update ID map preserving existingId
+                    // Update ID map preserving existingId if known
                     if (existingId != null) {
                         try {
-                            // Update in-memory map directly
                             if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
                                 ProfileIdManager.map[brandedKey] = existingId;
                                 delete ProfileIdManager.map[key];
-                                ProfileIdManager.persist();
+                                if (ProfileIdManager.ready) ProfileIdManager.persist();
                             } else {
-                                // Direct storage map manipulation
                                 const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
                                 let parsedMap = rawMap ? JSON.parse(rawMap) : {};
                                 parsedMap[brandedKey] = existingId;
@@ -177,14 +199,75 @@ const TableRenderer = {
                                 if (typeof goboStorageSet === 'function') goboStorageSet('goboProfileIdMap_v1', serialized); else localStorage.setItem('goboProfileIdMap_v1', serialized);
                             }
                         } catch(eMap){ /* ignore */ }
+                    } else {
+                        // No existing ID yet (storage/provider not ready). Defer ID normalization until ProfileIdManager ready.
+                        try {
+                            window.PendingLegacyIdMigrations = window.PendingLegacyIdMigrations || [];
+                            window.PendingLegacyIdMigrations.push({legacyKey: key, brandedKey});
+                        } catch(ePend){ /* ignore */ }
                     }
-                    // Remove legacy key to avoid duplicate migration later
-                    try { if (typeof goboStorageRemove === 'function') goboStorageRemove(key); else localStorage.removeItem(key); } catch(eRm){ /* ignore */ }
+                    // Remove legacy key ONLY if we already captured ID or storage ready; else keep until normalization
+                    if (existingId != null || (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.ready)) {
+                        try { if (typeof goboStorageRemove === 'function') goboStorageRemove(key); else localStorage.removeItem(key); removedLegacy = true; } catch(eRm){ /* ignore */ }
+                    }
                 }
                 // Point key to branded version now
                 key = brandedKey;
+                // If legacy key remains (removedLegacy false) we may later normalize; ensure we don't allocate a new ID prematurely.
             }
         } catch(migErr){ /* ignore legacy migration errors */ }
+        // Post-hydration hook: if ProfileIdManager becomes ready later, reconcile pending migrations
+        try {
+            if (!window._legacyIdReconcileAttached) {
+                window._legacyIdReconcileAttached = true;
+                document.addEventListener('goboStorageReady', () => {
+                    try {
+                        if (typeof ProfileIdManager === 'undefined' || !ProfileIdManager) return;
+                        ProfileIdManager.init && ProfileIdManager.init();
+                        const map = ProfileIdManager.map || {};
+                        const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
+                        let persistedMap = rawMap ? JSON.parse(rawMap) : {};
+                        const pending = Array.isArray(window.PendingLegacyIdMigrations) ? window.PendingLegacyIdMigrations : [];
+                        let changed = false;
+                        pending.forEach(({legacyKey, brandedKey}) => {
+                            const legacyId = persistedMap[legacyKey] != null ? persistedMap[legacyKey] : map[legacyKey];
+                            if (legacyId != null) {
+                                const currentBrandedId = persistedMap[brandedKey] != null ? persistedMap[brandedKey] : map[brandedKey];
+                                if (currentBrandedId == null || currentBrandedId !== legacyId) {
+                                    // Reclaim currentBrandedId if different and valid
+                                    if (currentBrandedId != null && currentBrandedId !== legacyId && ProfileIdManager.free && !ProfileIdManager.free.includes(currentBrandedId)) {
+                                        ProfileIdManager.free.push(currentBrandedId);
+                                    }
+                                    persistedMap[brandedKey] = legacyId;
+                                    map[brandedKey] = legacyId;
+                                    delete persistedMap[legacyKey];
+                                    delete map[legacyKey];
+                                    changed = true;
+                                    try { if (typeof goboStorageRemove === 'function') goboStorageRemove(legacyKey); else localStorage.removeItem(legacyKey); } catch(eDel){ /* ignore */ }
+                                }
+                            }
+                        });
+                        if (changed) {
+                            try {
+                                const serialized = JSON.stringify(persistedMap);
+                                if (typeof goboStorageSet === 'function') goboStorageSet('goboProfileIdMap_v1', serialized); else localStorage.setItem('goboProfileIdMap_v1', serialized);
+                                ProfileIdManager.map = persistedMap;
+                                ProfileIdManager.persist();
+                                App.ProfileIdMap = { ...ProfileIdManager.map };
+                                // Update any existing profile-id-badge DOM elements
+                                document.querySelectorAll('.profile-tab').forEach(tab => {
+                                    const sk = tab.getAttribute('data-storage-key');
+                                    if (sk && App.ProfileIdMap[sk]) {
+                                        const badge = tab.querySelector('.profile-id-badge');
+                                        if (badge) badge.textContent = App.ProfileIdMap[sk];
+                                    }
+                                });
+                            } catch(ePersist){ /* ignore */ }
+                        }
+                    } catch(eRecon){ /* ignore */ }
+                }, { once: true });
+            }
+        } catch(eHook){ /* ignore */ }
         // Ensure stable ID for this key immediately (after migration) WITHOUT allocating a new one if preserved
         try {
             if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {

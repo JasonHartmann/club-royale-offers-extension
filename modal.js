@@ -242,6 +242,9 @@ const Modal = {
             if (!value) return '';
             let base = value;
             if (base.startsWith('gobo-')) base = base.slice(5);
+            // Strip brand prefix (R- or C-) if present in branded keys
+            if ((base.startsWith('R-')) || (base.startsWith('C-'))) base = base.slice(2);
+            // For emails, cut at first '_' unless '@' appears earlier; for keys, cut at first '_' or '@'
             let cut = base.indexOf('_');
             const at = base.indexOf('@');
             if (cut === -1 || (at !== -1 && at < cut)) cut = at;
