@@ -187,22 +187,81 @@ const AdvancedSearch = {
                     }
                 } catch (e) { /* ignore */ }
             };
+            // Hidden groups signature (exclude hidden group offers from value aggregation)
+            let hiddenGroups = [];
+            try { hiddenGroups = (typeof Filtering !== 'undefined' && Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
+            const hgSig = Array.isArray(hiddenGroups) && hiddenGroups.length ? hiddenGroups.slice().sort().join('|') : 'NONE';
+            const filterHiddenOffers = (arr) => {
+                if (!Array.isArray(hiddenGroups) || !hiddenGroups.length) return arr;
+                if (!Array.isArray(arr)) return arr;
+                try {
+                    const labelToKey = {};
+                    try { (state.headers||[]).forEach(h => { if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; }); } catch(eMap){ /* ignore */ }
+                    return arr.filter(w => {
+                        try {
+                            const offer = w.offer; const sailing = w.sailing;
+                            for (const path of hiddenGroups) {
+                                if (!path || typeof path !== 'string') continue;
+                                const parts = path.split(':');
+                                if (parts.length < 2) continue;
+                                const label = (parts[0]||'').trim(); const value = (parts.slice(1).join(':')||'').trim();
+                                if (!label || !value) continue;
+                                const key = labelToKey[label.toLowerCase()];
+                                if (!key) continue;
+                                const colVal = (Filtering && typeof Filtering.getOfferColumnValue === 'function') ? Filtering.getOfferColumnValue(offer, sailing, key) : null;
+                                if (colVal != null && (''+colVal).toUpperCase() === value.toUpperCase()) return false; // exclude hidden
+                            }
+                        } catch(eRow){ /* ignore row error */ }
+                        return true;
+                    });
+                } catch(eFilter){ return arr; }
+            };
             if (fieldKey === 'visits') {
+                // Rebuild ports list excluding offers in hidden groups so hidden group values do not contribute.
                 let ports = [];
-                try { ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : []; } catch(e){ ports = []; }
+                try {
+                    // Source offers (unfiltered by advanced predicates intentionally; hidden group exclusion only as per requirement)
+                    const baseOffers = state.fullOriginalOffers || state.originalOffers || [];
+                    // Reuse hidden group filtering helper defined above in this function scope.
+                    const visibleOffers = filterHiddenOffers(baseOffers);
+                    const portMap = new Map(); // normalized -> original casing
+                    const norm = (v) => { try { return (''+v).trim().toUpperCase(); } catch(e){ return ''; } };
+                    visibleOffers.forEach(w => {
+                        try {
+                            const sailings = w?.campaignOffer?.sailings || (w?.sailing ? [w.sailing] : []);
+                            if (!Array.isArray(sailings)) return;
+                            sailings.forEach(s => {
+                                try {
+                                    const list = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.getPortsForSailing === 'function') ? AdvancedItinerarySearch.getPortsForSailing(s) : [];
+                                    if (Array.isArray(list)) {
+                                        list.forEach(p => { const n = norm(p); if (n && !portMap.has(n)) portMap.set(n, (''+p).trim()); });
+                                    }
+                                } catch(ePort) { /* ignore sailing port errors */ }
+                            });
+                        } catch(eOffer){ /* ignore offer wrapper errors */ }
+                    });
+                    ports = Array.from(portMap.values()).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+                    // Fallback to itinerary cache aggregate (legacy behavior) if we have no ports yet (e.g., hydration pending)
+                    if (!ports.length) {
+                        try {
+                            ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : [];
+                        } catch(fallbackErr){ ports = []; }
+                    }
+                } catch(ePorts){ ports = []; }
                 if (!ports || !ports.length) {
+                    // Trigger hydration attempt if still empty
                     this.triggerVisitsHydration(state);
                     return [];
                 }
-                const cacheKey = `VISITS::${state.selectedProfileKey||'default'}::${ports.length}`;
+                const cacheKey = `VISITS::${state.selectedProfileKey||'default'}::${ports.length}::${hgSig}`;
                 state._advFieldCache[cacheKey] = ports.slice();
                 if (!state._advFieldCacheOrder.includes(cacheKey)) state._advFieldCacheOrder.push(cacheKey);
                 pruneIfNeeded();
                 return ports.slice();
             }
             const committedPreds = (state.advancedSearch?.predicates || []).filter(p=>p && p.complete).length;
-            // If no committed filters and static index built, use it directly (fast path)
-            if (committedPreds === 0 && state._advStaticFieldIndex && state._advStaticFieldIndex[fieldKey]) {
+            // Fast path only if hidden groups unchanged
+            if (committedPreds === 0 && state._advStaticFieldIndex && state._advStaticFieldIndex[fieldKey] && state._advIndexHiddenGroupsSig === hgSig) {
                 return state._advStaticFieldIndex[fieldKey];
             }
             const visibleLen = Array.isArray(state.sortedOffers) ? state.sortedOffers.length : 0;
@@ -217,17 +276,20 @@ const AdvancedSearch = {
                 committedSig = '';
             }
             const includeTF = state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false ? 'T' : 'NT';
-            const cacheKey = [state.selectedProfileKey || 'default', fieldKey, originalLen, 'vis', visibleLen, committedSig, includeTF].join('|');
+            const cacheKey = [state.selectedProfileKey || 'default', fieldKey, originalLen, 'vis', visibleLen, committedSig, includeTF, 'HG', hgSig].join('|');
             if (state._advFieldCache[cacheKey]) return state._advFieldCache[cacheKey];
             let source;
             try {
                 const committedOnly = {...state, _advPreviewPredicateId: null};
                 const base = state.fullOriginalOffers || state.originalOffers || [];
+                // Apply advanced search committed predicates first, then hidden group filter
                 source = Filtering.applyAdvancedSearch(base, committedOnly);
             } catch (e) { /* fallback below */ }
             if (!source || !Array.isArray(source) || !source.length) {
                 source = Array.isArray(state.sortedOffers) && state.sortedOffers.length ? state.sortedOffers : (Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : (state.fullOriginalOffers || []));
             }
+            // Exclude hidden group offers before computing unique values
+            source = filterHiddenOffers(source);
             const set = new Set();
             const normSet = new Set();
             for (let i = 0; i < source.length; i++) {
@@ -789,13 +851,42 @@ const AdvancedSearch = {
     buildStaticFieldIndex(state) {
         try {
             if (!state) return;
-            const base = state.fullOriginalOffers || state.originalOffers || [];
-            const offerCount = Array.isArray(base) ? base.length : 0;
+            // Hidden groups signature collected up-front; static index excludes hidden offers
+            let hiddenGroups = [];
+            try { hiddenGroups = (typeof Filtering !== 'undefined' && Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
+            const hgSig = Array.isArray(hiddenGroups) && hiddenGroups.length ? hiddenGroups.slice().sort().join('|') : 'NONE';
+            const baseAll = state.fullOriginalOffers || state.originalOffers || [];
+            const offerCount = Array.isArray(baseAll) ? baseAll.length : 0;
             if (!offerCount) return;
-            // Rebuild only if missing or count changed significantly (>5%)
             const prevCount = state._advIndexOfferCount || 0;
-            if (state._advStaticFieldIndex && prevCount && Math.abs(prevCount - offerCount) / (prevCount || 1) < 0.05) return;
-            state._advIndexOfferCount = offerCount;
+            // If counts similar (<5% delta) AND hidden group signature unchanged, skip rebuild
+            if (state._advStaticFieldIndex && prevCount && Math.abs(prevCount - offerCount) / (prevCount || 1) < 0.05 && state._advIndexHiddenGroupsSig === hgSig) return;
+            // Filter out hidden group offers prior to indexing
+            const labelToKey = {};
+            try { (state.headers||[]).forEach(h => { if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; }); } catch(eMap){ /* ignore */ }
+            const filterHiddenOffers = (arr) => {
+                if (!Array.isArray(hiddenGroups) || !hiddenGroups.length) return arr;
+                if (!Array.isArray(arr)) return arr;
+                return arr.filter(w => {
+                    try {
+                        const offer = w.offer; const sailing = w.sailing;
+                        for (const path of hiddenGroups) {
+                            if (!path || typeof path !== 'string') continue;
+                            const parts = path.split(':');
+                            if (parts.length < 2) continue;
+                            const label = (parts[0]||'').trim(); const value = (parts.slice(1).join(':')||'').trim();
+                            if (!label || !value) continue;
+                            const key = labelToKey[label.toLowerCase()];
+                            if (!key) continue;
+                            const colVal = (Filtering && typeof Filtering.getOfferColumnValue === 'function') ? Filtering.getOfferColumnValue(offer, sailing, key) : null;
+                            if (colVal != null && (''+colVal).toUpperCase() === value.toUpperCase()) return false;
+                        }
+                    } catch(eRow){ /* ignore row */ }
+                    return true;
+                });
+            };
+            const base = filterHiddenOffers(baseAll);
+            state._advIndexOfferCount = offerCount; // keep original count for threshold math
             const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
             let advOnly;
             try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch(e){ advOnly = []; }
@@ -804,19 +895,17 @@ const AdvancedSearch = {
             const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
             const allFields = headerFields.concat(advFiltered);
             const priceFields = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','offerValue']);
-            const skipFields = new Set(['visits']); // dynamic hydration-driven
+            const skipFields = new Set(['visits']);
             const index = {};
-            // Precompute unique values per field (unfiltered baseline)
             for (const f of allFields) {
                 if (!f || !f.key) continue;
                 const k = f.key;
-                if (skipFields.has(k) || priceFields.has(k)) continue; // skip dynamic or pricing (pricing depends on includeTaxes flag)
+                if (skipFields.has(k) || priceFields.has(k)) continue;
                 const set = new Set();
-                for (let i=0;i<offerCount;i++) {
+                for (let i=0;i<base.length;i++) {
                     try {
                         const w = base[i];
                         const sailings = w?.campaignOffer?.sailings || [w?.sailing].filter(Boolean);
-                        // Some fields rely on sailing; attempt first sailing
                         const sailing = Array.isArray(sailings) ? sailings[0] : w?.sailing;
                         const raw = (Filtering && (Filtering.getOfferColumnValueForFiltering ? Filtering.getOfferColumnValueForFiltering(w.offer, sailing, k, state) : Filtering.getOfferColumnValue(w.offer, sailing, k)));
                         if (raw == null) continue;
@@ -838,7 +927,8 @@ const AdvancedSearch = {
                 }
             }
             state._advStaticFieldIndex = index;
-            this._logDebug('buildStaticFieldIndex:rebuilt', { fields: Object.keys(index).length, offerCount });
+            state._advIndexHiddenGroupsSig = hgSig;
+            this._logDebug('buildStaticFieldIndex:rebuilt', { fields: Object.keys(index).length, offerCount, hgSig });
         } catch(e){ this._logDebug('buildStaticFieldIndex:error', e); }
     },
     buildToggleButton(state) {
@@ -1187,7 +1277,10 @@ const AdvancedSearch = {
             const calHost = document.createElement('div'); calHost.className='adv-date-range-cals'; wrapper.appendChild(calHost);
             const footer = document.createElement('div'); footer.className='adv-date-range-footer';
             const summary = document.createElement('div'); summary.className='adv-date-range-summary'; footer.appendChild(summary);
-            const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear'; clearBtn.addEventListener('click', () => { pred._rangeStart=null; pred._rangeEnd=null; pred.values=[]; this.renderPredicates(state); }); footer.appendChild(clearBtn);
+            const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear'; clearBtn.addEventListener('click', () => {
+                pred._rangeStart=null; pred._rangeEnd=null; pred.values=[]; this.renderPredicates(state);
+            });
+            footer.appendChild(clearBtn);
             wrapper.appendChild(footer);
             // Initialize base month (first month shown)
             if (typeof pred._baseMonth === 'undefined') {
@@ -1283,3 +1376,4 @@ const AdvancedSearch = {
         } catch(e) { /* ignore date range UI errors */ }
     }
 };
+
