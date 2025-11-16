@@ -222,16 +222,69 @@
         // PUBLIC: Migrate a legacy profile key to a brand-specific key without changing numeric ID.
         migrateLegacyProfile(legacyKey, newKey, options){
             this.init();
+            options = options || { copyData: true, removeLegacyStorage: true };
             if (!/^gobo-/.test(legacyKey) || !/^gobo-/.test(newKey)) {
                 warnLog('migrateLegacyProfile: keys must start with gobo-', { legacyKey, newKey });
                 return;
             }
-            if (!this.ready) {
-                this._pendingMigrations.push({ legacyKey, newKey, options });
-                debugLog('migrateLegacyProfile: deferred (storage not ready), queued migration', { legacyKey, newKey });
+            if (legacyKey === newKey) return;
+            if (this.ready) {
+                this._migrateLegacyInternal(legacyKey, newKey, options);
                 return;
             }
-            this._migrateLegacyInternal(legacyKey, newKey, options);
+            // Manager not ready: perform direct persisted map mutation to avoid interim ID allocation.
+            try {
+                const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet(STORAGE_KEY) : (global.localStorage ? localStorage.getItem(STORAGE_KEY) : null);
+                const rawFree = (typeof goboStorageGet === 'function') ? goboStorageGet(FREE_KEY) : (global.localStorage ? localStorage.getItem(FREE_KEY) : null);
+                let persistedMap = rawMap ? JSON.parse(rawMap) : {};
+                let persistedFree = rawFree ? JSON.parse(rawFree) : [];
+                const legacyId = persistedMap[legacyKey];
+                if (legacyId == null) {
+                    // No legacy ID yet; queue migration for later when ID becomes known.
+                    this._pendingMigrations.push({ legacyKey, newKey, options });
+                    debugLog('migrateLegacyProfile (deferred – no legacyId yet)', { legacyKey, newKey });
+                    return;
+                }
+                const existingBrandId = persistedMap[newKey];
+                if (existingBrandId != null && existingBrandId !== legacyId) {
+                    // Free the brand's current ID and replace with legacyId
+                    if (!persistedFree.includes(existingBrandId)) persistedFree.push(existingBrandId);
+                    debugLog('migrateLegacyProfile (persisted conflict resolution)', { legacyKey, newKey, legacyId, freedId: existingBrandId });
+                } else {
+                    debugLog('migrateLegacyProfile (persisted direct migrate)', { legacyKey, newKey, legacyId });
+                }
+                // Assign legacyId to new key & remove legacy key without freeing legacyId
+                persistedMap[newKey] = legacyId;
+                delete persistedMap[legacyKey];
+                // Persist updated structures immediately
+                const serializedMap = JSON.stringify(persistedMap);
+                const serializedFree = JSON.stringify(persistedFree);
+                if (typeof goboStorageSet === 'function') {
+                    goboStorageSet(STORAGE_KEY, serializedMap);
+                    goboStorageSet(FREE_KEY, serializedFree);
+                } else if (global.localStorage) {
+                    localStorage.setItem(STORAGE_KEY, serializedMap);
+                    localStorage.setItem(FREE_KEY, serializedFree);
+                }
+                // Optionally migrate profile payload data & remove legacy storage key
+                try {
+                    if (options.copyData) {
+                        const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(legacyKey) : (global.localStorage ? localStorage.getItem(legacyKey) : null);
+                        const rawBranded = (typeof goboStorageGet === 'function') ? goboStorageGet(newKey) : (global.localStorage ? localStorage.getItem(newKey) : null);
+                        if (rawLegacy && !rawBranded) {
+                            if (typeof goboStorageSet === 'function') goboStorageSet(newKey, rawLegacy); else if (global.localStorage) localStorage.setItem(newKey, rawLegacy);
+                        }
+                    }
+                    if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
+                } catch(eStor){ errorLog('migrateLegacyProfile: storage payload migration error (persisted path)', eStor); }
+                // Update in-memory pending state so when ready we reflect change
+                this.map[newKey] = legacyId;
+                delete this.map[legacyKey];
+                debugLog('migrateLegacyProfile: persisted migration complete (manager not ready)', { legacyKey, newKey, legacyId });
+            } catch(e){
+                errorLog('migrateLegacyProfile: persisted migration failed; queueing for later', e);
+                this._pendingMigrations.push({ legacyKey, newKey, options });
+            }
         },
         getId(profileKey){
             this.init();
