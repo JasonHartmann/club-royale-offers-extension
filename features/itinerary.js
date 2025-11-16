@@ -755,7 +755,7 @@
                     const displayEntries = orderCats.map(cat => bestByCat[cat]).filter(Boolean);
                     // Sort (already in orderCats sequence) then render
                     const pTable = document.createElement('table'); pTable.className='gobo-itinerary-table';
-                    const thead = document.createElement('thead'); const thr=document.createElement('tr'); ['Class','Price','You Pay (ESTIMATED)','Currency'].forEach((h,i)=>{ const th=document.createElement('th'); th.textContent=h; if(i===1||i===2) th.style.textAlign='right'; thr.appendChild(th); }); thead.appendChild(thr); pTable.appendChild(thead);
+                    const thead = document.createElement('thead'); const thr=document.createElement('tr'); ['Class','Retail Price','You Pay (ESTIMATED)','Currency'].forEach((h,i)=>{ const th=document.createElement('th'); th.textContent=h; if(i===1||i===2) th.style.textAlign='right'; thr.appendChild(th); }); thead.appendChild(thr); pTable.appendChild(thead);
                     const tbody = document.createElement('tbody');
                     displayEntries.forEach(entry => {
                         const tr=document.createElement('tr');
@@ -810,7 +810,8 @@
                 if (Array.isArray(data.days) && data.days.length) {
                     const dayTitle = document.createElement('h3'); dayTitle.className='gobo-itinerary-section-title'; dayTitle.textContent='Day-by-Day'; panel.appendChild(dayTitle);
                     const dTable = document.createElement('table'); dTable.className='gobo-itinerary-table';
-                    const dh = document.createElement('thead'); const dhr=document.createElement('tr'); ['Day','Day of Week','Date','Type','Port','Arrival','Departure'].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; dhr.appendChild(th); }); dh.appendChild(dhr); dTable.appendChild(dh);
+                    // Removed 'Type' column; new order: Day, Day of Week, Date, Port, Arrival, Departure
+                    const dh = document.createElement('thead'); const dhr=document.createElement('tr'); ['Day','Day of Week','Date','Port','Arrival','Departure'].forEach((h,i)=>{ const th=document.createElement('th'); th.textContent=h; if(i===1) th.style.textAlign='left'; if(i===2) th.style.textAlign='right'; dhr.appendChild(th); }); dh.appendChild(dhr); dTable.appendChild(dh);
                     const db=document.createElement('tbody');
                     data.days.forEach(day=>{
                         try {
@@ -825,9 +826,17 @@
                             const dow = computedDate? new Intl.DateTimeFormat(undefined,{weekday:'short', timeZone:'UTC'}).format(computedDate):'';
                             const dateFmt = computedDate? new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'numeric', timeZone:'UTC'}).format(computedDate):'';
                             const ports = Array.isArray(day.ports)?day.ports:[]; let activity='', arrival='', departure='';
-                            if (ports.length){ const p=ports[0]; activity=(p.port&&p.port.name)||''; arrival=p.arrivalTime||''; departure=p.departureTime||''; }
+                            if (ports.length){ const p=ports[0];
+                                let portName = (p.port && p.port.name ? String(p.port.name).trim() : '');
+                                let portRegion = (p.port && p.port.region ? String(p.port.region).trim() : '');
+                                // Avoid duplicating when region equals name (case-insensitive)
+                                if (portName && portRegion && portRegion.toUpperCase() === portName.toUpperCase()) portRegion='';
+                                // Build combined display
+                                activity = portRegion ? (portName ? portName + ', ' + portRegion : portRegion) : portName;
+                                arrival=p.arrivalTime||''; departure=p.departureTime||''; }
                             const dayLabel = (day&&day.number!=null)?String(day.number):'';
-                            [dayLabel,dow,dateFmt,day.type||'',activity,arrival,departure].forEach(val=>{ const td=document.createElement('td'); td.textContent=val||''; tr.appendChild(td); });
+                            // Build row values without Type column
+                            [dayLabel,dow,dateFmt,activity,arrival,departure].forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val||''; if(i===1) td.style.textAlign='left'; if(i===2) td.style.textAlign='right'; tr.appendChild(td); });
                             db.appendChild(tr);
                         } catch(inner){}
                     });
