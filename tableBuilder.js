@@ -1,3 +1,5 @@
+const TABLE_BUILDER_GROUP_ICON_SVG = '<svg width="16" height="14" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg"><path d="M2 4.5c0-1.105.895-2 2-2h4.172a2 2 0 0 1 1.414.586l1.242 1.242c.378.378.89.586 1.424.586H16a2 2 0 0 1 2 2V12c0 1.105-.895 2-2 2H4c-1.105 0-2-.895-2-2V4.5z" fill="#facc15" stroke="#b45309" stroke-width="1" stroke-linejoin="round"/></svg>';
+
 const TableBuilder = {
     createMainTable() {
         console.debug('[tableBuilder] createMainTable ENTRY');
@@ -25,11 +27,20 @@ const TableBuilder = {
                 th.innerHTML = '<span style="pointer-events:none;">★</span>';
             } else {
                 th.classList.add('cursor-pointer');
-                th.innerHTML = `
-                <span class="group-icon" title="Group by ${header.label}">📂</span>
-                <span class="sort-label">${header.label}</span>
-            `;
-                th.querySelector('.sort-label').addEventListener('click', () => {
+                const groupIcon = document.createElement('span');
+                groupIcon.className = 'group-icon';
+                groupIcon.title = `Group by ${header.label}`;
+                groupIcon.setAttribute('aria-hidden', 'true');
+                groupIcon.innerHTML = TABLE_BUILDER_GROUP_ICON_SVG;
+
+                const sortLabel = document.createElement('span');
+                sortLabel.classList.add('sort-label', 'cursor-pointer');
+                sortLabel.textContent = header.label;
+
+                th.appendChild(groupIcon);
+                th.appendChild(sortLabel);
+
+                sortLabel.addEventListener('click', () => {
                     console.debug('[tableBuilder] sort-label click', header.key);
                     let newSortOrder = 'asc';
                     if (state.currentSortColumn === header.key) {
@@ -50,7 +61,7 @@ const TableBuilder = {
                     console.debug('[tableBuilder] sort-label click: calling updateView', { token: state._switchToken });
                     App.TableRenderer.updateView(state);
                 });
-                th.querySelector('.group-icon').addEventListener('click', () => {
+                groupIcon.addEventListener('click', () => {
                     console.debug('[tableBuilder] group-icon click', header.key);
                     state.currentSortColumn = header.key;
                     state.currentSortOrder = 'asc';

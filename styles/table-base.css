@@ -14,7 +14,9 @@
 
 .sort-asc::after { content:' \2193'; }
 .sort-desc::after { content:' \2191'; }
-.group-icon { cursor:pointer; margin-right:2px; display:inline-block; }
+.group-icon { cursor:pointer; margin-right:2px; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+.group-icon svg { width:16px; height:14px; display:block; pointer-events:none; }
+.group-icon + .sort-label { margin-left:4px; }
 
 .table-header, .accordion-table-header { position:sticky; top:0; background:#fff; z-index:10; border-bottom:2px solid #e5e7eb; }
 .table-header tr, .accordion-table-header tr { background:#f3f4f6; }

@@ -12,7 +12,8 @@
         /^goboProfileIdMap_v1$/,
         /^goboProfileIdFreeIds_v1$/,
         /^goboProfileIdNext_v1$/,
-        /^goboWhatsNewShown/
+        /^goboWhatsNewShown/,
+        /^goboOfferCodeLookupWarned_v\d+$/
     ];
     const DEBUG_STORAGE = false; // set true to trace shim behavior during development
     function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }

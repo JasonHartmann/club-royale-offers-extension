@@ -1,3 +1,5 @@
+const ACCORDION_BUILDER_GROUP_ICON_SVG = '<svg width="16" height="14" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg"><path d="M2 4.5c0-1.105.895-2 2-2h4.172a2 2 0 0 1 1.414.586l1.242 1.242c.378.378.89.586 1.424.586H16a2 2 0 0 1 2 2V12c0 1.105-.895 2-2 2H4c-1.105 0-2-.895-2-2V4.5z" fill="#facc15" stroke="#b45309" stroke-width="1" stroke-linejoin="round"/></svg>';
+
 const AccordionBuilder = {
     createGroupedData(sortedOffers, currentGroupColumn) {
         const groupedData = {};
@@ -232,10 +234,21 @@ const AccordionBuilder = {
                     tr.appendChild(th);
                     return; // skip adding listeners
                 }
-                th.innerHTML = `<span class="group-icon" title="Group by ${headerObj.label}">🗂️</span> <span class="sort-label cursor-pointer">${headerObj.label}</span>`;
+                const groupIcon = document.createElement('span');
+                groupIcon.className = 'group-icon';
+                groupIcon.title = `Group by ${headerObj.label}`;
+                groupIcon.setAttribute('aria-hidden', 'true');
+                groupIcon.innerHTML = ACCORDION_BUILDER_GROUP_ICON_SVG;
+
+                const sortLabel = document.createElement('span');
+                sortLabel.classList.add('sort-label', 'cursor-pointer');
+                sortLabel.textContent = headerObj.label;
+
+                th.appendChild(groupIcon);
+                th.appendChild(sortLabel);
 
                 // Group (nested) click
-                th.querySelector('.group-icon').addEventListener('click', e => {
+                groupIcon.addEventListener('click', e => {
                     e.stopPropagation();
                     if (groupingStack[groupingStack.length - 1] === headerObj.key) return; // avoid redundant grouping
                     if (state.groupKeysStack.length < groupingStack.length) {
@@ -256,7 +269,7 @@ const AccordionBuilder = {
                 });
 
                 // Sort click
-                th.querySelector('.sort-label').addEventListener('click', e => {
+                sortLabel.addEventListener('click', e => {
                     e.stopPropagation();
                     const groupPath = [...groupKeysStack, groupKey].join('>');
                     const gs = groupSortStates[groupPath] || { currentSortColumn: null, currentSortOrder: 'original' };
