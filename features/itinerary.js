@@ -416,10 +416,10 @@
                 if (entry._pricingDerivedSig === signature && entry.pricingDerived) return; // no changes
                 // Mapping logic (reuse simplified version of popup + PricingUtils maps)
                 const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
-                    O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE',
+                    O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', 'OCEAN VIEW':'OUTSIDE', OUTSIDE:'OUTSIDE',
                     B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
                     D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE' };
-                function resolveCat(raw){ if(!raw) return null; const up = String(raw).trim().toUpperCase(); return baseCategoryMap[up] || (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null); }
+                function resolveCat(raw){ if(!raw) return null; const up = String(raw).trim().toUpperCase(); const upCompact = up.replace(/\s+/g,''); return baseCategoryMap[up] || baseCategoryMap[upCompact] || (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null); }
                 const catMin = { INTERIOR:null, OUTSIDE:null, BALCONY:null, DELUXE:null };
                 const currencyCounts = {};
                 keys.forEach(k => {
@@ -608,9 +608,9 @@
                 if (priceKeys.length) {
                     // Build flat list of pricing entries for easier lookup (defer creating header until after computations)
                     const codeMap = { I:'Interior', IN:'Interior', INT:'Interior', INSIDE:'Interior', INTERIOR:'Interior', O:'Ocean View', OV:'Ocean View', OB:'Ocean View', E:'Ocean View', OCEAN:'Ocean View', OCEANVIEW:'Ocean View', OUTSIDE:'Ocean View', B:'Balcony', BAL:'Balcony', BK:'Balcony', BALCONY:'Balcony', D:'Suite', DLX:'Suite', DELUXE:'Suite', JS:'Suite', SU:'Suite', SUITE:'Suite', JUNIOR:'Suite', 'JR':'Suite', 'JR.':'Suite', 'JR-SUITE':'Suite', 'JR SUITE':'Suite', 'JUNIOR SUITE':'Suite', 'JRSUITE':'Suite', 'JR SUITES':'Suite', 'JUNIOR SUITES':'Suite' };
-                    const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR', O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', OUTSIDE:'OUTSIDE', B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY', D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
+                    const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR', O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', 'OCEAN VIEW':'OUTSIDE', OUTSIDE:'OUTSIDE', B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY', D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
                     function resolveDisplay(raw){ raw=(raw||'').trim(); return codeMap[raw.toUpperCase()]||raw; }
-                    function resolveCategory(raw){ raw=(raw||'').trim(); const up=raw.toUpperCase(); if (baseCategoryMap[up]) return baseCategoryMap[up]; if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
+                    function resolveCategory(raw){ raw=(raw||'').trim(); const up=raw.toUpperCase(); const upCompact = up.replace(/\s+/g,''); if (baseCategoryMap[up]) return baseCategoryMap[up]; if (baseCategoryMap[upCompact]) return baseCategoryMap[upCompact]; if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
                     const sortOrder = {INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3};
 
                     // Robust taxes parsing (per-person) then convert to dual occupancy
@@ -625,17 +625,42 @@
                     const taxesNumber = (taxesPerPerson != null) ? taxesPerPerson * 2 : 0;
 
                     const priceEntries = priceKeys.map(k => { const pr = data.stateroomPricing[k] || {}; return { key:k, code:(pr.code||k||'').toString().trim(), priceNum:(typeof pr.price==='number')?Number(pr.price)*2:null, currency: pr.currency||'' }; });
+                    const pricedEntries = priceEntries.filter(pe=>pe.priceNum!=null);
+                    const currencyFallback = pricedEntries[0]?.currency || '';
 
                     // Offer category detection (same logic as before)
                     let offerCategoryRaw = '';
                     try { if (sourceEl && sourceEl instanceof Element) offerCategoryRaw = String(sourceEl.dataset && sourceEl.dataset.offerCategory ? sourceEl.dataset.offerCategory : '').trim(); } catch(e){}
                     if (!offerCategoryRaw) {
-                        try { const row = sourceEl && sourceEl.closest ? sourceEl.closest('tr') : null; if (row) { const tds = Array.from(row.querySelectorAll('td')); for (let td of tds) { const txt=(td.textContent||'').trim(); if (!txt) continue; if (resolveCategory(txt) !== null) { offerCategoryRaw = txt; break; } } } } catch(e){}
+                        try {
+                            const row = sourceEl && sourceEl.closest ? sourceEl.closest('tr') : null;
+                            if (row) {
+                                const tds = Array.from(row.querySelectorAll('td'));
+                                for (let td of tds) {
+                                    const txt=(td.textContent||'').trim();
+                                    if (!txt) continue;
+                                    if (resolveCategory(txt) !== null) { offerCategoryRaw = txt; break; }
+                                }
+                            }
+                        } catch(e){}
                     }
+                    // Store original resolved awarded category separately for UI highlight (even if sold out)
+                    const originalAwardCategoryResolved = resolveCategory(offerCategoryRaw);
 
                     // Detect 1 Guest offer
                     let isOneGuestOffer = false;
-                    try { if (sourceEl && sourceEl instanceof Element) { const row = sourceEl.closest ? sourceEl.closest('tr') : null; if (row) { for (let td of Array.from(row.querySelectorAll('td'))) { const txt=(td.textContent||'').trim(); if (/^1\s+Guest\b/i.test(txt)) { isOneGuestOffer = true; break; } } } } } catch(e){}
+                    try {
+                        if (sourceEl instanceof Element) {
+                            const row = sourceEl.closest ? sourceEl.closest('tr') : null;
+                            if (row) {
+                                const tds = row.querySelectorAll('td');
+                                for (let i = 0; i < tds.length; i++) {
+                                    const txt = (tds[i].textContent || '').trim();
+                                    if (/^1\s+Guest\b/i.test(txt)) { isOneGuestOffer = true; break; }
+                                }
+                            }
+                        }
+                    } catch (e) {}
 
                     // Determine awarded category price entry with lower-category fallback when sold out
                     function findAwardedOrLower(rawCat){
@@ -661,21 +686,22 @@
                     }
                     const awardedInfo = findAwardedOrLower(offerCategoryRaw);
                     const effectiveOfferPriceNum = (awardedInfo && typeof awardedInfo.priceNum==='number') ? Number(awardedInfo.priceNum) : null;
+                    // New rule flag: awarded category and all lower categories sold out (no fallback pricing)
+                    const scenarioAllLowerSoldOut = !!(awardedInfo && awardedInfo.soldOut && !awardedInfo.fallback && !awardedInfo.fallbackAny && effectiveOfferPriceNum == null && originalAwardCategoryResolved);
 
                     // Single-guest offer value computation (with assumed $200 discount)
                     const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
                     let singleGuestOfferValue = null; // offerValue = personFare - discount
-                    if (isOneGuestOffer && offerPriceEntry && typeof offerPriceEntry.priceNum === 'number') {
-                        const baseOfferPriceNum = Number(offerPriceEntry.priceNum); // B_offer
-                        const T = Number(taxesNumber); // dual-occupancy taxes total
-                        // Derivation:
-                        // B_cat = 1.4 * P_cat - discount1 + T
-                        // offerValue_cat = P_cat - discount1
-                        // From B_cat: P_cat = (B_cat + discount1 - T)/1.4
-                        // Thus offerValue_cat = (B_cat + discount1 - T)/1.4 - discount1
-                        const numerator = baseOfferPriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - T;
-                        const ov = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
-                        if (isFinite(ov) && ov > 0) singleGuestOfferValue = ov;
+                    if (isOneGuestOffer) {
+                        if (effectiveOfferPriceNum != null) {
+                            const baseOfferPriceNum = effectiveOfferPriceNum; // dual occupancy price for awarded or fallback lower category
+                            const T = Number(taxesNumber);
+                            const numerator = baseOfferPriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - T;
+                            const ov = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
+                            singleGuestOfferValue = (isFinite(ov) && ov > 0) ? ov : 0;
+                        } else {
+                            singleGuestOfferValue = 0; // awarded + lower sold out
+                        }
                     }
 
                     // Dual-guest (regular) offer value: difference between base category price and You Pay (which is taxesNumber for that category in dual occupancy logic)
@@ -709,24 +735,46 @@
                     panel.appendChild(priceTitle);
 
                     // Proceed to build table
-                    priceKeys.sort((a,b)=>{ const aRaw=data.stateroomPricing[a]?.code||a; const bRaw=data.stateroomPricing[b]?.code||b; const aCat=resolveCategory(aRaw); const bCat=resolveCategory(bRaw); const aRank=aCat!=null&&aCat in sortOrder?sortOrder[aCat]:100; const bRank=bCat!=null&&bCat in sortOrder?sortOrder[bCat]:100; if (aRank!==bRank) return aRank-bRank; return resolveDisplay(aRaw).toUpperCase().localeCompare(resolveDisplay(bRaw).toUpperCase()); });
+                    // REPLACED: build aggregated category entries with synthetic Sold Out rows for missing categories
+                    const orderCats = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
+                    // Track if any entry already exists for a category (either priced or unpriced)
+                    const existingCatSet = new Set();
+                    priceEntries.forEach(pe => { const cat=resolveCategory(pe.code); if(cat) existingCatSet.add(cat); });
+                    // Synthetic entries for missing broad categories
+                    orderCats.forEach(cat => { if (!existingCatSet.has(cat)) { priceEntries.push({ key:'__SYN_'+cat, code:cat, priceNum:null, currency:'' }); existingCatSet.add(cat); } });
+                    // Deduplicate by choosing cheapest priced entry per category plus any additional non-priced entries are ignored
+                    const bestByCat = {};
+                    priceEntries.forEach(pe => {
+                        const cat = resolveCategory(pe.code);
+                        if (!cat) return;
+                        if (bestByCat[cat] == null) { bestByCat[cat] = pe; }
+                        else if (pe.priceNum != null && (bestByCat[cat].priceNum == null || pe.priceNum < bestByCat[cat].priceNum)) {
+                            bestByCat[cat] = pe;
+                        }
+                    });
+                    const displayEntries = orderCats.map(cat => bestByCat[cat]).filter(Boolean);
+                    // Sort (already in orderCats sequence) then render
                     const pTable = document.createElement('table'); pTable.className='gobo-itinerary-table';
                     const thead = document.createElement('thead'); const thr=document.createElement('tr'); ['Class','Price','You Pay (ESTIMATED)','Currency'].forEach((h,i)=>{ const th=document.createElement('th'); th.textContent=h; if(i===1||i===2) th.style.textAlign='right'; thr.appendChild(th); }); thead.appendChild(thr); pTable.appendChild(thead);
                     const tbody = document.createElement('tbody');
-
-                    priceKeys.forEach(k=>{
-                        const pr=data.stateroomPricing[k];
+                    displayEntries.forEach(entry => {
                         const tr=document.createElement('tr');
-                        const rawCode=pr.code||k||'';
+                        const rawCode=entry.code||'';
                         const label=resolveDisplay(rawCode);
-                        const hasPrice=typeof pr.price==='number';
-                        const priceVal=hasPrice?(Number(pr.price)*2).toFixed(2):'Sold Out';
-                        const currency=hasPrice?(pr.currency||''):(currencyFallback||'');
+                        const hasPrice=entry.priceNum!=null && isFinite(entry.priceNum);
+                        const priceVal=hasPrice?Number(entry.priceNum).toFixed(2):'Sold Out';
+                        const currency=hasPrice?(entry.currency||currencyFallback||''):(currencyFallback||'');
                         const thisCat = resolveCategory(rawCode);
                         let youPayDisplay='';
-                        if(!hasPrice) { youPayDisplay='Sold Out'; } else {
-                            const currentPriceNum=Number(pr.price)*2; let estimatedNum=0;
-                            if(isOneGuestOffer && singleGuestOfferValue!=null){
+                        if(!hasPrice) { youPayDisplay='Sold Out'; }
+                        else {
+                            const currentPriceNum=Number(entry.priceNum); let estimatedNum=0;
+                            const awardIdx = originalAwardCategoryResolved ? orderCats.indexOf(originalAwardCategoryResolved) : -1;
+                            const thisIdx = thisCat ? orderCats.indexOf(thisCat) : -1;
+                            if (scenarioAllLowerSoldOut && awardIdx >= 0 && thisIdx > awardIdx) {
+                                // All lower tiers including awarded are sold out; unknown discount => You Pay equals base price
+                                estimatedNum = currentPriceNum;
+                            } else if(isOneGuestOffer && singleGuestOfferValue!=null){
                                 let calc = currentPriceNum - singleGuestOfferValue;
                                 if(!isFinite(calc) || calc < Number(taxesNumber)) calc = Number(taxesNumber);
                                 estimatedNum = calc;
@@ -734,17 +782,18 @@
                                 const currentMatchesAward = (thisCat && awardedInfo && thisCat===awardedInfo.category);
                                 if(currentMatchesAward){ estimatedNum=taxesNumber; } else {
                                     let diff=currentPriceNum - effectiveOfferPriceNum; if(isNaN(diff)||diff<0) diff=0; estimatedNum=diff + taxesNumber; }
-                            } else { // awarded & lower sold out => treat as zero value baseline
-                                estimatedNum=taxesNumber; // show taxes as baseline
+                            } else {
+                                estimatedNum=taxesNumber;
                             }
-                            youPayDisplay = typeof estimatedNum==='number'?estimatedNum.toFixed(2):String(estimatedNum);
+                            youPayDisplay = typeof estimatedNum==='number'?Number(estimatedNum).toFixed(2):String(estimatedNum);
                         }
-                        try { const resolvedTarget = awardedInfo && awardedInfo.category ? awardedInfo.category.toUpperCase() : null; if (resolvedTarget && thisCat && thisCat.toUpperCase()===resolvedTarget) tr.classList.add('gobo-itinerary-current-category'); } catch(e){}
+                        try { const resolvedTarget = originalAwardCategoryResolved ? originalAwardCategoryResolved.toUpperCase() : (awardedInfo && awardedInfo.category ? awardedInfo.category.toUpperCase() : null); if (resolvedTarget && thisCat && thisCat.toUpperCase()===resolvedTarget) tr.classList.add('gobo-itinerary-current-category'); } catch(e){}
                         const vals=[label,priceVal,youPayDisplay,currency];
-                        vals.forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if((i===1&&hasPrice)||(i===2&&val!=='Sold Out')) td.style.textAlign='right'; td.title=rawCode; if(i===1&&!hasPrice) td.className='gobo-itinerary-soldout'; if(i===2&&val==='Sold Out') td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
+                        vals.forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if(i===1||i===2) td.style.textAlign='right'; td.title=rawCode; if(i===1&&!hasPrice) td.className='gobo-itinerary-soldout'; if(i===2&&val==='Sold Out') td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
                         tbody.appendChild(tr);
                     });
                     pTable.appendChild(tbody); panel.appendChild(pTable);
+                    // END REPLACED BLOCK
                 }
                 if (data.taxesAndFees != null) {
                     const tf = document.createElement('div'); tf.className='gobo-itinerary-taxes';
@@ -793,5 +842,5 @@
             } catch (e) { dbg('showModal error', e); }
         }
     };
-    try { window.ItineraryCache = ItineraryCache; dbg('ItineraryCache exposed'); } catch (e) {}
+    try { window['ItineraryCache'] = ItineraryCache; dbg('ItineraryCache exposed'); } catch (e) {}
 })();
