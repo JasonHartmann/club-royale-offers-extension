@@ -412,6 +412,8 @@ const TableRenderer = {
     },
     async displayTable(data, selectedProfileKey, overlappingElements) {
         try {
+            // Proactively migrate all legacy profiles (including current) before any ID allocations
+            try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && typeof ProfileIdManager.scanAndMigrateLegacyProfiles === 'function') ProfileIdManager.scanAndMigrateLegacyProfiles(); } catch(e){ /* ignore */ }
             // Always determine current user's key
             let currentKey = null;
             let baseSuffix = null;

@@ -269,7 +269,105 @@
                 this.persist();
                 debugLog('_resetAll: state cleared');
             } catch(e){ errorLog('_resetAll: failed', e); }
-        }
+        },
+        scanAndMigrateLegacyProfiles(){
+            // Proactively migrate ALL legacy profile keys BEFORE any new ID assignments to brand keys.
+            // Run multiple times safely; idempotent due to conflict handling.
+            this.init();
+            try {
+                const keys = [];
+                if (typeof localStorage !== 'undefined') {
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && /^gobo-(?!R-|C-)[^\s]+$/.test(k)) keys.push(k);
+                    }
+                }
+                if (!keys.length) return;
+                debugLog('scanAndMigrateLegacyProfiles: found legacy keys', keys);
+                keys.forEach(legacyKey => {
+                    // Derive brand by inspecting stored payload (Celebrity ships => C else R)
+                    let brand = 'R';
+                    try {
+                        const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(legacyKey) : (typeof localStorage !== 'undefined' ? localStorage.getItem(legacyKey) : null);
+                        if (rawLegacy) {
+                            const pl = JSON.parse(rawLegacy);
+                            const offers = pl?.data?.offers;
+                            if (Array.isArray(offers)) {
+                                outerBrand: for (const off of offers) {
+                                    const sailings = off?.campaignOffer?.sailings;
+                                    if (Array.isArray(sailings)) {
+                                        for (const s of sailings) {
+                                            const sn = (s?.shipName || '').trim();
+                                            if (/^Celebrity\s/i.test(sn)) { brand = 'C'; break outerBrand; }
+                                            else if (sn) { brand = 'R'; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch(e){ brand = 'R'; }
+                    const suffix = legacyKey.slice(5);
+                    const brandedKey = `gobo-${brand}-${suffix}`;
+                    if (legacyKey === brandedKey) return; // already branded (unlikely due to regex)
+                    // Use migrateLegacyProfile (queues if not ready)
+                    this.migrateLegacyProfile(legacyKey, brandedKey, { copyData: true, removeLegacyStorage: true });
+                });
+                // Normalize linked accounts keys after migrations queued/performed
+                this.normalizeLinkedAccounts();
+            } catch(e){ errorLog('scanAndMigrateLegacyProfiles: error', e); }
+        },
+        normalizeLinkedAccounts(){
+            // Update goboLinkedAccounts entries to point to branded keys; preserve other fields
+            try {
+                const raw = (typeof goboStorageGet === 'function') ? goboStorageGet('goboLinkedAccounts') : (typeof localStorage !== 'undefined' ? localStorage.getItem('goboLinkedAccounts') : null);
+                if (!raw) return;
+                let arr = JSON.parse(raw);
+                if (!Array.isArray(arr)) return;
+                let changed = false;
+                arr = arr.map(acc => {
+                    if (!acc || !acc.key || !/^gobo-/.test(acc.key)) return acc;
+                    if (/^gobo-(R-|C-)/.test(acc.key)) return acc; // already branded
+                    // Derive brand for linked acct by scanning stored profile
+                    let brand = 'R';
+                    try {
+                        const profRaw = (typeof goboStorageGet === 'function') ? goboStorageGet(acc.key) : (typeof localStorage !== 'undefined' ? localStorage.getItem(acc.key) : null);
+                        if (profRaw) {
+                            const pl = JSON.parse(profRaw);
+                            const offers = pl?.data?.offers;
+                            if (Array.isArray(offers)) {
+                                outerBrand: for (const off of offers) {
+                                    const sailings = off?.campaignOffer?.sailings;
+                                    if (Array.isArray(sailings)) {
+                                        for (const s of sailings) {
+                                            const sn = (s?.shipName || '').trim();
+                                            if (/^Celebrity\s/i.test(sn)) { brand = 'C'; break outerBrand; }
+                                            else if (sn) { brand = 'R'; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch(e){ brand='R'; }
+                    const suffix = acc.key.slice(5);
+                    const brandedKey = `gobo-${brand}-${suffix}`;
+                    if (brandedKey !== acc.key) {
+                        // Queue migration (ensures numeric ID preservation) then update linked account reference
+                        this.migrateLegacyProfile(acc.key, brandedKey, { copyData: true, removeLegacyStorage: true });
+                        const newAcc = { ...acc, key: brandedKey };
+                        changed = true;
+                        return newAcc;
+                    }
+                    return acc;
+                });
+                if (changed) {
+                    try {
+                        const serialized = JSON.stringify(arr);
+                        if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', serialized); else if (typeof localStorage !== 'undefined') localStorage.setItem('goboLinkedAccounts', serialized);
+                        debugLog('normalizeLinkedAccounts: updated linked accounts to branded keys');
+                    } catch(eSet){ errorLog('normalizeLinkedAccounts: failed to persist updated linked accounts', eSet); }
+                }
+            } catch(e){ errorLog('normalizeLinkedAccounts: error', e); }
+        },
     };
 
     global.ProfileIdManager = mgr;
