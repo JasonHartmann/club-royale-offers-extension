@@ -441,12 +441,29 @@ const Filtering = {
                         ports = AdvancedItinerarySearch.getPortsForSailing(sailing);
                     }
                 } catch(e){ ports = []; }
+                // Augment with region names directly from sailing days if available
+                try {
+                    const days = sailing && Array.isArray(sailing.days) ? sailing.days : [];
+                    days.forEach(d => {
+                        try {
+                            const pArr = Array.isArray(d.ports) ? d.ports : [];
+                            pArr.forEach(pObj => {
+                                const reg = pObj?.port?.region; const name = pObj?.port?.name;
+                                if (reg) {
+                                    const regNorm = Filtering.normalizePredicateValue(reg,'visits');
+                                    const nameNorm = name ? Filtering.normalizePredicateValue(name,'visits') : null;
+                                    if (regNorm && !ports.some(x => Filtering.normalizePredicateValue(x,'visits') === regNorm)) ports.push(reg.trim());
+                                }
+                            });
+                        } catch(innerDay){ /* ignore */ }
+                    });
+                } catch(eAug){ /* ignore aug */ }
                 const normPorts = ports.map(p=>Filtering.normalizePredicateValue(p,'visits'));
                 const portSet = new Set(normPorts);
-                if (op === 'in') return selected.some(v => portSet.has(v)); // any selected port present
-                if (op === 'not in') return selected.every(v => !portSet.has(v)); // none of selected ports present
+                if (op === 'in') return selected.some(v => portSet.has(v)); // any selected port OR region present
+                if (op === 'not in') return selected.every(v => !portSet.has(v)); // none of selected present
                 const joined = normPorts.join('|');
-                if (op === 'contains') return selected.some(v => joined.includes(v)); // substring across concatenated list
+                if (op === 'contains') return selected.some(v => joined.includes(v));
                 if (op === 'not contains') return selected.every(v => !joined.includes(v));
                 return true;
             }

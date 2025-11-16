@@ -29,8 +29,14 @@
                         ports.forEach(p => {
                             try {
                                 const name = p?.port?.name || '';
-                                if (name && !_norm(name)) return; // skip all-whitespace
+                                const region = p?.port?.region || '';
+                                if (name && !_norm(name)) return; // skip all-whitespace name
                                 if (name) out.push(name.trim());
+                                if (region) {
+                                    const rNorm = _norm(region);
+                                    const nNorm = _norm(name);
+                                    if (rNorm && rNorm !== nNorm) out.push(region.trim());
+                                }
                             } catch(innerPort) { /* ignore individual port errors */ }
                         });
                     } catch(innerDay) { /* ignore */ }

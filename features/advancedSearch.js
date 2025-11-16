@@ -220,11 +220,9 @@ const AdvancedSearch = {
                 // Rebuild ports list excluding offers in hidden groups so hidden group values do not contribute.
                 let ports = [];
                 try {
-                    // Source offers (unfiltered by advanced predicates intentionally; hidden group exclusion only as per requirement)
                     const baseOffers = state.fullOriginalOffers || state.originalOffers || [];
-                    // Reuse hidden group filtering helper defined above in this function scope.
                     const visibleOffers = filterHiddenOffers(baseOffers);
-                    const portMap = new Map(); // normalized -> original casing
+                    const portMap = new Map();
                     const norm = (v) => { try { return (''+v).trim().toUpperCase(); } catch(e){ return ''; } };
                     visibleOffers.forEach(w => {
                         try {
@@ -232,10 +230,22 @@ const AdvancedSearch = {
                             if (!Array.isArray(sailings)) return;
                             sailings.forEach(s => {
                                 try {
+                                    // Names from itinerary helper (already includes regions after our modification)
                                     const list = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.getPortsForSailing === 'function') ? AdvancedItinerarySearch.getPortsForSailing(s) : [];
                                     if (Array.isArray(list)) {
                                         list.forEach(p => { const n = norm(p); if (n && !portMap.has(n)) portMap.set(n, (''+p).trim()); });
                                     }
+                                    // Direct region injection if days present and not yet included
+                                    const days = Array.isArray(s.days) ? s.days : [];
+                                    days.forEach(d => {
+                                        try {
+                                            const pArr = Array.isArray(d.ports) ? d.ports : [];
+                                            pArr.forEach(pObj => {
+                                                const region = pObj?.port?.region;
+                                                if (region) { const rNorm = norm(region); if (rNorm && !portMap.has(rNorm)) portMap.set(rNorm, region.trim()); }
+                                            });
+                                        } catch(dayErr){ /* ignore */ }
+                                    });
                                 } catch(ePort) { /* ignore sailing port errors */ }
                             });
                         } catch(eOffer){ /* ignore offer wrapper errors */ }
@@ -243,9 +253,7 @@ const AdvancedSearch = {
                     ports = Array.from(portMap.values()).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
                     // Fallback to itinerary cache aggregate (legacy behavior) if we have no ports yet (e.g., hydration pending)
                     if (!ports.length) {
-                        try {
-                            ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : [];
-                        } catch(fallbackErr){ ports = []; }
+                        try { ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : []; } catch(fallbackErr){ ports = []; }
                     }
                 } catch(ePorts){ ports = []; }
                 if (!ports || !ports.length) {
@@ -1376,4 +1384,5 @@ const AdvancedSearch = {
         } catch(e) { /* ignore date range UI errors */ }
     }
 };
+
 
