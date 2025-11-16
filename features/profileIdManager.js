@@ -30,6 +30,18 @@
         } catch(e){ errorLog('saveJson: persistence error for', key, e, 'value:', val); }
     }
 
+    // Helper to remove a raw profile storage entry (non-mapping) – used during migration
+    function removeProfileStorageKey(rawKey){
+        try {
+            if (typeof goboStorageRemove === 'function') {
+                goboStorageRemove(rawKey);
+            } else if (global.localStorage) {
+                localStorage.removeItem(rawKey);
+            }
+            debugLog('removeProfileStorageKey: removed legacy storage key', rawKey);
+        } catch(e){ errorLog('removeProfileStorageKey: failed removing legacy storage key', rawKey, e); }
+    }
+
     const mgr = {
         ready: false,
         map: {},          // { profileKey: number }
@@ -38,6 +50,7 @@
         _storeDeferred: false,
         _pendingAssignKeys: new Set(),
         _pendingRemoveKeys: new Set(),
+        _pendingMigrations: [], // [{ legacyKey, newKey, options }]
         init(){
             // Defer initialization until GoboStore is hydrated to avoid losing persisted mapping
             try {
@@ -71,12 +84,19 @@
             this.ready = true;
             this._storeDeferred = false;
             debugLog('_rehydrateAndFinalize: ready with persisted state', { map: { ...this.map }, free: [...this.free], next: this.next });
-            // Apply any queued removals before queued assignments (so freed IDs are available)
+            // Apply queued removals before queued assignments (so freed IDs are available)
             if (this._pendingRemoveKeys.size) {
                 const toRemove = Array.from(this._pendingRemoveKeys);
                 this._pendingRemoveKeys.clear();
                 debugLog('_rehydrateAndFinalize: processing queued removals', toRemove);
                 this.removeKeys(toRemove);
+            }
+            // Process queued migrations (do BEFORE queued assignments so new keys retain legacy IDs without churn)
+            if (this._pendingMigrations.length) {
+                const migs = [...this._pendingMigrations];
+                this._pendingMigrations = [];
+                debugLog('_rehydrateAndFinalize: processing queued migrations', migs);
+                migs.forEach(m => this._migrateLegacyInternal(m.legacyKey, m.newKey, m.options));
             }
             if (this._pendingAssignKeys.size) {
                 const toAssign = Array.from(this._pendingAssignKeys);
@@ -139,6 +159,80 @@
                 this.persist();
             }
         },
+        // INTERNAL: perform migration after ready
+        _migrateLegacyInternal(legacyKey, newKey, options){
+            options = options || { copyData: true, removeLegacyStorage: true };
+            if (!legacyKey || !newKey || legacyKey === newKey) return;
+            const legacyId = this.map[legacyKey];
+            if (legacyId == null) {
+                debugLog('_migrateLegacyInternal: legacy key has no ID; skipping', { legacyKey, newKey });
+                return;
+            }
+            if (this.map[newKey] != null) {
+                // Conflict: new key already mapped to different ID – MUST preserve legacyId and move it to newKey
+                if (this.map[newKey] !== legacyId) {
+                    const existingBrandId = this.map[newKey];
+                    debugLog('_migrateLegacyInternal: conflict; reassigning brand key to legacyId and freeing previous brand id', { legacyKey, newKey, legacyId, existingBrandId });
+                    // Free previous brand id (if distinct and not already free)
+                    if (existingBrandId != null && existingBrandId !== legacyId && !this.free.includes(existingBrandId)) {
+                        this.free.push(existingBrandId);
+                    }
+                    // Assign legacyId to brand key
+                    this.map[newKey] = legacyId;
+                    // Remove legacy key mapping WITHOUT freeing legacyId
+                    delete this.map[legacyKey];
+                    // Migrate/copy data then remove legacy storage
+                    try {
+                        if (options.copyData) {
+                            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(legacyKey) : (typeof localStorage !== 'undefined' ? localStorage.getItem(legacyKey) : null));
+                            const newRaw = (typeof goboStorageGet === 'function' ? goboStorageGet(newKey) : (typeof localStorage !== 'undefined' ? localStorage.getItem(newKey) : null));
+                            if (raw && !newRaw) {
+                                if (typeof goboStorageSet === 'function') goboStorageSet(newKey, raw); else if (typeof localStorage !== 'undefined') localStorage.setItem(newKey, raw);
+                            }
+                        }
+                        if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
+                    } catch(e){ errorLog('_migrateLegacyInternal: storage reassignment error', e); }
+                    this.persist();
+                    return;
+                }
+                // Same ID – just remove legacy key & storage if requested
+                debugLog('_migrateLegacyInternal: new key already mapped to same ID; removing legacy only', { legacyKey, newKey, id: legacyId });
+                delete this.map[legacyKey];
+                if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
+                this.persist();
+                return;
+            }
+            // Assign same numeric ID to new key
+            this.map[newKey] = legacyId;
+            delete this.map[legacyKey]; // Do NOT release ID to free list
+            debugLog('_migrateLegacyInternal: migrated legacy -> brand key preserving ID', { legacyKey, newKey, id: legacyId });
+            // Move/copy stored profile data
+            try {
+                if (options.copyData) {
+                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(legacyKey) : (global.localStorage ? localStorage.getItem(legacyKey) : null));
+                    if (raw && (!(typeof goboStorageGet === 'function' ? goboStorageGet(newKey) : (global.localStorage ? localStorage.getItem(newKey) : null)))) {
+                        if (typeof goboStorageSet === 'function') goboStorageSet(newKey, raw); else if (global.localStorage) localStorage.setItem(newKey, raw);
+                        debugLog('_migrateLegacyInternal: copied profile data to new key');
+                    }
+                }
+                if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
+            } catch(e){ errorLog('_migrateLegacyInternal: storage migration error', e); }
+            this.persist();
+        },
+        // PUBLIC: Migrate a legacy profile key to a brand-specific key without changing numeric ID.
+        migrateLegacyProfile(legacyKey, newKey, options){
+            this.init();
+            if (!/^gobo-/.test(legacyKey) || !/^gobo-/.test(newKey)) {
+                warnLog('migrateLegacyProfile: keys must start with gobo-', { legacyKey, newKey });
+                return;
+            }
+            if (!this.ready) {
+                this._pendingMigrations.push({ legacyKey, newKey, options });
+                debugLog('migrateLegacyProfile: deferred (storage not ready), queued migration', { legacyKey, newKey });
+                return;
+            }
+            this._migrateLegacyInternal(legacyKey, newKey, options);
+        },
         getId(profileKey){
             this.init();
             if (!this.ready) return null; // cannot guarantee mapping yet
@@ -156,7 +250,7 @@
         },
         dump(){
             this.init();
-            if (!this.ready) { debugLog('dump: not ready (deferred)'); return { deferred:true, pendingAssign:Array.from(this._pendingAssignKeys), pendingRemove:Array.from(this._pendingRemoveKeys) }; }
+            if (!this.ready) { debugLog('dump: not ready (deferred)'); return { deferred:true, pendingAssign:Array.from(this._pendingAssignKeys), pendingRemove:Array.from(this._pendingRemoveKeys), pendingMigrations:[...this._pendingMigrations] }; }
             debugLog('dump: current in-memory state', { map: { ...this.map }, free: [...this.free], next: this.next });
             try {
                 const rawMap = goboStorageGet ? goboStorageGet(STORAGE_KEY) : null;
@@ -182,6 +276,7 @@
     try {
         if (!global.dumpProfileIdState) global.dumpProfileIdState = () => (global.ProfileIdManager ? global.ProfileIdManager.dump() : null);
         if (!global.resetProfileIdManager) global.resetProfileIdManager = () => (global.ProfileIdManager ? global.ProfileIdManager._resetAll() : null);
+        if (!global.migrateLegacyProfile) global.migrateLegacyProfile = (legacyKey, newKey, options) => (global.ProfileIdManager ? global.ProfileIdManager.migrateLegacyProfile(legacyKey, newKey, options) : null);
     } catch(e) { /* ignore */ }
 })(typeof window !== 'undefined' ? window : globalThis);
 
