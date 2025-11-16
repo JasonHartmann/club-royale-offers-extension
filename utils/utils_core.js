@@ -234,26 +234,43 @@ const Utils = {
                     if (offerBroad && minima[offerBroad] != null) {
                         offerBasePriceNum = minima[offerBroad];
                     } else {
-                        // Fallback: choose cheapest non-null among non-suite first
-                        const order = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
-                        for (const cat of order) {
-                            if (minima[cat] != null) { offerBasePriceNum = minima[cat]; break; }
+                        // Lower-category fallback logic: attempt nearest lower categories only
+                        if (offerBroad) {
+                            const order = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
+                            const idx = order.indexOf(offerBroad);
+                            if (idx > 0) {
+                                for (let i = idx - 1; i >= 0; i--) {
+                                    const cat = order[i];
+                                    if (minima[cat] != null) { offerBasePriceNum = minima[cat]; _recordReason('fallbackLowerCategoryUsed_'+cat, offer, sailing); break; }
+                                }
+                            }
+                            if (offerBasePriceNum == null) {
+                                // No lower categories available => value zero
+                                _recordReason('allLowerSoldOut', offer, sailing);
+                                offerBasePriceNum = 0; // sentinel for zero value
+                            }
+                        } else {
+                            // Original generic fallback when classification failed: cheapest overall
+                            const order = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
+                            for (const cat of order) { if (minima[cat] != null) { offerBasePriceNum = minima[cat]; _recordReason('fallbackAny_'+cat, offer, sailing); break; } }
+                            if (offerBasePriceNum == null) { _recordReason('minimaAllNull', offer, sailing); offerBasePriceNum = 0; }
                         }
-                        if (offerBasePriceNum == null) _recordReason('bucketEmpty', offer, sailing);
                     }
                 } else {
                     _recordReason('bucketEmpty', offer, sailing);
                 }
             }
             if (offerBasePriceNum == null || !isFinite(offerBasePriceNum)) { _recordReason('offerBasePriceNull', offer, sailing); return null; }
+            // Sentinel zero means no priced awarded or lower category available
+            if (offerBasePriceNum === 0) { _recordReason('zeroValue', offer, sailing); return 0; }
             if (isOneGuestOffer) {
                 const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
                 const numerator = offerBasePriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - taxesNumber;
                 const val = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
-                return (isFinite(val) && val>0)?val:null;
+                return (isFinite(val) && val>0)?val:0;
             }
             const diff = offerBasePriceNum - taxesNumber;
-            return (isFinite(diff) && diff>0)?diff:null;
+            return (isFinite(diff) && diff>0)?diff:0;
         } catch(e){ _recordReason('computeError', offer, sailing); return null; }
     },
     refreshOfferValues() {

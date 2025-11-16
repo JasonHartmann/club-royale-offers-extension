@@ -24,7 +24,7 @@ const __advSession = (() => {
 
 const AdvancedSearch = {
     // Debug flag (set AdvancedSearch._debug = true or window.ADV_SEARCH_DEBUG = true to enable)
-    _debug: true,
+    _debug: false, // default false to reduce console overhead / potential perf impact
     _logDebug(...args) {
         try {
             const enabled = AdvancedSearch && (AdvancedSearch._debug || (typeof window !== 'undefined' && window.ADV_SEARCH_DEBUG));
@@ -131,38 +131,37 @@ const AdvancedSearch = {
             const offersArr = state.fullOriginalOffers || state.originalOffers || [];
             if ((!offersArr || !offersArr.length) && (state._advVisitsHydrationRetries || 0) < 8) {
                 state._advVisitsHydrationRetries = (state._advVisitsHydrationRetries || 0) + 1;
-                // Defer and retry after offers expected to load
                 setTimeout(() => { this.triggerVisitsHydration(state); }, 600 + state._advVisitsHydrationRetries * 100);
                 return;
             }
             if (state._advVisitsHydrationStarted) return;
             state._advVisitsHydrationStarted = true;
-            // Collect composite keys (SD_<shipCode>_<YYYY-MM-DD>) from offers to focus hydration
-            const keys = new Set();
-            offersArr.forEach(o => {
-                try {
-                    const sailings = o?.campaignOffer?.sailings || [];
-                    sailings.forEach(s => {
-                        const shipCode = (s?.shipCode || '').trim();
-                        const sailDate = (s?.sailDate || '').trim().slice(0,10);
-                        if (shipCode && sailDate) keys.add(`SD_${shipCode}_${sailDate}`);
-                    });
-                } catch(e){ /* ignore */ }
-            });
-            // Kick off hydration if possible
+            // Collect composite keys (cache across retries)
+            if (!state._advHydrationKeys) {
+                const keys = new Set();
+                offersArr.forEach(o => {
+                    try {
+                        const sailings = o?.campaignOffer?.sailings || [];
+                        sailings.forEach(s => {
+                            const shipCode = (s?.shipCode || '').trim();
+                            const sailDate = (s?.sailDate || '').trim().slice(0,10);
+                            if (shipCode && sailDate) keys.add(`SD_${shipCode}_${sailDate}`);
+                        });
+                    } catch(e){ /* ignore */ }
+                });
+                state._advHydrationKeys = Array.from(keys);
+            }
             try {
-                if (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.hydrateIfNeeded === 'function' && keys.size) {
-                    ItineraryCache.hydrateIfNeeded(Array.from(keys));
+                if (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.hydrateIfNeeded === 'function' && state._advHydrationKeys && state._advHydrationKeys.length) {
+                    ItineraryCache.hydrateIfNeeded(state._advHydrationKeys);
                 }
             } catch(e){ /* ignore */ }
-            // Fallback re-render attempt after short delay in case event did not fire
             setTimeout(() => {
                 try {
                     const ports = (AdvancedItinerarySearch && AdvancedItinerarySearch.listAllPorts) ? AdvancedItinerarySearch.listAllPorts(state) : [];
                     if (ports && ports.length) {
                         AdvancedSearch.renderPredicates(state);
                     } else if ((state._advVisitsHydrationRetries || 0) < 8) {
-                        // Retry hydration attempt if still no ports but attempts remain
                         delete state._advVisitsHydrationStarted;
                         this.triggerVisitsHydration(state);
                     }
@@ -173,6 +172,21 @@ const AdvancedSearch = {
     getCachedFieldValues(fieldKey, state) {
         try {
             if (!fieldKey) return [];
+            state._advFieldCache = state._advFieldCache || {};
+            state._advFieldCacheOrder = state._advFieldCacheOrder || [];
+            const pruneIfNeeded = () => {
+                try {
+                    const MAX_CACHE_ENTRIES = 120;
+                    if (state._advFieldCacheOrder.length > MAX_CACHE_ENTRIES) {
+                        const excess = state._advFieldCacheOrder.length - MAX_CACHE_ENTRIES;
+                        for (let i = 0; i < excess; i++) {
+                            const k = state._advFieldCacheOrder[i];
+                            if (k && state._advFieldCache[k]) delete state._advFieldCache[k];
+                        }
+                        state._advFieldCacheOrder.splice(0, excess);
+                    }
+                } catch (e) { /* ignore */ }
+            };
             if (fieldKey === 'visits') {
                 let ports = [];
                 try { ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : []; } catch(e){ ports = []; }
@@ -180,10 +194,16 @@ const AdvancedSearch = {
                     this.triggerVisitsHydration(state);
                     return [];
                 }
-                state._advFieldCache = state._advFieldCache || {};
                 const cacheKey = `VISITS::${state.selectedProfileKey||'default'}::${ports.length}`;
                 state._advFieldCache[cacheKey] = ports.slice();
+                if (!state._advFieldCacheOrder.includes(cacheKey)) state._advFieldCacheOrder.push(cacheKey);
+                pruneIfNeeded();
                 return ports.slice();
+            }
+            const committedPreds = (state.advancedSearch?.predicates || []).filter(p=>p && p.complete).length;
+            // If no committed filters and static index built, use it directly (fast path)
+            if (committedPreds === 0 && state._advStaticFieldIndex && state._advStaticFieldIndex[fieldKey]) {
+                return state._advStaticFieldIndex[fieldKey];
             }
             const visibleLen = Array.isArray(state.sortedOffers) ? state.sortedOffers.length : 0;
             const originalLen = Array.isArray(state.fullOriginalOffers) ? state.fullOriginalOffers.length : (Array.isArray(state.originalOffers) ? state.originalOffers.length : 0);
@@ -196,23 +216,20 @@ const AdvancedSearch = {
             } catch (e) {
                 committedSig = '';
             }
-            // Include taxes flag in cache signature so toggling recalculates suggestions
             const includeTF = state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false ? 'T' : 'NT';
             const cacheKey = [state.selectedProfileKey || 'default', fieldKey, originalLen, 'vis', visibleLen, committedSig, includeTF].join('|');
-            state._advFieldCache = state._advFieldCache || {};
             if (state._advFieldCache[cacheKey]) return state._advFieldCache[cacheKey];
             let source;
             try {
                 const committedOnly = {...state, _advPreviewPredicateId: null};
                 const base = state.fullOriginalOffers || state.originalOffers || [];
                 source = Filtering.applyAdvancedSearch(base, committedOnly);
-            } catch (e) { /* fallback below */
-            }
+            } catch (e) { /* fallback below */ }
             if (!source || !Array.isArray(source) || !source.length) {
                 source = Array.isArray(state.sortedOffers) && state.sortedOffers.length ? state.sortedOffers : (Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : (state.fullOriginalOffers || []));
             }
             const set = new Set();
-            const normSet = new Set(); // O(1) membership for normalized values
+            const normSet = new Set();
             for (let i = 0; i < source.length; i++) {
                 const w = source[i];
                 try {
@@ -222,7 +239,7 @@ const AdvancedSearch = {
                     if (!norm || normSet.has(norm)) continue;
                     normSet.add(norm);
                     set.add(raw);
-                } catch (e) { /* ignore row errors */ }
+                } catch (e) { /* ignore */ }
             }
             let arr;
             if (fieldKey === 'departureDayOfWeek') {
@@ -230,11 +247,13 @@ const AdvancedSearch = {
                 const present = new Set(Array.from(set));
                 arr = weekOrder.filter(d => present.has(d));
                 const extras = Array.from(present).filter(v => !weekOrder.includes(v));
-                if (extras.length) arr = arr.concat(extras.sort((a,b)=>a.localeCompare(b)));
+                if (extras.length) arr = arr.concat(extras.sort());
             } else {
-                arr = Array.from(set).sort((a, b) => a.localeCompare(b));
+                arr = Array.from(set).sort();
             }
             state._advFieldCache[cacheKey] = arr;
+            if (!state._advFieldCacheOrder.includes(cacheKey)) state._advFieldCacheOrder.push(cacheKey);
+            pruneIfNeeded();
             return arr;
         } catch (e) {
             return [];
@@ -767,6 +786,61 @@ const AdvancedSearch = {
             } catch(summaryErr){ /* ignore */ }
         }
     },
+    buildStaticFieldIndex(state) {
+        try {
+            if (!state) return;
+            const base = state.fullOriginalOffers || state.originalOffers || [];
+            const offerCount = Array.isArray(base) ? base.length : 0;
+            if (!offerCount) return;
+            // Rebuild only if missing or count changed significantly (>5%)
+            const prevCount = state._advIndexOfferCount || 0;
+            if (state._advStaticFieldIndex && prevCount && Math.abs(prevCount - offerCount) / (prevCount || 1) < 0.05) return;
+            state._advIndexOfferCount = offerCount;
+            const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
+            let advOnly;
+            try { advOnly = (App.FilterUtils && typeof App.FilterUtils.getAdvancedOnlyFields === 'function') ? App.FilterUtils.getAdvancedOnlyFields() : []; } catch(e){ advOnly = []; }
+            if (!Array.isArray(advOnly)) advOnly = [];
+            const headerKeysSet = new Set(headerFields.map(h => h.key));
+            const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
+            const allFields = headerFields.concat(advFiltered);
+            const priceFields = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','offerValue']);
+            const skipFields = new Set(['visits']); // dynamic hydration-driven
+            const index = {};
+            // Precompute unique values per field (unfiltered baseline)
+            for (const f of allFields) {
+                if (!f || !f.key) continue;
+                const k = f.key;
+                if (skipFields.has(k) || priceFields.has(k)) continue; // skip dynamic or pricing (pricing depends on includeTaxes flag)
+                const set = new Set();
+                for (let i=0;i<offerCount;i++) {
+                    try {
+                        const w = base[i];
+                        const sailings = w?.campaignOffer?.sailings || [w?.sailing].filter(Boolean);
+                        // Some fields rely on sailing; attempt first sailing
+                        const sailing = Array.isArray(sailings) ? sailings[0] : w?.sailing;
+                        const raw = (Filtering && (Filtering.getOfferColumnValueForFiltering ? Filtering.getOfferColumnValueForFiltering(w.offer, sailing, k, state) : Filtering.getOfferColumnValue(w.offer, sailing, k)));
+                        if (raw == null) continue;
+                        set.add(raw);
+                    } catch(eRow){ /* ignore row */ }
+                }
+                if (set.size) {
+                    let arr;
+                    if (k === 'departureDayOfWeek') {
+                        const weekOrder = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                        const present = new Set(Array.from(set));
+                        arr = weekOrder.filter(d => present.has(d));
+                        const extras = Array.from(present).filter(v => !weekOrder.includes(v));
+                        if (extras.length) arr = arr.concat(extras.sort());
+                    } else {
+                        arr = Array.from(set).sort();
+                    }
+                    index[k] = arr;
+                }
+            }
+            state._advStaticFieldIndex = index;
+            this._logDebug('buildStaticFieldIndex:rebuilt', { fields: Object.keys(index).length, offerCount });
+        } catch(e){ this._logDebug('buildStaticFieldIndex:error', e); }
+    },
     buildToggleButton(state) {
         // Create the Advanced Search toggle button used in breadcrumbs
         this.ensureState(state);
@@ -882,7 +956,8 @@ const AdvancedSearch = {
             const boxCount = body.querySelectorAll('.adv-predicate-box').length;
             const predsLen = Array.isArray(state.advancedSearch.predicates) ? state.advancedSearch.predicates.length : 0;
             const committedCount = state.advancedSearch.predicates.filter(p => p && p.complete).length;
-            this._logDebug('ensureAddFieldDropdown:state', { hasSelect: !!hasSelect, boxCount, predsLen, committedCount });
+            const hasIncomplete = state.advancedSearch.predicates.some(p => p && !p.complete); // FIX undefined variable leak
+            this._logDebug('ensureAddFieldDropdown:state', { hasSelect: !!hasSelect, boxCount, predsLen, committedCount, hasIncomplete });
             if (committedCount && boxCount === 0) {
                 this._logDebug('ensureAddFieldDropdown:renderFallbackDueToNoBoxes');
                 this.renderCommittedFallback(state, body);
@@ -1058,6 +1133,7 @@ const AdvancedSearch = {
                 const badge = document.createElement('span'); badge.className='adv-badge'; badge.textContent = committedCount + ' active'; header.appendChild(badge);
             }
             state.advancedSearchPanel = panel;
+            try { this.buildStaticFieldIndex(state); } catch(eIdx){ this._logDebug('buildStaticFieldIndex scaffold error', eIdx); }
             this.renderPredicates(state);
             this._logDebug('scaffoldPanel:end', { committedCount });
         } catch(e){ this._logDebug('scaffoldPanel:error', e); }

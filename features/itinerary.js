@@ -59,31 +59,44 @@
                 } catch(e){}
                 // Stateroom pricing (normalize into { code:{ price, currency } })
                 try {
-                    if (Array.isArray(sail.stateroomClassPricing) && sail.stateroomClassPricing.length) {
-                        sail.stateroomClassPricing.forEach(p => {
-                            try {
-                                const code = (p?.stateroomClass?.content?.code || p?.stateroomClass?.id || '').toString().trim();
-                                const priceVal = p?.price?.value ?? p?.priceAmount ?? p?.price ?? null;
-                                const currency = p?.price?.currency?.code || p?.currency || '';
-                                if (code && priceVal != null && isFinite(priceVal)) {
-                                    if (!entry.stateroomPricing) entry.stateroomPricing = {};
-                                    // Only overwrite if we have no existing price or new price is lower (prefer cheapest seen)
-                                    const existing = entry.stateroomPricing[code];
-                                    if (!existing || (typeof existing.price === 'number' && priceVal < existing.price)) {
-                                        entry.stateroomPricing[code] = { code, price: Number(priceVal), currency };
+                    const prevPricing = entry.stateroomPricing || {};
+                    const prevCodes = Object.keys(prevPricing);
+                    if (Array.isArray(sail.stateroomClassPricing)) {
+                        if (sail.stateroomClassPricing.length) {
+                            const newPricing = {};
+                            sail.stateroomClassPricing.forEach(p => {
+                                try {
+                                    const code = (p?.stateroomClass?.content?.code || p?.stateroomClass?.id || '').toString().trim();
+                                    const priceVal = p?.price?.value ?? p?.priceAmount ?? p?.price ?? null;
+                                    const currency = p?.price?.currency?.code || p?.currency || '';
+                                    if (!code) return;
+                                    if (priceVal != null && isFinite(priceVal)) {
+                                        const numeric = Number(priceVal);
+                                        const existing = newPricing[code];
+                                        if (!existing || (typeof existing.price === 'number' && numeric < existing.price)) {
+                                            newPricing[code] = { code, price: numeric, currency };
+                                        }
+                                    } else {
+                                        // Explicit missing price for code in current response => Sold Out
+                                        if (!newPricing[code]) newPricing[code] = { code }; // no price property => Sold Out
                                     }
-                                }
-                            } catch (innerPrice) { /* ignore single pricing row errors */ }
-                        });
+                                } catch (innerPrice) { /* ignore single pricing row errors */ }
+                            });
+                            // Any previously present codes not returned this time => Sold Out (remove stale price)
+                            prevCodes.forEach(c => { if (!newPricing[c]) newPricing[c] = { code: c }; });
+                            entry.stateroomPricing = newPricing;
+                        } else {
+                            // Empty pricing array => all previously priced categories now Sold Out
+                            const soldOutMap = {};
+                            prevCodes.forEach(c => { soldOutMap[c] = { code: c }; });
+                            entry.stateroomPricing = soldOutMap; // remove all prices
+                        }
                     }
                 } catch (pricingErr) { /* ignore pricing block errors */ }
                 // Enrichment of itinerary-level meta
                 const daysArr = Array.isArray(itin.days) ? itin.days : null;
                 if (daysArr && !entry.days) entry.days = daysArr;
                 if (itin.type && !entry.type) entry.type = itin.type;
-                if (itin.days && !entry.totalNights && typeof itin.days.length === 'number') {
-                    // optional fallback: number of days minus 1 overnight logic (keep existing if already set)
-                }
                 // Mark enriched & touch hydrated timestamp
                 entry.enriched = true;
                 entry.hydratedAt = Date.now();
@@ -608,7 +621,7 @@
                         if (typeof tRaw === 'number') taxesPerPerson = isFinite(tRaw) ? Number(tRaw) : null;
                         else if (typeof tRaw === 'string') {
                             const cleaned = tRaw.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) taxesPerPerson = num; }
-                    } catch(e){ taxesPerPerson = null; }
+                    } catch(e) { taxesPerPerson = null; }
                     const taxesNumber = (taxesPerPerson != null) ? taxesPerPerson * 2 : 0;
 
                     const priceEntries = priceKeys.map(k => { const pr = data.stateroomPricing[k] || {}; return { key:k, code:(pr.code||k||'').toString().trim(), priceNum:(typeof pr.price==='number')?Number(pr.price)*2:null, currency: pr.currency||'' }; });
@@ -624,10 +637,30 @@
                     let isOneGuestOffer = false;
                     try { if (sourceEl && sourceEl instanceof Element) { const row = sourceEl.closest ? sourceEl.closest('tr') : null; if (row) { for (let td of Array.from(row.querySelectorAll('td'))) { const txt=(td.textContent||'').trim(); if (/^1\s+Guest\b/i.test(txt)) { isOneGuestOffer = true; break; } } } } } catch(e){}
 
-                    function findOfferPriceEntry(rawCat){ if(!rawCat) return null; const target=rawCat.toString().trim().toUpperCase(); let exact = priceEntries.find(pe => (pe.code||'').toString().trim().toUpperCase()===target); if(exact) return exact; exact = priceEntries.find(pe => (resolveDisplay(pe.code||'')||'').toUpperCase()===target); if(exact) return exact; const bucketCat = resolveCategory(rawCat); if(!bucketCat) return null; const bucket = priceEntries.filter(pe => resolveCategory(pe.code)===bucketCat && pe.priceNum!=null); if(!bucket.length) return null; bucket.sort((a,b)=>a.priceNum-b.priceNum); return bucket[0]; }
-                    const offerPriceEntry = findOfferPriceEntry(offerCategoryRaw);
-                    const currencyFallback = Object.values(data.stateroomPricing)[0]?.currency || '';
-                    const effectiveOfferPriceNum = (offerPriceEntry && typeof offerPriceEntry.priceNum === 'number') ? Number(offerPriceEntry.priceNum) : null;
+                    // Determine awarded category price entry with lower-category fallback when sold out
+                    function findAwardedOrLower(rawCat){
+                        if(!rawCat) return null;
+                        const order=['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
+                        const targetCat=resolveCategory(rawCat);
+                        // Build minima map
+                        const minima={};
+                        priceEntries.forEach(pe=>{ const cat=resolveCategory(pe.code); if(cat && pe.priceNum!=null){ if(minima[cat]==null || pe.priceNum<minima[cat]) minima[cat]=pe.priceNum; }});
+                        if(targetCat){
+                            if(minima[targetCat]!=null) return { priceNum:minima[targetCat], category:targetCat };
+                            const idx=order.indexOf(targetCat);
+                            if(idx>0){ for(let i=idx-1;i>=0;i--){ const c=order[i]; if(minima[c]!=null) return { priceNum:minima[c], category:c, fallback:true }; }}
+                            return { priceNum:null, category:targetCat, soldOut:true };
+                        }
+                        // If targetCat not resolved, try any category by original raw code first
+                        const direct=priceEntries.find(pe=>pe.code.toUpperCase()===rawCat.toUpperCase() && pe.priceNum!=null);
+                        if(direct) return { priceNum:direct.priceNum, category:resolveCategory(direct.code)||direct.code };
+                        // fallback cheapest overall
+                        const cheapestCat = order.find(c=>minima[c]!=null);
+                        if(cheapestCat) return { priceNum:minima[cheapestCat], category:cheapestCat, fallbackAny:true };
+                        return { priceNum:null };
+                    }
+                    const awardedInfo = findAwardedOrLower(offerCategoryRaw);
+                    const effectiveOfferPriceNum = (awardedInfo && typeof awardedInfo.priceNum==='number') ? Number(awardedInfo.priceNum) : null;
 
                     // Single-guest offer value computation (with assumed $200 discount)
                     const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
@@ -647,9 +680,14 @@
 
                     // Dual-guest (regular) offer value: difference between base category price and You Pay (which is taxesNumber for that category in dual occupancy logic)
                     let dualGuestOfferValue = null;
-                    if (!isOneGuestOffer && offerPriceEntry && typeof offerPriceEntry.priceNum === 'number' && isFinite(taxesNumber)) {
-                        const diff = Number(offerPriceEntry.priceNum) - Number(taxesNumber);
-                        dualGuestOfferValue = isFinite(diff) && diff > 0 ? diff : 0;
+                    if (!isOneGuestOffer) {
+                        if (effectiveOfferPriceNum != null) {
+                            const diff = effectiveOfferPriceNum - Number(taxesNumber);
+                            dualGuestOfferValue = isFinite(diff) && diff > 0 ? diff : 0;
+                        } else {
+                            // awarded and all lower categories sold out => value zero
+                            dualGuestOfferValue = 0;
+                        }
                     }
 
                     // Now create header and inject Offer Value span for either scenario
@@ -684,21 +722,24 @@
                         const hasPrice=typeof pr.price==='number';
                         const priceVal=hasPrice?(Number(pr.price)*2).toFixed(2):'Sold Out';
                         const currency=hasPrice?(pr.currency||''):(currencyFallback||'');
-                        try { const resolvedThis=resolveCategory(rawCode)||resolveDisplay(rawCode||''); const resolvedTarget=resolveCategory(offerCategoryRaw)||(offerCategoryRaw||'').toUpperCase(); if (resolvedTarget && (String(resolvedThis).toUpperCase()===String(resolvedTarget).toUpperCase() || resolveDisplay(rawCode).toUpperCase()===(offerCategoryRaw||'').toUpperCase())) tr.classList.add('gobo-itinerary-current-category'); } catch(e){}
+                        const thisCat = resolveCategory(rawCode);
                         let youPayDisplay='';
                         if(!hasPrice) { youPayDisplay='Sold Out'; } else {
                             const currentPriceNum=Number(pr.price)*2; let estimatedNum=0;
                             if(isOneGuestOffer && singleGuestOfferValue!=null){
-                                // Reverted single-guest estimation: use base category derived offerValue and subtract from each category base price.
-                                // estimated single guest price for category = max(taxesNumber, currentPriceNum - singleGuestOfferValue)
                                 let calc = currentPriceNum - singleGuestOfferValue;
                                 if(!isFinite(calc) || calc < Number(taxesNumber)) calc = Number(taxesNumber);
                                 estimatedNum = calc;
+                            } else if(effectiveOfferPriceNum!=null){
+                                const currentMatchesAward = (thisCat && awardedInfo && thisCat===awardedInfo.category);
+                                if(currentMatchesAward){ estimatedNum=taxesNumber; } else {
+                                    let diff=currentPriceNum - effectiveOfferPriceNum; if(isNaN(diff)||diff<0) diff=0; estimatedNum=diff + taxesNumber; }
+                            } else { // awarded & lower sold out => treat as zero value baseline
+                                estimatedNum=taxesNumber; // show taxes as baseline
                             }
-                            else if(effectiveOfferPriceNum!=null){ const currentMatchesOffer=(offerPriceEntry && ((offerPriceEntry.key===k)||((offerPriceEntry.code||'').toString().trim().toUpperCase()===(rawCode||'').toString().trim().toUpperCase()) || (resolveCategory(offerPriceEntry.code)&&resolveCategory(offerPriceEntry.code)===resolveCategory(rawCode)))); if(currentMatchesOffer){ estimatedNum=taxesNumber; } else { let diff=currentPriceNum - effectiveOfferPriceNum; if(isNaN(diff)||diff<0) diff=0; estimatedNum=diff + taxesNumber; } }
-                            else { estimatedNum=taxesNumber; }
                             youPayDisplay = typeof estimatedNum==='number'?estimatedNum.toFixed(2):String(estimatedNum);
                         }
+                        try { const resolvedTarget = awardedInfo && awardedInfo.category ? awardedInfo.category.toUpperCase() : null; if (resolvedTarget && thisCat && thisCat.toUpperCase()===resolvedTarget) tr.classList.add('gobo-itinerary-current-category'); } catch(e){}
                         const vals=[label,priceVal,youPayDisplay,currency];
                         vals.forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if((i===1&&hasPrice)||(i===2&&val!=='Sold Out')) td.style.textAlign='right'; td.title=rawCode; if(i===1&&!hasPrice) td.className='gobo-itinerary-soldout'; if(i===2&&val==='Sold Out') td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
                         tbody.appendChild(tr);
