@@ -6,429 +6,151 @@
     const STORAGE_KEY = 'goboProfileIdMap_v1';
     const FREE_KEY = 'goboProfileIdFreeIds_v1';
     const NEXT_KEY = 'goboProfileIdNext_v1';
-    const DEBUG = true; // Toggle verbose debug logging
-
-    function debugLog(...args){ if (DEBUG) { try { console.debug('[ProfileIdManager]', ...args); } catch(e){} } }
-    function warnLog(...args){ try { console.warn('[ProfileIdManager]', ...args); } catch(e){} }
-    function errorLog(...args){ try { console.error('[ProfileIdManager]', ...args); } catch(e){} }
-
-    function loadJson(key, def){
-        try {
-            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(key) : (global.localStorage ? localStorage.getItem(key) : null));
-            if (!raw) { debugLog('loadJson: no value for', key); return def; }
-            const parsed = JSON.parse(raw);
-            debugLog('loadJson: loaded', key, parsed);
-            return parsed;
-        } catch(e){ errorLog('loadJson: failed to load/parse', key, e); return def; }
-    }
-    function saveJson(key, val){
-        try {
-            const serialized = JSON.stringify(val);
-            if (typeof goboStorageSet === 'function') goboStorageSet(key, serialized);
-            else if (global.localStorage) localStorage.setItem(key, serialized);
-            debugLog('saveJson: persisted', key, val);
-        } catch(e){ errorLog('saveJson: persistence error for', key, e, 'value:', val); }
-    }
-
-    // Helper to remove a raw profile storage entry (non-mapping) – used during migration
-    function removeProfileStorageKey(rawKey){
-        try {
-            if (typeof goboStorageRemove === 'function') {
-                goboStorageRemove(rawKey);
-            } else if (global.localStorage) {
-                localStorage.removeItem(rawKey);
-            }
-            debugLog('removeProfileStorageKey: removed legacy storage key', rawKey);
-        } catch(e){ errorLog('removeProfileStorageKey: failed removing legacy storage key', rawKey, e); }
-    }
+    const DEBUG = true;
+    function log(...a){ if (DEBUG) try{ console.debug('[ProfileIdManager]', ...a);}catch(e){} }
+    function warn(...a){ try{ console.warn('[ProfileIdManager]', ...a);}catch(e){} }
+    function err(...a){ try{ console.error('[ProfileIdManager]', ...a);}catch(e){} }
+    function safeGet(k){ try { if (typeof goboStorageGet === 'function') return goboStorageGet(k); if (global.localStorage) return localStorage.getItem(k); } catch(e){ } return null; }
+    function safeSet(k,v){ try { if (typeof goboStorageSet === 'function') goboStorageSet(k,v); else if (global.localStorage) localStorage.setItem(k,v);} catch(e){ } }
+    function safeRemove(k){ try { if (typeof goboStorageRemove === 'function') goboStorageRemove(k); else if (global.localStorage) localStorage.removeItem(k);} catch(e){ } }
 
     const mgr = {
-        ready: false,
-        map: {},          // { profileKey: number }
-        free: [],         // [number]
-        next: 1,          // next auto-increment id when free list empty
-        _storeDeferred: false,
-        _pendingAssignKeys: new Set(),
-        _pendingRemoveKeys: new Set(),
-        _pendingMigrations: [], // [{ legacyKey, newKey, options }]
+        ready:false,
+        map:{},
+        free:[],
+        next:1,
+        _deferredAssign:new Set(),
         init(){
-            // Defer initialization until GoboStore is hydrated to avoid losing persisted mapping
+            // If GoboStore gate exists, still hydrate immediately from raw storage so we can migrate before any allocations.
             try {
                 if (typeof GoboStore !== 'undefined' && GoboStore && !GoboStore.ready) {
-                    if (!this._storeDeferred) {
-                        this._storeDeferred = true;
-                        debugLog('init: GoboStore not ready; deferring ProfileIdManager initialization');
-                        const handler = () => {
-                            try { this._rehydrateAndFinalize(); } catch(e){ errorLog('deferred init failed', e); }
-                        };
-                        if (typeof document !== 'undefined') document.addEventListener('goboStorageReady', handler, { once: true });
-                    } else {
-                        debugLog('init: still waiting for GoboStore readiness');
+                    // Perform raw migration using persisted blobs even if not "ready"; then finish when ready event fires.
+                    if (!this._storeGateAttached) {
+                        this._hydrateFromStorage(true); // early hydrate (non-ready) then migrate
+                        this._storeGateAttached = true;
+                        document.addEventListener('goboStorageReady', () => { this._hydrateFromStorage(false); this.ready = true; this._finalizePostMigration(); }, { once:true });
+                        return;
                     }
-                    return; // Do not mark ready yet
+                }
+            } catch(eGate){ /* ignore */ }
+            if (this.ready) return;
+            this._hydrateFromStorage(false);
+            this.ready = true;
+            this._finalizePostMigration();
+        },
+        _hydrateFromStorage(isEarly){
+            // Load persisted map/free/next
+            try {
+                const rawMap = safeGet(STORAGE_KEY); this.map = rawMap ? JSON.parse(rawMap) : (this.map||{});
+            } catch(e){ err('map parse', e); }
+            try {
+                const rawFree = safeGet(FREE_KEY); this.free = rawFree ? JSON.parse(rawFree) : (this.free||[]);
+            } catch(e2){ err('free parse', e2); }
+            try {
+                const rawNext = safeGet(NEXT_KEY); if (rawNext) this.next = JSON.parse(rawNext); else {
+                    const maxId = Object.values(this.map).reduce((m,v)=> v>m? v:m,0); this.next = maxId+1||1;
+                }
+            } catch(e3){ const maxId = Object.values(this.map).reduce((m,v)=> v>m? v:m,0); this.next = maxId+1||1; }
+            // Critical: perform legacy normalization BEFORE any assignments
+            this._performLegacyBrandNormalization();
+            if (!isEarly) log('hydrated', { map:{...this.map}, free:[...this.free], next:this.next });
+        },
+        _performLegacyBrandNormalization(){
+            // Find all legacy profile storage keys (no brand prefix R- or C- after gobo-)
+            const legacyKeys = [];
+            try {
+                const ls = global.localStorage;
+                if (ls) {
+                    for (let i=0;i<ls.length;i++){ const k = ls.key(i); if (k && /^gobo-(?!R-|C-)[^\s]+$/.test(k)) legacyKeys.push(k); }
                 }
             } catch(e){ /* ignore */ }
-            if (this.ready) { debugLog('init: already ready'); return; }
-            this._rehydrateAndFinalize();
-        },
-        _rehydrateAndFinalize(){
-            // Load persisted state now that storage is (or assumed) available
-            this.map = loadJson(STORAGE_KEY, this.map || {});
-            this.free = loadJson(FREE_KEY, this.free || []);
-            this.next = loadJson(NEXT_KEY, this.next == null ? null : this.next);
-            if (this.next === null) {
-                const maxId = Object.values(this.map).reduce((m,v)=> v>m? v : m, 0);
-                this.next = maxId + 1 || 1;
-                debugLog('_rehydrateAndFinalize: derived next from map', { maxId, next: this.next });
-            }
-            this.ready = true;
-            this._storeDeferred = false;
-            debugLog('_rehydrateAndFinalize: ready with persisted state', { map: { ...this.map }, free: [...this.free], next: this.next });
-            // Apply queued removals before queued assignments (so freed IDs are available)
-            if (this._pendingRemoveKeys.size) {
-                const toRemove = Array.from(this._pendingRemoveKeys);
-                this._pendingRemoveKeys.clear();
-                debugLog('_rehydrateAndFinalize: processing queued removals', toRemove);
-                this.removeKeys(toRemove);
-            }
-            // Process queued migrations (do BEFORE queued assignments so new keys retain legacy IDs without churn)
-            if (this._pendingMigrations.length) {
-                const migs = [...this._pendingMigrations];
-                this._pendingMigrations = [];
-                debugLog('_rehydrateAndFinalize: processing queued migrations', migs);
-                migs.forEach(m => this._migrateLegacyInternal(m.legacyKey, m.newKey, m.options));
-            }
-            if (this._pendingAssignKeys.size) {
-                const toAssign = Array.from(this._pendingAssignKeys);
-                this._pendingAssignKeys.clear();
-                debugLog('_rehydrateAndFinalize: processing queued assignments', toAssign);
-                this._assignKeysInternal(toAssign);
-            }
-        },
-        _assignKeysInternal(profileKeys){
-            const normalized = Array.from(new Set((profileKeys || []).filter(k => /^gobo-/.test(k))));
-            const assigned = [];
-            normalized.forEach(k => {
-                if (this.map[k] == null) {
-                    let id;
-                    if (this.free.length) {
-                        this.free.sort((a,b)=>a-b);
-                        id = this.free.shift();
-                        debugLog('_assignKeysInternal: reused freed id', id, 'for key', k);
-                    } else {
-                        id = this.next++;
-                        debugLog('_assignKeysInternal: allocated new id', id, 'for key', k);
-                    }
-                    this.map[k] = id;
-                    assigned.push({ key: k, id, source: 'assign' });
-                }
-            });
-            if (assigned.length) debugLog('_assignKeysInternal: newly assigned', assigned);
-            if (assigned.length) this.persist();
-            return this.map;
-        },
-        // Ensure IDs exist for provided profile keys; DO NOT reclaim implicitly to avoid churn.
-        ensureIds(profileKeys){
-            this.init();
-            if (!this.ready) {
-                // Queue keys for assignment after hydration; do NOT assign ephemeral IDs to avoid flicker / reassignment
-                (profileKeys || []).forEach(k => { if (/^gobo-/.test(k)) this._pendingAssignKeys.add(k); });
-                debugLog('ensureIds: deferred (storage not ready), queued keys', Array.from(this._pendingAssignKeys));
-                return this.map; // likely empty until hydration
-            }
-            return this._assignKeysInternal(profileKeys);
-        },
-        removeKeys(keys){
-            this.init();
-            if (!this.ready) {
-                (keys||[]).forEach(k => { if (/^gobo-/.test(k)) this._pendingRemoveKeys.add(k); });
-                debugLog('removeKeys: deferred (storage not ready), queued removals', Array.from(this._pendingRemoveKeys));
-                return;
-            }
-            const removed = [];
-            (keys||[]).forEach(k => {
-                if (this.map[k] != null) {
-                    const id = this.map[k];
-                    delete this.map[k];
-                    if (!this.free.includes(id)) this.free.push(id);
-                    removed.push({ key: k, id });
-                }
-            });
-            if (removed.length) {
-                debugLog('removeKeys: reclaimed', removed, 'free pool now', [...this.free]);
-                this.persist();
-            }
-        },
-        // INTERNAL: perform migration after ready
-        _migrateLegacyInternal(legacyKey, newKey, options){
-            options = options || { copyData: true, removeLegacyStorage: true };
-            if (!legacyKey || !newKey || legacyKey === newKey) return;
-            const legacyId = this.map[legacyKey];
-            if (legacyId == null) {
-                debugLog('_migrateLegacyInternal: legacy key has no ID; skipping', { legacyKey, newKey });
-                return;
-            }
-            if (this.map[newKey] != null) {
-                // Conflict: new key already mapped to different ID – MUST preserve legacyId and move it to newKey
-                if (this.map[newKey] !== legacyId) {
-                    const existingBrandId = this.map[newKey];
-                    debugLog('_migrateLegacyInternal: conflict; reassigning brand key to legacyId and freeing previous brand id', { legacyKey, newKey, legacyId, existingBrandId });
-                    // Free previous brand id (if distinct and not already free)
-                    if (existingBrandId != null && existingBrandId !== legacyId && !this.free.includes(existingBrandId)) {
-                        this.free.push(existingBrandId);
-                    }
-                    // Assign legacyId to brand key
-                    this.map[newKey] = legacyId;
-                    // Remove legacy key mapping WITHOUT freeing legacyId
-                    delete this.map[legacyKey];
-                    // Migrate/copy data then remove legacy storage
-                    try {
-                        if (options.copyData) {
-                            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(legacyKey) : (typeof localStorage !== 'undefined' ? localStorage.getItem(legacyKey) : null));
-                            const newRaw = (typeof goboStorageGet === 'function' ? goboStorageGet(newKey) : (typeof localStorage !== 'undefined' ? localStorage.getItem(newKey) : null));
-                            if (raw && !newRaw) {
-                                if (typeof goboStorageSet === 'function') goboStorageSet(newKey, raw); else if (typeof localStorage !== 'undefined') localStorage.setItem(newKey, raw);
-                            }
-                        }
-                        if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
-                    } catch(e){ errorLog('_migrateLegacyInternal: storage reassignment error', e); }
-                    this.persist();
-                    return;
-                }
-                // Same ID – just remove legacy key & storage if requested
-                debugLog('_migrateLegacyInternal: new key already mapped to same ID; removing legacy only', { legacyKey, newKey, id: legacyId });
-                delete this.map[legacyKey];
-                if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
-                this.persist();
-                return;
-            }
-            // Assign same numeric ID to new key
-            this.map[newKey] = legacyId;
-            delete this.map[legacyKey]; // Do NOT release ID to free list
-            debugLog('_migrateLegacyInternal: migrated legacy -> brand key preserving ID', { legacyKey, newKey, id: legacyId });
-            // Move/copy stored profile data
-            try {
-                if (options.copyData) {
-                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(legacyKey) : (global.localStorage ? localStorage.getItem(legacyKey) : null));
-                    if (raw && (!(typeof goboStorageGet === 'function' ? goboStorageGet(newKey) : (global.localStorage ? localStorage.getItem(newKey) : null)))) {
-                        if (typeof goboStorageSet === 'function') goboStorageSet(newKey, raw); else if (global.localStorage) localStorage.setItem(newKey, raw);
-                        debugLog('_migrateLegacyInternal: copied profile data to new key');
-                    }
-                }
-                if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
-            } catch(e){ errorLog('_migrateLegacyInternal: storage migration error', e); }
-            this.persist();
-        },
-        // PUBLIC: Migrate a legacy profile key to a brand-specific key without changing numeric ID.
-        migrateLegacyProfile(legacyKey, newKey, options){
-            this.init();
-            options = options || { copyData: true, removeLegacyStorage: true };
-            if (!/^gobo-/.test(legacyKey) || !/^gobo-/.test(newKey)) {
-                warnLog('migrateLegacyProfile: keys must start with gobo-', { legacyKey, newKey });
-                return;
-            }
-            if (legacyKey === newKey) return;
-            if (this.ready) {
-                this._migrateLegacyInternal(legacyKey, newKey, options);
-                return;
-            }
-            // Manager not ready: perform direct persisted map mutation to avoid interim ID allocation.
-            try {
-                const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet(STORAGE_KEY) : (global.localStorage ? localStorage.getItem(STORAGE_KEY) : null);
-                const rawFree = (typeof goboStorageGet === 'function') ? goboStorageGet(FREE_KEY) : (global.localStorage ? localStorage.getItem(FREE_KEY) : null);
-                let persistedMap = rawMap ? JSON.parse(rawMap) : {};
-                let persistedFree = rawFree ? JSON.parse(rawFree) : [];
-                const legacyId = persistedMap[legacyKey];
-                if (legacyId == null) {
-                    // No legacy ID yet; queue migration for later when ID becomes known.
-                    this._pendingMigrations.push({ legacyKey, newKey, options });
-                    debugLog('migrateLegacyProfile (deferred – no legacyId yet)', { legacyKey, newKey });
-                    return;
-                }
-                const existingBrandId = persistedMap[newKey];
-                if (existingBrandId != null && existingBrandId !== legacyId) {
-                    // Free the brand's current ID and replace with legacyId
-                    if (!persistedFree.includes(existingBrandId)) persistedFree.push(existingBrandId);
-                    debugLog('migrateLegacyProfile (persisted conflict resolution)', { legacyKey, newKey, legacyId, freedId: existingBrandId });
-                } else {
-                    debugLog('migrateLegacyProfile (persisted direct migrate)', { legacyKey, newKey, legacyId });
-                }
-                // Assign legacyId to new key & remove legacy key without freeing legacyId
-                persistedMap[newKey] = legacyId;
-                delete persistedMap[legacyKey];
-                // Persist updated structures immediately
-                const serializedMap = JSON.stringify(persistedMap);
-                const serializedFree = JSON.stringify(persistedFree);
-                if (typeof goboStorageSet === 'function') {
-                    goboStorageSet(STORAGE_KEY, serializedMap);
-                    goboStorageSet(FREE_KEY, serializedFree);
-                } else if (global.localStorage) {
-                    localStorage.setItem(STORAGE_KEY, serializedMap);
-                    localStorage.setItem(FREE_KEY, serializedFree);
-                }
-                // Optionally migrate profile payload data & remove legacy storage key
+            if (!legacyKeys.length) return;
+            let mutated = false;
+            legacyKeys.forEach(legacyKey => {
+                const legacyId = this.map[legacyKey];
+                // If no ID yet (rare), skip; we must not assign new ID to brand version until mapping known.
+                if (legacyId == null) { warn('legacy key without id encountered, skipping immediate brand migration', legacyKey); return; }
+                // Determine brand by inspecting stored payload (Celebrity ships => C else R)
+                let brand='R';
                 try {
-                    if (options.copyData) {
-                        const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(legacyKey) : (global.localStorage ? localStorage.getItem(legacyKey) : null);
-                        const rawBranded = (typeof goboStorageGet === 'function') ? goboStorageGet(newKey) : (global.localStorage ? localStorage.getItem(newKey) : null);
-                        if (rawLegacy && !rawBranded) {
-                            if (typeof goboStorageSet === 'function') goboStorageSet(newKey, rawLegacy); else if (global.localStorage) localStorage.setItem(newKey, rawLegacy);
+                    const raw = safeGet(legacyKey);
+                    if (raw){
+                        const pl = JSON.parse(raw); const offers = pl?.data?.offers;
+                        if (Array.isArray(offers)) {
+                            outer: for (const off of offers){ const sailings = off?.campaignOffer?.sailings; if (!Array.isArray(sailings)) continue; for (const s of sailings){ const sn=(s?.shipName||'').trim(); if (/^Celebrity\s/i.test(sn)){ brand='C'; break outer;} else if (sn) brand='R'; } }
                         }
                     }
-                    if (options.removeLegacyStorage) removeProfileStorageKey(legacyKey);
-                } catch(eStor){ errorLog('migrateLegacyProfile: storage payload migration error (persisted path)', eStor); }
-                // Update in-memory pending state so when ready we reflect change
-                this.map[newKey] = legacyId;
-                delete this.map[legacyKey];
-                debugLog('migrateLegacyProfile: persisted migration complete (manager not ready)', { legacyKey, newKey, legacyId });
-            } catch(e){
-                errorLog('migrateLegacyProfile: persisted migration failed; queueing for later', e);
-                this._pendingMigrations.push({ legacyKey, newKey, options });
-            }
-        },
-        getId(profileKey){
-            this.init();
-            if (!this.ready) return null; // cannot guarantee mapping yet
-            const id = this.map[profileKey] || null;
-            debugLog('getId:', profileKey, '=>', id);
-            return id;
-        },
-        persist(){
-            if (!this.ready) { debugLog('persist: skipped (not ready)'); return; }
-            debugLog('persist: writing state');
-            saveJson(STORAGE_KEY, this.map);
-            saveJson(FREE_KEY, this.free);
-            saveJson(NEXT_KEY, this.next);
-            debugLog('persist: complete');
-        },
-        dump(){
-            this.init();
-            if (!this.ready) { debugLog('dump: not ready (deferred)'); return { deferred:true, pendingAssign:Array.from(this._pendingAssignKeys), pendingRemove:Array.from(this._pendingRemoveKeys), pendingMigrations:[...this._pendingMigrations] }; }
-            debugLog('dump: current in-memory state', { map: { ...this.map }, free: [...this.free], next: this.next });
+                } catch(eB){ brand='R'; }
+                const suffix = legacyKey.slice(5);
+                const brandedKey = `gobo-${brand}-${suffix}`;
+                if (brandedKey === legacyKey) return; // already correct
+                const existingBrandId = this.map[brandedKey];
+                if (existingBrandId != null && existingBrandId !== legacyId) {
+                    // Conflict: free existing brand id, replace with legacyId
+                    if (!this.free.includes(existingBrandId)) this.free.push(existingBrandId);
+                    this.map[brandedKey] = legacyId;
+                    delete this.map[legacyKey];
+                    mutated = true;
+                } else if (existingBrandId === legacyId) {
+                    // Same id already mapped; just remove legacy mapping
+                    delete this.map[legacyKey]; mutated = true;
+                } else if (existingBrandId == null) {
+                    // Create branded mapping preserving legacy id
+                    this.map[brandedKey] = legacyId;
+                    delete this.map[legacyKey]; mutated = true;
+                }
+                // Move profile payload data if branded key does not exist yet
+                try {
+                    const brandedRaw = safeGet(brandedKey);
+                    if (!brandedRaw) {
+                        const legacyRaw = safeGet(legacyKey);
+                        if (legacyRaw) safeSet(brandedKey, legacyRaw);
+                    }
+                    // Remove legacy storage entry ALWAYS now that mapping moved
+                    safeRemove(legacyKey);
+                } catch(eMove){ err('payload move error', legacyKey, eMove); }
+            });
+            // Normalize linked accounts keys
             try {
-                const rawMap = goboStorageGet ? goboStorageGet(STORAGE_KEY) : null;
-                const rawFree = goboStorageGet ? goboStorageGet(FREE_KEY) : null;
-                const rawNext = goboStorageGet ? goboStorageGet(NEXT_KEY) : null;
-                debugLog('dump: stored raw values', { rawMap, rawFree, rawNext });
-            } catch(e){ errorLog('dump: failed reading stored raw values', e); }
-            return { map: { ...this.map }, free: [...this.free], next: this.next };
-        },
-        _resetAll(){
-            // Diagnostic only – not used in production flow
-            try {
-                this.map = {};
-                this.free = [];
-                this.next = 1;
-                this.persist();
-                debugLog('_resetAll: state cleared');
-            } catch(e){ errorLog('_resetAll: failed', e); }
-        },
-        scanAndMigrateLegacyProfiles(){
-            // Proactively migrate ALL legacy profile keys BEFORE any new ID assignments to brand keys.
-            // Run multiple times safely; idempotent due to conflict handling.
-            this.init();
-            try {
-                const keys = [];
-                if (typeof localStorage !== 'undefined') {
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const k = localStorage.key(i);
-                        if (k && /^gobo-(?!R-|C-)[^\s]+$/.test(k)) keys.push(k);
+                const rawLinked = safeGet('goboLinkedAccounts');
+                if (rawLinked){
+                    let arr = JSON.parse(rawLinked); if (Array.isArray(arr)) {
+                        let changed=false;
+                        arr = arr.map(acc => {
+                            if (!acc || !acc.key || !/^gobo-/.test(acc.key) || /^gobo-(R-|C-)/.test(acc.key)) return acc;
+                            const legacyId = this.map[acc.key];
+                            let brand='R';
+                            try { const raw = safeGet(acc.key); if (raw){ const pl = JSON.parse(raw); const offers = pl?.data?.offers; if (Array.isArray(offers)){ outer2: for (const off of offers){ const sailings=off?.campaignOffer?.sailings; if (!Array.isArray(sailings)) continue; for (const s of sailings){ const sn=(s?.shipName||'').trim(); if (/^Celebrity\s/i.test(sn)){ brand='C'; break outer2; } else if (sn) brand='R'; } } } } } catch(eL){ brand='R'; }
+                            const suffix = acc.key.slice(5); const brandedKey = `gobo-${brand}-${suffix}`;
+                            if (brandedKey === acc.key) return acc;
+                            // If branded key not mapped yet but legacy has ID, copy mapping
+                            if (legacyId != null && this.map[brandedKey] == null){ this.map[brandedKey]=legacyId; delete this.map[acc.key]; }
+                            changed = true;
+                            return { ...acc, key: brandedKey };
+                        });
+                        if (changed) safeSet('goboLinkedAccounts', JSON.stringify(arr));
                     }
                 }
-                if (!keys.length) return;
-                debugLog('scanAndMigrateLegacyProfiles: found legacy keys', keys);
-                keys.forEach(legacyKey => {
-                    // Derive brand by inspecting stored payload (Celebrity ships => C else R)
-                    let brand = 'R';
-                    try {
-                        const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(legacyKey) : (typeof localStorage !== 'undefined' ? localStorage.getItem(legacyKey) : null);
-                        if (rawLegacy) {
-                            const pl = JSON.parse(rawLegacy);
-                            const offers = pl?.data?.offers;
-                            if (Array.isArray(offers)) {
-                                outerBrand: for (const off of offers) {
-                                    const sailings = off?.campaignOffer?.sailings;
-                                    if (Array.isArray(sailings)) {
-                                        for (const s of sailings) {
-                                            const sn = (s?.shipName || '').trim();
-                                            if (/^Celebrity\s/i.test(sn)) { brand = 'C'; break outerBrand; }
-                                            else if (sn) { brand = 'R'; }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch(e){ brand = 'R'; }
-                    const suffix = legacyKey.slice(5);
-                    const brandedKey = `gobo-${brand}-${suffix}`;
-                    if (legacyKey === brandedKey) return; // already branded (unlikely due to regex)
-                    // Use migrateLegacyProfile (queues if not ready)
-                    this.migrateLegacyProfile(legacyKey, brandedKey, { copyData: true, removeLegacyStorage: true });
-                });
-                // Normalize linked accounts keys after migrations queued/performed
-                this.normalizeLinkedAccounts();
-            } catch(e){ errorLog('scanAndMigrateLegacyProfiles: error', e); }
+            } catch(eLA){ err('linked accounts normalization error', eLA); }
+            if (mutated) this._persist();
         },
-        normalizeLinkedAccounts(){
-            // Update goboLinkedAccounts entries to point to branded keys; preserve other fields
-            try {
-                const raw = (typeof goboStorageGet === 'function') ? goboStorageGet('goboLinkedAccounts') : (typeof localStorage !== 'undefined' ? localStorage.getItem('goboLinkedAccounts') : null);
-                if (!raw) return;
-                let arr = JSON.parse(raw);
-                if (!Array.isArray(arr)) return;
-                let changed = false;
-                arr = arr.map(acc => {
-                    if (!acc || !acc.key || !/^gobo-/.test(acc.key)) return acc;
-                    if (/^gobo-(R-|C-)/.test(acc.key)) return acc; // already branded
-                    // Derive brand for linked acct by scanning stored profile
-                    let brand = 'R';
-                    try {
-                        const profRaw = (typeof goboStorageGet === 'function') ? goboStorageGet(acc.key) : (typeof localStorage !== 'undefined' ? localStorage.getItem(acc.key) : null);
-                        if (profRaw) {
-                            const pl = JSON.parse(profRaw);
-                            const offers = pl?.data?.offers;
-                            if (Array.isArray(offers)) {
-                                outerBrand: for (const off of offers) {
-                                    const sailings = off?.campaignOffer?.sailings;
-                                    if (Array.isArray(sailings)) {
-                                        for (const s of sailings) {
-                                            const sn = (s?.shipName || '').trim();
-                                            if (/^Celebrity\s/i.test(sn)) { brand = 'C'; break outerBrand; }
-                                            else if (sn) { brand = 'R'; }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch(e){ brand='R'; }
-                    const suffix = acc.key.slice(5);
-                    const brandedKey = `gobo-${brand}-${suffix}`;
-                    if (brandedKey !== acc.key) {
-                        // Queue migration (ensures numeric ID preservation) then update linked account reference
-                        this.migrateLegacyProfile(acc.key, brandedKey, { copyData: true, removeLegacyStorage: true });
-                        const newAcc = { ...acc, key: brandedKey };
-                        changed = true;
-                        return newAcc;
-                    }
-                    return acc;
-                });
-                if (changed) {
-                    try {
-                        const serialized = JSON.stringify(arr);
-                        if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', serialized); else if (typeof localStorage !== 'undefined') localStorage.setItem('goboLinkedAccounts', serialized);
-                        debugLog('normalizeLinkedAccounts: updated linked accounts to branded keys');
-                    } catch(eSet){ errorLog('normalizeLinkedAccounts: failed to persist updated linked accounts', eSet); }
-                }
-            } catch(e){ errorLog('normalizeLinkedAccounts: error', e); }
+        ensureIds(keys){ this.init(); if (!this.ready){ (keys||[]).forEach(k => { if (/^gobo-/.test(k)) this._deferredAssign.add(k); }); return this.map; }
+            return this._assign(keys); },
+        _assign(keys){ const uniq=[...new Set((keys||[]).filter(k=>/^gobo-/.test(k)))]; const newly=[]; uniq.forEach(k=>{ if (this.map[k]==null){ let id; if (this.free.length){ this.free.sort((a,b)=>a-b); id=this.free.shift(); } else { id=this.next++; } this.map[k]=id; newly.push({k,id}); } }); if (newly.length) this._persist(); return this.map; },
+        _finalizePostMigration(){ // process deferred assigns only AFTER normalization
+            if (this._deferredAssign.size){ const arr=[...this._deferredAssign]; this._deferredAssign.clear(); this._assign(arr); }
         },
+        _persist(){ if (!this.ready) return; try { safeSet(STORAGE_KEY, JSON.stringify(this.map)); safeSet(FREE_KEY, JSON.stringify(this.free)); safeSet(NEXT_KEY, JSON.stringify(this.next)); } catch(e){ err('persist fail', e); } },
+        resolveKey(key){ if (/^gobo-(?!R-|C-)/.test(key)){ // attempt to find branded replacement
+            const suffix=key.slice(5); const candidates=[`gobo-R-${suffix}`, `gobo-C-${suffix}`]; for (const c of candidates){ if (this.map[c]!=null) return c; } }
+            return key; },
+        dump(){ this.init(); return { ready:this.ready, map:{...this.map}, free:[...this.free], next:this.next }; }
     };
-
     global.ProfileIdManager = mgr;
-    try {
-        if (!global.dumpProfileIdState) global.dumpProfileIdState = () => (global.ProfileIdManager ? global.ProfileIdManager.dump() : null);
-        if (!global.resetProfileIdManager) global.resetProfileIdManager = () => (global.ProfileIdManager ? global.ProfileIdManager._resetAll() : null);
-        if (!global.migrateLegacyProfile) global.migrateLegacyProfile = (legacyKey, newKey, options) => (global.ProfileIdManager ? global.ProfileIdManager.migrateLegacyProfile(legacyKey, newKey, options) : null);
-    } catch(e) { /* ignore */ }
+    try { mgr.init(); } catch(e){ /* ignore */ }
+    // Public helpers
+    if (!global.resolveProfileKey) global.resolveProfileKey = k => (global.ProfileIdManager ? global.ProfileIdManager.resolveKey(k) : k);
+    if (!global.dumpProfileIdState) global.dumpProfileIdState = () => (global.ProfileIdManager ? global.ProfileIdManager.dump() : null);
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Stable Profile ID initialization: mirror ProfileIdManager map if available
