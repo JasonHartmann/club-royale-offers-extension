@@ -48,7 +48,7 @@ function _logOfferValueSummary(tag='OfferValueSummary') {
         reasons: s.reasons,
         samples: s.samples
     };
-    try { console.info(`[${tag}]`, summary); } catch(e){}
+    try { console.debug(`[DEBUG][${tag}]`, summary); } catch(e){}
 }
 
 const Utils = {

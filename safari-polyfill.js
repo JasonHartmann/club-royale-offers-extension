@@ -25,3 +25,29 @@
     }
 })();
 
+// Global debug logging toggle (immutable). Set to true to enable verbose debug output.
+// To enable debug logging for development, change the value below to true and reload the extension.
+(function(){
+    try {
+        if (typeof window !== 'undefined' && !('GOBO_DEBUG_ENABLED' in window)) {
+            Object.defineProperty(window, 'GOBO_DEBUG_ENABLED', { value: false, writable: false, configurable: false });
+        }
+        // Monkey patch debug-level logging so existing calls don't need modification.
+        const noop = function(){};
+        const origDebug = (typeof console !== 'undefined' && console.debug) ? console.debug.bind(console) : noop;
+        const origLog = (typeof console !== 'undefined' && console.log) ? console.log.bind(console) : noop;
+        const origInfo = (typeof console !== 'undefined' && console.info) ? console.info.bind(console) : noop;
+        // Replace console.debug entirely when disabled.
+        if (typeof console !== 'undefined') {
+            console.debug = function(...args){ if (!window.GOBO_DEBUG_ENABLED) return; origDebug(...args); };
+            // Filter only explicit [DEBUG] tagged log lines for console.log; leave other logs intact.
+            console.log = function(...args){ if (!window.GOBO_DEBUG_ENABLED && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origLog(...args); };
+            // Treat console.info as debug-level only if prefixed with [DEBUG] to avoid hiding informational user-facing messages.
+            console.info = function(...args){ if (!window.GOBO_DEBUG_ENABLED && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origInfo(...args); };
+        }
+        // Convenience helper for new debug messages (preferred): window.dlog('message', data)
+        if (typeof window !== 'undefined' && !window.dlog) {
+            window.dlog = function(...args){ if (!window.GOBO_DEBUG_ENABLED) return; try { origDebug(...args); } catch(e){} };
+        }
+    } catch(patchErr){ /* ignore patch errors */ }
+})();

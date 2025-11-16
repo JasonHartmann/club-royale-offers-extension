@@ -4,7 +4,7 @@
 // Matches project module pattern (top-level const exported and attached to window)
 
 const AdvancedSearchAddField = {
-    _log(...args) { try { if (window.AdvancedSearch && window.AdvancedSearch._logDebug) window.AdvancedSearch._logDebug(...args); else console.log('[AdvAddField]', ...args); } catch(e){} },
+    _log(...args) { try { if (window.AdvancedSearch && window.AdvancedSearch._logDebug) window.AdvancedSearch._logDebug(...args); else console.debug('[DEBUG][AdvAddField]', ...args); } catch(e){} },
 
     inject(body, allFields, state) {
         try {

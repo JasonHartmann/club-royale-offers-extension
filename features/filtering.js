@@ -277,10 +277,10 @@ function computeAdvancedMinPrice(offer, sailing, key, includeTaxes) {
 
 const Filtering = {
     // Debug flag (toggle below to enable/disable debug logging by editing this file)
-    DEBUG: true,
-    _dbg(){ if (Filtering.DEBUG && typeof console !== 'undefined') { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
+    DEBUG: false,
+    _dbg(){ if (Filtering.DEBUG && typeof console !== 'undefined' && window.GOBO_DEBUG_ENABLED) { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
     filterOffers(state, offers) {
-        console.time('Filtering.filterOffers');
+        if (window.GOBO_DEBUG_ENABLED) { try { console.time('Filtering.filterOffers'); } catch(e){} }
         console.debug('[Filtering] filterOffers ENTRY', { offersLen: Array.isArray(offers) ? offers.length : 0, advancedEnabled: !!(state && state.advancedSearch && state.advancedSearch.enabled) });
         // Reset per-run stats for numeric predicates
         Filtering._lessThanStats = { total:0, incomplete:0, invalidTarget:0, missingActual:0, passed:0, failed:0, samples:[] };
@@ -311,8 +311,8 @@ const Filtering = {
                 working = Filtering.applyAdvancedSearch(working, state);
             }
         } catch(e) { console.warn('[Filtering][AdvancedSearch] applyAdvancedSearch failed', e); }
-        console.timeEnd('Filtering.filterOffers');
-        if (Filtering.DEBUG && Filtering._lessThanStats && Filtering._lessThanStats.total) {
+        if (window.GOBO_DEBUG_ENABLED) { try { console.timeEnd('Filtering.filterOffers'); } catch(e){} }
+        if (Filtering.DEBUG && Filtering._lessThanStats && Filtering._lessThanStats.total && window.GOBO_DEBUG_ENABLED) {
             try {
                 const s = Filtering._lessThanStats;
                 Filtering._dbg('lessThan:summary', {

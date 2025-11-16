@@ -3,7 +3,7 @@
 
 const Breadcrumbs = {
     updateBreadcrumb(groupingStack, groupKeysStack) {
-        console.log('[breadcrumbs] updateBreadcrumb ENTRY', {groupingStack, groupKeysStack});
+        console.debug('[DEBUG][breadcrumbs] updateBreadcrumb ENTRY', {groupingStack, groupKeysStack});
         if (typeof GoboStore !== 'undefined' && GoboStore && !GoboStore.ready) {
             console.debug('[breadcrumbs] GoboStore not ready; deferring breadcrumb render until goboStorageReady');
             const retry = () => {

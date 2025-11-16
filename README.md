@@ -210,3 +210,22 @@ Found a bug or have an improvement idea? Please open an issue or submit a pull r
 ---
 
 **Not affiliated with Royal Caribbean International or Celebrity Cruises. For personal use only.**
+
+## Debug Logging Toggle
+
+All verbose debug output (console.debug and any console.log / console.info lines beginning with `[DEBUG]`) is now gated behind a single immutable global constant: `window.GOBO_DEBUG_ENABLED`.
+
+### How to Enable
+1. Open `safari-polyfill.js` (first script loaded per `manifest.json`).
+2. Change the value in the `Object.defineProperty(window, 'GOBO_DEBUG_ENABLED', { value: false, ... })` call from `false` to `true`.
+3. Reload the extension (or the tab) to start seeing debug output.
+
+### Behavior
+- When `GOBO_DEBUG_ENABLED` is `false` (default):
+  - `console.debug(...)` produces no output.
+  - `console.log('[DEBUG] ...')` and `console.info('[DEBUG] ...')` are suppressed.
+  - Regular `console.log`, `console.info`, `console.warn`, and `console.error` remain visible.
+- When `GOBO_DEBUG_ENABLED` is `true`: all original logging behavior is restored.
+
+### Preferred Helper
+Use `dlog('message', data)` for future debug statements. It automatically respects the global toggle and maps to `console.debug` internally.

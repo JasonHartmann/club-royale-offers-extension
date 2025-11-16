@@ -24,12 +24,12 @@ const TableRenderer = {
         // Begin guarded profile switch
         const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
         this.currentSwitchToken = switchToken;
-        console.log('[tableRenderer] switchProfile ENTRY', { key, switchToken });
+        console.debug('[tableRenderer] switchProfile ENTRY', { key, switchToken });
         const cached = App.ProfileCache[key];
         const activeDomTab = document.querySelector('.profile-tab.active');
         const activeDomKey = activeDomTab && (activeDomTab.getAttribute('data-storage-key') || activeDomTab.getAttribute('data-key'));
         if (!cached) {
-            console.log('[tableRenderer] switchProfile: No cached profile', { key });
+            console.debug('[tableRenderer] switchProfile: No cached profile', { key });
             return;
         }
         // Compute timestamps early so we can decide if the existing DOM is stale compared to incoming payload
@@ -58,27 +58,27 @@ const TableRenderer = {
             return;
         }
         const currentScroll = document.querySelector('.table-scroll-container');
-        console.log('[tableRenderer] switchProfile: currentScroll', currentScroll);
+        console.debug('[tableRenderer] switchProfile: currentScroll', currentScroll);
         if (currentScroll && App.CurrentProfile && App.CurrentProfile.key) {
             if (!currentScroll._cachedAt) currentScroll._cachedAt = Date.now();
             App.ProfileCache[App.CurrentProfile.key] = {
                 scrollContainer: currentScroll,
                 state: App.TableRenderer.lastState
             };
-            console.log('[tableRenderer] switchProfile: Cached current profile', App.CurrentProfile.key);
+            console.debug('[tableRenderer] switchProfile: Cached current profile', App.CurrentProfile.key);
         }
         // Always rebuild to ensure fresh rows
-        console.log('[tableRenderer] switchProfile: rebuilding (forced)');
+        console.debug('[tableRenderer] switchProfile: rebuilding (forced)');
         cached.state._switchToken = switchToken;
         this.rebuildProfileView(key, cached.state, payload, switchToken);
-        console.log('[tableRenderer] switchProfile EXIT (forced rebuild)');
+        console.debug('[tableRenderer] switchProfile EXIT (forced rebuild)');
     },
     async recacheItineraries(payload) {
         if (this.caching === false) {
             try {
                 this.caching = true;
                 const keySet = new Set();
-                console.log('[ItineraryCache] recacheItineraries begin');
+                console.debug('[ItineraryCache] recacheItineraries begin');
                 const offers = payload && payload.data && Array.isArray(payload.data.offers) ? payload.data.offers : [];
                 offers.forEach(o => {
                     const sailings = o?.campaignOffer?.sailings;
@@ -92,7 +92,7 @@ const TableRenderer = {
                     });
                 });
                 if (keySet.size) {
-                    console.log('[ItineraryCache] hydrating ship/date keys', { count: keySet.size });
+                    console.debug('[ItineraryCache] hydrating ship/date keys', { count: keySet.size });
                     // Resolve canonical cache object once
                     const IC = (typeof window !== 'undefined' && window.App && window.App.ItineraryCache) ? window.App.ItineraryCache : ((typeof window !== 'undefined' && window.ItineraryCache) ? window.ItineraryCache : (typeof ItineraryCache !== 'undefined' ? ItineraryCache : undefined));
                     const hydrateTarget = IC || ItineraryCache;
@@ -287,13 +287,13 @@ const TableRenderer = {
                 App.ProfileIdMap = { ...ProfileIdManager.map };
             }
         } catch(e) { /* ignore */ }
-        console.log('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload, switchToken });
-        console.log('[DEBUG] App.ProfileCache:', App.ProfileCache);
-        console.log('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
+        console.debug('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload, switchToken });
+        console.debug('[DEBUG] App.ProfileCache:', App.ProfileCache);
+        console.debug('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
         if (App.ProfileCache[key]) {
             const hasDomContainer = !!document.querySelector('.table-scroll-container');
             if (hasDomContainer) {
-                console.log('[DEBUG] Profile found in cache with existing DOM, switching profile', key);
+                console.debug('[DEBUG] Profile found in cache with existing DOM, switching profile', key);
                 // Ensure cached state carries token
                 if (App.ProfileCache[key].state) App.ProfileCache[key].state._switchToken = switchToken;
                 this.switchProfile(key, payload);
@@ -309,9 +309,9 @@ const TableRenderer = {
                         } catch(e) { /* ignore */ }
                     }).catch(()=>{});
                 } catch(e) { /* ignore */ }
-                console.log('[DEBUG] loadProfile EXIT after switchProfile', { key });
+                console.debug('[DEBUG] loadProfile EXIT after switchProfile', { key });
             } else {
-                console.log('[DEBUG] Profile found in cache but no active DOM; rebuilding from cached state', key);
+                console.debug('[DEBUG] Profile found in cache but no active DOM; rebuilding from cached state', key);
                 const cachedState = App.ProfileCache[key].state || {};
                 // Ensure token set
                 cachedState._switchToken = switchToken;
@@ -329,7 +329,7 @@ const TableRenderer = {
                             } catch(e) { /* ignore */ }
                         }).catch(()=>{});
                     } catch(e) { /* ignore */ }
-                    console.log('[DEBUG] loadProfile EXIT after rebuildProfileView (from cache)', { key });
+                    console.debug('[DEBUG] loadProfile EXIT after rebuildProfileView (from cache)', { key });
                 } catch(rebErr) {
                     console.error('[DEBUG] rebuild from cache failed, falling back to full build', rebErr);
                     // Fallback to fresh build path below
@@ -337,7 +337,7 @@ const TableRenderer = {
             }
             return;
         }
-        console.log('[DEBUG] Building new profile for key', key);
+        console.debug('[DEBUG] Building new profile for key', key);
         let preparedData;
         try {
             preparedData = this.prepareOfferData(payload.data);
@@ -345,7 +345,7 @@ const TableRenderer = {
             // a race where updateItineraries cannot find destination TDs by ID.
             // We'll trigger hydration after updateView so links are created only when rows exist.
             // (hydration invocation moved to post-render locations below)
-            console.log('[DEBUG] prepareOfferData result:', preparedData);
+            console.debug('[DEBUG] prepareOfferData result:', preparedData);
         } catch (e) {
             console.error('[DEBUG] Error in prepareOfferData', e, payload);
             preparedData = {};
@@ -388,7 +388,7 @@ const TableRenderer = {
         // Load persisted preference for Hide TIER
         try {
             const savedPref = (typeof goboStorageGet === 'function' ? goboStorageGet('goboHideTier') : localStorage.getItem('goboHideTier'));
-            console.log('[DEBUG] gobo storage goboHideTier:', savedPref);
+            console.debug('[DEBUG] gobo storage goboHideTier:', savedPref);
             if (savedPref !== null) state.hideTierSailings = savedPref === 'true';
         } catch (e) {
             console.error('[DEBUG] Error accessing storage for goboHideTier', e);
@@ -417,7 +417,7 @@ const TableRenderer = {
         state.thead = App.TableBuilder.createTableHeader(state);
         state.table = App.TableBuilder.createMainTable();
         state.tbody = document.createElement('tbody');
-        console.log('[DEBUG] New profile state built', state);
+        console.debug('[DEBUG] New profile state built', state);
         // Create breadcrumbContainer
         const breadcrumbContainer = document.createElement('div');
         breadcrumbContainer.className = 'breadcrumb-container';
@@ -442,18 +442,18 @@ const TableRenderer = {
         scrollContainer.appendChild(state.accordionContainer);
         // Cache current if exists
         const currentScroll = document.querySelector('.table-scroll-container');
-        console.log('[DEBUG] currentScroll:', currentScroll);
+        console.debug('[DEBUG] currentScroll:', currentScroll);
         if (currentScroll && App.CurrentProfile && App.CurrentProfile.key) {
             App.ProfileCache[App.CurrentProfile.key] = {
                 scrollContainer: currentScroll,
                 state: App.TableRenderer.lastState
             };
-            console.log('[DEBUG] Cached current profile', App.CurrentProfile.key);
+            console.debug('[DEBUG] Cached current profile', App.CurrentProfile.key);
         }
         // Replace scrollContainer
         if (currentScroll) {
             currentScroll.replaceWith(scrollContainer);
-            console.log('[DEBUG] Replaced scrollContainer in DOM');
+            console.debug('[DEBUG] Replaced scrollContainer in DOM');
         }
         // Update lastState and current profile
         App.TableRenderer.lastState = state;
@@ -467,10 +467,10 @@ const TableRenderer = {
             scrollContainer: scrollContainer,
             state: state
         };
-        console.log('[DEBUG] Cached new profile', key);
-        console.log('[DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
+        console.debug('[DEBUG] Cached new profile', key);
+        console.debug('[DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
         // Render the view
-        console.log('[DEBUG] Calling updateView with state');
+        console.debug('[DEBUG] Calling updateView with state');
         this.updateView(state);
         // After rendering the table, hydrate itineraries and apply links. Use requestAnimationFrame
         // to ensure the browser has painted the newly inserted rows so document.getElementById() can find them.
@@ -488,7 +488,7 @@ const TableRenderer = {
         } catch(e) { /* ignore */ }
         // Final highlight guard
         if (this.currentSwitchToken === switchToken) this._applyActiveTabHighlight(key);
-        console.log('[DEBUG] loadProfile EXIT after updateView', { key });
+        console.debug('[DEBUG] loadProfile EXIT after updateView', { key });
     },
     prepareOfferData(data) {
         let originalOffers = [];
@@ -686,7 +686,7 @@ const TableRenderer = {
             // Include savedAt to mark this payload as fresh compared to any cached DOM
             this.loadProfile(state.selectedProfileKey, { data, savedAt: Date.now() });
         } catch (error) {
-            console.log('Failed to display table:', error.message);
+            console.error('Failed to display table:', error.message);
             App.ErrorHandler.showError('Failed to display table. Please try again.');
             document.body.style.overflow = '';
             const existingBackdrop = document.getElementById('gobo-backdrop');
@@ -778,7 +778,7 @@ const TableRenderer = {
         if (this.currentSwitchToken === state._switchToken) this._applyActiveTabHighlight(key);
     },
     updateView(state) {
-        console.log('[tableRenderer] updateView ENTRY', state);
+        console.debug('[DEBUG][tableRenderer] updateView ENTRY', state);
         const switchToken = state._switchToken;
         // Refined stale token handling: allow intra-profile interactions (like grouping to accordion)
         if (switchToken && this.currentSwitchToken && this.currentSwitchToken !== switchToken) {
@@ -938,7 +938,7 @@ const TableRenderer = {
                 }
             } catch (diagErr) { /* ignore diagnostic errors */ }
         }
-        console.log('[tableRenderer] updateView EXIT');
+        console.debug('[DEBUG][tableRenderer] updateView EXIT');
     },
     // Removed updateBreadcrumb; logic moved to features/breadcrumbs.js
     updateItineraries(hydrated) {

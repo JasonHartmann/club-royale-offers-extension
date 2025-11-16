@@ -212,18 +212,18 @@ const AdvancedSearch = {
                 source = Array.isArray(state.sortedOffers) && state.sortedOffers.length ? state.sortedOffers : (Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : (state.fullOriginalOffers || []));
             }
             const set = new Set();
-            source.forEach(w => {
+            const normSet = new Set(); // O(1) membership for normalized values
+            for (let i = 0; i < source.length; i++) {
+                const w = source[i];
                 try {
-                    // Use filtering variant so suggestions reflect tax flag
                     const raw = (Filtering.getOfferColumnValueForFiltering ? Filtering.getOfferColumnValueForFiltering(w.offer, w.sailing, fieldKey, state) : Filtering.getOfferColumnValue(w.offer, w.sailing, fieldKey));
-                    if (raw == null) return;
+                    if (raw == null) continue;
                     const norm = Filtering.normalizePredicateValue(raw, fieldKey);
-                    if (!norm) return;
-                    if (![...set].some(existing => Filtering.normalizePredicateValue(existing, fieldKey) === norm)) {
-                        set.add(raw);
-                    }
+                    if (!norm || normSet.has(norm)) continue;
+                    normSet.add(norm);
+                    set.add(raw);
                 } catch (e) { /* ignore row errors */ }
-            });
+            }
             let arr;
             if (fieldKey === 'departureDayOfWeek') {
                 const weekOrder = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
