@@ -45,6 +45,7 @@
         free: [],
         next: 1,
         _deferredAssign: [],
+        _reentrant: false,
         init: function(){
             if (this.ready) return;
             this._hydrate();
@@ -59,6 +60,7 @@
         },
         _persist: function(force){
             if (!this.ready && !force) return;
+            if (this._reentrant) return; // do not persist while inside ensureIds
             try {
                 safeSet(STORAGE_KEY, JSON.stringify(this.map));
                 safeSet(FREE_KEY, JSON.stringify(this.free));
@@ -145,16 +147,20 @@
         },
         ensureIds: function(keys){
             this.init();
-            if (!Array.isArray(keys)) return this.map;
-            var unique = [];
+            if (!Array.isArray(keys) || !keys.length) return this.map;
+            // Filter to keys needing IDs
+            var assignable = [];
             for (var i=0;i<keys.length;i++) {
                 var k = keys[i];
                 if (!/^gobo-/.test(k)) continue;
-                if (unique.indexOf(k) === -1) unique.push(k);
+                if (this.map[k] == null && assignable.indexOf(k) === -1) assignable.push(k);
             }
-            for (var j=0;j<unique.length;j++) {
-                var key = unique[j];
-                if (this.map[key] == null) {
+            if (!assignable.length) return this.map; // nothing new; avoid write
+            if (this._reentrant) return this.map; // guard against recursion
+            this._reentrant = true;
+            try {
+                for (var j=0;j<assignable.length;j++) {
+                    var key = assignable[j];
                     var id;
                     if (this.free.length) {
                         this.free.sort(function(a,b){ return a-b; });
@@ -164,9 +170,11 @@
                     }
                     this.map[key] = id;
                 }
+                // Do NOT call legacy migration here (avoids extra writes triggering events)
+                this._persist();
+            } finally {
+                this._reentrant = false;
             }
-            this._migrateLegacyKeys(); // second pass in case new legacy IDs appeared
-            this._persist();
             return this.map;
         },
         resolveKey: function(key){
