@@ -112,50 +112,49 @@ const TableRenderer = {
                 this.caching = false;
             }
         }
-    }, loadProfile(key, payload) {
-        // Simplified legacy -> branded migration using ProfileIdManager (preserves numeric ID & removes legacy storage)
+    },
+    detectProfileBrand(key) {
+        // Attempt to infer brand from stored payload sailings (prefer Celebrity => C)
         try {
-            if (/^gobo-(?!R-|C-)[^\s]+$/.test(key)) {
-                const legacyKey = key; // retain original for DOM reconciliation
-                const suffix = key.slice(5);
-                let brand = 'R';
-                // Attempt to infer brand from stored payload sailings (prefer Celebrity => C)
-                try {
-                    const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
-                    if (rawLegacy) {
-                        const pl = JSON.parse(rawLegacy);
-                        const offers = pl?.data?.offers;
-                        if (Array.isArray(offers)) {
-                            outerBrand: for (const off of offers) {
-                                const sailings = off?.campaignOffer?.sailings;
-                                if (Array.isArray(sailings)) {
-                                    for (const s of sailings) {
-                                        const sn = (s?.shipName || '').trim();
-                                        if (/^Celebrity\s/i.test(sn)) { brand = 'C'; break outerBrand; }
-                                        else if (sn) { brand = 'R'; }
-                                    }
+            const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
+            if (rawLegacy) {
+                const pl = JSON.parse(rawLegacy);
+                const offers = pl?.data?.offers;
+                if (Array.isArray(offers)) {
+                    outerBrand: for (const off of offers) {
+                        const sailings = off?.campaignOffer?.sailings;
+                        if (Array.isArray(sailings)) {
+                            for (const s of sailings) {
+                                const sn = (s?.shipName || '').trim();
+                                if (/^[A-Za-z ]+Of The Seas/i.test(sn)) {
+                                    brand = 'R';
+                                    break outerBrand;
+                                } else if (sn) {
+                                    brand = 'C';
                                 }
                             }
                         }
                     }
-                } catch(e){ brand = 'R'; }
+                }
+            }
+        } catch (e) {
+            return 'R';
+        }
+    }, loadProfile(key, payload) {
+        // Simplified legacy -> branded migration using ProfileIdManager (preserves numeric ID & removes legacy storage)
+        try {
+            if (/^gobo-(?!R-|C-)[^\s]+$/.test(key)) {
+                const legacyKey = key;
+                const suffix = key.slice(5);
+                const brand = this.detectProfileBrand(key);
                 const brandedKey = `gobo-${brand}-${suffix}`;
                 if (brandedKey !== key) {
                     try {
-                        if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
-                            ProfileIdManager.init && ProfileIdManager.init();
-                            // Queue or perform migration (preserves existing numeric ID if present, does NOT free it)
-                            ProfileIdManager.migrateLegacyProfile(key, brandedKey, { copyData: true, removeLegacyStorage: true });
-                            // Refresh App.ProfileIdMap after potential migration (may be deferred until ready)
-                            App.ProfileIdMap = { ...(ProfileIdManager.map || {}) };
-                        } else {
-                            // Fallback: only copy storage payload & remove old key; numeric ID map migration will occur later when manager initializes.
-                            const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
-                            if (raw && !(typeof goboStorageGet === 'function' ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey))) {
-                                if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, raw); else localStorage.setItem(brandedKey, raw);
-                                try { if (typeof goboStorageRemove === 'function') goboStorageRemove(key); else localStorage.removeItem(key); } catch(eRm){ /* ignore */ }
-                            }
-                        }
+                        ProfileIdManager.init();
+                        // Queue or perform migration (preserves existing numeric ID if present, does NOT free it)
+                        ProfileIdManager.migrateLegacyProfile(key, brandedKey, { copyData: true, removeLegacyStorage: true });
+                        // Refresh App.ProfileIdMap after potential migration (may be deferred until ready)
+                        App.ProfileIdMap = { ...(ProfileIdManager.map || {}) };
                     } catch(migErr){ /* ignore migration errors */ }
                     // DOM reconciliation: update any existing legacy tab element to point to branded key while preserving badge text
                     try {
