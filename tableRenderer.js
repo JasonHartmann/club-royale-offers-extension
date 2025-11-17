@@ -412,8 +412,8 @@ const TableRenderer = {
     },
     async displayTable(data, selectedProfileKey, overlappingElements) {
         try {
-            // Proactively migrate all legacy profiles (including current) before any ID allocations
-            try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && typeof ProfileIdManager.scanAndMigrateLegacyProfiles === 'function') ProfileIdManager.scanAndMigrateLegacyProfiles(); } catch(e){ /* ignore */ }
+            // Resolve potential legacy selected key early
+            if (typeof resolveProfileKey === 'function' && selectedProfileKey) selectedProfileKey = resolveProfileKey(selectedProfileKey);
             // Always determine current user's key
             let currentKey = null;
             let baseSuffix = null;
@@ -449,7 +449,7 @@ const TableRenderer = {
                     const keys = [];
                     for (let i = 0; i < localStorage.length; i++) {
                         const k = localStorage.key(i);
-                        if (k && /^gobo-/.test(k)) keys.push(k);
+                        if (k && /^gobo-/.test(k)) keys.push(resolveProfileKey ? resolveProfileKey(k) : k);
                     }
                     if (selectedProfileKey && /^gobo-/.test(selectedProfileKey) && !keys.includes(selectedProfileKey)) keys.push(selectedProfileKey);
                     if (currentKey && /^gobo-/.test(currentKey) && !keys.includes(currentKey)) keys.push(currentKey);
