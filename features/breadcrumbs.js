@@ -71,129 +71,20 @@ const Breadcrumbs = {
                         }
                     }
                 } catch (e) {/* ignore */ }
-                // Migration: promote legacy profile keys (gobo-<userKey>) to brand-aware (gobo-R- / gobo-C-)
+                // Legacy normalization: rely on ProfileIdManager having already migrated; remove legacy keys if branded exists.
                 try {
-                    const migrationFlag = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLegacyProfileMigrationDone') : localStorage.getItem('goboLegacyProfileMigrationDone'));
-                    // If migration already completed once, skip unless new legacy candidates without branded counterparts exist
-                    let profileKeysSnapshot = [...profileKeys];
-                    let legacyCandidatesInitial = profileKeysSnapshot.filter(k => /^gobo-(?!R-|C-)[^\s]+$/.test(k));
-                    if (migrationFlag === '1') {
-                        // Filter out legacy keys that already have branded variants to avoid duplication; we won't migrate again
-                        const brandedSuffixes = new Set(profileKeysSnapshot.filter(k => /^gobo-[RC]-/.test(k)).map(k => k.replace(/^gobo-[RC]-/, '')));
-                        legacyCandidatesInitial = legacyCandidatesInitial.filter(k => !brandedSuffixes.has(k.slice(5)));
-                        // If no unmigrated legacy candidates remain, skip full migration block
-                        if (!legacyCandidatesInitial.length) throw new Error('skip-migration');
-                    }
-                    const legacyCandidates = legacyCandidatesInitial;
-                    if (legacyCandidates.length) {
-                        const existingBranded = new Set(profileKeys.filter(k => /^gobo-[RC]-/.test(k)));
-                        // Load existing ProfileId map so we can preserve IDs
-                        let idMap = {};
-                        try {
-                            const rawMap = (typeof goboStorageGet === 'function') ? goboStorageGet('goboProfileIdMap_v1') : localStorage.getItem('goboProfileIdMap_v1');
-                            if (rawMap) idMap = JSON.parse(rawMap) || {};
-                        } catch(e){ idMap = {}; }
-                        let idMapChanged = false;
-                        function inferBrandFromPayload(rawKey) {
-                            try {
-                                const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(rawKey) : localStorage.getItem(rawKey));
-                                if (!raw) return 'R';
-                                const payload = JSON.parse(raw);
-                                const offers = payload?.data?.offers;
-                                if (Array.isArray(offers) && offers.length) {
-                                    for (const off of offers) {
-                                        const sailings = off?.campaignOffer?.sailings;
-                                        if (Array.isArray(sailings)) {
-                                            for (const s of sailings) {
-                                                const sn = (s?.shipName || '').toString().trim();
-                                                if (/^Celebrity\s/i.test(sn)) return 'C';
-                                                if (sn) return 'R';
-                                            }
-                                        }
-                                    }
-                                }
-                            } catch(e){ /* ignore parse */ }
-                            return 'R';
-                        }
-                        let migratedCount = 0;
-                        legacyCandidates.forEach(legacyKey => {
-                            const suffix = legacyKey.slice(5);
-                            const rKey = `gobo-R-${suffix}`; const cKey = `gobo-C-${suffix}`;
-                            if (existingBranded.has(rKey) || existingBranded.has(cKey)) return; // branded already exists
-                            const brand = inferBrandFromPayload(legacyKey);
-                            const newKey = `gobo-${brand}-${suffix}`;
-                            if (existingBranded.has(newKey)) return; // safety
-                            try {
-                                const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(legacyKey) : localStorage.getItem(legacyKey));
-                                if (!raw) return;
-                                const payload = JSON.parse(raw);
-                                if (!payload || !payload.data) return;
-                                payload.brand = brand;
-                                payload.migratedFromLegacy = true;
-                                if (typeof goboStorageSet === 'function') goboStorageSet(newKey, JSON.stringify(payload)); else localStorage.setItem(newKey, JSON.stringify(payload));
-                                existingBranded.add(newKey);
-                                profileKeys.push(newKey);
-                                migratedCount++;
-                                // Preserve profile ID: try storage map then in-memory map fallback
-                                let existingId = idMap[legacyKey];
-                                if (existingId == null && typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.map) {
-                                    existingId = ProfileIdManager.map[legacyKey];
-                                }
-                                if (existingId != null) {
-                                    if (idMap[newKey] == null) idMap[newKey] = existingId; // assign same ID
-                                    delete idMap[legacyKey]; // remove old key mapping WITHOUT freeing ID
-                                    idMapChanged = true;
-                                    // Update in-memory map immediately to avoid ensureIds allocating a new one later
-                                    try {
-                                        if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
-                                            ProfileIdManager.map[newKey] = existingId;
-                                            delete ProfileIdManager.map[legacyKey];
-                                        }
-                                    } catch(midErr){ /* ignore */ }
-                                    // If current profile is this legacy key, update App.CurrentProfile & selectedProfileKey
-                                    try {
-                                        if (App.CurrentProfile && App.CurrentProfile.key === legacyKey) {
-                                            App.CurrentProfile.key = newKey;
-                                            if (App.TableRenderer && App.TableRenderer.lastState) App.TableRenderer.lastState.selectedProfileKey = newKey;
-                                        }
-                                    } catch(curErr){ /* ignore */ }
-                                    // Normalize any linked accounts referencing this legacy key
-                                    try {
-                                        let linked = getLinkedAccounts();
-                                        let changed = false;
-                                        linked = linked.map(acc => {
-                                            if (acc.key === legacyKey) { changed = true; return { ...acc, key: newKey }; }
-                                            return acc;
-                                        });
-                                        // Deduplicate if both legacy + branded existed
-                                        const seen = new Set();
-                                        linked = linked.filter(acc => { const k = acc.key; if (seen.has(k)) { changed = true; return false; } seen.add(k); return true; });
-                                        if (changed) {
-                                            setLinkedAccounts(linked);
-                                            if (linked.length === 2) { try { updateCombinedOffersCache(); } catch(eu) { /* ignore */ } }
-                                        }
-                                    } catch(linkErr){ /* ignore */ }
-                                }
-                                // Remove legacy key so it cannot resurrect the branded one on subsequent renders
-                                try { if (typeof goboStorageRemove === 'function') goboStorageRemove(legacyKey); else localStorage.removeItem(legacyKey); } catch(remErr) { /* ignore */ }
-                            } catch(e){ /* ignore single migration error */ }
+                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                        ProfileIdManager.init();
+                        const brandedSuffixes = new Set(Object.keys(ProfileIdManager.map || {}).filter(k => /^gobo-[RC]-/.test(k)).map(k => k.replace(/^gobo-[RC]-/, '')));
+                        profileKeys = profileKeys.filter(k => {
+                            if (/^gobo-(?!R-|C-)[^\s]+$/.test(k)) {
+                                const suffix = k.slice(5);
+                                if (brandedSuffixes.has(suffix)) return false; // drop legacy if branded present
+                            }
+                            return true;
                         });
-                        if (idMapChanged) {
-                            try {
-                                const serialized = JSON.stringify(idMap);
-                                if (typeof goboStorageSet === 'function') goboStorageSet('goboProfileIdMap_v1', serialized); else localStorage.setItem('goboProfileIdMap_v1', serialized);
-                                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && ProfileIdManager.ready) {
-                                    ProfileIdManager.persist(); // storage already updated, just persist in-memory sequence counters
-                                }
-                            } catch(e){ console.warn('[breadcrumbs] Failed to persist updated idMap during migration', e); }
-                        }
-                        if (migratedCount) {
-                            try { if (typeof goboStorageSet === 'function') goboStorageSet('goboLegacyProfileMigrationDone', '1'); else localStorage.setItem('goboLegacyProfileMigrationDone','1'); } catch(e){/* ignore */}
-                            profileKeys = Array.from(new Set(profileKeys));
-                            console.debug('[breadcrumbs] Migrated legacy profiles (IDs preserved)', { migratedCount });
-                        }
                     }
-                } catch(migErr){ if (migErr && migErr.message === 'skip-migration') { /* intentionally skipped */ } else { console.warn('[breadcrumbs] legacy profile migration error', migErr); } }
+                } catch(normErr){ /* ignore */ }
                 // NEW: group profiles by base user identifier ignoring brand prefix so both R & C show separately
                 function parseProfileKey(k){
                     // Patterns: gobo-<brand>-<userKey> OR legacy gobo-<userKey>
