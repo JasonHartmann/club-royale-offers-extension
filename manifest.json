@@ -74,7 +74,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "images/*"
+        "images/*",
+        "styles/*"
       ],
       "matches": [
         "<all_urls>"

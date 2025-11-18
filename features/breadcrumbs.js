@@ -42,21 +42,6 @@ const Breadcrumbs = {
             // Build tabs (unchanged)
             try {
                 const profiles = [];
-                // Helper to normalize a key for linking (prefer branded variant if present)
-                function resolveLinkKey(rawKey){
-                    try {
-                        if (/^gobo-(R|C)-/.test(rawKey)) return rawKey; // already branded
-                        // If legacy, attempt to find branded variant (R or C)
-                        const suffix = rawKey.replace(/^gobo-/, '');
-                        const rKey = `gobo-R-${suffix}`; const cKey = `gobo-C-${suffix}`;
-                        // Prefer whichever exists in storage
-                        const rExists = (typeof goboStorageGet === 'function' ? goboStorageGet(rKey) : localStorage.getItem(rKey));
-                        if (rExists) return rKey;
-                        const cExists = (typeof goboStorageGet === 'function' ? goboStorageGet(cKey) : localStorage.getItem(cKey));
-                        if (cExists) return cKey;
-                    } catch(e){ /* ignore */ }
-                    return rawKey; // fallback unchanged
-                }
                 try {
                     if (window.Favorites && Favorites.ensureProfileExists) Favorites.ensureProfileExists();
                 } catch (e) {/* ignore */
@@ -71,52 +56,8 @@ const Breadcrumbs = {
                         }
                     }
                 } catch (e) {/* ignore */ }
-                // Legacy normalization: rely on ProfileIdManager having already migrated; remove legacy keys if branded exists.
-                try {
-                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
-                        ProfileIdManager.init();
-                        const brandedSuffixes = new Set(Object.keys(ProfileIdManager.map || {}).filter(k => /^gobo-[RC]-/.test(k)).map(k => k.replace(/^gobo-[RC]-/, '')));
-                        profileKeys = profileKeys.filter(k => {
-                            if (/^gobo-(?!R-|C-)[^\s]+$/.test(k)) {
-                                const suffix = k.slice(5);
-                                if (brandedSuffixes.has(suffix)) return false; // drop legacy if branded present
-                            }
-                            return true;
-                        });
-                    }
-                } catch(normErr){ /* ignore */ }
-                // NEW: group profiles by base user identifier ignoring brand prefix so both R & C show separately
-                function parseProfileKey(k){
-                    // Patterns: gobo-<brand>-<userKey> OR legacy gobo-<userKey>
-                    if(!/^gobo-/.test(k)) return null;
-                    const rest = k.slice(5);
-                    const parts = rest.split('-');
-                    if(parts.length>=2 && (parts[0]==='R' || parts[0]==='C')){
-                        const brand = parts[0];
-                        const userKey = parts.slice(1).join('-');
-                        return { brand, userKey, legacy:false, full:k };
-                    }
-                    return { brand:null, userKey:rest, legacy:true, full:k };
-                }
-                const parsedProfiles = profileKeys.map(parseProfileKey).filter(Boolean);
-                // Build a map userKey -> { legacy: <obj?>, brands: {R: obj, C: obj} }
-                const userMap = new Map();
-                parsedProfiles.forEach(p => {
-                    const entry = userMap.get(p.userKey) || { legacy:null, brands:{} };
-                    if (p.legacy) entry.legacy = p; else entry.brands[p.brand] = p;
-                    userMap.set(p.userKey, entry);
-                });
-                // Expand into final profile keys list: Prefer brand-specific; include legacy only if no branded exists
-                profileKeys = [];
-                userMap.forEach(entry => {
-                    const hasR = !!entry.brands.R; const hasC = !!entry.brands.C; const hasLegacy = !!entry.legacy;
-                    if (hasR) profileKeys.push(entry.brands.R.full);
-                    if (hasC) profileKeys.push(entry.brands.C.full);
-                    if (!hasR && !hasC && hasLegacy) profileKeys.push(entry.legacy.full); // show legacy only when no branded variant
-                });
-                // Deduplicate while preserving order
                 profileKeys = Array.from(new Set(profileKeys));
-                // RE-ADD favorites key if it exists (was excluded from brand grouping)
+                // Include favorites profile if stored
                 try {
                     const favRaw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites'));
                     if (favRaw && !profileKeys.includes('goob-favorites')) profileKeys.push('goob-favorites');
@@ -126,13 +67,11 @@ const Breadcrumbs = {
                         const rawStored = (typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k));
                         const payload = rawStored ? JSON.parse(rawStored) : null;
                         if (payload && payload.data && payload.savedAt) {
-                            const parsed = parseProfileKey(k);
                             let label;
                             if (k === 'goob-favorites') {
                                 label = 'Favorites';
                             } else {
-                                // Use userKey portion only (exclude brand prefix) for branded keys; legacy keeps same behavior.
-                                const userKey = parsed ? parsed.userKey : k.replace(/^gobo-/, '');
+                                const userKey = k.replace(/^gobo-/, '');
                                 // Convert underscores back to '@' like previous logic (best-effort email reconstruction)
                                 label = userKey.replace(/_/g, '@');
                             }
@@ -234,7 +173,7 @@ const Breadcrumbs = {
                             let badgeText = 'C';
                             let badgeClass = 'profile-id-badge-combined';
                             try {
-                                const linked = getLinkedAccounts().map(acc => ({ ...acc, key: resolveLinkKey(acc.key) }));
+                                const linked = getLinkedAccounts();
                                 if (linked.length >= 2) {
                                     // Ensure ProfileIdMap has IDs for normalized keys
                                     const ids = linked.slice(0, 2).map(acc => {
@@ -259,23 +198,8 @@ const Breadcrumbs = {
                             wrapper.appendChild(labelDiv);
                             labelDiv = wrapper;
                         }
-                        if (/^gobo-/.test(storageKey)) {
-                            // Brand badge logic
-                            let brandBadge = null;
-                            const brandParse = parseProfileKey(storageKey);
-                            if (brandParse && brandParse.brand) {
-                                brandBadge = brandParse.brand; // 'R' or 'C'
-                            } else {
-                                // Attempt to read brand from payload
-                                try {
-                                    const rawPayload = (typeof goboStorageGet === 'function' ? goboStorageGet(storageKey) : localStorage.getItem(storageKey));
-                                    if (rawPayload) {
-                                        const parsedPayload = JSON.parse(rawPayload);
-                                        if (parsedPayload && parsedPayload.brand && (parsedPayload.brand==='R' || parsedPayload.brand==='C')) brandBadge = parsedPayload.brand;
-                                    }
-                                } catch(eb){ /* ignore */ }
-                            }
-                            try {
+                        try {
+                            if (/^gobo-/.test(storageKey)) {
                                 const pid = App.ProfileIdMap ? App.ProfileIdMap[storageKey] : null;
                                 if (pid) {
                                     const badge = document.createElement('span');
@@ -285,20 +209,12 @@ const Breadcrumbs = {
                                     const wrapper = document.createElement('div');
                                     wrapper.style.display = 'flex';
                                     wrapper.style.alignItems = 'center';
-                                    if (brandBadge) {
-                                        const brandSpan = document.createElement('span');
-                                        brandSpan.className = 'profile-brand-badge';
-                                        brandSpan.textContent = brandBadge;
-                                        brandSpan.style.cssText = 'background:#004c97;color:#fff;font-size:10px;font-weight:600;padding:2px 4px;border-radius:4px;margin-right:4px;';
-                                        if (brandBadge==='C') brandSpan.style.background = '#222';
-                                        wrapper.appendChild(brandSpan);
-                                    }
                                     wrapper.appendChild(badge);
                                     wrapper.appendChild(labelDiv);
                                     labelDiv = wrapper;
                                 }
-                            } catch (e) {/* ignore */ }
-                        }
+                            }
+                        } catch (e) {/* ignore */ }
                         const loyaltyDiv = document.createElement('div');
                         loyaltyDiv.className = 'profile-tab-loyalty';
                         loyaltyDiv.textContent = loyaltyId ? `${loyaltyId}` : '';
@@ -327,18 +243,17 @@ const Breadcrumbs = {
                             iconContainer.style.gap = '2px';
                             iconContainer.style.marginLeft = '4px';
                             const linkIcon = document.createElement('span');
-                            const isLinked = getLinkedAccounts().some(acc => acc.key === storageKey || acc.key === resolveLinkKey(storageKey) || resolveLinkKey(acc.key) === storageKey);
+                            const isLinked = getLinkedAccounts().some(acc => acc.key === storageKey);
                             linkIcon.innerHTML = isLinked ? `<img src="${getAssetUrl('images/link.png')}" width="16" height="16" alt="Linked" style="vertical-align:middle;" />` : `<img src="${getAssetUrl('images/link_off.png')}" width="16" height="16" alt="Unlinked" style="vertical-align:middle;" />`;
                             linkIcon.style.cursor = 'pointer';
                             linkIcon.title = isLinked ? 'Unlink account' : 'Link account';
                             linkIcon.style.marginBottom = '2px';
                             linkIcon.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                const linkKey = resolveLinkKey(storageKey);
-                                let updated = getLinkedAccounts().map(acc => ({...acc, key: resolveLinkKey(acc.key)}));
-                                // Deduplicate after normalization
+                                const linkKey = storageKey;
+                                let updated = getLinkedAccounts().slice();
                                 const seen = new Set();
-                                updated = updated.filter(acc => { if (seen.has(acc.key)) return false; seen.add(acc.key); return true; });
+                                updated = updated.filter(acc => { if (!acc || !acc.key) return false; if (seen.has(acc.key)) return false; seen.add(acc.key); return true; });
                                 const currentlyLinked = updated.some(acc => acc.key === linkKey);
                                 if (currentlyLinked) {
                                     updated = updated.filter(acc => acc.key !== linkKey);

@@ -113,67 +113,7 @@ const TableRenderer = {
             }
         }
     },
-    detectProfileBrand(key) {
-        // Attempt to infer brand from stored payload sailings (prefer Celebrity => C)
-        try {
-            const rawLegacy = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
-            if (rawLegacy) {
-                const pl = JSON.parse(rawLegacy);
-                const offers = pl?.data?.offers;
-                if (Array.isArray(offers)) {
-                    outerBrand: for (const off of offers) {
-                        const sailings = off?.campaignOffer?.sailings;
-                        if (Array.isArray(sailings)) {
-                            for (const s of sailings) {
-                                const sn = (s?.shipName || '').trim();
-                                if (/^[A-Za-z ]+Of The Seas/i.test(sn)) {
-                                    brand = 'R';
-                                    break outerBrand;
-                                } else if (sn) {
-                                    brand = 'C';
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e) {
-            return 'R';
-        }
-    }, loadProfile(key, payload) {
-        // Simplified legacy -> branded migration using ProfileIdManager (preserves numeric ID & removes legacy storage)
-        try {
-            if (/^gobo-(?!R-|C-)[^\s]+$/.test(key)) {
-                const legacyKey = key;
-                const suffix = key.slice(5);
-                const brand = this.detectProfileBrand(key);
-                const brandedKey = `gobo-${brand}-${suffix}`;
-                if (brandedKey !== key) {
-                    try {
-                        ProfileIdManager.init();
-                        // Queue or perform migration (preserves existing numeric ID if present, does NOT free it)
-                        ProfileIdManager.migrateLegacyProfile(key, brandedKey, { copyData: true, removeLegacyStorage: true });
-                        // Refresh App.ProfileIdMap after potential migration (may be deferred until ready)
-                        App.ProfileIdMap = { ...(ProfileIdManager.map || {}) };
-                    } catch(migErr){ /* ignore migration errors */ }
-                    // DOM reconciliation: update any existing legacy tab element to point to branded key while preserving badge text
-                    try {
-                        const legacyTab = document.querySelector(`.profile-tab[data-storage-key="${legacyKey}"]`);
-                        if (legacyTab) {
-                            legacyTab.setAttribute('data-storage-key', brandedKey);
-                            legacyTab.setAttribute('data-key', brandedKey);
-                            // Keep existing badge text (numeric ID) intact; if missing, try to set from map
-                            const badgeEl = legacyTab.querySelector('.profile-id-badge');
-                            if (badgeEl && !badgeEl.textContent.trim()) {
-                                const idVal = (App.ProfileIdMap && App.ProfileIdMap[legacyKey]) || (App.ProfileIdMap && App.ProfileIdMap[brandedKey]);
-                                if (idVal != null) badgeEl.textContent = idVal;
-                            }
-                        }
-                    } catch(eDom){ /* ignore */ }
-                    key = brandedKey;
-                }
-            }
-        } catch(e){ /* ignore legacy migration errors */ }
+    loadProfile(key, payload) {
         // Ensure stable ID for this key immediately WITHOUT allocating a new one if preserved
         try {
             if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
@@ -411,11 +351,8 @@ const TableRenderer = {
     },
     async displayTable(data, selectedProfileKey, overlappingElements) {
         try {
-            // Resolve potential legacy selected key early
-            if (typeof resolveProfileKey === 'function' && selectedProfileKey) selectedProfileKey = resolveProfileKey(selectedProfileKey);
             // Always determine current user's key
             let currentKey = null;
-            let baseSuffix = null;
             try {
                 const sessionRaw = localStorage.getItem('persist:session');
                 if (sessionRaw) {
@@ -424,20 +361,7 @@ const TableRenderer = {
                     if (user) {
                         const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
                         const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                        baseSuffix = usernameKey;
-                        currentKey = `gobo-${usernameKey}`; // legacy form first
-                        // Prefer branded variant if available
-                        try {
-                            if (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') {
-                                const brand = App.Utils.detectBrand();
-                                const brandedKey = `gobo-${brand}-${usernameKey}`;
-                                const exists = (typeof goboStorageGet === 'function' ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey));
-                                if (exists) {
-                                    currentKey = brandedKey;
-                                    console.debug('[tableRenderer] Using branded profile key instead of legacy', { brandedKey, legacyKey:`gobo-${usernameKey}` });
-                                }
-                            }
-                        } catch(e){ /* ignore brand selection errors */ }
+                        currentKey = `gobo-${usernameKey}`;
                     }
                 }
             } catch (e) { /* ignore */ }
@@ -448,7 +372,7 @@ const TableRenderer = {
                     const keys = [];
                     for (let i = 0; i < localStorage.length; i++) {
                         const k = localStorage.key(i);
-                        if (k && /^gobo-/.test(k)) keys.push(resolveProfileKey ? resolveProfileKey(k) : k);
+                        if (k && /^gobo-/.test(k)) keys.push(k);
                     }
                     if (selectedProfileKey && /^gobo-/.test(selectedProfileKey) && !keys.includes(selectedProfileKey)) keys.push(selectedProfileKey);
                     if (currentKey && /^gobo-/.test(currentKey) && !keys.includes(currentKey)) keys.push(currentKey);

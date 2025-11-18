@@ -12,32 +12,6 @@
     function error(){ try { console.error('[ProfileIdManager]', [].slice.call(arguments)); } catch(e){} }
     function safeGet(k){ try { if (typeof goboStorageGet === 'function') return goboStorageGet(k); if (global.localStorage) return global.localStorage.getItem(k); } catch(e){} return null; }
     function safeSet(k,v){ try { if (typeof goboStorageSet === 'function') goboStorageSet(k,v); else if (global.localStorage) global.localStorage.setItem(k,v); } catch(e){} }
-    function safeRemove(k){ try { if (typeof goboStorageRemove === 'function') goboStorageRemove(k); else if (global.localStorage) global.localStorage.removeItem(k); } catch(e){} }
-
-    function detectBrandFromRaw(raw){
-        var brand = 'R';
-        if (!raw) return brand;
-        try {
-            var pl = JSON.parse(raw);
-            var data = pl && pl.data;
-            var offers = data && data.offers;
-            if (offers && Array.isArray(offers)) {
-                for (var i=0;i<offers.length;i++) {
-                    var off = offers[i];
-                    var co = off && off.campaignOffer;
-                    var sailings = co && co.sailings;
-                    if (!sailings) continue;
-                    for (var j=0;j<sailings.length;j++) {
-                        var s = sailings[j];
-                        var sn = s && s.shipName ? String(s.shipName).trim() : '';
-                        if (/^Celebrity\s/i.test(sn)) { brand = 'C'; return brand; }
-                        else if (sn) brand = 'R';
-                    }
-                }
-            }
-        } catch(e){ /* default R */ }
-        return brand;
-    }
 
     var mgr = {
         ready: false,
@@ -46,88 +20,9 @@
         next: 1,
         _deferredAssign: [],
         _reentrant: false,
-        migrateAllLegacyKeys: function(){
-            // Convert EVERY legacy profile key to branded form preserving numeric ID
-            var changed = false;
-            var ls = global.localStorage;
-            if (!ls) return false;
-            var legacyKeys = [];
-            for (var i=0;i<ls.length;i++){ var k = ls.key(i); if (k && /^gobo-(?!R-|C-)[^\s]+$/.test(k)) legacyKeys.push(k); }
-            if (!legacyKeys.length) return false;
-            for (var a=0;a<legacyKeys.length;a++){
-                var legacyKey = legacyKeys[a];
-                var legacyId = this.map[legacyKey];
-                // If ID not yet assigned, assign it now WITHOUT creating branded first
-                if (legacyId == null){
-                    // allocate id same way ensureIds would
-                    var newId;
-                    if (this.free.length){ this.free.sort(function(x,y){return x-y;}); newId = this.free.shift(); } else { newId = this.next++; }
-                    this.map[legacyKey] = newId;
-                    legacyId = newId;
-                }
-                var rawLegacy = safeGet(legacyKey);
-                var brand = detectBrandFromRaw(rawLegacy);
-                var suffix = legacyKey.slice(5);
-                var brandedKey = 'gobo-' + brand + '-' + suffix;
-                if (brandedKey === legacyKey) continue; // should not happen given regex but safe
-                var existingBrandId = this.map[brandedKey];
-                if (existingBrandId != null && existingBrandId !== legacyId){
-                    // Free existing brand id, move legacy id over
-                    if (this.free.indexOf(existingBrandId) === -1) this.free.push(existingBrandId);
-                    this.map[brandedKey] = legacyId;
-                    delete this.map[legacyKey];
-                    changed = true;
-                } else if (existingBrandId === legacyId){
-                    // Remove duplicate legacy mapping
-                    delete this.map[legacyKey];
-                    changed = true;
-                } else if (existingBrandId == null){
-                    this.map[brandedKey] = legacyId;
-                    delete this.map[legacyKey];
-                    changed = true;
-                }
-                // Move payload & remove legacy key
-                try {
-                    var rawBranded = safeGet(brandedKey);
-                    if (!rawBranded && rawLegacy) safeSet(brandedKey, rawLegacy);
-                    safeRemove(legacyKey);
-                } catch(eMv){ error('migrateAllLegacyKeys payload move error', legacyKey, eMv); }
-                // Active profile/key reconciliation
-                try {
-                    if (global.App && App.CurrentProfile && App.CurrentProfile.key === legacyKey) {
-                        App.CurrentProfile.key = brandedKey;
-                        if (App.TableRenderer && App.TableRenderer.lastState) App.TableRenderer.lastState.selectedProfileKey = brandedKey;
-                    }
-                } catch(eAct){ /* ignore */ }
-                // Linked accounts normalization for this key
-                try {
-                    var rawLA = safeGet('goboLinkedAccounts');
-                    if (rawLA){
-                        var la = JSON.parse(rawLA);
-                        if (Array.isArray(la)){
-                            var laChanged = false;
-                            for (var li=0; li<la.length; li++){
-                                if (la[li] && la[li].key === legacyKey){ la[li].key = brandedKey; laChanged = true; }
-                            }
-                            if (laChanged) safeSet('goboLinkedAccounts', JSON.stringify(la));
-                        }
-                    }
-                } catch(eLA){ /* ignore */ }
-            }
-            if (changed){
-                this._persist(true);
-                try {
-                    if (global.App){ App.ProfileIdMap = { ...this.map }; }
-                    if (typeof document !== 'undefined'){ document.dispatchEvent(new CustomEvent('goboLegacyProfilesMigrated')); }
-                } catch(eUpd){ /* ignore */ }
-            }
-            return changed;
-        },
         init: function(){
             if (this.ready) return;
             this._hydrate();
-            // Perform migration AFTER hydrate before marking ready
-            this.migrateAllLegacyKeys();
             this.ready = true;
             this._applyDeferredAssign();
         },
@@ -145,89 +40,9 @@
                 safeSet(NEXT_KEY, JSON.stringify(this.next));
             } catch(e){ error('persist fail', e); }
         },
-        _migrateLegacyKeys: function(){
-            // Find legacy keys: gobo-<suffix> without R- or C-
-            var legacyKeys = [];
-            try {
-                var ls = global.localStorage;
-                if (ls) {
-                    for (var i=0;i<ls.length;i++) {
-                        var k = ls.key(i);
-                        if (k && /^gobo-(?!R-|C-)[^\s]+$/.test(k)) legacyKeys.push(k);
-                    }
-                }
-            } catch(e){ /* ignore */ }
-            if (!legacyKeys.length) { this._normalizeLinkedAccounts(); return; }
-            var mutated = false;
-            for (var a=0;a<legacyKeys.length;a++) {
-                var legacyKey = legacyKeys[a];
-                var id = this.map[legacyKey];
-                if (id == null) { warn('legacy key lacks id, skip', legacyKey); continue; }
-                var rawLegacy = safeGet(legacyKey);
-                var brand = detectBrandFromRaw(rawLegacy);
-                var suffix = legacyKey.slice(5);
-                var brandedKey = 'gobo-' + brand + '-' + suffix;
-                if (brandedKey === legacyKey) continue;
-                var existingBrandId = this.map[brandedKey];
-                if (existingBrandId != null && existingBrandId !== id) {
-                    if (this.free.indexOf(existingBrandId) === -1) this.free.push(existingBrandId);
-                    this.map[brandedKey] = id;
-                    delete this.map[legacyKey];
-                    mutated = true;
-                } else if (existingBrandId === id) {
-                    delete this.map[legacyKey];
-                    mutated = true;
-                } else if (existingBrandId == null) {
-                    this.map[brandedKey] = id;
-                    delete this.map[legacyKey];
-                    mutated = true;
-                }
-                // Move payload if needed
-                try {
-                    var rawBranded = safeGet(brandedKey);
-                    if (!rawBranded && rawLegacy) safeSet(brandedKey, rawLegacy);
-                    safeRemove(legacyKey);
-                } catch(eMv){ error('payload move error', legacyKey, eMv); }
-            }
-            this._normalizeLinkedAccounts();
-            if (mutated) this._persist(true);
-        },
-        _normalizeLinkedAccounts: function(){
-            var rawLinked = safeGet('goboLinkedAccounts');
-            if (!rawLinked) return;
-            var arr; try { arr = JSON.parse(rawLinked); } catch(e){ return; }
-            if (!Array.isArray(arr)) return;
-            var changed = false;
-            for (var i=0;i<arr.length;i++) {
-                var acc = arr[i];
-                if (!acc || !acc.key || !/^gobo-/.test(acc.key)) continue;
-                if (/^gobo-(R-|C-)/.test(acc.key)) continue;
-                var id = this.map[acc.key];
-                var rawProfile = safeGet(acc.key);
-                var brand = detectBrandFromRaw(rawProfile);
-                var suffix = acc.key.slice(5);
-                var brandedKey = 'gobo-' + brand + '-' + suffix;
-                if (brandedKey === acc.key) continue;
-                if (id != null && this.map[brandedKey] == null) {
-                    this.map[brandedKey] = id;
-                    delete this.map[acc.key];
-                }
-                try {
-                    var rawBranded = safeGet(brandedKey);
-                    if (!rawBranded && rawProfile) safeSet(brandedKey, rawProfile);
-                    safeRemove(acc.key);
-                } catch(eRem){ error('linked acct move error', acc.key, eRem); }
-                arr[i] = { key: brandedKey };
-                changed = true;
-            }
-            if (changed) safeSet('goboLinkedAccounts', JSON.stringify(arr));
-            if (changed) this._persist(true);
-        },
         ensureIds: function(keys){
             this.init();
             if (!Array.isArray(keys) || !keys.length) return this.map;
-            // First migrate any remaining legacy keys to avoid assigning new IDs to them separately
-            this.migrateAllLegacyKeys();
             var assignable = [];
             for (var i=0;i<keys.length;i++) {
                 var k = keys[i];
@@ -238,45 +53,17 @@
             if (this._reentrant) return this.map;
             this._reentrant = true;
             try {
+                if (this.free.length) this.free.sort(function(a,b){ return a-b; });
                 for (var j=0;j<assignable.length;j++) {
                     var key = assignable[j];
                     var id;
-                    if (this.free.length) { this.free.sort(function(a,b){ return a-b; }); id = this.free.shift(); }
+                    if (this.free.length) { id = this.free.shift(); }
                     else { id = this.next++; }
                     this.map[key] = id;
                 }
                 this._persist();
             } finally { this._reentrant = false; }
             return this.map;
-        },
-        resolveKey: function(key){
-            if (/^gobo-(?!R-|C-)/.test(key)) {
-                var suffix = key.slice(5);
-                var rKey = 'gobo-R-' + suffix;
-                var cKey = 'gobo-C-' + suffix;
-                if (this.map[rKey] != null) return rKey;
-                if (this.map[cKey] != null) return cKey;
-            }
-            return key;
-        },
-        migrateLegacyProfile: function(legacyKey, newKey){
-            // Shim kept for backward compatibility; rely on central migration
-            if (!legacyKey || !newKey || legacyKey === newKey) return;
-            if (!/^gobo-(?!R-|C-)/.test(legacyKey)) return; // only legacy source
-            this.init();
-            var id = this.map[legacyKey];
-            if (id == null) return;
-            var existing = this.map[newKey];
-            if (existing != null && existing !== id) {
-                if (this.free.indexOf(existing) === -1) this.free.push(existing);
-            }
-            this.map[newKey] = id;
-            delete this.map[legacyKey];
-            var rawLegacy = safeGet(legacyKey);
-            var rawBranded = safeGet(newKey);
-            if (rawLegacy && !rawBranded) safeSet(newKey, rawLegacy);
-            safeRemove(legacyKey);
-            this._persist(true);
         },
         persist: function(){ this._persist(true); },
         getId: function(k){ this.init(); return this.map[k] != null ? this.map[k] : null; },
@@ -286,7 +73,6 @@
 
     global.ProfileIdManager = mgr;
     try { mgr.init(); } catch(e){ }
-    if (!global.resolveProfileKey) global.resolveProfileKey = function(k){ return global.ProfileIdManager ? global.ProfileIdManager.resolveKey(k) : k; };
     if (!global.dumpProfileIdState) global.dumpProfileIdState = function(){ return global.ProfileIdManager ? global.ProfileIdManager.dump() : null; };
 })(typeof window !== 'undefined' ? window : globalThis);
 
