@@ -174,6 +174,77 @@ Key files:
 - `modal.js`: Modal creation and auxiliary UI elements.
 - `utils_core.js` + `utils_row.js` / `domUtils.js`: Utilities and DOM helpers (utils.js has been split into core helpers and row rendering).
 
+### Prerequisites
+
+- Latest Chrome/Edge/Firefox (for loading the unpacked extension during development).
+- Node.js 18+ (optional) if you want to run quick utility scripts or add tooling later. The extension itself ships as plain ES modules and does **not** require `npm install` today.
+- Xcode 14+ only if you plan to build the Safari Web Extension container (see Safari section above).
+
+### Local Setup (5‑minute onboarding)
+
+1. Clone the repo and open it in VS Code (or your editor of choice).
+2. No build step is needed—`manifest.json` points directly at the source files under the repo root.
+3. Load the extension unpacked in your preferred browser (see Installation section). Keep the extensions page pinned so you can click **Reload** after edits.
+4. Visit the Club Royale Offers page. The content script auto-injects when the URL matches the manifest `matches` entries.
+
+Tips for fast iteration:
+- Use Chrome’s **Extensions** toolbar button → “Inspect views” to open a DevTools console scoped to the content script.
+- The `styles/` folder is read directly; editing CSS and pressing `Ctrl/Cmd+R` on the target tab reapplies styles immediately.
+- If you need persistent test data, toggle `window.GOBO_DEBUG_ENABLED = true` (see Debug Logging section) and inspect `chrome.storage.local` via DevTools → Application tab.
+
+### Project Layout Cheat Sheet
+
+| Path | Purpose |
+|------|---------|
+| `features/` | Feature-specific modules (accordion, favorites, advanced search, etc.). |
+| `utils/` | Shared helpers grouped by concern (`b2b`, sorting, DOM, pricing). |
+| `styles/` | Plain CSS plus generated Tailwind bundle for quick prototyping. |
+| `scripts/` | Utility snippets that can be pasted into DevTools for data cleanup/imports. |
+| `tests/` | Lightweight browser-run harnesses (currently `b2bUtils` coverage). |
+| `images/` | Extension icons/art. |
+| `app.js` / `modal.js` / `tableRenderer.js` | Core entry points executed by the content script listed in `manifest.json`. |
+
+### Testing & QA
+
+**Automated (Jest):**
+
+```powershell
+npm install
+npm test
+```
+
+This runs the Jest harness that exercises `B2BUtils.computeB2BDepth` via `tests/b2bUtils.test.js`. The GitHub Action workflow runs the same command and will fail the build if tests fail.
+
+**Manual browser harness (optional):**
+
+1. Load the extension and open the offers page in Chrome.
+2. Open DevTools → Console and paste in:
+  ```javascript
+  import(chrome.runtime.getURL('tests/b2bUtils.test.js')).then(() => window.runB2BTests());
+  ```
+  (If `import` is unavailable, use a script tag: `const s = document.createElement('script'); s.src = chrome.runtime.getURL('tests/b2bUtils.test.js'); document.head.appendChild(s); s.onload = () => window.runB2BTests();`)
+3. Watch for `[B2B TEST] ... PASS/FAIL` logs in the console.
+
+Additional manual checks before shipping:
+- Load multiple Club Royale profiles and confirm stable Profile IDs remain unchanged.
+- Exercise Advanced Search (including date range) and CSV export.
+- Toggle Safari polyfill behavior by loading the extension in Firefox to ensure cross-browser compatibility.
+
+### Release Checklist
+
+1. Update `manifest.json` → `version` and ensure icons reference the latest assets under `images/`.
+2. In Chrome/Edge: use **Pack extension...** to produce a `.crx` (or zip the folder for uploading to the Web Store/Addon portals). Safari releases follow the conversion steps described earlier.
+3. Clear `chrome.storage.local` (DevTools → Application → Clear storage) to verify first-run onboarding.
+4. Run the B2B tests and spot-check key flows (Show All Offers, Favorites, Combined Offers, Advanced Search).
+5. Tag the release in Git (`git tag vX.Y.Z && git push --tags`).
+
+### Troubleshooting
+
+- **Content script not loading**: Confirm the offers URL matches `manifest.json` `matches` entries, then reload the extension and tab.
+- **Stale data**: `chrome.storage.local.clear()` in DevTools or delete the relevant `gobo-*` keys.
+- **CSS not applying**: Check that `styles.js` is injecting your stylesheet; syntax errors in CSS files surface in the console as `ERR_FILE_NOT_FOUND` or parsing errors.
+- **Safari quirks**: Ensure the polyfill is listed first in `manifest.json` and that icons use PNGs (no `.ico`).
+
 ## Customization
 
 - Modify visible columns: edit the `headers` arrays in `tableRenderer.js`.

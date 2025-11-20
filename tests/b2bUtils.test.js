@@ -1,66 +1,118 @@
-(function(){
-    // Simple test harness for B2BUtils.computeB2BDepth
-    function assertEqual(actual, expected, label) {
-        const ok = actual === expected;
-        console[ok ? 'log' : 'error'](`[B2B TEST] ${label}: ${ok ? 'PASS' : 'FAIL'} (expected=${expected}, actual=${actual})`);
+(function initB2BTestSuite(factory) {
+    if (typeof module !== 'undefined' && module.exports) {
+        factory(require('../utils/b2bUtils'), { env: 'node' });
+    } else if (typeof window !== 'undefined') {
+        factory(window.B2BUtils, { env: 'browser', window });
+    }
+})(function runSuite(B2BUtils, context) {
+    if (!B2BUtils || typeof B2BUtils.computeB2BDepth !== 'function') {
+        if (context && context.env === 'node') {
+            throw new Error('B2BUtils.computeB2BDepth is not available for tests');
+        }
+        if (context && context.window) {
+            context.window.console.error('[B2B TEST] B2BUtils.computeB2BDepth not available');
+        }
+        return;
     }
 
-    function runTests() {
-        if (typeof B2BUtils === 'undefined' || typeof B2BUtils.computeB2BDepth !== 'function') {
-            console.error('[B2B TEST] B2BUtils.computeB2BDepth not available');
-            return;
-        }
-        // Helper to build row
-        function row(code, ship, departPort, departDate, nights) {
-            return {
-                offer: { campaignOffer: { offerCode: code } },
-                sailing: {
-                    shipName: ship,
-                    shipCode: ship,
-                    departurePort: { name: departPort },
-                    sailDate: departDate,
-                    itineraryDescription: nights + ' Nights ' + departPort
-                }
-            };
-        }
+    function row(code, ship, departPort, departDate, nights) {
+        return {
+            offer: { campaignOffer: { offerCode: code } },
+            sailing: {
+                shipName: ship,
+                shipCode: ship,
+                departurePort: { name: departPort },
+                sailDate: departDate,
+                itineraryDescription: nights + ' Nights ' + departPort
+            }
+        };
+    }
 
-        // Test 1: Simple chain of 3 consecutive sailings same ship & port
-        const rows1 = [
-            row('A', 'SHIP1', 'Miami', '2025-01-01', 3), // ends 2025-01-04
-            row('B', 'SHIP1', 'Miami', '2025-01-04', 3), // ends 2025-01-07
-            row('C', 'SHIP1', 'Miami', '2025-01-07', 3)  // ends 2025-01-10
-        ];
-        const depths1 = B2BUtils.computeB2BDepth(rows1, { allowSideBySide: false });
-        assertEqual(depths1.get(0), 3, 'Chain length from A (no side-by-side)');
-        assertEqual(depths1.get(1), 2, 'Chain length from B (no side-by-side)');
-        assertEqual(depths1.get(2), 1, 'Chain length from C (no side-by-side)');
-
-        // Test 2: Side-by-side allowed, different ships same port/date
-        const rows2 = [
-            row('A', 'SHIP1', 'Miami', '2025-01-01', 3), // ends 2025-01-04
-            row('B', 'SHIP2', 'Miami', '2025-01-04', 3), // side-by-side candidate
-            row('C', 'SHIP1', 'Miami', '2025-01-04', 3)  // same-date, same-port same-ship
-        ];
-        const depths2_noSide = B2BUtils.computeB2BDepth(rows2, { allowSideBySide: false });
-        const depths2_side = B2BUtils.computeB2BDepth(rows2, { allowSideBySide: true });
-        assertEqual(depths2_noSide.get(0), 2, 'No side-by-side: A->C only');
-        assertEqual(depths2_side.get(0), 2, 'Side-by-side: A can still reach depth 2 (one of B/C)');
-
-        // Test 3: Filter predicate excludes one offer from chains
-        const rows3 = [
+    function chainRows() {
+        return [
             row('A', 'SHIP1', 'Miami', '2025-01-01', 3),
             row('B', 'SHIP1', 'Miami', '2025-01-04', 3),
             row('C', 'SHIP1', 'Miami', '2025-01-07', 3)
         ];
-        const depths3 = B2BUtils.computeB2BDepth(rows3, {
-            allowSideBySide: false,
-            filterPredicate: (row) => row.offer.campaignOffer.offerCode !== 'B'
-        });
-        assertEqual(depths3.get(0), 1, 'Filter excludes B so A cannot chain');
-        assertEqual(depths3.get(2), 1, 'C still depth 1');
-
-        console.log('[B2B TEST] Tests complete');
     }
 
-    window.runB2BTests = runTests;
-})();
+    function sideBySideRows() {
+        return [
+            row('A', 'SHIP1', 'Miami', '2025-01-01', 3),
+            row('B', 'SHIP2', 'Miami', '2025-01-04', 3),
+            row('C', 'SHIP1', 'Miami', '2025-01-04', 3)
+        ];
+    }
+
+    const scenarios = [
+        {
+            label: 'Simple chain without side-by-side',
+            rows: chainRows,
+            options: { allowSideBySide: false },
+            expectations: { 0: 3, 1: 2, 2: 1 }
+        },
+        {
+            label: 'Side-by-side disabled prefers same ship',
+            rows: sideBySideRows,
+            options: { allowSideBySide: false },
+            expectations: { 0: 2 }
+        },
+        {
+            label: 'Side-by-side enabled allows alternate ships',
+            rows: sideBySideRows,
+            options: { allowSideBySide: true },
+            expectations: { 0: 2 }
+        },
+        {
+            label: 'Filter predicate removes middle offer',
+            rows: chainRows,
+            options: {
+                allowSideBySide: false,
+                filterPredicate: (row) => row.offer.campaignOffer.offerCode !== 'B'
+            },
+            expectations: { 0: 1, 2: 1 }
+        }
+    ];
+
+    function materializeRows(rowsConfig) {
+        return typeof rowsConfig === 'function' ? rowsConfig() : rowsConfig;
+    }
+
+    function evaluateScenario(scenario) {
+        const rows = materializeRows(scenario.rows);
+        const depths = B2BUtils.computeB2BDepth(rows, scenario.options || {});
+        return Object.entries(scenario.expectations).map(([idx, expected]) => ({
+            label: `${scenario.label} (row ${idx})`,
+            expected,
+            actual: depths.get(Number(idx))
+        }));
+    }
+
+    if (context && context.env === 'node') {
+        describe('B2BUtils.computeB2BDepth', () => {
+            scenarios.forEach((scenario) => {
+                test(scenario.label, () => {
+                    const results = evaluateScenario(scenario);
+                    results.forEach(({ expected, actual, label }) => {
+                        expect(actual).toBe(expected);
+                    });
+                });
+            });
+        });
+    }
+
+    if (context && context.env === 'browser' && context.window) {
+        context.window.runB2BTests = function runB2BTests() {
+            scenarios.forEach((scenario) => {
+                const results = evaluateScenario(scenario);
+                results.forEach(({ expected, actual, label }) => {
+                    const ok = actual === expected;
+                    context.window.console[ok ? 'log' : 'error'](
+                        `[B2B TEST] ${label}: ${ok ? 'PASS' : 'FAIL'} (expected=${expected}, actual=${actual})`
+                    );
+                });
+            });
+            context.window.console.log('[B2B TEST] Tests complete');
+        };
+    }
+});

@@ -125,8 +125,9 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
 try {
     if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
         ProfileIdManager.init();
-        if (!window.App) window.App = {};
-        if (!App.ProfileIdMap) App.ProfileIdMap = { ...ProfileIdManager.map };
+        var root = typeof window !== 'undefined' ? window : globalThis;
+        if (!root.App) root.App = {};
+        if (!root.App.ProfileIdMap) root.App.ProfileIdMap = { ...ProfileIdManager.map };
     }
 } catch(e){ /* ignore init errors */ }
 
@@ -289,4 +290,8 @@ function getAssetUrl(path) {
     if (typeof browser !== 'undefined' && browser.runtime?.getURL) return browser.runtime.getURL(path);
     if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) return chrome.runtime.getURL(path);
     return path;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = globalThis.ProfileIdManager;
 }

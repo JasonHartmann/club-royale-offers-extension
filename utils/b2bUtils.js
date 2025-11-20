@@ -37,6 +37,12 @@
                     }
                 } catch(e){}
             }
+            if (nights == null && typeof itinerary === 'string') {
+                const nightsMatch = itinerary.match(/(\d+)\s+Night/i);
+                if (nightsMatch && nightsMatch[1]) {
+                    nights = parseInt(nightsMatch[1], 10);
+                }
+            }
             if (rawStart && nights != null) {
                 const startISO = String(rawStart).trim().slice(0, 10);
                 const d = new Date(startISO);
@@ -187,4 +193,6 @@
     };
 
     if (typeof window !== 'undefined') window.B2BUtils = B2BUtils;
+    if (typeof globalThis !== 'undefined') globalThis.B2BUtils = B2BUtils;
+    if (typeof module !== 'undefined' && module.exports) module.exports = B2BUtils;
 })();
