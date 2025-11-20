@@ -182,7 +182,9 @@
         return depthMap;
     }
 
-    window.B2BUtils = {
+    const B2BUtils = {
         computeB2BDepth
     };
+
+    if (typeof window !== 'undefined') window.B2BUtils = B2BUtils;
 })();

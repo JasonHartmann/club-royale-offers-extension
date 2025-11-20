@@ -1,3 +1,5 @@
+var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
+
 // Manages stable assignment of numeric profile IDs to gobo-* profile keys.
 // Once a profile key receives an ID it will never change unless the profile
 // is deleted (its storage entry removed). Deleted profile IDs return to a
@@ -64,6 +66,49 @@
                 this._persist();
             } finally { this._reentrant = false; }
             return this.map;
+        },
+        removeKeys: function(keys){
+            this.init();
+            if (!Array.isArray(keys) || !keys.length) return;
+            var changed = false;
+            var seen = {};
+            for (var i=0;i<keys.length;i++) {
+                var key = keys[i];
+                if (seen[key]) continue;
+                seen[key] = true;
+                if (this.map.hasOwnProperty(key)) {
+                    var id = this.map[key];
+                    if (id != null && this.free.indexOf(id) === -1) this.free.push(id);
+                    delete this.map[key];
+                    changed = true;
+                }
+            }
+            if (changed) this._persist();
+        },
+        sanitizeProfileKeys: function(profileKeys){
+            this.init();
+            var keys = Array.isArray(profileKeys) ? profileKeys.slice() : [];
+            var removed = [];
+            keys = keys.filter(function(key){
+                if (RESTRICTED_PROFILE_KEY_PATTERN.test(key)) {
+                    if (removed.indexOf(key) === -1) removed.push(key);
+                    return false;
+                }
+                return true;
+            });
+            if (removed.length) {
+                try {
+                    this.removeKeys(removed);
+                } catch (e) {
+                    warn('Failed to remove restricted profile keys from ID map', e);
+                }
+                try {
+                    cleanupRestrictedProfileArtifacts(removed);
+                } catch (cleanupErr) {
+                    warn('Failed to cleanup restricted profile artifacts', cleanupErr);
+                }
+            }
+            return {filteredKeys: keys, removedKeys: removed};
         },
         persist: function(){ this._persist(true); },
         getId: function(k){ this.init(); return this.map[k] != null ? this.map[k] : null; },
@@ -190,6 +235,29 @@ function setLinkedAccounts(arr) {
         if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(arr)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr));
     } catch (e) {
     }
+}
+
+function cleanupRestrictedProfileArtifacts(removedKeys) {
+    if (!Array.isArray(removedKeys) || !removedKeys.length) return;
+    removedKeys.forEach(function(badKey) {
+        try {
+            if (typeof goboStorageRemove === 'function') goboStorageRemove(badKey); else if (typeof localStorage !== 'undefined' && localStorage) localStorage.removeItem(badKey);
+        } catch (ignoreRemoval) { /* ignore */ }
+        try {
+            if (typeof App !== 'undefined' && App && App.ProfileCache && App.ProfileCache[badKey]) delete App.ProfileCache[badKey];
+        } catch (ignoreCache) { /* ignore */ }
+    });
+    try {
+        const linked = getLinkedAccounts();
+        const filteredLinked = linked.filter(acc => acc && removedKeys.indexOf(acc.key) === -1);
+        if (filteredLinked.length !== linked.length) {
+            setLinkedAccounts(filteredLinked);
+            if (filteredLinked.length < 2) {
+                if (typeof goboStorageRemove === 'function') goboStorageRemove('goob-combined'); else if (typeof localStorage !== 'undefined' && localStorage) localStorage.removeItem('goob-combined');
+                if (typeof App !== 'undefined' && App && App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked'];
+            }
+        }
+    } catch (ignoreLinked) { /* ignore */ }
 }
 
 function formatTimeAgo(savedAt) {

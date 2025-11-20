@@ -57,6 +57,18 @@ const Breadcrumbs = {
                     }
                 } catch (e) {/* ignore */ }
                 profileKeys = Array.from(new Set(profileKeys));
+                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && typeof ProfileIdManager.sanitizeProfileKeys === 'function') {
+                    const sanitized = ProfileIdManager.sanitizeProfileKeys(profileKeys);
+                    profileKeys = sanitized.filteredKeys || [];
+                    if (sanitized.removedKeys && sanitized.removedKeys.length) {
+                        try {
+                            if (typeof App !== 'undefined') App.ProfileIdMap = {...ProfileIdManager.map};
+                        } catch (ignoreMapSync) { /* ignore */ }
+                    }
+                } else {
+                    const restrictedKeyPatternFallback = /^gobo-[RC]-/i;
+                    profileKeys = profileKeys.filter((k) => !restrictedKeyPatternFallback.test(k));
+                }
                 // Include favorites profile if stored
                 try {
                     const favRaw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-favorites') : localStorage.getItem('goob-favorites'));

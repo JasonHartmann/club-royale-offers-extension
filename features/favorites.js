@@ -218,7 +218,7 @@
         } catch(e){ /* ignore */ }
     }
 
-    window.Favorites = {
+    const Favorites = {
         toggleFavorite,
         isFavorite,
         getSailingKey,
@@ -228,4 +228,5 @@
         removeFavorite,
         invalidateCache // exported for manual debugging if needed
     };
+    if (typeof window !== 'undefined') window.Favorites = Favorites;
 })();

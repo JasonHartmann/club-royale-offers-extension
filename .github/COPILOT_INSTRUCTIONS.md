@@ -14,9 +14,10 @@ Key rules (short)
 6. Keep global exposures explicit: write `window.ModuleName = ModuleName;` within the feature file if necessary for runtime access.
 7. ALWAYS place styles in CSS under /styles rather than inline
 8. Avoid adding defensive runtime null/`if` checks around module usage in consumer modules (for example, avoid `if (window.X) window.X.doThing()` everywhere).
-   - Instead, ensure the module is loaded before the consumer by updating `manifest.json` ordering or by defining modules as bare identifiers included in `app.js`.
-   - The preferred pattern is to guarantee load order and call module functions directly (e.g., `ModuleName.init()`), not to scatter runtime guards.
-   - If you cannot guarantee load order, do not silently wrap calls with `if` checks that hide bugs; either reorder scripts, add a getter in `app.js`, or ask the repo owner for guidance.
+  - Instead, ensure the module is loaded before the consumer by updating `manifest.json` ordering or by defining modules as bare identifiers included in `app.js`.
+  - The preferred pattern is to guarantee load order and call module functions directly (e.g., `ModuleName.init()`), not to scatter runtime guards.
+  - If you cannot guarantee load order, do not silently wrap calls with `if` checks that hide bugs; either reorder scripts, add a getter in `app.js`, or ask the repo owner for guidance.
+9. Do **not** add module-availability probes such as `if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager)` or similar fallbacks; rely on manifest ordering and let missing symbols fail loudly so load-order regressions surface immediately.
 
 Why this matters
 -----------------
@@ -45,6 +46,10 @@ window.App = {
 Manifest ordering note
 ----------------------
 Ensure `features/advancedSearchAddField.js` appears in `manifest.json` before `app.js`.
+
+Known unwieldy modules (handle with care)
+----------------------------------------
+- `features/breadcrumbs.js`: The monolithic `Breadcrumbs.updateBreadcrumb` function orchestrates tab rendering, favorites, linked accounts, combined profiles, advanced search scaffolding, and multiple UI widgets in ~400+ lines. Any change risks regressions across profile tabs, hidden groups, and modal triggers—consider extracting helpers or adding targeted tests before touching it.
 
 Contact
 -------

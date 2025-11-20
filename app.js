@@ -26,8 +26,8 @@
         Utils,
         OfferCodeLookup,
         Filtering,
-        B2BUtils: window.B2BUtils,
-        Favorites: window.Favorites,
+        B2BUtils,
+        Favorites,
         ProfileCache: _prev.ProfileCache || [],
         init() {
             this.DOMUtils.waitForDom();
