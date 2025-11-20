@@ -183,6 +183,27 @@ const TableRenderer = {
         if (!needsDepth) return null;
         return this._computeB2BDepths(rows, options);
     },
+    _normalizeB2BDepthValue(depth) {
+        const num = Number(depth);
+        return Number.isFinite(num) && num > 0 ? num : 1;
+    },
+    getB2BDepthBadgeMarkup(depth) {
+        const normalized = this._normalizeB2BDepthValue(depth);
+        return `<span class="b2b-chevrons" aria-hidden="true"><span class="b2b-chevrons-value">${normalized}</span></span>`;
+    },
+    updateB2BDepthCell(cell, depth) {
+        if (!cell) return;
+        const normalized = this._normalizeB2BDepthValue(depth);
+        if (typeof cell.innerHTML === 'string') {
+            cell.innerHTML = this.getB2BDepthBadgeMarkup(normalized);
+        } else {
+            cell.textContent = String(normalized);
+        }
+        try {
+            cell.dataset.depth = String(normalized);
+        } catch (e) { /* ignore dataset assignment errors */ }
+        cell.setAttribute('aria-label', `Back-to-back depth ${normalized}`);
+    },
     _applyActiveTabHighlight(activeKey) {
         const tabs = document.querySelectorAll('.profile-tab');
         tabs.forEach(tb => {
@@ -895,7 +916,9 @@ const TableRenderer = {
                     if (!pair) return;
                     const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
                     const cell = tr.querySelector('.b2b-depth-cell');
-                    if (cell) cell.textContent = String(depth);
+                    if (!cell) return;
+                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth);
+                    else cell.textContent = String(depth);
                 });
                 console.debug('[B2B] Depth computation complete', { rows: rows.length });
             } catch(e) { /* ignore B2B calculation errors so table still renders */ }

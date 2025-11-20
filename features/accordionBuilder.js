@@ -313,7 +313,10 @@ const AccordionBuilder = {
                         const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
                         try {
                             const cell = row.querySelector('.b2b-depth-cell');
-                            if (cell && sailing && typeof sailing.__b2bDepth === 'number') cell.textContent = String(sailing.__b2bDepth);
+                            if (cell && sailing && typeof sailing.__b2bDepth === 'number') {
+                                if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth);
+                                else cell.textContent = String(sailing.__b2bDepth);
+                            }
                         } catch(e){ /* ignore */ }
                         tbodyRef.appendChild(row);
                     });
@@ -338,7 +341,10 @@ const AccordionBuilder = {
                     const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
                     try {
                         const cell = row.querySelector('.b2b-depth-cell');
-                        if (cell && sailing && typeof sailing.__b2bDepth === 'number') cell.textContent = String(sailing.__b2bDepth);
+                        if (cell && sailing && typeof sailing.__b2bDepth === 'number') {
+                            if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth);
+                            else cell.textContent = String(sailing.__b2bDepth);
+                        }
                     } catch(e){ /* ignore */ }
                     tbody.appendChild(row);
                 });

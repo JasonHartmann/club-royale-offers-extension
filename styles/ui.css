@@ -32,6 +32,10 @@
 .b2b-search-button:hover { background:#0b3557; transform:translateY(-1px); }
 .b2b-side-by-side-toggle { margin-left:12px; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; cursor:pointer; user-select:none; }
 .b2b-side-by-side-toggle input { cursor:pointer; accent-color:#0d3b66; }
+.b2b-chevrons { display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:4px 10px; border-radius:999px; background:linear-gradient(90deg,#0c4ea3 0%,#1f7edc 100%); color:#fff; font-weight:600; font-size:11px; line-height:1; box-shadow:0 3px 8px rgba(8,52,99,0.25); min-width:46px; position:relative; }
+/* .b2b-chevrons::before { content:''; font-weight:700; opacity:0.85; font-size:11px; } */
+.b2b-chevrons::after { content:'>>'; font-weight:700; letter-spacing:0.5px; font-size:10px; opacity:0.9; }
+.b2b-chevrons-value { font-size:12px; letter-spacing:0.03em; font-variant-numeric:tabular-nums; }
 /* Venmo circular button — match hover lift and subtle background change */
 .venmo-link { transition: background .15s, transform .08s; will-change: transform; }
 .venmo-link:hover { transform: translateY(-1px); background: rgba(0,0,0,0.04); }
