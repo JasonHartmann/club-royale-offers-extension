@@ -13,6 +13,9 @@ const TableRenderer = {
     _b2bDepthPromise: null,
     _resolveB2BDepthPromise: null,
     _b2bDepthInFlightCount: 0,
+    SIDE_BY_SIDE_PREF_KEY: 'goboB2BIncludeSideBySide_v1',
+    _sideBySidePreferenceCache: null,
+    _b2bSpinnerSessionId: null,
     isB2BDepthPending() {
         return !!this._b2bDepthPending;
     },
@@ -25,6 +28,110 @@ const TableRenderer = {
     },
     waitForB2BDepths() {
         return this._b2bDepthPromise || Promise.resolve();
+    },
+    getSideBySidePreference() {
+        if (typeof this._sideBySidePreferenceCache === 'boolean') return this._sideBySidePreferenceCache;
+        let pref = true;
+        try {
+            const key = this.SIDE_BY_SIDE_PREF_KEY;
+            const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
+            if (raw !== null && raw !== undefined) pref = raw === 'true';
+        } catch (e) {
+            console.warn('[TableRenderer] Unable to read side-by-side preference; defaulting to enabled', e);
+        }
+        this._sideBySidePreferenceCache = pref;
+        return pref;
+    },
+    setSideBySidePreference(value) {
+        const boolVal = !!value;
+        this._sideBySidePreferenceCache = boolVal;
+        try {
+            const key = this.SIDE_BY_SIDE_PREF_KEY;
+            if (typeof goboStorageSet === 'function') goboStorageSet(key, String(boolVal));
+            else localStorage.setItem(key, String(boolVal));
+        } catch (e) {
+            console.warn('[TableRenderer] Unable to persist side-by-side preference', e);
+        }
+        this.refreshB2BDepths({ showSpinner: true });
+    },
+    refreshB2BDepths(options) {
+        const opts = options || {};
+        const state = this.lastState;
+        if (!state) return;
+        const shouldResortAfterDepths = state.viewMode === 'table' && state.currentSortColumn === 'b2bDepth';
+        const showSpinner = !!opts.showSpinner;
+        let spinnerSessionId = null;
+        let spinnerListener = null;
+        let spinnerTimeout = null;
+        const hideSpinner = () => {
+            if (!spinnerSessionId) return;
+            if (this._b2bSpinnerSessionId !== spinnerSessionId) return;
+            this._b2bSpinnerSessionId = null;
+            if (spinnerTimeout) {
+                clearTimeout(spinnerTimeout);
+                spinnerTimeout = null;
+            }
+            if (spinnerListener) {
+                try { document.removeEventListener('tableRenderComplete', spinnerListener); } catch (ignore) {}
+                spinnerListener = null;
+            }
+            try { if (typeof Spinner !== 'undefined' && typeof Spinner.hideSpinner === 'function') Spinner.hideSpinner(); } catch(e){ /* ignore */ }
+            spinnerSessionId = null;
+        };
+        if (showSpinner && typeof Spinner !== 'undefined' && typeof Spinner.showSpinner === 'function') {
+            try {
+                Spinner.showSpinner();
+                spinnerSessionId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+                this._b2bSpinnerSessionId = spinnerSessionId;
+                spinnerListener = () => { hideSpinner(); };
+                try { document.addEventListener('tableRenderComplete', spinnerListener, { once: true }); } catch (evtErr) { console.debug('[TableRenderer] Unable to attach tableRenderComplete listener', evtErr); }
+                spinnerTimeout = setTimeout(() => { hideSpinner(); }, 1600);
+            } catch (spinnerErr) {
+                console.debug('[TableRenderer] Spinner.showSpinner failed for B2B toggle', spinnerErr);
+                spinnerSessionId = null;
+            }
+        }
+        const resetDepths = (rows) => {
+            if (!Array.isArray(rows)) return;
+            rows.forEach((row) => {
+                if (row && row.sailing && typeof row.sailing.__b2bDepth === 'number') delete row.sailing.__b2bDepth;
+            });
+        };
+        resetDepths(state.sortedOffers);
+        resetDepths(state.originalOffers);
+        resetDepths(state.fullOriginalOffers);
+        if (state._globalSortedCache) state._globalSortedCache = {};
+        const runRecalc = () => {
+            let waitPromise = Promise.resolve();
+            try {
+                state._switchToken = this.currentSwitchToken || state._switchToken;
+                this.updateView(state);
+                waitPromise = this.waitForB2BDepths();
+            } catch (err) {
+                console.warn('[TableRenderer] Failed to refresh B2B depths after preference change', err);
+                waitPromise = Promise.resolve();
+            }
+            waitPromise.finally(() => {
+                hideSpinner();
+            });
+            if (shouldResortAfterDepths) {
+                waitPromise.then(() => {
+                    const latest = this.lastState;
+                    if (!latest) return;
+                    if (latest.viewMode !== 'table' || latest.currentSortColumn !== 'b2bDepth') return;
+                    if (latest._globalSortedCache) latest._globalSortedCache = {};
+                    latest._switchToken = this.currentSwitchToken || latest._switchToken;
+                    try {
+                        this.updateView(latest);
+                    } catch (resortErr) {
+                        console.warn('[TableRenderer] Unable to reapply B2B sort after recompute', resortErr);
+                    }
+                }).catch((waitErr) => {
+                    console.warn('[TableRenderer] waitForB2BDepths failed during preference refresh', waitErr);
+                });
+            }
+        };
+        if (showSpinner) setTimeout(runRecalc, 0); else runRecalc();
     },
     _startB2BDepthComputation() {
         this._b2bDepthInFlightCount += 1;
@@ -52,7 +159,8 @@ const TableRenderer = {
     _computeB2BDepths(rows, options) {
         if (!Array.isArray(rows) || !rows.length) return null;
         if (!window.B2BUtils || typeof B2BUtils.computeB2BDepth !== 'function') return null;
-        const opts = Object.assign({ allowSideBySide: true }, options || {});
+        const defaultAllow = (typeof this.getSideBySidePreference === 'function') ? this.getSideBySidePreference() : true;
+        const opts = Object.assign({ allowSideBySide: defaultAllow }, options || {});
         const finish = this._startB2BDepthComputation();
         try {
             const depthsMap = B2BUtils.computeB2BDepth(rows, opts);
@@ -701,6 +809,7 @@ const TableRenderer = {
     const filtered = Filtering.filterOffers(state, base);
         state.originalOffers = filtered;
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
+        const allowSideBySidePref = (typeof this.getSideBySidePreference === 'function') ? this.getSideBySidePreference() : true;
         table.style.display = viewMode === 'table' ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
 
@@ -748,7 +857,7 @@ const TableRenderer = {
         });
         if (currentSortColumn === 'b2bDepth') {
             try {
-                this._ensureRowsHaveB2BDepth(filtered);
+                this._ensureRowsHaveB2BDepth(filtered, { allowSideBySide: allowSideBySidePref });
             } catch (depthErr) {
                 console.warn('[tableRenderer] Unable to prime B2B depths prior to sorting', depthErr);
             }
@@ -776,9 +885,8 @@ const TableRenderer = {
         if (viewMode === 'table') {
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             try {
-                const allowSideBySide = true; // future: make configurable via UI checkbox
                 this._ensureRowsHaveB2BDepth(state.sortedOffers, {
-                    allowSideBySide,
+                    allowSideBySide: allowSideBySidePref,
                     filterPredicate: (row) => filtered.indexOf(row) !== -1
                 });
                 const rows = tbody.querySelectorAll('tr');
@@ -803,7 +911,7 @@ const TableRenderer = {
             }
             // Ensure B2B depths exist before rendering accordion (first time grouping or direct switch)
             try {
-                this._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: true, filterPredicate: (row)=>filtered.indexOf(row)!==-1 });
+                this._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: allowSideBySidePref, filterPredicate: (row)=>filtered.indexOf(row)!==-1 });
             } catch(e){ /* ignore depth precompute errors */ }
             accordionContainer.innerHTML = '';
             // Recursive function to render all open accordion levels

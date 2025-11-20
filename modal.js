@@ -206,8 +206,6 @@ const Modal = {
         if (!container || !backdrop) return; // Already closed
         container.remove();
         backdrop.remove();
-        // Also close secondary Back-to-Back modal if it exists
-        try { this.closeBackToBackModal(); } catch(e){ /* ignore */ }
         document.body.style.overflow = '';
         overlappingElements.forEach(el => {
             el.style.display = el.dataset.originalDisplay || '';
@@ -369,94 +367,5 @@ const Modal = {
         const a = document.createElement('a'); a.href = url; a.download = 'offers.csv';
         document.body.appendChild(a); a.click();
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
-    },
-    showBackToBackModal() {
-        // Avoid duplicates
-        if (document.getElementById('gobo-b2b-modal')) {
-            const existing = document.getElementById('gobo-b2b-modal');
-            existing.style.display = 'block';
-            return;
-        }
-        const parentModal = document.getElementById('gobo-offers-table');
-        if (!parentModal) return; // primary modal must exist
-        // Backdrop (local to primary modal)
-        const backdrop = document.createElement('div');
-        backdrop.id = 'gobo-b2b-backdrop';
-        backdrop.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:2147483646;';
-        // Container
-        const container = document.createElement('div');
-        container.id = 'gobo-b2b-modal';
-        container.setAttribute('role','dialog');
-        container.setAttribute('aria-modal','true');
-        container.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:70vw; max-width:1000px; height:70vh; max-height:800px; background:#fff; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.35); display:flex; flex-direction:column; overflow:hidden; z-index:2147483647;';
-        // Header (reuse title format – pull from existing breadcrumb first node text)
-        const header = document.createElement('div');
-        header.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#0d3b66; color:#fff; font-weight:600; font-size:14px;';
-        const titleSpan = document.createElement('span');
-        // Derive title: use currently active tab label or fallback to 'All Offers'
-        let titleText = 'All Offers';
-        try {
-            const activeTab = document.querySelector('.profile-tab.active .profile-tab-label');
-            if (activeTab && activeTab.textContent.trim()) titleText = activeTab.textContent.trim();
-        } catch(e) { /* ignore */ }
-        titleSpan.textContent = titleText + ' – Back-to-Back Search';
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.textContent = '✖';
-        closeBtn.style.cssText = 'background:transparent; border:none; color:#fff; font-size:16px; cursor:pointer; padding:4px; line-height:1;';
-        closeBtn.addEventListener('click', () => this.closeBackToBackModal());
-        header.appendChild(titleSpan);
-        header.appendChild(closeBtn);
-        // Content
-        const content = document.createElement('div');
-        content.style.cssText = 'flex:1; overflow:auto; padding:12px; font-size:12px; display:flex; flex-direction:column; gap:12px;';
-        content.innerHTML = `
-            <div style="font-size:13px; font-weight:600;">Back-to-Back Search</div>
-            <div style="font-size:24px; color:#444;">(Placeholder) COMING SOON for multi-offer or sequential sailing search logic. Check back soon!</div>
-            <form id="b2b-form" style="display:flex; flex-direction:column; gap:8px; max-width:480px;">
-                <label style="display:flex; flex-direction:column; font-size:11px; gap:4px;">
-                    Earliest Sail Date
-                    <input type="date" name="start" style="border:1px solid #bbb; padding:4px 6px; border-radius:4px; font-size:12px;" />
-                </label>
-                <label style="display:flex; flex-direction:column; font-size:11px; gap:4px;">
-                    Latest Sail Date
-                    <input type="date" name="end" style="border:1px solid #bbb; padding:4px 6px; border-radius:4px; font-size:12px;" />
-                </label>
-                <div style="display:flex; gap:8px;">
-                    <button type="submit" style="background:#0d3b66; color:#fff; border:none; padding:6px 12px; font-size:12px; border-radius:4px; cursor:pointer;">Search</button>
-                    <button type="button" id="b2b-cancel" style="background:#aaa; color:#fff; border:none; padding:6px 12px; font-size:12px; border-radius:4px; cursor:pointer;">Cancel</button>
-                </div>
-            </form>
-        `;
-        content.querySelector('#b2b-cancel').addEventListener('click', () => this.closeBackToBackModal());
-        content.querySelector('#b2b-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Placeholder: In a future iteration we can implement real search logic.
-            try { App.Spinner.showSpinner(); setTimeout(() => App.Spinner.hideSpinner(), 800); } catch(e){/* ignore */}
-        });
-        // Footer (optional)
-        const footer = document.createElement('div');
-        footer.style.cssText = 'padding:6px 10px; background:#f5f5f5; border-top:1px solid #ddd; text-align:right; font-size:10px;';
-        footer.textContent = 'Back-to-Back Search Utility';
-        container.appendChild(header);
-        container.appendChild(content);
-        container.appendChild(footer);
-        // Append backdrop then container (after primary so appears above)
-        document.body.appendChild(backdrop);
-        document.body.appendChild(container);
-        backdrop.addEventListener('click', () => this.closeBackToBackModal());
-        // Esc handling for secondary modal only
-        this._b2bEscHandler = (evt) => { if (evt.key === 'Escape') this.closeBackToBackModal(); };
-        document.addEventListener('keydown', this._b2bEscHandler);
-    },
-    closeBackToBackModal() {
-        const modal = document.getElementById('gobo-b2b-modal');
-        const backdrop = document.getElementById('gobo-b2b-backdrop');
-        if (modal) modal.remove();
-        if (backdrop) backdrop.remove();
-        if (this._b2bEscHandler) {
-            document.removeEventListener('keydown', this._b2bEscHandler);
-            this._b2bEscHandler = null;
-        }
     },
 };

@@ -12,6 +12,7 @@
         /^goboProfileIdMap_v1$/,
         /^goboProfileIdFreeIds_v1$/,
         /^goboProfileIdNext_v1$/,
+        /^goboB2BIncludeSideBySide_v1$/,
         /^goboWhatsNewShown/,
         /^goboOfferCodeLookupWarned_v\d+$/
     ];

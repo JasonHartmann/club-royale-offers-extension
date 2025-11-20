@@ -121,6 +121,15 @@
         const depthMap = new Map();
         const memo = new Map();
 
+        function getMemoKey(rootIdx, usedSet) {
+            if (!usedSet || !usedSet.size) return rootIdx + '|0';
+            try {
+                return rootIdx + '|' + Array.from(usedSet).sort().join(',');
+            } catch(e) {
+                return rootIdx + '|0';
+            }
+        }
+
         function addDays(iso, delta) {
             try {
                 const d = new Date(iso);
@@ -131,10 +140,11 @@
         }
 
         function dfs(rootIdx, usedGlobal) {
-            if (memo.has(rootIdx)) return memo.get(rootIdx);
+            const memoKey = getMemoKey(rootIdx, usedGlobal);
+            if (memo.has(memoKey)) return memo.get(memoKey);
             const rootInfo = meta[rootIdx];
             if (!rootInfo || !rootInfo.endISO || !rootInfo.endPort) {
-                memo.set(rootIdx, 1);
+                memo.set(memoKey, 1);
                 return 1;
             }
             let maxDepth = 1;
@@ -143,7 +153,7 @@
             const portKey = rootInfo.endPort.toLowerCase();
             const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
             if (!portKey || !shipKey) {
-                memo.set(rootIdx, 1);
+                memo.set(memoKey, 1);
                 return 1;
             }
             const keysToCheck = [];
@@ -174,7 +184,7 @@
                     if (branchDepth > maxDepth) maxDepth = branchDepth;
                 }
             }
-            memo.set(rootIdx, maxDepth);
+            memo.set(memoKey, maxDepth);
             return maxDepth;
         }
 

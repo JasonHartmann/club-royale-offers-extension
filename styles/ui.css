@@ -30,6 +30,8 @@
 /* Back-to-Back (B2B) search button styling — moved from inline in tableRenderer.js */
 .b2b-search-button { margin-left:12px; background:#0d3b66; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:4px; cursor:pointer; font-weight:600; transition:background .15s, transform .08s; }
 .b2b-search-button:hover { background:#0b3557; transform:translateY(-1px); }
+.b2b-side-by-side-toggle { margin-left:12px; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; cursor:pointer; user-select:none; }
+.b2b-side-by-side-toggle input { cursor:pointer; accent-color:#0d3b66; }
 /* Venmo circular button — match hover lift and subtle background change */
 .venmo-link { transition: background .15s, transform .08s; will-change: transform; }
 .venmo-link:hover { transform: translateY(-1px); background: rgba(0,0,0,0.04); }

@@ -18,6 +18,8 @@ Key rules (short)
   - The preferred pattern is to guarantee load order and call module functions directly (e.g., `ModuleName.init()`), not to scatter runtime guards.
   - If you cannot guarantee load order, do not silently wrap calls with `if` checks that hide bugs; either reorder scripts, add a getter in `app.js`, or ask the repo owner for guidance.
 9. Do **not** add module-availability probes such as `if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager)` or similar fallbacks; rely on manifest ordering and let missing symbols fail loudly so load-order regressions surface immediately.
+10. Prefer shorter, well-named functions ( < 20 lines)
+11. Automatically add unit tests where appropriate
 
 Why this matters
 -----------------

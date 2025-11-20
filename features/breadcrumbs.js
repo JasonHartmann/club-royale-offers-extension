@@ -556,20 +556,32 @@ const Breadcrumbs = {
                 console.warn('[breadcrumbs] AdvancedSearch buildToggleButton failed', e);
             }
 
-            // B2B button
-            const b2bButton = document.createElement('button');
-            b2bButton.type = 'button';
-            b2bButton.className = 'b2b-search-button';
-            b2bButton.textContent = 'Back-to-Back Search';
-            b2bButton.addEventListener('click', (ev) => {
+            // Replace B2B button with a persisted side-by-side toggle
+            const sbsToggle = document.createElement('label');
+            sbsToggle.className = 'b2b-side-by-side-toggle';
+            const sbsCheckbox = document.createElement('input');
+            sbsCheckbox.type = 'checkbox';
+            sbsCheckbox.id = 'b2b-side-by-side-checkbox';
+            try {
+                sbsCheckbox.checked = (App && App.TableRenderer && typeof App.TableRenderer.getSideBySidePreference === 'function')
+                    ? App.TableRenderer.getSideBySidePreference()
+                    : true;
+            } catch (prefErr) {
+                sbsCheckbox.checked = true;
+            }
+            sbsCheckbox.addEventListener('change', () => {
                 try {
-                    if (!ev || ev.isTrusted !== true) return;
-                    const tgt = ev.target || null;
-                    if (!tgt || !(b2bButton === tgt || b2bButton.contains(tgt))) return;
-                    if (App && App.Modal && typeof App.Modal.showBackToBackModal === 'function') App.Modal.showBackToBackModal();
+                    if (App && App.TableRenderer && typeof App.TableRenderer.setSideBySidePreference === 'function') {
+                        App.TableRenderer.setSideBySidePreference(!!sbsCheckbox.checked);
+                    }
                 } catch (e) {
+                    console.warn('[breadcrumbs] Unable to update side-by-side preference', e);
                 }
             });
+            const sbsLabel = document.createElement('span');
+            sbsLabel.textContent = 'Include Side-by-Sides';
+            sbsToggle.appendChild(sbsCheckbox);
+            sbsToggle.appendChild(sbsLabel);
 
             const hiddenGroupsLabel = document.createElement('span');
             hiddenGroupsLabel.textContent = 'Hidden Groups:';
@@ -581,7 +593,7 @@ const Breadcrumbs = {
                 Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
             } catch (e) {
             }
-            hiddenGroupsPanel.appendChild(b2bButton);
+            hiddenGroupsPanel.appendChild(sbsToggle);
             hiddenGroupsPanel.appendChild(hiddenGroupsLabel);
             hiddenGroupsPanel.appendChild(hiddenGroupsDisplay);
             crumbsRow.appendChild(hiddenGroupsPanel);

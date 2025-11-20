@@ -581,7 +581,10 @@ const Filtering = {
                     if (window.App && App.TableRenderer && typeof App.TableRenderer._ensureRowsHaveB2BDepth === 'function') {
                         const state = App.TableRenderer.lastState;
                         if (state && Array.isArray(state.sortedOffers) && state.sortedOffers.length) {
-                            App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: true });
+                            const allowSideBySide = (typeof App.TableRenderer.getSideBySidePreference === 'function')
+                                ? App.TableRenderer.getSideBySidePreference()
+                                : true;
+                            App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide });
                         }
                     }
                 } catch(e){ /* ignore ensure attempt */ }
