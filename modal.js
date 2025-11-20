@@ -281,7 +281,7 @@ const Modal = {
         if (rows.length === 0) rows = state.sortedOffers || [];
 
         // Prepare headers (override first to 'Profile')
-        const csvHeaders = headers.map(h => h.label);
+    const csvHeaders = headers.map(h => h.label);
         if (csvHeaders.length) csvHeaders[0] = 'Profile';
 
         // Pre-calculate static label for non-favorites non-combined tabs
@@ -327,8 +327,10 @@ const Modal = {
             const destination = parsed.destination;
             const perksStr = App.Utils.computePerks(offer, sailing);
             const shipClass = App.Utils.getShipClass(sailing.shipName);
+            const b2bDepth = (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : '';
             return [
                 profileLabel,
+                b2bDepth,
                 offer.campaignOffer?.offerCode || '-',
                 offer.campaignOffer?.startDate ? App.Utils.formatDate(offer.campaignOffer.startDate) : '-',
                 offer.campaignOffer?.reserveByDate ? App.Utils.formatDate(offer.campaignOffer.reserveByDate) : '-',

@@ -197,7 +197,8 @@ const TableRenderer = {
         // Build new profile content
         const state = {
             headers: [
-                { key: 'favorite', label: '★' },
+                { key: 'favorite', label: '\u2605' },
+                { key: 'b2bDepth', label: 'B2B' },
                 { key: 'offerCode', label: 'Code' },
                 { key: 'offerDate', label: 'Rcvd' },
                 { key: 'expiration', label: 'Expires' },
@@ -433,7 +434,8 @@ const TableRenderer = {
                 accordionContainer: document.createElement('div'),
                 backButton: document.createElement('button'),
                 headers: [
-                    { key: 'favorite', label: (selectedProfileKey === 'goob-favorites' ? 'ID' : '★') },
+                    { key: 'favorite', label: (selectedProfileKey === 'goob-favorites' ? 'ID' : '\u2605') },
+                    { key: 'b2bDepth', label: 'B2B' },
                     { key: 'offerCode', label: 'Code' },
                     { key: 'offerDate', label: 'Rcvd' },
                     { key: 'expiration', label: 'Expires' },
@@ -629,8 +631,8 @@ const TableRenderer = {
         // Ensure master copy exists
         if (!state.fullOriginalOffers) state.fullOriginalOffers = [...state.originalOffers];
         // Apply filter
-        const base = state.fullOriginalOffers;
-        const filtered = Filtering.filterOffers(state, base);
+    const base = state.fullOriginalOffers;
+    const filtered = Filtering.filterOffers(state, base);
         state.originalOffers = filtered;
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         table.style.display = viewMode === 'table' ? 'table' : 'none';
@@ -679,7 +681,7 @@ const TableRenderer = {
             const ds = offer.campaignOffer?.startDate; if (ds) { const t = new Date(ds).getTime(); if (!globalMaxOfferDate || t > globalMaxOfferDate) globalMaxOfferDate = t; }
         });
         // Optimized sorting: reuse a master sorted list for the full set, then filter it to maintain order.
-        const sortKey = currentSortColumn + '|' + currentSortOrder;
+    const sortKey = currentSortColumn + '|' + currentSortOrder;
         if (currentSortOrder !== 'original') {
             try {
                 if (!state._globalSortedCache) state._globalSortedCache = {};
@@ -700,6 +702,30 @@ const TableRenderer = {
         }
         if (viewMode === 'table') {
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
+            try {
+                // After rows are rendered, compute B2B depths for the currently visible set and attach to sailings
+                if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function') {
+                    const allowSideBySide = true; // future: make configurable via UI checkbox
+                    const depthsMap = B2BUtils.computeB2BDepth(state.sortedOffers, {
+                        allowSideBySide,
+                        filterPredicate: (row) => {
+                            // Reuse filtering decision: only consider rows that survived Filtering.filterOffers
+                            return filtered.indexOf(row) !== -1;
+                        }
+                    });
+                    // Attach depth back to sailing objects and update DOM cells
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach((tr, idx) => {
+                        const pair = state.sortedOffers[idx];
+                        if (!pair) return;
+                        const depth = depthsMap.get(idx) || 1;
+                        if (pair.sailing) pair.sailing.__b2bDepth = depth;
+                        const cell = tr.querySelector('.b2b-depth-cell');
+                        if (cell) cell.textContent = String(depth);
+                    });
+                    console.debug('[B2B] Depth computation complete', { rows: rows.length });
+                }
+            } catch(e) { /* ignore B2B calculation errors so table still renders */ }
             if (!table.contains(thead)) table.appendChild(thead);
             if (!table.contains(tbody)) table.appendChild(tbody);
             table.style.display = 'table';
@@ -710,6 +736,14 @@ const TableRenderer = {
                 this.updateView(preserveSelectedProfileKey(state, App.TableRenderer.lastState));
                 return;
             }
+            // Ensure B2B depths exist before rendering accordion (first time grouping or direct switch)
+            try {
+                const needDepth = state.sortedOffers.some(w => !w.sailing || typeof w.sailing.__b2bDepth !== 'number');
+                if (needDepth && window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function') {
+                    const depthsMap = B2BUtils.computeB2BDepth(state.sortedOffers, { allowSideBySide: true, filterPredicate: (row)=>filtered.indexOf(row)!==-1 });
+                    state.sortedOffers.forEach((w, idx) => { if (w && w.sailing) w.sailing.__b2bDepth = depthsMap.get(idx) || 1; });
+                }
+            } catch(e){ /* ignore depth precompute errors */ }
             accordionContainer.innerHTML = '';
             // Recursive function to render all open accordion levels
             function renderNestedAccordion(container, subset, groupingStack, groupKeysStack, depth) {

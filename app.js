@@ -26,6 +26,7 @@
         Utils,
         OfferCodeLookup,
         Filtering,
+        B2BUtils: window.B2BUtils,
         Favorites: window.Favorites,
         ProfileCache: _prev.ProfileCache || [],
         init() {

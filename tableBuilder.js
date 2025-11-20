@@ -165,7 +165,7 @@ const TableBuilder = {
             }
         }
         // Update sort indicators immediately (independent of incremental completion)
-        state.headers.forEach(header => {
+    state.headers.forEach(header => {
             const th = state.thead.querySelector(`th[data-key="${header.key}"]`);
             if (!th || header.key === 'favorite') return; // skip favorite column for sorting indicators
             th.classList.remove('sort-asc', 'sort-desc');

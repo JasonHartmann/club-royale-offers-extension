@@ -46,6 +46,7 @@
         "utils/domUtils.js",
         "utils/errorHandler.js",
         "utils/sortUtils.js",
+        "utils/b2bUtils.js",
         "utils/utils_filter.js",
         "utils/apiClient.js",
         "features/storageShim.js",

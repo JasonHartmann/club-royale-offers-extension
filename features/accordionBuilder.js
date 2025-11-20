@@ -233,6 +233,20 @@ const AccordionBuilder = {
                     th.innerHTML = `<span>${headerObj.label}</span>`;
                     tr.appendChild(th);
                     return; // skip adding listeners
+                } else if (headerObj.key === 'b2bDepth') {
+                    // No grouping UI; allow sorting by clicking label only
+                    th.innerHTML = `<span class="sort-label cursor-pointer">${headerObj.label}</span>`;
+                    const sortLabel = th.querySelector('.sort-label');
+                    sortLabel.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const currentOrder = state.currentSortOrder || 'desc';
+                        const nextOrder = (state.currentSortColumn === 'b2bDepth' && currentOrder === 'desc') ? 'asc' : 'desc';
+                        state.currentSortColumn = 'b2bDepth';
+                        state.currentSortOrder = nextOrder;
+                        App.TableRenderer.updateView(state);
+                    });
+                    tr.appendChild(th);
+                    return;
                 }
                 const groupIcon = document.createElement('span');
                 groupIcon.className = 'group-icon';
@@ -292,6 +306,10 @@ const AccordionBuilder = {
                         const expDate = offer.campaignOffer?.reserveByDate;
                         const isExpiringSoon = expDate && new Date(expDate).getTime() === soonest;
                         const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
+                        try {
+                            const cell = row.querySelector('.b2b-depth-cell');
+                            if (cell && sailing && typeof sailing.__b2bDepth === 'number') cell.textContent = String(sailing.__b2bDepth);
+                        } catch(e){ /* ignore */ }
                         tbodyRef.appendChild(row);
                     });
                     tr.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
@@ -313,6 +331,10 @@ const AccordionBuilder = {
                     const expDate = offer.campaignOffer?.reserveByDate;
                     const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                     const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
+                    try {
+                        const cell = row.querySelector('.b2b-depth-cell');
+                        if (cell && sailing && typeof sailing.__b2bDepth === 'number') cell.textContent = String(sailing.__b2bDepth);
+                    } catch(e){ /* ignore */ }
                     tbody.appendChild(row);
                 });
             }

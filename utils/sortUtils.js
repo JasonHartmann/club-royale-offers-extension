@@ -119,6 +119,14 @@ const SortUtils = {
                     } catch(e){ aValue = -Infinity; bValue = -Infinity; }
                     break;
                 }
+                case 'b2bDepth': {
+                    // Numeric sort on pre-computed depth stored on sailing.__b2bDepth (fallback 1)
+                    const aNum = (a.sailing && typeof a.sailing.__b2bDepth === 'number') ? a.sailing.__b2bDepth : 1;
+                    const bNum = (b.sailing && typeof b.sailing.__b2bDepth === 'number') ? b.sailing.__b2bDepth : 1;
+                    aValue = aNum;
+                    bValue = bNum;
+                    break;
+                }
              }
             if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;

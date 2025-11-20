@@ -295,8 +295,8 @@ const Utils = {
             rows.forEach(r => {
                 try {
                     const cells = r.querySelectorAll('td');
-                    if (cells.length < 6) return;
-                    const valCell = cells[5];
+                    if (cells.length < 7) return;
+                    const valCell = cells[6];
                     if (!valCell) return;
                     const code = (r.dataset.offerCode || '').trim();
                     const sailISO = (r.dataset.sailDate || '').trim();

@@ -104,6 +104,7 @@
         }
         row.innerHTML = `
             ${favCellHtml}
+            <td class="border p-2 b2b-depth-cell"></td>
             <td class="border p-2">${codeCell}</td>
             <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
