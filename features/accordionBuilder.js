@@ -67,6 +67,11 @@ const AccordionBuilder = {
                     if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) groupKey += ` + $${sailing.FREEPLAY_AMT} freeplay`;
                     break;
                 }
+                case 'b2bDepth': {
+                    if (sailing && typeof sailing.__b2bDepth === 'number') groupKey = sailing.__b2bDepth;
+                    else groupKey = '-';
+                    break;
+                }
                 case 'perks': {
                     groupKey = App.Utils.computePerks(offer, sailing);
                     break;
@@ -82,7 +87,7 @@ const AccordionBuilder = {
     sortGroupKeys(keys, column) {
         if (!Array.isArray(keys)) return [];
         const isDateCol = ['offerDate','expiration','sailDate','departureDate','offerDate','offerStart','offerEnd'].includes(column) || /date/i.test(column || '');
-        const numericCols = ['nights'];
+        const numericCols = ['nights', 'b2bDepth'];
         return [...keys].sort((a,b) => {
             if (a === b) return 0;
             // Always push placeholder '-' to end

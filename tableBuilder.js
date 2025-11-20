@@ -40,8 +40,41 @@ const TableBuilder = {
                 th.appendChild(groupIcon);
                 th.appendChild(sortLabel);
 
-                sortLabel.addEventListener('click', () => {
+                sortLabel.addEventListener('click', async () => {
                     console.debug('[tableBuilder] sort-label click', header.key);
+                    let spinnerShown = false;
+                    let hideAfterSort = false;
+                    const isB2BColumn = header.key === 'b2bDepth';
+                    if (isB2BColumn && App && App.TableRenderer) {
+                        const pending = (typeof App.TableRenderer.isB2BDepthPending === 'function') ? App.TableRenderer.isB2BDepthPending() : false;
+                        const missingDepths = (typeof App.TableRenderer.hasComputedB2BDepths === 'function')
+                            ? !App.TableRenderer.hasComputedB2BDepths(state)
+                            : (Array.isArray(state.sortedOffers) && state.sortedOffers.some(row => row && row.sailing && typeof row.sailing.__b2bDepth !== 'number'));
+                        if (pending || missingDepths) {
+                            try {
+                                if (window.Spinner && typeof Spinner.showSpinner === 'function') {
+                                    Spinner.showSpinner();
+                                    spinnerShown = true;
+                                }
+                            } catch(e) {
+                                console.debug('[tableBuilder] Unable to show spinner before B2B sort', e);
+                            }
+                            try {
+                                if (typeof App.TableRenderer.waitForB2BDepths === 'function') {
+                                    await App.TableRenderer.waitForB2BDepths();
+                                }
+                                hideAfterSort = spinnerShown;
+                            } catch(waitErr) {
+                                console.warn('[tableBuilder] waitForB2BDepths failed', waitErr);
+                                if (spinnerShown && window.Spinner && typeof Spinner.hideSpinner === 'function') {
+                                    try { Spinner.hideSpinner(); } catch(hideErr) { console.debug('[tableBuilder] Spinner.hideSpinner error', hideErr); }
+                                }
+                                spinnerShown = false;
+                                hideAfterSort = false;
+                            }
+                        }
+                    }
+
                     let newSortOrder = 'asc';
                     if (state.currentSortColumn === header.key) {
                         newSortOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
@@ -60,6 +93,9 @@ const TableBuilder = {
                     try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
                     console.debug('[tableBuilder] sort-label click: calling updateView', { token: state._switchToken });
                     App.TableRenderer.updateView(state);
+                    if (hideAfterSort && window.Spinner && typeof Spinner.hideSpinner === 'function') {
+                        try { Spinner.hideSpinner(); } catch(hideErr) { console.debug('[tableBuilder] Spinner.hideSpinner error post-sort', hideErr); }
+                    }
                 });
                 groupIcon.addEventListener('click', () => {
                     console.debug('[tableBuilder] group-icon click', header.key);

@@ -9,6 +9,72 @@ const TableRenderer = {
     TabKeyMap: {},
     // Centralized tab highlight helper (called only when token matches)
     caching: false,
+    _b2bDepthPending: false,
+    _b2bDepthPromise: null,
+    _resolveB2BDepthPromise: null,
+    _b2bDepthInFlightCount: 0,
+    isB2BDepthPending() {
+        return !!this._b2bDepthPending;
+    },
+    hasComputedB2BDepths(state) {
+        if (!state || !Array.isArray(state.sortedOffers) || !state.sortedOffers.length) return true;
+        return state.sortedOffers.every((row) => {
+            if (!row || !row.sailing) return true;
+            return typeof row.sailing.__b2bDepth === 'number';
+        });
+    },
+    waitForB2BDepths() {
+        return this._b2bDepthPromise || Promise.resolve();
+    },
+    _startB2BDepthComputation() {
+        this._b2bDepthInFlightCount += 1;
+        if (!this._b2bDepthPending) {
+            this._b2bDepthPending = true;
+            this._b2bDepthPromise = new Promise((resolve) => {
+                this._resolveB2BDepthPromise = resolve;
+            });
+        }
+        let finished = false;
+        return () => {
+            if (finished) return;
+            finished = true;
+            this._b2bDepthInFlightCount = Math.max(0, this._b2bDepthInFlightCount - 1);
+            if (this._b2bDepthInFlightCount === 0) {
+                this._b2bDepthPending = false;
+                if (this._resolveB2BDepthPromise) {
+                    try { this._resolveB2BDepthPromise(); } catch(e) { /* ignore */ }
+                }
+                this._b2bDepthPromise = null;
+                this._resolveB2BDepthPromise = null;
+            }
+        };
+    },
+    _computeB2BDepths(rows, options) {
+        if (!Array.isArray(rows) || !rows.length) return null;
+        if (!window.B2BUtils || typeof B2BUtils.computeB2BDepth !== 'function') return null;
+        const opts = Object.assign({ allowSideBySide: true }, options || {});
+        const finish = this._startB2BDepthComputation();
+        try {
+            const depthsMap = B2BUtils.computeB2BDepth(rows, opts);
+            rows.forEach((row, idx) => {
+                if (!row || !row.sailing) return;
+                const depth = depthsMap.get(idx) || 1;
+                row.sailing.__b2bDepth = depth;
+            });
+            return depthsMap;
+        } catch (err) {
+            console.warn('[TableRenderer] B2B depth computation failed', err);
+            return null;
+        } finally {
+            try { finish(); } catch(e) { /* ignore */ }
+        }
+    },
+    _ensureRowsHaveB2BDepth(rows, options) {
+        if (!Array.isArray(rows) || !rows.length) return null;
+        const needsDepth = rows.some(row => row && row.sailing && typeof row.sailing.__b2bDepth !== 'number');
+        if (!needsDepth) return null;
+        return this._computeB2BDepths(rows, options);
+    },
     _applyActiveTabHighlight(activeKey) {
         const tabs = document.querySelectorAll('.profile-tab');
         tabs.forEach(tb => {
@@ -680,6 +746,13 @@ const TableRenderer = {
         (filtered || []).forEach(({ offer }) => {
             const ds = offer.campaignOffer?.startDate; if (ds) { const t = new Date(ds).getTime(); if (!globalMaxOfferDate || t > globalMaxOfferDate) globalMaxOfferDate = t; }
         });
+        if (currentSortColumn === 'b2bDepth') {
+            try {
+                this._ensureRowsHaveB2BDepth(filtered);
+            } catch (depthErr) {
+                console.warn('[tableRenderer] Unable to prime B2B depths prior to sorting', depthErr);
+            }
+        }
         // Optimized sorting: reuse a master sorted list for the full set, then filter it to maintain order.
     const sortKey = currentSortColumn + '|' + currentSortOrder;
         if (currentSortOrder !== 'original') {
@@ -703,28 +776,20 @@ const TableRenderer = {
         if (viewMode === 'table') {
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             try {
-                // After rows are rendered, compute B2B depths for the currently visible set and attach to sailings
-                if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function') {
-                    const allowSideBySide = true; // future: make configurable via UI checkbox
-                    const depthsMap = B2BUtils.computeB2BDepth(state.sortedOffers, {
-                        allowSideBySide,
-                        filterPredicate: (row) => {
-                            // Reuse filtering decision: only consider rows that survived Filtering.filterOffers
-                            return filtered.indexOf(row) !== -1;
-                        }
-                    });
-                    // Attach depth back to sailing objects and update DOM cells
-                    const rows = tbody.querySelectorAll('tr');
-                    rows.forEach((tr, idx) => {
-                        const pair = state.sortedOffers[idx];
-                        if (!pair) return;
-                        const depth = depthsMap.get(idx) || 1;
-                        if (pair.sailing) pair.sailing.__b2bDepth = depth;
-                        const cell = tr.querySelector('.b2b-depth-cell');
-                        if (cell) cell.textContent = String(depth);
-                    });
-                    console.debug('[B2B] Depth computation complete', { rows: rows.length });
-                }
+                const allowSideBySide = true; // future: make configurable via UI checkbox
+                this._ensureRowsHaveB2BDepth(state.sortedOffers, {
+                    allowSideBySide,
+                    filterPredicate: (row) => filtered.indexOf(row) !== -1
+                });
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((tr, idx) => {
+                    const pair = state.sortedOffers[idx];
+                    if (!pair) return;
+                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                    const cell = tr.querySelector('.b2b-depth-cell');
+                    if (cell) cell.textContent = String(depth);
+                });
+                console.debug('[B2B] Depth computation complete', { rows: rows.length });
             } catch(e) { /* ignore B2B calculation errors so table still renders */ }
             if (!table.contains(thead)) table.appendChild(thead);
             if (!table.contains(tbody)) table.appendChild(tbody);
@@ -738,11 +803,7 @@ const TableRenderer = {
             }
             // Ensure B2B depths exist before rendering accordion (first time grouping or direct switch)
             try {
-                const needDepth = state.sortedOffers.some(w => !w.sailing || typeof w.sailing.__b2bDepth !== 'number');
-                if (needDepth && window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function') {
-                    const depthsMap = B2BUtils.computeB2BDepth(state.sortedOffers, { allowSideBySide: true, filterPredicate: (row)=>filtered.indexOf(row)!==-1 });
-                    state.sortedOffers.forEach((w, idx) => { if (w && w.sailing) w.sailing.__b2bDepth = depthsMap.get(idx) || 1; });
-                }
+                this._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: true, filterPredicate: (row)=>filtered.indexOf(row)!==-1 });
             } catch(e){ /* ignore depth precompute errors */ }
             accordionContainer.innerHTML = '';
             // Recursive function to render all open accordion levels

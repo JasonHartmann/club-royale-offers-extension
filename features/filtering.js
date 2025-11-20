@@ -574,6 +574,19 @@ const Filtering = {
                 return perksStr;
             case 'tradeInValue':
                 return App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue);
+            case 'b2bDepth': {
+                const depthVal = (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : null;
+                if (depthVal != null) return depthVal;
+                try {
+                    if (window.App && App.TableRenderer && typeof App.TableRenderer._ensureRowsHaveB2BDepth === 'function') {
+                        const state = App.TableRenderer.lastState;
+                        if (state && Array.isArray(state.sortedOffers) && state.sortedOffers.length) {
+                            App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: true });
+                        }
+                    }
+                } catch(e){ /* ignore ensure attempt */ }
+                return (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : 1;
+            }
             case 'offerValue': {
                 try {
                     const raw = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null);
