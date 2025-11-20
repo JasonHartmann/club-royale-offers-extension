@@ -27,6 +27,7 @@
         OfferCodeLookup,
         Filtering,
         B2BUtils,
+        BackToBackTool,
         Favorites,
         ProfileCache: _prev.ProfileCache || [],
         init() {

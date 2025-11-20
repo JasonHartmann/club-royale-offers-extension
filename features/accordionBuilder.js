@@ -345,6 +345,20 @@ const AccordionBuilder = {
                             if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth);
                             else cell.textContent = String(sailing.__b2bDepth);
                         }
+                        try {
+                            if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') {
+                                BackToBackTool.attachToCell(cell, { offer, sailing });
+                            }
+                        } catch (attachErr) {
+                            console.debug('[accordionBuilder] Unable to attach BackToBackTool trigger', attachErr);
+                        }
+                        try {
+                            if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') {
+                                BackToBackTool.attachToCell(cell, { offer, sailing });
+                            }
+                        } catch (attachErr) {
+                            console.debug('[accordionBuilder] Unable to attach BackToBackTool trigger', attachErr);
+                        }
                     } catch(e){ /* ignore */ }
                     tbody.appendChild(row);
                 });

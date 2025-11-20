@@ -11,6 +11,16 @@
             row.dataset.shipName = (sailing.shipName || '').toString().trim();
             row.dataset.shipCode = (sailing.shipCode || '').toString().trim();
             if (idx !== null && idx !== undefined) row.dataset.offerIndex = String(idx);
+            // Ensure sailing has a stable __b2bRowId so handlers can attach during incremental render
+            try {
+                if (sailing && !sailing.__b2bRowId) {
+                    const baseParts = [offer && offer.campaignOffer && offer.campaignOffer.offerCode, sailing.shipCode, sailing.shipName, sailing.sailDate, idx]
+                        .filter(Boolean)
+                        .map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
+                    sailing.__b2bRowId = `b2b-${baseParts.join('-') || idx}`;
+                }
+                if (sailing && sailing.__b2bRowId) row.dataset.b2bRowId = sailing.__b2bRowId;
+            } catch(e){}
         } catch(e){}
         row.className = 'hover:bg-gray-50';
         if (isNewest) row.classList.add('newest-offer-row');
@@ -121,6 +131,38 @@
             <td class="border p-2">${guestsText}</td>
             <td class="border p-2">${perksStr}</td>
         `;
+        try {
+            const b2bCell = row.querySelector('.b2b-depth-cell');
+            if (b2bCell) {
+                const rowId = sailing && sailing.__b2bRowId;
+                if (rowId) {
+                    b2bCell.dataset.b2bRowId = rowId;
+                    b2bCell.classList.add('b2b-depth-cell-action');
+                    if (!b2bCell.dataset.b2bCellBound) {
+                        const handler = (ev) => {
+                            try { console.debug('[B2B] cell clicked', { rowId, evType: ev.type }); } catch(e){}
+                            if (!window.BackToBackTool) { try { console.debug('[B2B] BackToBackTool missing'); } catch(e){}; return; }
+                            if (typeof BackToBackTool.openByRowId !== 'function') { try { console.debug('[B2B] BackToBackTool.openByRowId missing'); } catch(e){}; return; }
+                            try { ev.preventDefault(); ev.stopPropagation(); } catch(e){}
+                            try { BackToBackTool.openByRowId(rowId); } catch(openErr) { try { console.debug('[B2B] openByRowId threw', openErr); } catch(e){} }
+                        };
+                        b2bCell.addEventListener('click', handler, true);
+                        b2bCell.addEventListener('pointerdown', handler, true);
+                        b2bCell.addEventListener('keydown', (ev) => {
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                                handler(ev);
+                            }
+                        }, true);
+                        b2bCell.setAttribute('role', 'button');
+                        b2bCell.setAttribute('tabindex', '0');
+                        b2bCell.dataset.b2bCellBound = 'true';
+                    }
+                }
+                if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') {
+                    BackToBackTool.attachToCell(b2bCell, { offer, sailing });
+                }
+            }
+        } catch(e) { /* ignore B2B attachment errors */ }
         // Wrap itinerary cell text in link immediately (so accordion rows also get links) if destination not placeholder
         try {
             const itinCell = row.querySelector('.itinerary');

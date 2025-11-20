@@ -737,6 +737,21 @@ const TableRenderer = {
                 else {
                     // Fallback: append near offerName if tradeInValue missing (legacy state)
                     const offerNameIdx = baseState.headers.findIndex(h => h.key === 'offerName');
+
+                if (window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
+                    try {
+                        const rowsForContext = Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length
+                            ? state.fullOriginalOffers
+                            : state.sortedOffers;
+                        BackToBackTool.registerEnvironment({
+                            rows: rowsForContext || [],
+                            allowSideBySide: allowSideBySidePref,
+                            stateKey: state.selectedProfileKey || null
+                        });
+                    } catch (contextErr) {
+                        console.debug('[tableRenderer] Unable to register BackToBackTool context', contextErr);
+                    }
+                }
                     if (offerNameIdx !== -1) baseState.headers.splice(offerNameIdx, 0, { key: 'offerValue', label: 'Value' });
                     else baseState.headers.push({ key: 'offerValue', label: 'Value' });
                 }
@@ -919,6 +934,13 @@ const TableRenderer = {
                     if (!cell) return;
                     if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth);
                     else cell.textContent = String(depth);
+                    try {
+                        if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') {
+                            BackToBackTool.attachToCell(cell, pair);
+                        }
+                    } catch (attachErr) {
+                        console.debug('[tableRenderer] Unable to attach BackToBackTool trigger', attachErr);
+                    }
                 });
                 console.debug('[B2B] Depth computation complete', { rows: rows.length });
             } catch(e) { /* ignore B2B calculation errors so table still renders */ }
