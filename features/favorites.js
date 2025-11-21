@@ -52,6 +52,14 @@
 
     function saveProfileObject(profile) {
         profile.savedAt = Date.now();
+        try {
+            if (window && window.console && window.console.debug) {
+                try {
+                    const count = (profile && profile.data && Array.isArray(profile.data.offers)) ? profile.data.offers.reduce((acc,o)=>acc + (o.campaignOffer && Array.isArray(o.campaignOffer.sailings) ? o.campaignOffer.sailings.length : 0), 0) : 0;
+                    console.debug('[Favorites] Saving profile object', { offers: (profile && profile.data && profile.data.offers ? profile.data.offers.length : 0), sailings: count });
+                } catch(e){}
+            }
+        } catch(e){}
         setRawStorage(profile);
         invalidateCache(); // ensure subsequent reads use fresh data
         try { if (App && App.ProfileCache && App.ProfileCache['goob-favorites']) delete App.ProfileCache['goob-favorites']; } catch(e){ /* ignore */ }
@@ -131,6 +139,62 @@
             const key = getSailingKey(offer, clonedSailing, effectivePid);
             const exists = targetOffer.campaignOffer.sailings.some(s => getSailingKey(offer, s, s.__profileId || effectivePid) === key);
             if (!exists) targetOffer.campaignOffer.sailings.push(clonedSailing);
+        }
+        saveProfileObject(profile);
+        refreshIfViewingFavorites(profile);
+        try { if (App && App.TableRenderer) App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState.groupingStack, App.TableRenderer.lastState.groupKeysStack); } catch(e){/* ignore */}
+        try {
+            if (window && window.console && window.console.debug) {
+                try {
+                    const after = loadProfileObject();
+                    const totalSailings = (after && after.data && Array.isArray(after.data.offers)) ? after.data.offers.reduce((acc,o)=>acc + (o.campaignOffer && Array.isArray(o.campaignOffer.sailings) ? o.campaignOffer.sailings.length : 0), 0) : 0;
+                    console.debug('[Favorites] After bulk save profile snapshot', { offers: after.data.offers.length, sailings: totalSailings, lastOffer: after.data.offers[after.data.offers.length-1] });
+                } catch(e){}
+            }
+        } catch(e){}
+    }
+
+    function bulkAddFavorites(items, profileId) {
+        if (!Array.isArray(items) || items.length === 0) return;
+        const profile = loadProfileObject();
+        try {
+            if (window && window.console && window.console.debug) {
+                window.console.debug('[Favorites] bulkAddFavorites called', items.map(it => ({ code: it.offer?.campaignOffer?.offerCode, ship: it.sailing?.shipName, sailDate: it.sailing?.sailDate })));
+            }
+        } catch(e){}
+        // Determine effectivePid similarly to addFavorite if not provided per-item
+        let defaultPid = profileId;
+        try {
+            if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') {
+                let linkedAccounts = [];
+                try { if (typeof getLinkedAccounts === 'function') linkedAccounts = getLinkedAccounts(); } catch(e){}
+                const linkedIds = linkedAccounts.map(acc => {
+                    try { return (App.ProfileIdMap && acc.key in App.ProfileIdMap) ? App.ProfileIdMap[acc.key] : acc.key; } catch(e){ return acc.key; }
+                });
+                if (linkedIds.length >= 2) defaultPid = linkedIds.join('-'); else defaultPid = 'C';
+            }
+        } catch(e){}
+        if (!defaultPid) defaultPid = '0';
+
+        for (const it of items) {
+            const offer = it.offer || {};
+            const sailing = it.sailing || {};
+            const effectivePid = it.profileId || defaultPid;
+            let idx = findOfferIndex(profile, offer);
+            const clonedSailing = JSON.parse(JSON.stringify(sailing));
+            clonedSailing.__profileId = effectivePid;
+            if (idx === -1) {
+                const newOffer = cloneOfferForFavorite(offer, clonedSailing);
+                newOffer.__favoriteMeta = { profileId: effectivePid };
+                profile.data.offers.push(newOffer);
+            } else {
+                const targetOffer = profile.data.offers[idx];
+                if (!targetOffer.campaignOffer) targetOffer.campaignOffer = {};
+                if (!Array.isArray(targetOffer.campaignOffer.sailings)) targetOffer.campaignOffer.sailings = [];
+                const key = getSailingKey(offer, clonedSailing, effectivePid);
+                const exists = targetOffer.campaignOffer.sailings.some(s => getSailingKey(offer, s, s.__profileId || effectivePid) === key);
+                if (!exists) targetOffer.campaignOffer.sailings.push(clonedSailing);
+            }
         }
         saveProfileObject(profile);
         refreshIfViewingFavorites(profile);
@@ -225,6 +289,7 @@
         ensureProfileExists,
         loadProfileObject,
         addFavorite,
+        bulkAddFavorites,
         removeFavorite,
         invalidateCache // exported for manual debugging if needed
     };

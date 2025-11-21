@@ -533,7 +533,15 @@ const TableRenderer = {
     prepareOfferData(data) {
         let originalOffers = [];
         let sortedOffers = [];
-        if (data.offers && data.offers.length > 0) {
+        if (data && data.offers && data.offers.length > 0) {
+            try {
+                if (window && window.console && window.console.debug) {
+                    const totalSailings = data.offers.reduce((acc,o)=>acc + (o.campaignOffer && Array.isArray(o.campaignOffer.sailings) ? o.campaignOffer.sailings.length : 0), 0);
+                    console.debug('[tableRenderer] prepareOfferData incoming payload', { offers: data.offers.length, sailings: totalSailings });
+                }
+            } catch(e){}
+        }
+        if (data && data.offers && data.offers.length > 0) {
             data.offers.forEach(offer => {
                 if (offer.campaignOffer && offer.campaignOffer.sailings) {
                     offer.campaignOffer.sailings.forEach(sailing => {
@@ -542,6 +550,11 @@ const TableRenderer = {
                 }
             });
             sortedOffers = [...originalOffers];
+            try {
+                if (window && window.console && window.console.debug) {
+                    console.debug('[tableRenderer] prepareOfferData produced originalOffers', { count: originalOffers.length, last: originalOffers[originalOffers.length-1] });
+                }
+            } catch(e){}
         }
         return { originalOffers, sortedOffers };
     },
@@ -738,20 +751,6 @@ const TableRenderer = {
                     // Fallback: append near offerName if tradeInValue missing (legacy state)
                     const offerNameIdx = baseState.headers.findIndex(h => h.key === 'offerName');
 
-                if (window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
-                    try {
-                        const rowsForContext = Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length
-                            ? state.fullOriginalOffers
-                            : state.sortedOffers;
-                        BackToBackTool.registerEnvironment({
-                            rows: rowsForContext || [],
-                            allowSideBySide: allowSideBySidePref,
-                            stateKey: state.selectedProfileKey || null
-                        });
-                    } catch (contextErr) {
-                        console.debug('[tableRenderer] Unable to register BackToBackTool context', contextErr);
-                    }
-                }
                     if (offerNameIdx !== -1) baseState.headers.splice(offerNameIdx, 0, { key: 'offerValue', label: 'Value' });
                     else baseState.headers.push({ key: 'offerValue', label: 'Value' });
                 }
@@ -846,6 +845,30 @@ const TableRenderer = {
         state.originalOffers = filtered;
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         const allowSideBySidePref = (typeof this.getSideBySidePreference === 'function') ? this.getSideBySidePreference() : true;
+        if (window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
+            try {
+                // Exclude hidden groups from B2B context — hidden groups should not be visible to B2B
+                const baseRows = Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length ? state.fullOriginalOffers : state.sortedOffers || [];
+                const contextRows = (window.Filtering && typeof Filtering.excludeHidden === 'function') ? Filtering.excludeHidden(baseRows, state) : baseRows;
+                try {
+                    if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                        try {
+                            const sampleCode = (r) => (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                            const baseHas25 = Array.isArray(baseRows) && baseRows.some(r => sampleCode(r) === '25TIER3');
+                            const ctxHas25 = Array.isArray(contextRows) && contextRows.some(r => sampleCode(r) === '25TIER3');
+                            console.debug('[B2B][REG] registerEnvironment rows:', { baseRows: baseRows.length, contextRows: contextRows.length, baseHas25, ctxHas25, hiddenGroups: (Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : null });
+                        } catch(innerDbg) { /* ignore debug errors */ }
+                    }
+                } catch(e) { /* ignore */ }
+                BackToBackTool.registerEnvironment({
+                    rows: contextRows,
+                    allowSideBySide: allowSideBySidePref,
+                    stateKey: state.selectedProfileKey || null
+                });
+            } catch (contextErr) {
+                console.debug('[tableRenderer] Unable to register BackToBackTool context', contextErr);
+            }
+        }
         table.style.display = viewMode === 'table' ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
 

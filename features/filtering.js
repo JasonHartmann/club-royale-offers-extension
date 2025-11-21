@@ -279,6 +279,23 @@ const Filtering = {
     // Debug flag (toggle below to enable/disable debug logging by editing this file)
     DEBUG: false,
     _dbg(){ if (Filtering.DEBUG && typeof console !== 'undefined' && window.GOBO_DEBUG_ENABLED) { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
+    _matchesHiddenValue(offerColumnValue, targetValue) {
+        if (offerColumnValue == null || targetValue == null) return false;
+        try {
+            const left = String(offerColumnValue).trim().toUpperCase();
+            const right = String(targetValue).trim().toUpperCase();
+            if (!left || !right) return false;
+            if (left === right) return true;
+            // If the left contains multiple codes separated by common delimiters, check tokens
+            const tokens = left.split(/[\/,:;|]+/).map(s => s.trim()).filter(Boolean);
+            if (tokens.length && tokens.some(t => t === right)) return true;
+            // Word-boundary match (e.g. " 25TIER3 " in " 25TIER3/OTHER")
+            if ((' ' + left + ' ').indexOf(' ' + right + ' ') !== -1) return true;
+            // Fallback: substring match
+            if (left.indexOf(right) !== -1) return true;
+        } catch (e) { /* ignore matching errors */ }
+        return false;
+    },
     filterOffers(state, offers) {
         if (window.GOBO_DEBUG_ENABLED) { try { console.time('Filtering.filterOffers'); } catch(e){} }
         console.debug('[Filtering] filterOffers ENTRY', { offersLen: Array.isArray(offers) ? offers.length : 0, advancedEnabled: !!(state && state.advancedSearch && state.advancedSearch.enabled) });
@@ -299,7 +316,7 @@ const Filtering = {
                     const key = labelToKey[label.toLowerCase()];
                     if (!key) continue;
                     const offerColumnValue = this.getOfferColumnValue(offer, sailing, key);
-                    if (offerColumnValue && offerColumnValue.toString().toUpperCase() === value.toUpperCase()) return false;
+                    if (Filtering._matchesHiddenValue(offerColumnValue, value)) return false;
                 }
                 return true;
             });
@@ -328,6 +345,27 @@ const Filtering = {
             } catch(e){ /* ignore */ }
         }
         return working;
+    },
+
+    excludeHidden(offers, state) {
+        if (!Array.isArray(offers) || offers.length === 0) return [];
+        const hiddenGroups = Filtering.loadHiddenGroups();
+        if (!Array.isArray(hiddenGroups) || hiddenGroups.length === 0) return offers.slice();
+        const labelToKey = {};
+        if (Array.isArray(state && state.headers)) {
+            state.headers.forEach(h => { if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; });
+        }
+        return offers.filter(({ offer, sailing }) => {
+            for (const path of hiddenGroups) {
+                const [label, value] = path.split(':').map(s => s.trim());
+                if (!label || !value) continue;
+                const key = labelToKey[label.toLowerCase()];
+                if (!key) continue;
+                const offerColumnValue = this.getOfferColumnValue(offer, sailing, key);
+                if (Filtering._matchesHiddenValue(offerColumnValue, value)) return false;
+            }
+            return true;
+        });
     },
     applyAdvancedSearch(offers, state) {
         if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return offers;

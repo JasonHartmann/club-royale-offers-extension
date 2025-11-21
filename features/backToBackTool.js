@@ -1,6 +1,8 @@
 (function(){
-    const DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-    const DOW_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
+    const DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const DOW_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
+    const DEBUG = false;
+    function _dbg() { if (!DEBUG) return; try { if (window && window.console && window.console.debug) console.debug('[B2B]', ...arguments); } catch(e){} }
 
     function normalizeIso(value) {
         if (!value) return '';
@@ -45,6 +47,11 @@
         const end = formatDateLabel(meta.endISO || meta.startISO, true);
         const nights = Number.isFinite(meta.nights) ? `${meta.nights} night${meta.nights === 1 ? '' : 's'}` : '';
         return nights ? `${start} → ${end} (${nights})` : `${start} → ${end}`;
+    }
+
+    function normalizePortName(value) {
+        if (!value) return '';
+        return String(value).trim();
     }
 
     function safeOfferCode(entry) {
@@ -120,28 +127,48 @@
         const days = itineraryRecord && Array.isArray(itineraryRecord.days) ? itineraryRecord.days : [];
         if (!days.length) {
             const summary = (sailing && sailing.itineraryDescription) ? sailing.itineraryDescription : '';
-            return summary ? [{ day: 'Itinerary', label: summary, window: '' }] : [];
+            return summary ? [{ day: 'Itinerary', label: summary }] : [];
         }
-        return days.slice(0, 6).map(day => {
-            const idxLabel = day && day.number ? `Day ${day.number}` : 'Day';
+        // Helper to get DOW from ISO date
+        function getDOW(iso, offset) {
+            if (!iso) return '';
+            try {
+                const d = new Date(iso + 'T00:00:00Z');
+                d.setUTCDate(d.getUTCDate() + offset);
+                return DOW_FMT.format(d);
+            } catch (e) { return ''; }
+        }
+        function getShortDate(iso, offset) {
+            if (!iso) return '';
+            try {
+                const d = new Date(iso + 'T00:00:00Z');
+                d.setUTCDate(d.getUTCDate() + offset);
+                return DATE_FMT.format(d);
+            } catch (e) { return ''; }
+        }
+        let baseISO = null;
+        if (sailing && sailing.sailDate) baseISO = String(sailing.sailDate).slice(0, 10);
+        return days.map((day, i) => {
+            let dateLabel = '';
+            let dow = '';
+            if (baseISO) {
+                dateLabel = getShortDate(baseISO, i);
+                dow = getDOW(baseISO, i);
+            }
             let label = '';
-            let window = '';
             try {
                 const primaryPort = Array.isArray(day.ports) && day.ports.length ? day.ports[0] : null;
                 if (primaryPort && primaryPort.port) {
-                    label = primaryPort.port.name || primaryPort.port.code || primaryPort.port.region || day.type || 'Port Day';
+                    const portName = primaryPort.port.name || primaryPort.port.code || day.type || 'Port Day';
+                    const region = primaryPort.port.region || '';
+                    label = region && portName ? `${portName}, ${region}` : portName;
                 } else {
                     label = day.type || 'Sea Day';
-                }
-                const arrival = primaryPort && primaryPort.arrivalTime ? primaryPort.arrivalTime : '';
-                const departure = primaryPort && primaryPort.departureTime ? primaryPort.departureTime : '';
-                if (arrival || departure) {
-                    window = [arrival, departure].filter(Boolean).join(' - ');
                 }
             } catch (e) {
                 label = day && day.type ? day.type : 'Port Day';
             }
-            return { day: idxLabel, label: label || 'Port Day', window };
+            return { day: dateLabel, label: label || 'Port Day', dow };
         });
     }
 
@@ -149,6 +176,24 @@
         _context: { rows: [], rowMap: new Map(), allowSideBySide: true, stateKey: null },
         _metaCache: new Map(),
         _activeSession: null,
+
+        _scheduleWithSpinner(task) {
+            if (typeof task !== 'function') return;
+            const spinner = (typeof Spinner !== 'undefined' && Spinner && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') ? Spinner : null;
+            if (!spinner) {
+                task();
+                return;
+            }
+            try { spinner.showSpinner(); } catch (e) {}
+            const run = () => {
+                try {
+                    task();
+                } finally {
+                    try { spinner.hideSpinner(); } catch (e) {}
+                }
+            };
+            setTimeout(run, 0);
+        },
 
         registerEnvironment(opts) {
             if (!opts) return;
@@ -247,31 +292,33 @@
         openByRowId(rowId) {
             try { console.debug('[B2B] openByRowId called', { rowId, hasMap: !!this._context.rowMap.has(rowId) }); } catch(e){}
             if (!rowId) return;
-            if (!this._context.rowMap.has(rowId)) {
-                try { console.debug('[B2B] row not found in rowMap, attempting DOM reconstruction', rowId); } catch(e){}
-                try {
-                    const sel = `[data-b2b-row-id="${escapeSelector(rowId)}"]`;
-                    const el = document.querySelector(sel);
-                    if (el) {
-                        const tr = el.closest && el.closest('tr') ? el.closest('tr') : el;
-                        const sailing = {
-                            __b2bRowId: rowId,
-                            shipCode: tr.dataset ? tr.dataset.shipCode : (el.dataset ? el.dataset.shipCode : ''),
-                            shipName: tr.dataset ? tr.dataset.shipName : (el.dataset ? el.dataset.shipName : ''),
-                            sailDate: tr.dataset ? tr.dataset.sailDate : (el.dataset ? el.dataset.sailDate : '')
-                        };
-                        const offer = { campaignOffer: { offerCode: (tr.dataset && tr.dataset.offerCode) ? tr.dataset.offerCode : '' } };
-                        const entry = { offer, sailing };
-                        this._context.rowMap.set(rowId, entry);
-                        if (Array.isArray(this._context.rows)) this._context.rows.push(entry);
-                        try { console.debug('[B2B] reconstructed entry from DOM', { rowId }); } catch(e){}
-                    } else {
-                        try { console.debug('[B2B] DOM element not found for rowId', rowId); } catch(e){}
-                        return;
-                    }
-                } catch(e) { try { console.debug('[B2B] DOM reconstruction error', e); } catch(e){}; return; }
-            }
-            try { this._startSession(rowId); } catch(e) { try { console.debug('[B2B] _startSession error', e); } catch(ee){} }
+            this._scheduleWithSpinner(() => {
+                if (!this._context.rowMap.has(rowId)) {
+                    try { console.debug('[B2B] row not found in rowMap, attempting DOM reconstruction', rowId); } catch(e){}
+                    try {
+                        const sel = `[data-b2b-row-id="${escapeSelector(rowId)}"]`;
+                        const el = document.querySelector(sel);
+                        if (el) {
+                            const tr = el.closest && el.closest('tr') ? el.closest('tr') : el;
+                            const sailing = {
+                                __b2bRowId: rowId,
+                                shipCode: tr.dataset ? tr.dataset.shipCode : (el.dataset ? el.dataset.shipCode : ''),
+                                shipName: tr.dataset ? tr.dataset.shipName : (el.dataset ? el.dataset.shipName : ''),
+                                sailDate: tr.dataset ? tr.dataset.sailDate : (el.dataset ? el.dataset.sailDate : '')
+                            };
+                            const offer = { campaignOffer: { offerCode: (tr.dataset && tr.dataset.offerCode) ? tr.dataset.offerCode : '' } };
+                            const entry = { offer, sailing };
+                            this._context.rowMap.set(rowId, entry);
+                            if (Array.isArray(this._context.rows)) this._context.rows.push(entry);
+                            try { console.debug('[B2B] reconstructed entry from DOM', { rowId }); } catch(e){}
+                        } else {
+                            try { console.debug('[B2B] DOM element not found for rowId', rowId); } catch(e){}
+                            return;
+                        }
+                    } catch(e) { try { console.debug('[B2B] DOM reconstruction error', e); } catch(e){}; return; }
+                }
+                try { this._startSession(rowId); } catch(e) { try { console.debug('[B2B] _startSession error', e); } catch(ee){} }
+            });
         },
 
         _startSession(rowId) {
@@ -409,11 +456,21 @@
             const nights = parseNights(entry, itineraryRecord);
             const explicitEnd = normalizeIso((entry.sailing && (entry.sailing.endDate || entry.sailing.disembarkDate)) || '');
             const computedEnd = (!explicitEnd && startISO && Number.isFinite(nights)) ? addDays(startISO, nights) : explicitEnd || startISO;
-            const departurePort = (entry.sailing && entry.sailing.departurePort && entry.sailing.departurePort.name) || (itineraryRecord && itineraryRecord.departurePortName) || '';
-            const arrivalPort = (entry.sailing && entry.sailing.arrivalPort && entry.sailing.arrivalPort.name)
+            const departurePort = normalizePortName(
+                (entry.sailing && entry.sailing.departurePort && entry.sailing.departurePort.name)
+                || (itineraryRecord && itineraryRecord.departurePortName)
+            );
+            const arrivalPort = normalizePortName(
+                (entry.sailing && entry.sailing.arrivalPort && entry.sailing.arrivalPort.name)
+                || (entry.sailing && entry.sailing.returnPort && entry.sailing.returnPort.name)
+                || (itineraryRecord && (itineraryRecord.arrivalPortName || itineraryRecord.returnPortName))
+                || departurePort
+            );
+            const destinationLabel = normalizePortName(
+                (entry.sailing && entry.sailing.destinationPort && entry.sailing.destinationPort.name)
+                || (entry.sailing && entry.sailing.destination && entry.sailing.destination.name)
                 || (itineraryRecord && itineraryRecord.destinationName)
-                || (itineraryRecord && itineraryRecord.arrivalPortName)
-                || departurePort;
+            );
             const timeline = buildTimeline(itineraryRecord, entry.sailing);
             const perks = getPerks(entry);
             const meta = {
@@ -428,6 +485,7 @@
                 nights,
                 embarkPort: departurePort,
                 disembarkPort: arrivalPort,
+                destinationLabel,
                 itineraryName: (entry.sailing && entry.sailing.itineraryDescription) || (itineraryRecord && itineraryRecord.itineraryDescription) || '',
                 timeline,
                 perksLabel: perks,
@@ -437,6 +495,15 @@
             };
             this._metaCache.set(rowId, meta);
             return meta;
+        },
+
+        _formatRoute(meta) {
+            if (!meta) return 'Route TBA';
+            const origin = normalizePortName(meta.embarkPort) || 'Embark TBA';
+            const destination = normalizePortName(meta.destinationLabel);
+            const returnPort = normalizePortName(meta.disembarkPort) || 'Return TBA';
+            const hasMiddle = destination && destination.toLowerCase() !== origin.toLowerCase() && destination.toLowerCase() !== returnPort.toLowerCase();
+            return hasMiddle ? `${origin} → ${destination} → ${returnPort}` : `${origin} → ${returnPort}`;
         },
 
         _renderChain() {
@@ -452,7 +519,7 @@
                 const head = document.createElement('div');
                 head.className = 'b2b-chain-step-head';
                 const title = document.createElement('h4');
-                title.textContent = `${meta.shipName || meta.shipCode || 'Ship'} - ${meta.nights ? `${meta.nights} night${meta.nights === 1 ? '' : 's'}` : 'Length TBA'}`;
+                    title.innerHTML = `<strong>${meta.shipName}</strong>`;
                 const step = document.createElement('span');
                 step.textContent = idx === 0 ? 'Root sailing' : `Leg ${idx + 1}`;
                 head.appendChild(title);
@@ -461,36 +528,42 @@
 
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-chain-meta';
+                const routeLabel = this._formatRoute(meta);
                 metaBlock.innerHTML = `
                     <strong>${formatRange(meta)}</strong>
-                    <span>${meta.embarkPort || 'Embark TBA'} → ${meta.disembarkPort || 'Return TBA'}</span>
-                    <span>Offer ${meta.offerCode || 'TBA'} - ${meta.guestsLabel}${meta.roomLabel ? ` - ${meta.roomLabel}` : ''}</span>
+                    <span>${routeLabel}</span>
+                    <span>Offer <strong>${meta.offerCode || 'TBA'}</strong> - ${meta.guestsLabel}${meta.roomLabel ? ` - ${meta.roomLabel}` : ''}</span>
                     ${meta.perksLabel ? `<span>${meta.perksLabel}</span>` : ''}
                 `;
                 card.appendChild(metaBlock);
 
                 if (meta.timeline && meta.timeline.length) {
-                    const list = document.createElement('ul');
-                    list.className = 'b2b-timeline';
-                    meta.timeline.slice(0, 5).forEach(item => {
-                        const li = document.createElement('li');
-                        const dot = document.createElement('span');
-                        dot.className = 'dot';
-                        const text = document.createElement('div');
-                        text.innerHTML = `<strong>${item.day}</strong> ${item.label}${item.window ? ` - ${item.window}` : ''}`;
-                        li.appendChild(dot);
-                        li.appendChild(text);
-                        list.appendChild(li);
+                    const table = document.createElement('table');
+                    table.className = 'b2b-timeline-table';
+                    const tbody = document.createElement('tbody');
+                    meta.timeline.forEach(item => {
+                        const tr = document.createElement('tr');
+                        const dayTd = document.createElement('td');
+                        dayTd.className = 'b2b-timeline-day';
+                        dayTd.textContent = item.day;
+                        const dowTd = document.createElement('td');
+                        dowTd.className = 'b2b-timeline-dow';
+                        dowTd.textContent = item.dow;
+                        const labelTd = document.createElement('td');
+                        labelTd.className = 'b2b-timeline-label';
+                        labelTd.textContent = item.label;
+                        tr.appendChild(dayTd);
+                        tr.appendChild(dowTd);
+                        tr.appendChild(labelTd);
+                        tbody.appendChild(tr);
                     });
-                    if (meta.timeline.length > 5) {
-                        const li = document.createElement('li');
-                        li.innerHTML = '<span class="dot" style="opacity:0;"></span><div>...</div>';
-                        list.appendChild(li);
-                    }
-                    card.appendChild(list);
+                    table.appendChild(tbody);
+                    card.appendChild(table);
                 }
 
-                if (idx > 0) {
+                // Only the last non-root sailing should show the remove button
+                const isRemovable = idx > 0 && idx === (this._activeSession.chain.length - 1);
+                if (isRemovable) {
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'b2b-chain-remove';
                     removeBtn.type = 'button';
@@ -531,6 +604,8 @@
         },
 
         _computeNextOptions() {
+                        _dbg('_computeNextOptions rowMap keys:', Array.from(this._context.rowMap.keys()));
+                        _dbg('_computeNextOptions current chain:', this._activeSession ? this._activeSession.chain : []);
             if (!this._activeSession) return [];
             const chain = this._activeSession.chain;
             const lastId = chain[chain.length - 1];
@@ -547,7 +622,11 @@
                 const candidateMeta = this._getMeta(rowId);
                 if (!candidateMeta) return;
                 if (candidateMeta.offerCode && usedOfferCodes.has(candidateMeta.offerCode)) return;
-                if (!this._isLinkable(lastMeta, candidateMeta, allowSideBySide)) return;
+                const linkable = this._isLinkable(lastMeta, candidateMeta, allowSideBySide);
+                if (!linkable) {
+                    _dbg('Not linkable: isLinkable returned false', { from: lastMeta, to: candidateMeta });
+                    return;
+                }
                 const lag = diffDays(candidateMeta.startISO, lastMeta.endISO) || 0;
                 options.push({
                     rowId,
@@ -564,15 +643,31 @@
         },
 
         _isLinkable(currentMeta, nextMeta, allowSideBySide) {
-            if (!(currentMeta && nextMeta)) return false;
-            if (!(currentMeta.endISO && nextMeta.startISO)) return false;
+            if (!(currentMeta && nextMeta)) {
+                _dbg('Not linkable: missing meta', { currentMeta, nextMeta });
+                return false;
+            }
+            if (!(currentMeta.endISO && nextMeta.startISO)) {
+                _dbg('Not linkable: missing endISO/startISO', { currentMeta, nextMeta });
+                return false;
+            }
             const lag = diffDays(nextMeta.startISO, currentMeta.endISO);
-            if (lag == null || lag < 0 || lag > 1) return false;
+            // Only same-day connections allowed (lag must be exactly 0)
+            if (lag == null || lag !== 0) {
+                _dbg('Not linkable: not same-day', { lag, currentMeta, nextMeta });
+                return false;
+            }
             const currentPort = (currentMeta.disembarkPort || '').toLowerCase();
             const nextPort = (nextMeta.embarkPort || nextMeta.disembarkPort || '').toLowerCase();
-            if (currentPort && nextPort && currentPort !== nextPort) return false;
+            if (currentPort && nextPort && currentPort !== nextPort) {
+                _dbg('Not linkable: port mismatch', { currentPort, nextPort, currentMeta, nextMeta });
+                return false;
+            }
             if (!allowSideBySide) {
-                if (currentMeta.shipKey && nextMeta.shipKey && currentMeta.shipKey !== nextMeta.shipKey) return false;
+                if (currentMeta.shipKey && nextMeta.shipKey && currentMeta.shipKey !== nextMeta.shipKey) {
+                    _dbg('Not linkable: ship mismatch', { currentMeta, nextMeta });
+                    return false;
+                }
             }
             return true;
         },
@@ -585,7 +680,10 @@
             if (!options.length) {
                 const empty = document.createElement('div');
                 empty.className = 'b2b-empty-state';
-                empty.innerHTML = '<strong>No matching sailings found</strong>Try enabling side-by-side connections, or pick a different starting offer.';
+                const suggestion = this._activeSession.allowSideBySide
+                    ? ' Try enabling side-by-side connections, or pick a different starting offer.'
+                    : ' Side-by-side connections are disabled. Re-enable them from the breadcrumb toggle or pick a different starting offer.';
+                empty.innerHTML = `<strong>No matching sailings found</strong>${suggestion}`;
                 list.appendChild(empty);
                 return;
             }
@@ -598,10 +696,11 @@
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-option-meta';
                 const windowLabel = opt.lag === 0 ? 'Boards same day' : 'Boards next day';
+                const routeLabel = this._formatRoute(opt.meta);
                 metaBlock.innerHTML = `
                     <strong>${opt.meta.shipName || opt.meta.shipCode || 'Ship'}</strong>
                     <span>${formatRange(opt.meta)}</span>
-                    <span>${opt.meta.embarkPort || 'Embark TBA'} → ${opt.meta.disembarkPort || 'Return TBA'}</span>
+                    <span>${routeLabel}</span>
                     <span>${windowLabel} - Offer ${opt.meta.offerCode || 'TBA'}</span>
                 `;
                 const selectBtn = document.createElement('button');
@@ -622,29 +721,35 @@
                 this._flashMessage('That sailing is already in your chain.', 'warn');
                 return;
             }
-            this._activeSession.chain.push(rowId);
-            this._renderChain();
-            this._renderOptions();
-            const meta = this._getMeta(rowId);
-            this._flashMessage(meta ? `Added ${meta.shipName || meta.shipCode || 'sailing'}` : 'Sailing added.', 'info');
+            this._scheduleWithSpinner(() => {
+                this._activeSession.chain.push(rowId);
+                this._renderChain();
+                this._renderOptions();
+                const meta = this._getMeta(rowId);
+                this._flashMessage(meta ? `Added ${meta.shipName || meta.shipCode || 'sailing'}` : 'Sailing added.', 'info');
+            });
         },
 
         _removeFromChain(rowId) {
             if (!this._activeSession) return;
             const idx = this._activeSession.chain.indexOf(rowId);
             if (idx <= 0) return; // never remove root via this path
-            this._activeSession.chain.splice(idx, 1);
-            this._renderChain();
-            this._renderOptions();
-            this._flashMessage('Removed sailing from chain.', 'info');
+            this._scheduleWithSpinner(() => {
+                this._activeSession.chain.splice(idx, 1);
+                this._renderChain();
+                this._renderOptions();
+                this._flashMessage('Removed sailing from chain.', 'info');
+            });
         },
 
         _clearChain() {
             if (!this._activeSession) return;
-            this._activeSession.chain = [this._activeSession.rootRowId];
-            this._renderChain();
-            this._renderOptions();
-            this._flashMessage('Chain reset to root sailing.', 'info');
+            this._scheduleWithSpinner(() => {
+                this._activeSession.chain = [this._activeSession.rootRowId];
+                this._renderChain();
+                this._renderOptions();
+                this._flashMessage('Chain reset to root sailing.', 'info');
+            });
         },
 
         _saveChain() {
@@ -662,17 +767,46 @@
             const profileId = this._currentProfileId();
             const depth = chain.length;
             let saved = 0;
-            chain.forEach(rowId => {
-                const entry = this._getEntry(rowId);
-                if (!entry) return;
-                try {
-                    entry.sailing.__b2bDepth = depth;
-                    Favorites.addFavorite(entry.offer, entry.sailing, profileId);
-                    saved++;
-                } catch (e) {
-                    console.warn('[BackToBackTool] Unable to save favorite', e);
+            try {
+                if (typeof Favorites.bulkAddFavorites === 'function') {
+                    const items = chain.map(rowId => {
+                        const entry = this._getEntry(rowId);
+                        if (!entry) return null;
+                        return { offer: JSON.parse(JSON.stringify(entry.offer || {})), sailing: Object.assign(JSON.parse(JSON.stringify(entry.sailing || {})), { __b2bDepth: depth }) };
+                    }).filter(Boolean);
+                    if (items.length) {
+                        try {
+                            if (window && window.console && window.console.debug) {
+                                window.console.debug('[B2B] bulk saving favorites items', items.map(i => ({ ship: i.sailing.shipName, sailDate: i.sailing.sailDate })));
+                            }
+                        } catch(e){}
+                        Favorites.bulkAddFavorites(items, profileId);
+                        saved = items.length;
+                        try {
+                            if (window && window.console && window.console.debug) {
+                                const snap = (typeof Favorites.loadProfileObject === 'function') ? Favorites.loadProfileObject() : null;
+                                try { console.debug('[B2B] post-save favorites snapshot', { snapOffers: snap && snap.data && snap.data.offers ? snap.data.offers.length : null, snapSailings: snap && snap.data && snap.data.offers ? snap.data.offers.reduce((acc,o)=>acc + (o.campaignOffer && Array.isArray(o.campaignOffer.sailings) ? o.campaignOffer.sailings.length : 0), 0) : null }); } catch(e){}
+                            }
+                        } catch(e){}
+                    }
+                } else {
+                    chain.forEach(rowId => {
+                        const entry = this._getEntry(rowId);
+                        if (!entry) return;
+                        try {
+                            const clonedOffer = JSON.parse(JSON.stringify(entry.offer || {}));
+                            const clonedSailing = JSON.parse(JSON.stringify(entry.sailing || {}));
+                            clonedSailing.__b2bDepth = depth;
+                            Favorites.addFavorite(clonedOffer, clonedSailing, profileId);
+                            saved++;
+                        } catch (e) {
+                            console.warn('[BackToBackTool] Unable to save favorite', e);
+                        }
+                    });
                 }
-            });
+            } catch (e) {
+                console.warn('[BackToBackTool] bulk save failed, falling back', e);
+            }
             if (saved) {
                 this._applyDepthToDom(chain, depth);
                 this._flashMessage('Saved chain to Favorites. View it under the Favorites tab.', 'success');

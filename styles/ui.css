@@ -54,20 +54,73 @@
 .b2b-visualizer-subtitle { font-size:13px; opacity:0.9; margin-top:4px; max-width:540px; }
 .b2b-visualizer-close { border:none; background:rgba(255,255,255,0.15); color:#fff; width:32px; height:32px; border-radius:8px; font-size:18px; font-weight:600; cursor:pointer; transition:background .15s, transform .1s; }
 .b2b-visualizer-close:hover { background:rgba(255,255,255,0.3); transform:translateY(-1px); }
-.b2b-visualizer-body { padding:24px 28px; display:grid; grid-template-columns:320px 1fr; gap:24px; overflow:auto; }
-.b2b-chain-column, .b2b-option-column { display:flex; flex-direction:column; gap:16px; }
+.b2b-visualizer-body { padding:24px 28px; display:grid; grid-template-columns:320px 1fr; gap:24px; overflow:auto; flex:1; min-height:0; }
+.b2b-chain-column, .b2b-option-column { display:flex; flex-direction:column; gap:16px; min-height:0; overflow:hidden; }
+.b2b-chain-cards, .b2b-option-list { flex:1 1 auto; min-height:0; overflow:auto; }
 .b2b-section-title { font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px; margin:0; }
 .b2b-section-title small { font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; }
-.b2b-chain-cards { display:flex; flex-direction:column; gap:14px; }
-.b2b-chain-card { border-radius:18px; background:#fff; padding:16px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:8px; }
+.b2b-chain-cards { display:flex; flex-direction:column; gap:14px; min-height:0; overflow:auto; }
+.b2b-chain-card { border-radius:18px; background:#fff; padding:16px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:8px; min-height:330px; }
 .b2b-chain-card.is-root { background:linear-gradient(135deg,#e0ecff,#f2f6ff); border-color:rgba(12,78,163,0.2); }
 .b2b-chain-step-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
 .b2b-chain-step-head h4 { margin:0; font-size:15px; color:#0f172a; }
-.b2b-chain-step-head span { font-size:11px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.04em; }
+.b2b-chain-step-head span { font-size:11px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.04em; display:inline-block; padding-right:28px; box-sizing:border-box; }
 .b2b-chain-meta { font-size:13px; color:#1e293b; display:flex; flex-direction:column; gap:4px; }
 .b2b-chain-meta strong { font-size:12px; color:#0f172a; }
 .b2b-chain-ports { font-size:12px; color:#475569; line-height:1.4; border-left:3px solid rgba(15,23,42,0.15); padding-left:10px; margin-top:6px; }
-.b2b-chain-remove { position:absolute; top:12px; right:12px; border:none; background:rgba(239,68,68,0.08); color:#b91c1c; border-radius:999px; width:26px; height:26px; font-size:14px; font-weight:700; cursor:pointer; }
+.b2b-chain-card .b2b-timeline-table {
+    width: 100%;
+    border-collapse: collapse;
+    max-height: 140px;
+    overflow-y: auto;
+    display: block;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+.b2b-chain-card .b2b-timeline-table tbody {
+    display: block;
+    max-height: 140px;
+    overflow-y: auto;
+}
+.b2b-chain-card .b2b-timeline-table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+.b2b-timeline-day {
+    width: 60px;
+    font-weight: bold;
+    color: #0f172a;
+    padding: 2px 6px;
+    white-space: nowrap;
+    font-size: 13px;
+}
+.b2b-timeline-dow {
+    width: 48px;
+    color: #64748b;
+    padding: 2px 6px;
+    white-space: nowrap;
+    font-size: 13px;
+}
+.b2b-timeline-label {
+    color: #475569;
+    padding: 2px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+}
+.b2b-chain-card .b2b-timeline::-webkit-scrollbar {
+    width: 8px;
+}
+.b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb {
+    background: rgba(15,23,42,0.25);
+    border-radius: 999px;
+}
+.b2b-chain-card .b2b-timeline::-webkit-scrollbar-track {
+    background: transparent;
+}
+.b2b-chain-remove { position:absolute; top:12px; right:12px; border:none; background:rgba(239,68,68,0.08); color:#b91c1c; border-radius:999px; width:28px; height:28px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .b2b-chain-remove:hover { background:rgba(239,68,68,0.18); }
 .b2b-timeline { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; font-size:12px; color:#475569; }
 .b2b-timeline li { display:flex; gap:8px; align-items:flex-start; }

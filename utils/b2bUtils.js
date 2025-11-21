@@ -77,6 +77,14 @@
             const shipName = (sailing.shipName || '').toString().trim();
             const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
             const allow = !filterPredicate || filterPredicate(row);
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                try {
+                    const code = offerCode || '';
+                    if (code.toUpperCase() === '25TIER3') {
+                        console.debug('[B2BUtils] row has 25TIER3', { idx, allow, row });
+                    }
+                } catch(e) { /* ignore */ }
+            }
             return {
                 idx,
                 endISO,
