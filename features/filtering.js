@@ -311,6 +311,12 @@ const Filtering = {
         if (!store) return;
         const key = Filtering._rowKey(wrapper);
         if (key) store.add(key);
+        try {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                const code = (wrapper && wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.offerCode) ? String(wrapper.offer.campaignOffer.offerCode).trim() : '';
+                console.debug('[Filtering] Remembered hidden row', { key, code });
+            }
+        } catch (e) { /* ignore */ }
     },
     wasRowHidden(wrapper, state) {
         if (!wrapper) return false;
@@ -368,13 +374,25 @@ const Filtering = {
             if (!key) return;
             descriptors.push({ key, value: parsed.value, label: parsed.label });
         });
+        try {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                console.debug('[Filtering] Built hidden-group descriptors', { descriptors });
+            }
+        } catch (e) { /* ignore */ }
         return descriptors;
     },
     _matchesHiddenDescriptor(wrapper, descriptor) {
         if (!descriptor || !descriptor.key) return false;
         try {
             const val = Filtering.getOfferColumnValue(wrapper?.offer, wrapper?.sailing, descriptor.key);
-            return Filtering._matchesHiddenValue(val, descriptor.value);
+            const matched = Filtering._matchesHiddenValue(val, descriptor.value);
+            try {
+                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && matched) {
+                    const code = (wrapper && wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.offerCode) ? String(wrapper.offer.campaignOffer.offerCode).trim() : '';
+                    console.debug('[Filtering] Descriptor matched row', { descriptor, code, value: val });
+                }
+            } catch (e) { /* ignore */ }
+            return matched;
         } catch (e) {
             return false;
         }
@@ -403,23 +421,25 @@ const Filtering = {
         Filtering._lessThanStats = { total:0, incomplete:0, invalidTarget:0, missingActual:0, passed:0, failed:0, samples:[] };
         // Hidden groups (GLOBAL)
         const hiddenGroups = Filtering.loadHiddenGroups();
+        const hiddenKeyStore = Filtering._resetHiddenRowStore(state);
+        Filtering._globalHiddenRowKeys = new Set();
         let working = offers;
         if (Array.isArray(hiddenGroups) && hiddenGroups.length > 0) {
+            const headers = Array.isArray(state?.headers) ? state.headers : [];
             const labelToKey = {};
-            if (Array.isArray(state.headers)) {
-                state.headers.forEach(h => { if (h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; });
+            headers.forEach(h => { if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; });
+            const descriptors = Filtering._buildHiddenGroupDescriptors(hiddenGroups, headers, labelToKey);
+            if (descriptors.length) {
+                working = working.filter((wrapper) => {
+                    for (const desc of descriptors) {
+                        if (Filtering._matchesHiddenDescriptor(wrapper, desc)) {
+                            Filtering._rememberHiddenRow(wrapper, hiddenKeyStore);
+                            return false;
+                        }
+                    }
+                    return true;
+                });
             }
-            working = working.filter(({ offer, sailing }) => {
-                for (const path of hiddenGroups) {
-                    const [label, value] = path.split(':').map(s => s.trim());
-                    if (!label || !value) continue;
-                    const key = labelToKey[label.toLowerCase()];
-                    if (!key) continue;
-                    const offerColumnValue = this.getOfferColumnValue(offer, sailing, key);
-                    if (Filtering._matchesHiddenValue(offerColumnValue, value)) return false;
-                }
-                return true;
-            });
         }
         // Advanced Search layer
         try {
@@ -449,7 +469,7 @@ const Filtering = {
 
     excludeHidden(offers, state) {
         if (!Array.isArray(offers) || offers.length === 0) return [];
-        return offers.filter(w => !Filtering.isRowHidden(w, state));
+        return offers.filter(w => !Filtering.wasRowHidden(w, state));
     },
     applyAdvancedSearch(offers, state) {
         if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return offers;
@@ -710,6 +730,7 @@ const Filtering = {
                             const filterPredicate = (row) => {
                                 try {
                                     if (!row) return false;
+                                    if (typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, state);
                                     return !Filtering.isRowHidden(row, state);
                                 } catch(e) { return true; }
                             };
@@ -773,53 +794,22 @@ const Filtering = {
             if (!wrapper) return false;
             const hiddenGroups = Filtering.loadHiddenGroups();
             if (!Array.isArray(hiddenGroups) || hiddenGroups.length === 0) return false;
-            // Build header list once
-            const headers = Array.isArray(state && state.headers) ? state.headers : [];
+            const headers = Array.isArray(state?.headers) ? state.headers : [];
             const labelToKey = {};
             headers.forEach(h => { if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; });
-
-            const { offer, sailing } = wrapper;
-            for (const path of hiddenGroups) {
-                const [label, value] = path.split(':').map(s => s.trim());
-                if (!label || !value) continue;
-                let key = labelToKey[label.toLowerCase()];
-                // Fallbacks
-                if (!key && headers.length) {
-                    const lc = label.toLowerCase();
-                    for (const h of headers) {
-                        if (!h) continue;
-                        try {
-                            if (h.key && String(h.key).toLowerCase() === lc) { key = h.key; break; }
-                            if (h.label && String(h.label).toLowerCase() === lc) { key = h.key; break; }
-                        } catch(e) { /* ignore */ }
-                    }
+            const descriptors = Filtering._buildHiddenGroupDescriptors(hiddenGroups, headers, labelToKey);
+            if (!descriptors.length) return false;
+            for (const desc of descriptors) {
+                if (!Filtering._matchesHiddenDescriptor(wrapper, desc)) continue;
+                if (window && window.GOBO_DEBUG_ENABLED) {
+                    try {
+                        const code = (wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.offerCode) ? String(wrapper.offer.campaignOffer.offerCode).trim() : '';
+                        const name = (wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.name) ? String(wrapper.offer.campaignOffer.name).trim() : '';
+                        console.debug('[Filtering] isRowHidden MATCH', { label: desc.label, value: desc.value, key: desc.key, code, name });
+                    } catch(e) { /* ignore */ }
                 }
-                if (!key && headers.length) {
-                    const token = label.toLowerCase();
-                    for (const h of headers) {
-                        if (!h || !h.label) continue;
-                        try {
-                            if (String(h.label).toLowerCase().indexOf(token) !== -1) { key = h.key; break; }
-                        } catch(e) { /* ignore */ }
-                    }
-                }
-                if (!key) {
-                    const common = { 'name': 'offerName', 'offer name': 'offerName', 'offercode': 'offerCode', 'code': 'offerCode', 'b2b': 'b2bDepth', 'perks': 'perks' };
-                    const norm = label.toLowerCase().replace(/\s+/g, '');
-                    if (common[norm]) key = common[norm];
-                }
-                if (!key) continue;
-                const val = Filtering.getOfferColumnValue(offer, sailing, key);
-                if (Filtering._matchesHiddenValue(val, value)) {
-                    if (window && window.GOBO_DEBUG_ENABLED) {
-                        try {
-                            const code = (offer && offer.campaignOffer && offer.campaignOffer.offerCode) ? String(offer.campaignOffer.offerCode).trim() : '';
-                            const name = (offer && offer.campaignOffer && offer.campaignOffer.name) ? String(offer.campaignOffer.name).trim() : '';
-                            console.debug('[Filtering] isRowHidden MATCH', { label, value, key, code, name });
-                        } catch(e) { /* ignore */ }
-                    }
-                    return true;
-                }
+                Filtering._rememberHiddenRow(wrapper, Filtering._getHiddenRowStore(state));
+                return true;
             }
             return false;
         } catch(e) { return false; }

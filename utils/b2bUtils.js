@@ -97,6 +97,14 @@
             };
         });
 
+        try {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                const allowedCount = meta.filter(m=>m.allow).length;
+                const sampleAllowed = meta.filter(m=>m.allow).slice(0,6).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
+                console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
+            }
+        } catch(e){ /* ignore */ }
+
         // Build index: key = `${endISO}|${port}|${shipKey}` -> array of indices sorted by start date desc
         const startIndex = new Map();
         meta.forEach(info => {

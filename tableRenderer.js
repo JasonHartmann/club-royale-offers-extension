@@ -843,13 +843,35 @@ const TableRenderer = {
     const base = state.fullOriginalOffers;
     const filtered = Filtering.filterOffers(state, base);
         state.originalOffers = filtered;
+        const filteredSet = new Set(Array.isArray(filtered) ? filtered : []);
+        const allowRowForDepth = (row) => {
+            if (!row) return false;
+            if (filteredSet.size && !filteredSet.has(row)) return false;
+            if (window.Filtering) {
+                try {
+                    if (typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, state);
+                    if (typeof Filtering.isRowHidden === 'function') return !Filtering.isRowHidden(row, state);
+                } catch (e) {
+                    return filteredSet.has(row);
+                }
+            }
+            return true;
+        };
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         const allowSideBySidePref = (typeof this.getSideBySidePreference === 'function') ? this.getSideBySidePreference() : true;
         if (window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
             try {
                 // Exclude hidden groups from B2B context — hidden groups should not be visible to B2B
                 const baseRows = Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length ? state.fullOriginalOffers : state.sortedOffers || [];
-                const contextRows = (window.Filtering && typeof Filtering.isRowHidden === 'function') ? baseRows.filter(r => !Filtering.isRowHidden(r, state)) : ((window.Filtering && typeof Filtering.excludeHidden === 'function') ? Filtering.excludeHidden(baseRows, state) : baseRows);
+                const rowIsHidden = (row) => {
+                    try {
+                        if (!window.Filtering) return false;
+                        if (typeof Filtering.wasRowHidden === 'function') return Filtering.wasRowHidden(row, state);
+                        if (typeof Filtering.isRowHidden === 'function') return Filtering.isRowHidden(row, state);
+                    } catch (predErr) { return false; }
+                    return false;
+                };
+                const contextRows = Array.isArray(baseRows) ? baseRows.filter(r => !rowIsHidden(r)) : baseRows;
                 try {
                     if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
                         try {
@@ -917,7 +939,7 @@ const TableRenderer = {
         });
         if (currentSortColumn === 'b2bDepth') {
             try {
-                this._ensureRowsHaveB2BDepth(filtered, { allowSideBySide: allowSideBySidePref });
+                this._ensureRowsHaveB2BDepth(filtered, { allowSideBySide: allowSideBySidePref, filterPredicate: allowRowForDepth });
             } catch (depthErr) {
                 console.warn('[tableRenderer] Unable to prime B2B depths prior to sorting', depthErr);
             }
@@ -947,7 +969,7 @@ const TableRenderer = {
             try {
                 this._ensureRowsHaveB2BDepth(state.sortedOffers, {
                     allowSideBySide: allowSideBySidePref,
-                    filterPredicate: (row) => filtered.indexOf(row) !== -1
+                    filterPredicate: allowRowForDepth
                 });
                 const rows = tbody.querySelectorAll('tr');
                 rows.forEach((tr, idx) => {
@@ -980,7 +1002,7 @@ const TableRenderer = {
             }
             // Ensure B2B depths exist before rendering accordion (first time grouping or direct switch)
             try {
-                this._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: allowSideBySidePref, filterPredicate: (row)=>filtered.indexOf(row)!==-1 });
+                this._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: allowSideBySidePref, filterPredicate: allowRowForDepth });
             } catch(e){ /* ignore depth precompute errors */ }
             accordionContainer.innerHTML = '';
             // Recursive function to render all open accordion levels

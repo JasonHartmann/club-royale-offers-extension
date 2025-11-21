@@ -200,14 +200,19 @@
             let rows = Array.isArray(opts.rows) ? opts.rows : [];
             // Defensive: ensure hidden groups are excluded from the B2B context
             try {
-                if (window.Filtering && (typeof Filtering.excludeHidden === 'function' || typeof Filtering.isRowHidden === 'function')) {
+                if (window.Filtering && (typeof Filtering.excludeHidden === 'function' || typeof Filtering.isRowHidden === 'function' || typeof Filtering.wasRowHidden === 'function')) {
                     const stateObj = (opts && opts._state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
                     const beforeCount = Array.isArray(rows) ? rows.length : 0;
                     // Prefer fast single-row predicate if available
                     let filtered = rows;
                     try {
-                        if (typeof Filtering.isRowHidden === 'function') filtered = rows.filter(r => !Filtering.isRowHidden(r, stateObj));
-                        else if (typeof Filtering.excludeHidden === 'function') filtered = Filtering.excludeHidden(rows, stateObj);
+                        if (typeof Filtering.wasRowHidden === 'function') {
+                            filtered = rows.filter(r => !Filtering.wasRowHidden(r, stateObj));
+                        } else if (typeof Filtering.isRowHidden === 'function') {
+                            filtered = rows.filter(r => !Filtering.isRowHidden(r, stateObj));
+                        } else if (typeof Filtering.excludeHidden === 'function') {
+                            filtered = Filtering.excludeHidden(rows, stateObj);
+                        }
                     } catch(e) { /* fall back to original rows on error */ }
                     const afterCount = Array.isArray(filtered) ? filtered.length : 0;
                     if (window && window.GOBO_DEBUG_ENABLED) {
@@ -223,7 +228,10 @@
                                     if (code && filtered.findIndex(ff => (ff && ff.offer && ff.offer.campaignOffer && String(ff.offer.campaignOffer.offerCode).trim()) === code) === -1) sampleRemoved.push(code);
                                 }
                             }
-                            console.debug('[B2B][REG] registerEnvironment filtered', { beforeCount, afterCount, removed, sampleRemoved, hiddenGroups: (Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : null });
+                            try {
+                                const sampleCodes = (filtered || []).slice(0,6).map(r => (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() : null).filter(Boolean);
+                                console.debug('[B2B][REG] registerEnvironment filtered', { beforeCount, afterCount, removed, sampleRemoved, sampleCodes, hiddenGroups: (Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : null });
+                            } catch (dbgErr) { console.debug('[B2B][REG] registerEnvironment filtered - debug error', dbgErr); }
                         } catch(e) { /* ignore logging errors */ }
                     }
                     rows = filtered;
