@@ -68,8 +68,10 @@ const AccordionBuilder = {
                     break;
                 }
                 case 'b2bDepth': {
-                    if (sailing && typeof sailing.__b2bDepth === 'number') groupKey = sailing.__b2bDepth;
-                    else groupKey = '-';
+                    if (sailing && typeof sailing.__b2bDepth === 'number') {
+                        const full = Number(sailing.__b2bDepth) || 1;
+                        groupKey = Math.max(0, full - 1);
+                    } else groupKey = '-';
                     break;
                 }
                 case 'perks': {
@@ -342,8 +344,10 @@ const AccordionBuilder = {
                     try {
                         const cell = row.querySelector('.b2b-depth-cell');
                         if (cell && sailing && typeof sailing.__b2bDepth === 'number') {
-                            if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth);
-                            else cell.textContent = String(sailing.__b2bDepth);
+                            const full = Number(sailing.__b2bDepth) || 1;
+                            const childCount = Math.max(0, full - 1);
+                            if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, full);
+                            else cell.textContent = String(childCount);
                         }
                         try {
                             if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') {

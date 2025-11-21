@@ -1,4 +1,55 @@
 const TableRenderer = {
+    _sanitizeStorageKey(k) {
+        try {
+            if (!k && k !== 0) return null;
+            if (typeof k === 'string') return k;
+            if (typeof k === 'object' && k !== null && typeof k.key === 'string') return k.key;
+            // Fallback: coerce to string if possible
+            return String(k);
+        } catch(e) { return null; }
+    },
+    _canonicalizeKey(key, payload) {
+        try {
+            const safeKey = this._sanitizeStorageKey(key);
+            if (!safeKey) return null;
+            // If already branded, return as-is
+            if (/^gobo-[A-Za-z]-/.test(safeKey) || safeKey === 'goob-favorites' || safeKey === 'goob-combined' || safeKey === 'goob-combined-linked') return safeKey;
+            // For legacy gobo-username form, attempt to prefer a branded key
+            if (/^gobo-/.test(safeKey)) {
+                let brand = null;
+                try { brand = payload && payload.brand ? payload.brand : null; } catch(e) { brand = null; }
+                try { if (!brand && typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') brand = App.Utils.detectBrand(); } catch(e) {}
+                if (!brand) brand = 'R';
+                const username = safeKey.replace(/^gobo-/, '');
+                const branded = `gobo-${brand}-${username}`;
+                try {
+                    const exists = (typeof goboStorageGet === 'function') ? goboStorageGet(branded) : localStorage.getItem(branded);
+                    if (exists) return branded;
+                    // Try to migrate payload into branded key if payload provided
+                    if (payload) {
+                        try { if (typeof goboStorageSet === 'function') goboStorageSet(branded, JSON.stringify(payload)); else localStorage.setItem(branded, JSON.stringify(payload)); } catch(e) {}
+                        try { if (typeof goboStorageRemove === 'function') goboStorageRemove(safeKey); else localStorage.removeItem(safeKey); } catch(e) {}
+                        // Preserve ProfileIdManager mapping if present
+                        try {
+                            if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                                try {
+                                    var legacyId = ProfileIdManager.getId(safeKey);
+                                    if (legacyId != null) {
+                                        ProfileIdManager.map[branded] = legacyId;
+                                        delete ProfileIdManager.map[safeKey];
+                                        try { ProfileIdManager.persist(); } catch(ePersist) { /* ignore */ }
+                                        try { App.ProfileIdMap = { ...ProfileIdManager.map }; } catch(eMap) { /* ignore */ }
+                                    }
+                                } catch(eId) { /* ignore id migration errors */ }
+                            }
+                        } catch(e) { /* ignore */ }
+                        return branded;
+                    }
+                } catch(e) { /* ignore */ }
+            }
+            return safeKey;
+        } catch(e) { return key; }
+    },
     // Track if the default tab has been selected for the current popup display
     hasSelectedDefaultTab: false,
     // One-time flag to force selecting the first (current profile) tab only on initial modal open
@@ -181,6 +232,25 @@ const TableRenderer = {
         if (!Array.isArray(rows) || !rows.length) return null;
         const needsDepth = rows.some(row => row && row.sailing && typeof row.sailing.__b2bDepth !== 'number');
         if (!needsDepth) return null;
+        try {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                try {
+                    const opts = options || {};
+                    const hasPred = typeof opts.filterPredicate === 'function';
+                    const allowedCount = hasPred ? rows.reduce((acc, r) => { try { return acc + (opts.filterPredicate(r) ? 1 : 0); } catch(e){ return acc; } }, 0) : rows.length;
+                    const sampleAllowed = [];
+                    if (hasPred) {
+                        for (let i = 0; i < Math.min(8, rows.length); i++) {
+                            const r = rows[i];
+                            try {
+                                if (opts.filterPredicate(r)) sampleAllowed.push((r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() : '');
+                            } catch(e) {}
+                        }
+                    }
+                    console.debug('[TableRenderer] _ensureRowsHaveB2BDepth start', { totalRows: rows.length, hasPred, allowedCount, sampleAllowed });
+                } catch(e) { console.debug('[TableRenderer] _ensureRowsHaveB2BDepth debug failed', e); }
+            }
+        } catch(e) {}
         return this._computeB2BDepths(rows, options);
     },
     _normalizeB2BDepthValue(depth) {
@@ -194,15 +264,23 @@ const TableRenderer = {
     updateB2BDepthCell(cell, depth) {
         if (!cell) return;
         const normalized = this._normalizeB2BDepthValue(depth);
+        const childCount = Math.max(0, Number(normalized) - 1);
+        // Render child-count (additional connections) in the pill for table rows
         if (typeof cell.innerHTML === 'string') {
-            cell.innerHTML = this.getB2BDepthBadgeMarkup(normalized);
+            cell.innerHTML = this.getB2BDepthBadgeMarkup(childCount);
         } else {
-            cell.textContent = String(normalized);
+            cell.textContent = String(childCount);
         }
         try {
+            // Preserve original full depth for data consumers, and expose child-count
             cell.dataset.depth = String(normalized);
+            cell.dataset.childCount = String(childCount);
         } catch (e) { /* ignore dataset assignment errors */ }
-        cell.setAttribute('aria-label', `Back-to-back depth ${normalized}`);
+        if (childCount > 0) {
+            cell.setAttribute('aria-label', `Additional connections ${childCount}`);
+        } else {
+            cell.setAttribute('aria-label', `No additional connections`);
+        }
     },
     _applyActiveTabHighlight(activeKey) {
         const tabs = document.querySelectorAll('.profile-tab');
@@ -309,6 +387,30 @@ const TableRenderer = {
         }
     },
     loadProfile(key, payload) {
+        // Normalize legacy unbranded keys to branded keys when possible
+        try {
+            const safeKey = this._sanitizeStorageKey(key);
+            if (safeKey && /^gobo-[A-Za-z]-/.test(safeKey) === false && /^gobo-/.test(safeKey)) {
+                // Attempt to detect brand from payload or App.Utils
+                let brand = null;
+                try { brand = payload && payload.brand ? payload.brand : null; } catch(e) { brand = null; }
+                try { if (!brand && typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') brand = App.Utils.detectBrand(); } catch(e) { }
+                if (!brand) brand = 'R';
+                const username = safeKey.replace(/^gobo-/, '');
+                const branded = `gobo-${brand}-${username}`;
+                try {
+                    // If branded exists in storage, prefer it; else migrate payload to branded key
+                    const exists = (typeof goboStorageGet === 'function') ? goboStorageGet(branded) : localStorage.getItem(branded);
+                    if (exists) {
+                        key = branded;
+                    } else {
+                        try { if (typeof goboStorageSet === 'function') goboStorageSet(branded, JSON.stringify(payload)); else localStorage.setItem(branded, JSON.stringify(payload)); } catch(e) {}
+                        try { if (typeof goboStorageRemove === 'function') goboStorageRemove(safeKey); else localStorage.removeItem(safeKey); } catch(e) {}
+                        key = branded;
+                    }
+                } catch(e) { /* ignore migration failures */ }
+            }
+        } catch(e) { /* ignore key normalization errors */ }
         // Ensure stable ID for this key immediately WITHOUT allocating a new one if preserved
         try {
             if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
@@ -497,16 +599,10 @@ const TableRenderer = {
         }
         // Update lastState and current profile
         App.TableRenderer.lastState = state;
-        App.CurrentProfile = {
-            key,
-            scrollContainer: scrollContainer,
-            state: state
-        };
+        const safeKey = this._canonicalizeKey(key, payload) || this._sanitizeStorageKey(key);
+        App.CurrentProfile = { key: safeKey, scrollContainer: scrollContainer, state: state };
         // Cache the newly built profile for future tab switches
-        App.ProfileCache[key] = {
-            scrollContainer: scrollContainer,
-            state: state
-        };
+        if (safeKey) App.ProfileCache[safeKey] = { scrollContainer: scrollContainer, state: state };
         console.debug('[DEBUG] Cached new profile', key);
         console.debug('[DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile', App.TableRenderer.lastState, App.CurrentProfile);
         // Render the view
@@ -574,6 +670,18 @@ const TableRenderer = {
                     }
                 }
             } catch (e) { /* ignore */ }
+
+            // Defensive: sanitize selectedProfileKey so we never store an object into state.selectedProfileKey
+            try {
+                if (selectedProfileKey && typeof selectedProfileKey !== 'string') {
+                    try {
+                        console.warn('[tableRenderer][DIAG] Non-string selectedProfileKey passed to displayTable', selectedProfileKey, new Error().stack);
+                    } catch(e2) {}
+                    // If an object with a `key` property was passed, use that; otherwise ignore the value
+                    if (selectedProfileKey && selectedProfileKey.key && typeof selectedProfileKey.key === 'string') selectedProfileKey = selectedProfileKey.key;
+                    else selectedProfileKey = null;
+                }
+            } catch(e) { selectedProfileKey = null; }
 
             // Pre-hydrate stable IDs for currently stored profile keys (so initial badges don't flicker)
             try {
@@ -812,8 +920,9 @@ const TableRenderer = {
         const currentScroll = document.querySelector('.table-scroll-container');
         if (currentScroll) currentScroll.replaceWith(scrollContainer);
         App.TableRenderer.lastState = state;
-        App.CurrentProfile = { key, scrollContainer, state };
-        App.ProfileCache[key] = { scrollContainer, state };
+        const safeKey2 = this._canonicalizeKey(key, state && state.payload ? state.payload : null) || this._sanitizeStorageKey(key);
+        App.CurrentProfile = { key: safeKey2, scrollContainer, state };
+        if (safeKey2) App.ProfileCache[safeKey2] = { scrollContainer, state };
         console.debug('[tableRenderer] rebuildProfileView: Cached and set current profile', { key, switchToken: state._switchToken });
         this.updateView(state);
         if (this.currentSwitchToken === state._switchToken) this._applyActiveTabHighlight(key);
@@ -989,6 +1098,32 @@ const TableRenderer = {
                         console.debug('[tableRenderer] Unable to attach BackToBackTool trigger', attachErr);
                     }
                 });
+                // If incremental rendering is still in progress, ensure newly appended rows also get depth badges
+                try {
+                    const renderedCount = rows.length;
+                    const totalCount = Array.isArray(state.sortedOffers) ? state.sortedOffers.length : 0;
+                    if (renderedCount < totalCount) {
+                        const token = state._rowRenderToken || null;
+                        const handler = (ev) => {
+                            try {
+                                if (ev && ev.detail && token && ev.detail.token && ev.detail.token !== token) return; // ignore other renders
+                                const allRows = tbody.querySelectorAll('tr');
+                                allRows.forEach((tr, idx) => {
+                                    const pair = state.sortedOffers[idx];
+                                    if (!pair) return;
+                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                    const cell = tr.querySelector('.b2b-depth-cell');
+                                    if (!cell) return;
+                                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth);
+                                    else cell.textContent = String(depth);
+                                    try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
+                                });
+                                try { console.debug('[B2B] Applied depths after incremental render', { rendered: allRows.length, total: totalCount }); } catch(e){}
+                            } catch(e) { /* ignore post-render assignment errors */ }
+                        };
+                        try { document.addEventListener('tableRenderComplete', handler, { once: true }); } catch(e) { document.addEventListener('tableRenderComplete', handler); }
+                    }
+                } catch(e) { /* ignore incremental render detection errors */ }
                 console.debug('[B2B] Depth computation complete', { rows: rows.length });
             } catch(e) { /* ignore B2B calculation errors so table still renders */ }
             if (!table.contains(thead)) table.appendChild(thead);
@@ -1108,3 +1243,7 @@ if (typeof TableRenderer.updateBreadcrumb !== 'function') {
         try { Breadcrumbs.updateBreadcrumb(groupingStack, groupKeysStack); } catch(e) { console.warn('[shim] Breadcrumbs.updateBreadcrumb failed', e); }
     };
 }
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = TableRenderer;
+}
+try { if (typeof global !== 'undefined' && !global.TableRenderer) global.TableRenderer = TableRenderer; } catch(e) {}

@@ -325,7 +325,7 @@ const Modal = {
             const destination = parsed.destination;
             const perksStr = App.Utils.computePerks(offer, sailing);
             const shipClass = App.Utils.getShipClass(sailing.shipName);
-            const b2bDepth = (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : '';
+            const b2bDepth = (sailing && typeof sailing.__b2bDepth === 'number') ? Math.max(0, Number(sailing.__b2bDepth) - 1) : '';
             return [
                 profileLabel,
                 b2bDepth,

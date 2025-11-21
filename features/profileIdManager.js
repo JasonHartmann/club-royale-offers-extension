@@ -225,7 +225,62 @@ function preserveSelectedProfileKey(state, prevState) {
 function getLinkedAccounts() {
     try {
         const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goboLinkedAccounts') : localStorage.getItem('goboLinkedAccounts'));
-        return raw ? JSON.parse(raw) : [];
+        const arr = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(arr) || !arr.length) return arr || [];
+        let changed = false;
+        const normalized = arr.map((acc) => {
+            try {
+                if (!acc || !acc.key || typeof acc.key !== 'string') return acc;
+                const k = acc.key;
+                // If already branded, leave as-is
+                if (/^gobo-[A-Za-z]-/.test(k) || k === 'goob-combined' || k === 'goob-combined-linked' || k === 'goob-favorites') return acc;
+                // Legacy unbranded key: try to prefer/migrate to branded key
+                if (/^gobo-/.test(k)) {
+                    const username = k.replace(/^gobo-/, '');
+                    // Try to read existing payload to preserve brand if present
+                    let rawPayload = null;
+                    try { rawPayload = (typeof goboStorageGet === 'function') ? goboStorageGet(k) : localStorage.getItem(k); } catch(e) { rawPayload = null; }
+                    let payload = null;
+                    try { payload = rawPayload ? JSON.parse(rawPayload) : null; } catch(e) { payload = null; }
+                    let detectedBrand = payload && payload.brand ? payload.brand : null;
+                    try { if (!detectedBrand && typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') detectedBrand = App.Utils.detectBrand(); } catch(e) {}
+                    if (!detectedBrand) detectedBrand = 'R';
+                    const brandedKey = `gobo-${detectedBrand}-${username}`;
+                    try {
+                        const brandedExists = (typeof goboStorageGet === 'function') ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey);
+                        // If branded exists, prefer it
+                        if (brandedExists) {
+                            changed = true;
+                            return { ...acc, key: brandedKey };
+                        }
+                        // If payload present, migrate payload into branded key
+                        if (payload) {
+                            try { if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(payload)); else localStorage.setItem(brandedKey, JSON.stringify(payload)); } catch(e) {}
+                            try { if (typeof goboStorageRemove === 'function') goboStorageRemove(k); else localStorage.removeItem(k); } catch(e) {}
+                            // Preserve ProfileIdManager mapping if present
+                            try {
+                                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                                    var legacyId = ProfileIdManager.getId(k);
+                                    if (legacyId != null) {
+                                        ProfileIdManager.map[brandedKey] = legacyId;
+                                        delete ProfileIdManager.map[k];
+                                        try { ProfileIdManager.persist(); } catch(ePersist) { /* ignore */ }
+                                        try { App.ProfileIdMap = { ...ProfileIdManager.map }; } catch(eMap) { /* ignore */ }
+                                    }
+                                }
+                            } catch(e) { /* ignore */ }
+                            changed = true;
+                            return { ...acc, key: brandedKey };
+                        }
+                    } catch(e) { /* ignore migration errors */ }
+                }
+            } catch(e) { /* ignore single-account errors */ }
+            return acc;
+        });
+        if (changed) {
+            try { setLinkedAccounts(normalized); } catch(e) { /* ignore */ }
+        }
+        return normalized;
     } catch (e) {
         return [];
     }
@@ -233,7 +288,9 @@ function getLinkedAccounts() {
 
 function setLinkedAccounts(arr) {
     try {
-        if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(arr)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(arr));
+        // Persist normalized linked accounts array
+        const payload = Array.isArray(arr) ? arr : [];
+        if (typeof goboStorageSet === 'function') goboStorageSet('goboLinkedAccounts', JSON.stringify(payload)); else localStorage.setItem('goboLinkedAccounts', JSON.stringify(payload));
     } catch (e) {
     }
 }
@@ -295,3 +352,29 @@ function getAssetUrl(path) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = globalThis.ProfileIdManager;
 }
+
+// Keep ProfileIdManager in sync with the storage shim when it becomes ready
+try {
+    if (typeof document !== 'undefined') {
+        document.addEventListener('goboStorageReady', function() {
+            try {
+                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                    ProfileIdManager._hydrate();
+                    if (typeof App !== 'undefined' && App) App.ProfileIdMap = { ...ProfileIdManager.map };
+                }
+            } catch(e) { /* ignore */ }
+        });
+        document.addEventListener('goboStorageUpdated', function(ev) {
+            try {
+                var key = ev && ev.detail && ev.detail.key ? ev.detail.key : null;
+                if (!key) return;
+                if (/^goboProfileId(Map|FreeIds|Next)_v1$/.test(key)) {
+                    if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                        ProfileIdManager._hydrate();
+                        if (typeof App !== 'undefined' && App) App.ProfileIdMap = { ...ProfileIdManager.map };
+                    }
+                }
+            } catch(e) { /* ignore */ }
+        });
+    }
+} catch(e) { /* ignore */ }

@@ -265,7 +265,7 @@
                 }
                 rowMap.set(entry.sailing.__b2bRowId, entry);
             });
-            this._context = { rows, rowMap, allowSideBySide, stateKey: opts.stateKey || null };
+            this._context = { rows, rowMap, allowSideBySide, stateKey: opts.stateKey || null, state: opts._state || (App && App.TableRenderer && App.TableRenderer.lastState) || null };
             this._metaCache.clear();
         },
 
@@ -745,6 +745,42 @@
                 list.appendChild(empty);
                 return;
             }
+            // Compute B2B depths for the current visible context so each option can show a depth pill
+            try {
+                if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
+                    try {
+                        const rows = this._context.rows || [];
+                        const ctxState = this._context.state || null;
+                        const filterPredicate = (row) => {
+                            try {
+                                if (!row) return false;
+                                if (window.Filtering && typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, ctxState);
+                                if (window.Filtering && typeof Filtering.isRowHidden === 'function') return !Filtering.isRowHidden(row, ctxState);
+                                return true;
+                            } catch (e) { return true; }
+                        };
+                        const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate };
+                        const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
+                        const depthsByRowId = new Map();
+                        depthsMap.forEach((depth, idx) => {
+                            const entry = rows[idx];
+                            if (entry && entry.sailing && entry.sailing.__b2bRowId) depthsByRowId.set(entry.sailing.__b2bRowId, depth);
+                        });
+                        // attach depth to option entries for sorting and rendering
+                        options.forEach(o => { o.depth = depthsByRowId.get(o.rowId) || 1; });
+                    } catch (innerErr) { /* fall back to no depths */ }
+                }
+            } catch (e) { /* ignore depth compute errors */ }
+
+            // Sort options by descendant count (depth-1) descending, then by start date (asc)
+            options.sort((a, b) => {
+                const da = (typeof a.depth === 'number') ? Math.max(0, a.depth - 1) : 0;
+                const db = (typeof b.depth === 'number') ? Math.max(0, b.depth - 1) : 0;
+                if (db !== da) return db - da; // larger descendant counts first
+                if (a.meta.startISO === b.meta.startISO) return 0;
+                return a.meta.startISO < b.meta.startISO ? -1 : 1;
+            });
+
             options.forEach(opt => {
                 const card = document.createElement('div');
                 card.className = 'b2b-option-card' + (opt.isSideBySide ? ' b2b-side-by-side' : '');
@@ -766,6 +802,25 @@
                 selectBtn.type = 'button';
                 selectBtn.textContent = 'Add to chain';
                 selectBtn.addEventListener('click', () => this._selectOption(opt.rowId));
+                // Depth pill (reuse existing TableRenderer badge markup when available)
+                try {
+                    const fullDepth = (typeof opt.depth === 'number') ? opt.depth : (opt.meta && opt.meta.sailing && typeof opt.meta.sailing.__b2bDepth === 'number' ? opt.meta.sailing.__b2bDepth : 1);
+                    const childCount = Math.max(0, Number(fullDepth) - 1);
+                    if (childCount > 0) {
+                        let depthMarkup = null;
+                        if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
+                            depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(childCount);
+                        } else if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getB2BDepthBadgeMarkup === 'function') {
+                            depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(childCount);
+                        }
+                        const depthDiv = document.createElement('div');
+                        depthDiv.className = 'b2b-depth-pill';
+                        if (depthMarkup) depthDiv.innerHTML = depthMarkup; else depthDiv.textContent = String(childCount);
+                        // accessibility label for additional connections
+                        try { depthDiv.setAttribute('aria-label', `Additional connections ${childCount}`); } catch(e){}
+                        card.appendChild(depthDiv);
+                    }
+                } catch (e) { /* ignore depth badge errors */ }
                 card.appendChild(badge);
                 card.appendChild(metaBlock);
                 card.appendChild(selectBtn);

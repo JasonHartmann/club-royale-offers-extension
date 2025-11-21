@@ -45,6 +45,18 @@
         },
         maybeAutoStart(){
             if (this._shown) return;
+            // If the storage shim exists but isn't initialized yet, wait for it so we correctly
+            // read the persisted shown flag instead of starting prematurely when in-memory cache
+            // is empty on first tick.
+            try {
+                if (typeof GoboStore !== 'undefined' && GoboStore && !GoboStore.ready) {
+                    const retry = () => {
+                        try { this.maybeAutoStart(); } catch(e) { /* ignore */ }
+                    };
+                    document.addEventListener('goboStorageReady', retry, { once: true });
+                    return;
+                }
+            } catch(e) { /* ignore */ }
             if (this.isAlreadyCompleted()) return; // user completed previously
             // Only auto start once per page view & only after modal (tabs) present
             this.start(false);

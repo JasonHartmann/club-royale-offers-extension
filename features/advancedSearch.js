@@ -47,7 +47,7 @@ const AdvancedSearch = {
     },
     persistPredicates(state) {
         try {
-            if (!state || !state.selectedProfileKey) return;
+            if (!state) return;
             if (!state.advancedSearch) return;
             const payload = {
                 predicates: (state.advancedSearch.predicates || [])
@@ -61,8 +61,16 @@ const AdvancedSearch = {
                     })),
                 includeTaxesAndFeesInPriceFilters: state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false // default true
             };
-            const key = this.storageKey(state.selectedProfileKey);
+            // Use 'default' when no profile key is available so user preferences still persist
+            const key = this.storageKey(state.selectedProfileKey || 'default');
             __advSession.setItem(key, JSON.stringify(payload));
+            // Also persist a global unbranded flag for includeTaxes so it's truly global across brands
+            try {
+                // Persist under a global unbranded key to avoid profile migration logic
+                const globalFlagKey = 'advPriceIncludeTF';
+                const flagVal = payload.includeTaxesAndFeesInPriceFilters ? '1' : '0';
+                if (typeof goboStorageSet === 'function') goboStorageSet(globalFlagKey, flagVal); else localStorage.setItem(globalFlagKey, flagVal);
+            } catch(e) { /* ignore */ }
         } catch (e) { /* ignore persistence errors */ }
     },
     restorePredicates(state) {
@@ -84,7 +92,46 @@ const AdvancedSearch = {
                 return;
             }
             // Restore includeTaxes flag (default true)
-            state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
+            try {
+                // Prefer global unbranded flag if present in extension storage
+                // Prefer explicit global key first
+                const globalFlagKey = 'advPriceIncludeTF';
+                let globalRaw = null;
+                try {
+                    if (typeof goboStorageGet === 'function') globalRaw = goboStorageGet(globalFlagKey);
+                    else if (typeof localStorage !== 'undefined') globalRaw = localStorage.getItem(globalFlagKey);
+                } catch(e) { globalRaw = null; }
+                if (globalRaw === '1' || globalRaw === '0') {
+                    state.advancedSearch.includeTaxesAndFeesInPriceFilters = (globalRaw === '1');
+                } else {
+                    // Backwards compatibility: look for any branded legacy key like gobo-*-advPriceIncludeTF and migrate
+                    try {
+                        const allKeys = (typeof GoboStore !== 'undefined' && GoboStore && typeof GoboStore.listKeys === 'function') ? GoboStore.listKeys() : (typeof localStorage !== 'undefined' ? Object.keys(localStorage) : []);
+                        for (let i = 0; i < allKeys.length; i++) {
+                            const k = allKeys[i];
+                            if (!k || typeof k !== 'string') continue;
+                            if (/^gobo-[A-Za-z]-advPriceIncludeTF$/.test(k) || /^gobo-advPriceIncludeTF$/.test(k)) {
+                                try {
+                                    const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(k) : localStorage.getItem(k);
+                                    if (raw === '1' || raw === '0') {
+                                        state.advancedSearch.includeTaxesAndFeesInPriceFilters = (raw === '1');
+                                        // migrate to global key and remove legacy
+                                        if (typeof goboStorageSet === 'function') goboStorageSet(globalFlagKey, raw); else localStorage.setItem(globalFlagKey, raw);
+                                        try { if (typeof goboStorageRemove === 'function') goboStorageRemove(k); else localStorage.removeItem(k); } catch(e) {}
+                                        break;
+                                    }
+                                } catch(e) { /* ignore single-key errors */ }
+                            }
+                        }
+                    } catch(e) {
+                        state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
+                    }
+                    // If still unset, fall back to parsed payload
+                    if (typeof state.advancedSearch.includeTaxesAndFeesInPriceFilters === 'undefined') state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
+                }
+            } catch(e) {
+                state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
+            }
             const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range', 'less than', 'greater than']);
             state.advancedSearch.predicates = (Array.isArray(parsed.predicates) ? parsed.predicates
                 .filter(p => p && p.fieldKey && p.operator)

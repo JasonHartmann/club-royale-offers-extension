@@ -3,26 +3,8 @@
 // for all keys beginning with gobo- / gobohidden / goob- plus specific gobo* keys.
 // This lets existing volatile logic keep sequence without broad async refactors.
 (function() {
-    const EXT_PREFIX_MATCHERS = [
-        /^gobo-/,
-        /^goob-/,
-        /^goboHideTier$/,
-        /^goboLinkedAccounts$/,
-        /^goboHiddenGroups-/,
-        /^goboProfileIdMap_v1$/,
-        /^goboProfileIdFreeIds_v1$/,
-        /^goboProfileIdNext_v1$/,
-        /^goboB2BIncludeSideBySide_v1$/,
-        /^goboWhatsNewShown/,
-        /^goboOfferCodeLookupWarned_v\d+$/
-    ];
-    const DEBUG_STORAGE = false; // set true to trace shim behavior during development
+    const DEBUG_STORAGE = true; // set true to trace shim behavior during development
     function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
-    function shouldManage(key) {
-        const match = EXT_PREFIX_MATCHERS.some(rx => rx.test(key));
-        if (!match && DEBUG_STORAGE) { try { console.debug('[GoboStore] ignoring key (pattern mismatch):', key); } catch(e){} }
-        return match;
-    }
     const extStorage = (function() {
         if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) return browser.storage.local;
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) return chrome.storage.local;
@@ -32,8 +14,16 @@
     const pendingWrites = new Map();
     let flushScheduled = false;
 
+    // Decide which keys the shim should manage. Historically this filtered by prefixes,
+    // but we now manage all keys; keep this as a single function so callers remain stable.
+    function shouldManage(key) {
+        try {
+            return true;
+        } catch (e) { return false; }
+    }
+
     function scheduleFlush() {
-        if (!extStorage) return; // Nothing to do
+        if (!extStorage) return; // Nothing to do when extension storage isn't present
         if (flushScheduled) return;
         flushScheduled = true;
         setTimeout(() => {
@@ -43,11 +33,25 @@
             pendingWrites.clear();
             try {
                 debugStore('flush: writing batch', Object.keys(batch));
-                extStorage.set(batch, () => {
-                    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
-                        debugStore('flush: lastError', chrome.runtime.lastError);
+                // Support both callback-style (chrome) and Promise-style (browser) APIs.
+                try {
+                    const maybePromise = extStorage.set(batch, () => {
+                        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+                            debugStore('flush: lastError', chrome.runtime.lastError);
+                        }
+                    });
+                    if (maybePromise && typeof maybePromise.then === 'function') {
+                        maybePromise.catch(e => debugStore('flush: promise error', e));
                     }
-                });
+                } catch(cbErr) {
+                    // Some implementations (browser) may not accept a callback; try promise form
+                    try {
+                        const p = extStorage.set(batch);
+                        if (p && typeof p.then === 'function') p.catch(e => debugStore('flush: promise error', e));
+                    } catch(pErr) {
+                        debugStore('flush: exception', pErr);
+                    }
+                }
             } catch(e) { debugStore('flush: exception', e); }
             flushScheduled = false;
         }, 25); // small debounce to collapse bursts
@@ -56,14 +60,44 @@
     function loadAll(resolve) {
         if (!extStorage) { resolve(); return; }
         try {
-            extStorage.get(null, (items) => {
+            // Support both callback-style and Promise-style get
+            try {
+                const maybePromise = extStorage.get(null, (items) => {
+                    try {
+                        Object.keys(items || {}).forEach(k => {
+                            if (shouldManage(k)) internal.set(k, items[k]);
+                        });
+                    } catch(e) { /* ignore */ }
+                    resolve();
+                });
+                if (maybePromise && typeof maybePromise.then === 'function') {
+                    maybePromise.then((items) => {
+                        try {
+                            Object.keys(items || {}).forEach(k => {
+                                if (shouldManage(k)) internal.set(k, items[k]);
+                            });
+                        } catch(e) { /* ignore */ }
+                        resolve();
+                    }).catch(() => resolve());
+                }
+            } catch(cbErr) {
+                // Try promise form
                 try {
-                    Object.keys(items || {}).forEach(k => {
-                        if (shouldManage(k)) internal.set(k, items[k]);
-                    });
-                } catch(e) { /* ignore */ }
-                resolve();
-            });
+                    const p = extStorage.get(null);
+                    if (p && typeof p.then === 'function') {
+                        p.then((items) => {
+                            try {
+                                Object.keys(items || {}).forEach(k => {
+                                    if (shouldManage(k)) internal.set(k, items[k]);
+                                });
+                            } catch(e) { /* ignore */ }
+                            resolve();
+                        }).catch(() => resolve());
+                    } else {
+                        resolve();
+                    }
+                } catch(e) { resolve(); }
+            }
         } catch(e) { resolve(); }
     }
 
@@ -86,7 +120,6 @@
         },
         // Mimic localStorage.getItem returning a string or null
         getItem(key) {
-            if (!shouldManage(key)) return null; // never proxy site storage keys
             const val = internal.get(key);
             debugStore('getItem', key, val === undefined ? '(undefined)' : 'hit');
             if (val === undefined) return null;
@@ -94,7 +127,6 @@
             try { return JSON.stringify(val); } catch(e) { return null; }
         },
         setItem(key, value) {
-            if (!shouldManage(key)) return; // ignore other keys
             internal.set(key, value);
             pendingWrites.set(key, value);
             debugStore('setItem queued', key);
@@ -108,23 +140,31 @@
             } catch(e) { /* ignore */ }
         },
         removeItem(key) {
-            if (!shouldManage(key)) return;
             internal.delete(key);
             debugStore('removeItem', key);
             if (extStorage) {
-                try { extStorage.remove(key); } catch(e) { debugStore('removeItem error', key, e); }
+                try {
+                    try {
+                        const maybePromise = extStorage.remove(key, () => {
+                            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) debugStore('removeItem lastError', chrome.runtime.lastError);
+                        });
+                        if (maybePromise && typeof maybePromise.then === 'function') maybePromise.catch(e => debugStore('removeItem promise error', e));
+                    } catch(cbErr) {
+                        const p = extStorage.remove(key);
+                        if (p && typeof p.then === 'function') p.catch(e => debugStore('removeItem promise error', e));
+                    }
+                } catch(e) { debugStore('removeItem error', key, e); }
             }
         },
         key(index) {
-            // Only enumerate profile keys (gobo-*) like original code
-            const keys = Array.from(internal.keys()).filter(k => k.startsWith('gobo-')).sort();
+            const keys = Array.from(internal.keys()).sort();
             return keys[index] || null;
         },
         get length() {
-            return Array.from(internal.keys()).filter(k => k.startsWith('gobo-')).length;
+            return Array.from(internal.keys()).length;
         },
         getAllProfileKeys() {
-            return Array.from(internal.keys()).filter(k => k.startsWith('gobo-'));
+            return Array.from(internal.keys());
         },
         listKeys(prefix) {
             const keys = Array.from(internal.keys());
