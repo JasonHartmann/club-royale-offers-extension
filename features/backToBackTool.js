@@ -198,6 +198,15 @@
         registerEnvironment(opts) {
             if (!opts) return;
             let rows = Array.isArray(opts.rows) ? opts.rows : [];
+            try {
+                // Emit a lightweight diagnostic about hidden-row stores to help debug
+                const stateObj = (opts && opts._state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
+                let stateStoreSize = null;
+                let globalStoreSize = null;
+                try { if (stateObj && stateObj._hiddenGroupRowKeys instanceof Set) stateStoreSize = stateObj._hiddenGroupRowKeys.size; } catch(e){}
+                try { if (Filtering && Filtering._globalHiddenRowKeys instanceof Set) globalStoreSize = Filtering._globalHiddenRowKeys.size; } catch(e){}
+                try { console.debug('[B2B][REG] DIAG hiddenRowStores', { stateStoreSize, globalStoreSize, hasRows: Array.isArray(rows) ? rows.length : 0 }); } catch(e){}
+            } catch(e){}
             // Defensive: ensure hidden groups are excluded from the B2B context
             try {
                 if (window.Filtering && (typeof Filtering.excludeHidden === 'function' || typeof Filtering.isRowHidden === 'function' || typeof Filtering.wasRowHidden === 'function')) {
@@ -230,7 +239,15 @@
                             }
                             try {
                                 const sampleCodes = (filtered || []).slice(0,6).map(r => (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() : null).filter(Boolean);
-                                console.debug('[B2B][REG] registerEnvironment filtered', { beforeCount, afterCount, removed, sampleRemoved, sampleCodes, hiddenGroups: (Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : null });
+                                // Try to report hidden-row store sizes if present
+                                let stateStoreSize = null;
+                                let globalStoreSize = null;
+                                try {
+                                    const stateObj = (opts && opts._state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
+                                    if (stateObj && stateObj._hiddenGroupRowKeys instanceof Set) stateStoreSize = stateObj._hiddenGroupRowKeys.size;
+                                    if (Filtering && Filtering._globalHiddenRowKeys instanceof Set) globalStoreSize = Filtering._globalHiddenRowKeys.size;
+                                } catch(e) { /* ignore */ }
+                                console.debug('[B2B][REG] registerEnvironment filtered', { beforeCount, afterCount, removed, sampleRemoved, sampleCodes, stateStoreSize, globalStoreSize, hiddenGroups: (Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : null });
                             } catch (dbgErr) { console.debug('[B2B][REG] registerEnvironment filtered - debug error', dbgErr); }
                         } catch(e) { /* ignore logging errors */ }
                     }

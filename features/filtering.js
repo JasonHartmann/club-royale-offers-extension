@@ -321,6 +321,15 @@ const Filtering = {
     wasRowHidden(wrapper, state) {
         if (!wrapper) return false;
         const key = Filtering._rowKey(wrapper);
+        try {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                const stateHasStore = !!(state && state._hiddenGroupRowKeys instanceof Set);
+                const stateStoreSize = stateHasStore ? state._hiddenGroupRowKeys.size : null;
+                const globalHasStore = Filtering._globalHiddenRowKeys instanceof Set;
+                const globalStoreSize = globalHasStore ? Filtering._globalHiddenRowKeys.size : null;
+                console.debug('[Filtering] wasRowHidden check', { key, stateHasStore, stateStoreSize, globalHasStore, globalStoreSize });
+            }
+        } catch (e) { /* ignore debug errors */ }
         if (key) {
             if (state && state._hiddenGroupRowKeys instanceof Set && state._hiddenGroupRowKeys.has(key)) return true;
             if (Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;

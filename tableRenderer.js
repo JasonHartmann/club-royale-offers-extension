@@ -862,7 +862,8 @@ const TableRenderer = {
         if (window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
             try {
                 // Exclude hidden groups from B2B context — hidden groups should not be visible to B2B
-                const baseRows = Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length ? state.fullOriginalOffers : state.sortedOffers || [];
+                // Use the already-filtered originalOffers (visible rows) as the base for B2B context
+                const baseRows = Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : (Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length ? state.fullOriginalOffers : state.sortedOffers || []);
                 const rowIsHidden = (row) => {
                     try {
                         if (!window.Filtering) return false;
