@@ -197,7 +197,38 @@
 
         registerEnvironment(opts) {
             if (!opts) return;
-            const rows = Array.isArray(opts.rows) ? opts.rows : [];
+            let rows = Array.isArray(opts.rows) ? opts.rows : [];
+            // Defensive: ensure hidden groups are excluded from the B2B context
+            try {
+                if (window.Filtering && (typeof Filtering.excludeHidden === 'function' || typeof Filtering.isRowHidden === 'function')) {
+                    const stateObj = (opts && opts._state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
+                    const beforeCount = Array.isArray(rows) ? rows.length : 0;
+                    // Prefer fast single-row predicate if available
+                    let filtered = rows;
+                    try {
+                        if (typeof Filtering.isRowHidden === 'function') filtered = rows.filter(r => !Filtering.isRowHidden(r, stateObj));
+                        else if (typeof Filtering.excludeHidden === 'function') filtered = Filtering.excludeHidden(rows, stateObj);
+                    } catch(e) { /* fall back to original rows on error */ }
+                    const afterCount = Array.isArray(filtered) ? filtered.length : 0;
+                    if (window && window.GOBO_DEBUG_ENABLED) {
+                        try {
+                            const removed = beforeCount - afterCount;
+                            const sampleRemoved = [];
+                            if (removed > 0) {
+                                const diff = new Set((rows || []).map(r => (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() + '|' + (r.sailing && (r.sailing.shipName || r.sailing.shipCode) || '') : ''));
+                                // Build a small sample from original rows that are not present in filtered
+                                for (let i = 0; i < Math.min(8, rows.length); i++) {
+                                    const r = rows[i];
+                                    const code = (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() : '';
+                                    if (code && filtered.findIndex(ff => (ff && ff.offer && ff.offer.campaignOffer && String(ff.offer.campaignOffer.offerCode).trim()) === code) === -1) sampleRemoved.push(code);
+                                }
+                            }
+                            console.debug('[B2B][REG] registerEnvironment filtered', { beforeCount, afterCount, removed, sampleRemoved, hiddenGroups: (Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : null });
+                        } catch(e) { /* ignore logging errors */ }
+                    }
+                    rows = filtered;
+                }
+            } catch (e) { /* ignore filtering errors, fall back to original rows */ }
             const allowSideBySide = opts.allowSideBySide !== false;
             const rowMap = new Map();
             rows.forEach((entry, idx) => {
@@ -220,7 +251,7 @@
             const sailing = context && context.sailing;
             const rowId = sailing && sailing.__b2bRowId;
             if (!rowId) return;
-            try { console.debug('[B2B] attachToCell binding', { rowId }); } catch(e){}
+            // try { console.debug('[B2B] attachToCell binding', { rowId }); } catch(e){}
             pill.classList.add('b2b-pill-button');
             pill.setAttribute('role', 'button');
             pill.setAttribute('tabindex', '0');
@@ -529,11 +560,13 @@
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-chain-meta';
                 const routeLabel = this._formatRoute(meta);
+                // Only show perks when it's meaningful (not a lone dash '-')
+                const perksHtml = (meta.perksLabel && String(meta.perksLabel).trim() !== '-') ? `<span>${meta.perksLabel}</span>` : '';
                 metaBlock.innerHTML = `
                     <strong>${formatRange(meta)}</strong>
                     <span>${routeLabel}</span>
                     <span>Offer <strong>${meta.offerCode || 'TBA'}</strong> - ${meta.guestsLabel}${meta.roomLabel ? ` - ${meta.roomLabel}` : ''}</span>
-                    ${meta.perksLabel ? `<span>${meta.perksLabel}</span>` : ''}
+                    ${perksHtml}
                 `;
                 card.appendChild(metaBlock);
 

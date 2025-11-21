@@ -279,6 +279,106 @@ const Filtering = {
     // Debug flag (toggle below to enable/disable debug logging by editing this file)
     DEBUG: false,
     _dbg(){ if (Filtering.DEBUG && typeof console !== 'undefined' && window.GOBO_DEBUG_ENABLED) { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
+    _globalHiddenRowKeys: new Set(),
+    _resetHiddenRowStore(state) {
+        if (state) {
+            state._hiddenGroupRowKeys = new Set();
+            return state._hiddenGroupRowKeys;
+        }
+        Filtering._globalHiddenRowKeys = new Set();
+        return Filtering._globalHiddenRowKeys;
+    },
+    _getHiddenRowStore(state) {
+        if (state) {
+            if (!(state._hiddenGroupRowKeys instanceof Set)) state._hiddenGroupRowKeys = new Set();
+            return state._hiddenGroupRowKeys;
+        }
+        if (!(Filtering._globalHiddenRowKeys instanceof Set)) Filtering._globalHiddenRowKeys = new Set();
+        return Filtering._globalHiddenRowKeys;
+    },
+    _rowKey(wrapper) {
+        try {
+            const code = (wrapper?.offer?.campaignOffer?.offerCode || '').toString().trim().toUpperCase();
+            const ship = (wrapper?.sailing?.shipCode || wrapper?.sailing?.shipName || '').toString().trim().toUpperCase();
+            const sail = (wrapper?.sailing?.sailDate || '').toString().trim().slice(0, 10);
+            if (!code && !ship && !sail) return null;
+            return `${code}|${ship}|${sail}`;
+        } catch (e) {
+            return null;
+        }
+    },
+    _rememberHiddenRow(wrapper, store) {
+        if (!store) return;
+        const key = Filtering._rowKey(wrapper);
+        if (key) store.add(key);
+    },
+    wasRowHidden(wrapper, state) {
+        if (!wrapper) return false;
+        const key = Filtering._rowKey(wrapper);
+        if (key) {
+            if (state && state._hiddenGroupRowKeys instanceof Set && state._hiddenGroupRowKeys.has(key)) return true;
+            if (Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;
+        }
+        return Filtering.isRowHidden(wrapper, state);
+    },
+    _parseHiddenGroupPath(path) {
+        if (typeof path !== 'string') return null;
+        const idx = path.indexOf(':');
+        if (idx === -1) return null;
+        const label = path.slice(0, idx).trim();
+        const value = path.slice(idx + 1).trim();
+        if (!label || !value) return null;
+        return { label, value, labelLower: label.toLowerCase() };
+    },
+    _resolveHiddenGroupKey(label, headers, labelMap) {
+        if (!label) return null;
+        const normalized = label.toLowerCase();
+        if (labelMap && labelMap[normalized]) return labelMap[normalized];
+        const list = Array.isArray(headers) ? headers : [];
+        if (list.length) {
+            for (const h of list) {
+                if (!h) continue;
+                if (h.key && String(h.key).toLowerCase() === normalized) return h.key;
+                if (h.label && String(h.label).toLowerCase() === normalized) return h.key;
+            }
+            for (const h of list) {
+                if (!h || !h.label) continue;
+                const labelLc = String(h.label).toLowerCase();
+                if (labelLc.includes(normalized)) return h.key;
+            }
+        }
+        const common = {
+            'name': 'offerName',
+            'offername': 'offerName',
+            'offercode': 'offerCode',
+            'code': 'offerCode',
+            'b2b': 'b2bDepth',
+            'perks': 'perks'
+        };
+        const compact = normalized.replace(/\s+/g, '');
+        return common[compact] || null;
+    },
+    _buildHiddenGroupDescriptors(hiddenGroups, headers, labelMap) {
+        if (!Array.isArray(hiddenGroups) || !hiddenGroups.length) return [];
+        const descriptors = [];
+        hiddenGroups.forEach(path => {
+            const parsed = Filtering._parseHiddenGroupPath(path);
+            if (!parsed) return;
+            const key = Filtering._resolveHiddenGroupKey(parsed.label, headers, labelMap);
+            if (!key) return;
+            descriptors.push({ key, value: parsed.value, label: parsed.label });
+        });
+        return descriptors;
+    },
+    _matchesHiddenDescriptor(wrapper, descriptor) {
+        if (!descriptor || !descriptor.key) return false;
+        try {
+            const val = Filtering.getOfferColumnValue(wrapper?.offer, wrapper?.sailing, descriptor.key);
+            return Filtering._matchesHiddenValue(val, descriptor.value);
+        } catch (e) {
+            return false;
+        }
+    },
     _matchesHiddenValue(offerColumnValue, targetValue) {
         if (offerColumnValue == null || targetValue == null) return false;
         try {
@@ -349,23 +449,7 @@ const Filtering = {
 
     excludeHidden(offers, state) {
         if (!Array.isArray(offers) || offers.length === 0) return [];
-        const hiddenGroups = Filtering.loadHiddenGroups();
-        if (!Array.isArray(hiddenGroups) || hiddenGroups.length === 0) return offers.slice();
-        const labelToKey = {};
-        if (Array.isArray(state && state.headers)) {
-            state.headers.forEach(h => { if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; });
-        }
-        return offers.filter(({ offer, sailing }) => {
-            for (const path of hiddenGroups) {
-                const [label, value] = path.split(':').map(s => s.trim());
-                if (!label || !value) continue;
-                const key = labelToKey[label.toLowerCase()];
-                if (!key) continue;
-                const offerColumnValue = this.getOfferColumnValue(offer, sailing, key);
-                if (Filtering._matchesHiddenValue(offerColumnValue, value)) return false;
-            }
-            return true;
-        });
+        return offers.filter(w => !Filtering.isRowHidden(w, state));
     },
     applyAdvancedSearch(offers, state) {
         if (!state || !state.advancedSearch || !state.advancedSearch.enabled) return offers;
@@ -622,7 +706,14 @@ const Filtering = {
                             const allowSideBySide = (typeof App.TableRenderer.getSideBySidePreference === 'function')
                                 ? App.TableRenderer.getSideBySidePreference()
                                 : true;
-                            App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide });
+                            // Provide a filterPredicate that excludes hidden groups so depths ignore hidden rows
+                            const filterPredicate = (row) => {
+                                try {
+                                    if (!row) return false;
+                                    return !Filtering.isRowHidden(row, state);
+                                } catch(e) { return true; }
+                            };
+                            App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate });
                         }
                     }
                 } catch(e){ /* ignore ensure attempt */ }
@@ -674,6 +765,64 @@ const Filtering = {
             const computed = computeAdvancedMinPrice(offer, sailing, key, false);
             return computed === '-' ? '-' : computed;
         } catch(e){ return Filtering.getOfferColumnValue(offer, sailing, key); }
+    },
+
+    // Check whether a single wrapper row matches any hidden-group rule
+    isRowHidden(wrapper, state) {
+        try {
+            if (!wrapper) return false;
+            const hiddenGroups = Filtering.loadHiddenGroups();
+            if (!Array.isArray(hiddenGroups) || hiddenGroups.length === 0) return false;
+            // Build header list once
+            const headers = Array.isArray(state && state.headers) ? state.headers : [];
+            const labelToKey = {};
+            headers.forEach(h => { if (h && h.label && h.key) labelToKey[h.label.toLowerCase()] = h.key; });
+
+            const { offer, sailing } = wrapper;
+            for (const path of hiddenGroups) {
+                const [label, value] = path.split(':').map(s => s.trim());
+                if (!label || !value) continue;
+                let key = labelToKey[label.toLowerCase()];
+                // Fallbacks
+                if (!key && headers.length) {
+                    const lc = label.toLowerCase();
+                    for (const h of headers) {
+                        if (!h) continue;
+                        try {
+                            if (h.key && String(h.key).toLowerCase() === lc) { key = h.key; break; }
+                            if (h.label && String(h.label).toLowerCase() === lc) { key = h.key; break; }
+                        } catch(e) { /* ignore */ }
+                    }
+                }
+                if (!key && headers.length) {
+                    const token = label.toLowerCase();
+                    for (const h of headers) {
+                        if (!h || !h.label) continue;
+                        try {
+                            if (String(h.label).toLowerCase().indexOf(token) !== -1) { key = h.key; break; }
+                        } catch(e) { /* ignore */ }
+                    }
+                }
+                if (!key) {
+                    const common = { 'name': 'offerName', 'offer name': 'offerName', 'offercode': 'offerCode', 'code': 'offerCode', 'b2b': 'b2bDepth', 'perks': 'perks' };
+                    const norm = label.toLowerCase().replace(/\s+/g, '');
+                    if (common[norm]) key = common[norm];
+                }
+                if (!key) continue;
+                const val = Filtering.getOfferColumnValue(offer, sailing, key);
+                if (Filtering._matchesHiddenValue(val, value)) {
+                    if (window && window.GOBO_DEBUG_ENABLED) {
+                        try {
+                            const code = (offer && offer.campaignOffer && offer.campaignOffer.offerCode) ? String(offer.campaignOffer.offerCode).trim() : '';
+                            const name = (offer && offer.campaignOffer && offer.campaignOffer.name) ? String(offer.campaignOffer.name).trim() : '';
+                            console.debug('[Filtering] isRowHidden MATCH', { label, value, key, code, name });
+                        } catch(e) { /* ignore */ }
+                    }
+                    return true;
+                }
+            }
+            return false;
+        } catch(e) { return false; }
     },
     // Load hidden groups (GLOBAL now). Performs one-time migration from per-profile keys.
     loadHiddenGroups() {

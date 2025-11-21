@@ -38,7 +38,7 @@ const ApiClient = {
             // Differences: in refetch but not original (missing in original batch)
             refMap.forEach((s, k) => {
                 if (!origMap.has(k)) {
-                    console.debug(`[apiClient] Sailing present only after refetch (was missing in original) offer ${offerCode}: ship=${ship(s)} sailDate=${s.sailDate || 'n/a'} itineraryCode=${s.itineraryCode || 'n/a'} desc="${(s.itineraryDescription || s.sailingType?.name || '').toString().trim().slice(0,120)}"`);
+                    // console.debug(`[apiClient] Sailing present only after refetch (was missing in original) offer ${offerCode}: ship=${ship(s)} sailDate=${s.sailDate || 'n/a'} itineraryCode=${s.itineraryCode || 'n/a'} desc="${(s.itineraryDescription || s.sailingType?.name || '').toString().trim().slice(0,120)}"`);
                 }
             });
             // Differences: in original but not refetch (refetch missing it)

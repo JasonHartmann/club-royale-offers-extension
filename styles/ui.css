@@ -60,7 +60,7 @@
 .b2b-section-title { font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px; margin:0; }
 .b2b-section-title small { font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; }
 .b2b-chain-cards { display:flex; flex-direction:column; gap:14px; min-height:0; overflow:auto; }
-.b2b-chain-card { border-radius:18px; background:#fff; padding:16px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:8px; min-height:330px; }
+.b2b-chain-card { border-radius:18px; background:#fff; padding:16px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:8px; }
 .b2b-chain-card.is-root { background:linear-gradient(135deg,#e0ecff,#f2f6ff); border-color:rgba(12,78,163,0.2); }
 .b2b-chain-step-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
 .b2b-chain-step-head h4 { margin:0; font-size:15px; color:#0f172a; }
@@ -71,19 +71,19 @@
 .b2b-chain-card .b2b-timeline-table {
     width: 100%;
     border-collapse: collapse;
-    max-height: 140px;
-    overflow-y: auto;
-    display: block;
     box-sizing: border-box;
     font-size: 13px;
+    display: table;
+    max-height: none;
+    overflow: visible;
 }
 .b2b-chain-card .b2b-timeline-table tbody {
-    display: block;
-    max-height: 140px;
-    overflow-y: auto;
+    display: table-row-group;
+    max-height: none;
+    overflow: visible;
 }
 .b2b-chain-card .b2b-timeline-table tr {
-    display: table;
+    display: table-row;
     width: 100%;
     table-layout: fixed;
 }

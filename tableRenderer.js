@@ -849,7 +849,7 @@ const TableRenderer = {
             try {
                 // Exclude hidden groups from B2B context — hidden groups should not be visible to B2B
                 const baseRows = Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length ? state.fullOriginalOffers : state.sortedOffers || [];
-                const contextRows = (window.Filtering && typeof Filtering.excludeHidden === 'function') ? Filtering.excludeHidden(baseRows, state) : baseRows;
+                const contextRows = (window.Filtering && typeof Filtering.isRowHidden === 'function') ? baseRows.filter(r => !Filtering.isRowHidden(r, state)) : ((window.Filtering && typeof Filtering.excludeHidden === 'function') ? Filtering.excludeHidden(baseRows, state) : baseRows);
                 try {
                     if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
                         try {
@@ -863,7 +863,8 @@ const TableRenderer = {
                 BackToBackTool.registerEnvironment({
                     rows: contextRows,
                     allowSideBySide: allowSideBySidePref,
-                    stateKey: state.selectedProfileKey || null
+                    stateKey: state.selectedProfileKey || null,
+                    _state: state
                 });
             } catch (contextErr) {
                 console.debug('[tableRenderer] Unable to register BackToBackTool context', contextErr);
