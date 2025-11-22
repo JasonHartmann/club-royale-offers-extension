@@ -256,6 +256,21 @@ Additional manual checks before shipping:
 - Browse Itineraries: View detailed sailing itineraries directly from an offer — port-by-port stops, durations, and links to shore excursions.
 - Back-to-Back Wizard: Guided assistant to detect and link back-to-back sailings, surface upgrade opportunities, and simplify combined booking flows.
 
+## Back-to-Back (B2B) Tool
+
+A built-in Back-to-Back ("B2B") visualizer helps you discover and save chains of same-day connecting sailings (useful for detecting back-to-back itineraries and potential upgrade paths).
+
+- **Purpose:** Identify sailings that connect on the same day (disembark and embark on the same date) and build a multi-leg chain you can save into your `Favorites` profile.
+- **How to use:** Click the small chevrons/pill in the table's B2B column for any sailing to open the B2B modal. The tool lists matching next-connections (by port & date) and lets you add them to a chain.
+- **Side-by-side rule:** Connections must be same-day (no lag) and, unless "side-by-side" is allowed, on the same ship. UI badges indicate when a candidate is side-by-side.
+- **Depth & insights:** The UI shows immediate connection counts and a computed descendant depth to help prioritise options that yield longer chains.
+- **Saving:** Save a chain of two or more sailings directly into `Favorites`. Saved sailings receive a short chain ID and `__b2bDepth` / `__b2bChainId` metadata for later discovery.
+
+Notes for developers:
+- Implemented in `features/backToBackTool.js` and relies on `B2BUtils.computeB2BDepth` (tests: `tests/b2bUtils.test.js`).
+- Integration points: the tool reads `data-b2b-row-id` from table rows and updates `.b2b-depth-cell`. It uses `Favorites.bulkAddFavorites` / `Favorites.addFavorite` to persist chains.
+- Matching logic: requires identical embark/disembark ports and exact same-day adjacency (lag === 0). Offer codes are not re-used inside a chain.
+
 ## Report issues & contribute
 
 Found a bug or have an improvement idea? Please open an issue or submit a pull request on GitHub so I can track and prioritize it:

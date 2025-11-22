@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Back-to-Back Tool — Cruise Offers Viewer</title>
+  <link rel="stylesheet" href="static-styles.css" />
+  <style>
+    .content{max-width:880px;margin:2rem auto;padding:1.25rem;background:rgba(255,255,255,0.02);border-radius:10px}
+    pre{background:rgba(0,0,0,0.12);padding:10px;border-radius:6px;overflow:auto}
+    .callout{background:rgba(158,203,255,0.03);padding:.8rem;border-radius:8px;border:1px solid rgba(158,203,255,0.03);margin:8px 0}
+  </style>
+</head>
+<body>
+  <main class="wrapper">
+    <div class="content">
+      <h1>Back-to-Back (B2B) Tool</h1>
+      <p>The Back-to-Back visualizer helps you find same-day connecting sailings and save multi-leg chains into your Favorites for later planning.</p>
+
+      <h2>How to use</h2>
+      <ol>
+        <li>Open the Offers table on the Club Royale or Celebrity offers page.</li>
+        <li>Click the small chevrons/pill in the B2B column for any sailing to open the <strong>Back-to-Back Tool</strong> modal.</li>
+        <li>Review suggested <em>Next Connections</em> (filtered by port & exact same-day arrival/departure).</li>
+        <li>Add one or more connections to the chain using <strong>Add to chain</strong>.</li>
+        <li>When your chain has two or more sailings, click <strong>Save Chain to Favorites</strong> to persist it.</li>
+      </ol>
+
+      <div class="callout">Side-by-side connections are allowed when the UI indicates it; otherwise connections must be on the same ship and same day.</div>
+
+      <h2>Developer notes</h2>
+      <ul>
+        <li>Implementation: `features/backToBackTool.js`</li>
+        <li>Depth calculation: `utils/b2bUtils.js` (exposed as `B2BUtils.computeB2BDepth`).</li>
+        <li>Favorites integration: uses `Favorites.bulkAddFavorites` or `Favorites.addFavorite` and tags saved sailings with `__b2bDepth` and `__b2bChainId`.</li>
+        <li>Row binding: the tool expects rows to expose `data-b2b-row-id` on the row and `.b2b-depth-cell` for rendering depth badges.</li>
+        <li>Matching rules: requires exact same-day adjacency (lag === 0) and matching embark/disembark ports. Offer codes cannot be reused inside a chain.</li>
+      </ul>
+
+      <h2>Quick example (developer)</h2>
+      <p>Programmatically open the tool for a row ID:</p>
+      <pre><code>if (window.BackToBackTool && typeof BackToBackTool.openByRowId === 'function') {
+  BackToBackTool.openByRowId('b2b-<row-id>');
+}</code></pre>
+
+      <p>Saved chains are visible from the <strong>Favorites</strong> tab and are tagged with a short chain ID displayed in the table when present.</p>
+
+      <p style="margin-top:1rem"><a href="index.html">Back to homepage</a></p>
+    </div>
+  </main>
+</body>
+</html>
