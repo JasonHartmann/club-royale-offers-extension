@@ -1,14 +1,120 @@
-[Filtering] Remembered hidden row {key: '25TIER3|LB|2026-03-30', code: '25TIER3'}
-safari-polyfill.js:55 [Filtering] Descriptor matched row {descriptor: {…}, code: '25TIER3', value: '25TIER3'}
-safari-polyfill.js:55 [Filtering] Remembered hidden row {key: '25TIER3|FR|2026-03-30', code: '25TIER3'}
-filtering.js:447 Filtering.filterOffers: 149.880126953125 ms
+VM10439:630 TUSOMNI>>> Error: Element with selector "#global-nav-call-button" not found within 3000ms
+safari-polyfill.js:55 Show All Offers button clicked
+safari-polyfill.js:55 [apiClient] fetchOffers called, retryCount: 3
+safari-polyfill.js:55 [apiClient] Parsing session data from localStorage
+safari-polyfill.js:55 [apiClient] Session data parsed successfully
+safari-polyfill.js:55 Loading spinner displaying...
+safari-polyfill.js:55 Loading spinner displayed
+safari-polyfill.js:55 [apiClient] Spinner shown
+safari-polyfill.js:55 [apiClient] Request headers built (authorization redacted)
+safari-polyfill.js:55 [apiClient] Endpoint resolved: /api/casino/casino-offers/v1 brand: R
+safari-polyfill.js:55 [apiClient] Sending fetch request to offers API
+safari-polyfill.js:55 [apiClient] Network request completed, status: 200
+safari-polyfill.js:55 [apiClient] API response received: offers= 12
+safari-polyfill.js:55 [apiClient] Processing offers array, length: 12
+safari-polyfill.js:55 [apiClient] Offers array processed
+safari-polyfill.js:55 [apiClient] Refetching 12 offers with empty sailings (12) ['25NER604', '25VTY304', '25VAR1004', '25JKP1902', '25BFM105', '25RCL1104', '25CLS704', '25JAN104', '25NEW405', '25MIX305', '25LVA504', '25TIER3']
+safari-polyfill.js:55 [apiClient] Awaiting Promise.all for refetches
+safari-polyfill.js:55 [apiClient] Refetches completed
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25NER604: original=0 refetched=9 added=9 replaced=0 final=9
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25VTY304: original=0 refetched=100 added=100 replaced=0 final=100
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25VAR1004: original=0 refetched=92 added=92 replaced=0 final=92
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25JKP1902: original=0 refetched=16 added=16 replaced=0 final=16
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25BFM105: original=0 refetched=172 added=172 replaced=0 final=172
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25RCL1104: original=0 refetched=93 added=93 replaced=0 final=93
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25CLS704: original=0 refetched=53 added=53 replaced=0 final=53
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25JAN104: original=0 refetched=46 added=46 replaced=0 final=46
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25NEW405: original=0 refetched=61 added=61 replaced=0 final=61
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25MIX305: original=0 refetched=88 added=88 replaced=0 final=88
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25LVA504: original=0 refetched=46 added=46 replaced=0 final=46
+safari-polyfill.js:55 [apiClient] Pruned 56 excluded sailing(s) from offer 25TIER3
+safari-polyfill.js:55 [apiClient] Trimmed 68 long (>7) night sailing(s) from TIER offer 25TIER3
+safari-polyfill.js:55 [apiClient] Unioned sailings for offer 25TIER3: original=0 refetched=627 added=627 replaced=0 final=503
+safari-polyfill.js:55 [apiClient] Refetched offers merged
+safari-polyfill.js:55 [apiClient] Normalizing offers data
+safari-polyfill.js:55 [ItineraryCache] Loaded cache from storage {entries: 597}
+safari-polyfill.js:55 [ItineraryCache] Rebuilt shipDate index {ships: 29}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [ItineraryCache] Cache persisted {entries: 597}
+safari-polyfill.js:55 [ItineraryCache] buildOrUpdateFromOffers complete {offersProcessed: 12, sailingsProcessed: 1279, newEntries: 0, updatedEntries: 1279, totalCacheSize: 597}
+safari-polyfill.js:55 [apiClient] Offers data normalized
+safari-polyfill.js:55 [apiClient] Persisting normalized offers to storage (brand aware)
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [apiClient] Seeded legacy profile key gobo-jason1_percex.com
+safari-polyfill.js:55 [apiClient] Saved normalized offers to branded key: gobo-R-jason1_percex.com
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [apiClient] updateCombinedOffersCache called after account data update
+safari-polyfill.js:55 [apiClient] Rendering offers table
+safari-polyfill.js:55 [tableBuilder] createMainTable ENTRY
+safari-polyfill.js:55 [tableBuilder] createMainTable EXIT
+safari-polyfill.js:55 [tableRenderer] prepareOfferData incoming payload {offers: 12, sailings: 1279}
+safari-polyfill.js:55 [tableRenderer] prepareOfferData produced originalOffers {count: 1279, last: {…}}
+safari-polyfill.js:55 [tableBuilder] createTableHeader ENTRY {backdrop: div#gobo-backdrop.fixed.inset-0.bg-black.bg-opacity-50.z-[2147483646], container: div#gobo-offers-table.fixed.inset-0.m-auto.z-[2147483647], table: table.w-full.border-collapse.table-auto, tbody: tbody, accordionContainer: div.w-full, …}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'favorite', label: '★'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'b2bDepth', label: 'B2B'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerCode', label: 'Code'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerDate', label: 'Rcvd'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'expiration', label: 'Expires'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'tradeInValue', label: 'Trade'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerValue', label: 'Value'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerName', label: 'Name'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'shipClass', label: 'Class'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'ship', label: 'Ship'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'sailDate', label: 'Sail Date'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'departurePort', label: 'Departs'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'nights', label: 'Nights'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'destination', label: 'Destination'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'category', label: 'Category'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'guests', label: 'Guests'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'perks', label: 'Perks'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader EXIT
+safari-polyfill.js:55 [DEBUG] loadProfile ENTRY {key: 'gobo-R-jason1_percex.com', payload: {…}, typeofKey: 'string', typeofPayload: 'object', switchToken: '<REDACTED>'}
+safari-polyfill.js:55 [DEBUG] App.ProfileCache: []
+safari-polyfill.js:55 [DEBUG] App.CurrentProfile: null
+safari-polyfill.js:55 [DEBUG] Building new profile for key gobo-R-jason1_percex.com
+safari-polyfill.js:55 [tableRenderer] prepareOfferData incoming payload {offers: 12, sailings: 1279}
+safari-polyfill.js:55 [tableRenderer] prepareOfferData produced originalOffers {count: 1279, last: {…}}
+safari-polyfill.js:55 [DEBUG] prepareOfferData result: {originalOffers: Array(1279), sortedOffers: Array(1279)}
+safari-polyfill.js:55 [DEBUG] gobo storage goboHideTier: null
+safari-polyfill.js:55 [tableBuilder] createTableHeader ENTRY {headers: Array(17), profileId: 1, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'favorite', label: '★'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'b2bDepth', label: 'B2B'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerCode', label: 'Code'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerDate', label: 'Rcvd'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'expiration', label: 'Expires'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'tradeInValue', label: 'Trade'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerValue', label: 'Value'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerName', label: 'Name'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'shipClass', label: 'Class'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'ship', label: 'Ship'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'sailDate', label: 'Sail Date'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'departurePort', label: 'Departs'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'nights', label: 'Nights'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'destination', label: 'Destination'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'category', label: 'Category'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'guests', label: 'Guests'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'perks', label: 'Perks'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader EXIT
+safari-polyfill.js:55 [tableBuilder] createMainTable ENTRY
+safari-polyfill.js:55 [tableBuilder] createMainTable EXIT
+safari-polyfill.js:55 [DEBUG] New profile state built {headers: Array(17), profileId: 1, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …}
+safari-polyfill.js:55 [DEBUG] currentScroll: <div class=​"table-scroll-container">​…​</div>​
+safari-polyfill.js:55 [DEBUG] Replaced scrollContainer in DOM
+safari-polyfill.js:55 [DEBUG] Cached new profile gobo-R-jason1_percex.com
+safari-polyfill.js:55 [DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile {headers: Array(17), profileId: 1, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …} {key: 'gobo-R-jason1_percex.com', scrollContainer: div.table-scroll-container, state: {…}}
+safari-polyfill.js:55 [DEBUG] Calling updateView with state
+safari-polyfill.js:55 [DEBUG][tableRenderer] updateView ENTRY {headers: Array(17), profileId: 1, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …}
+safari-polyfill.js:55 [Filtering] filterOffers ENTRY {offersLen: 1279, advancedEnabled: false}
+filtering.js:437 Filtering.filterOffers: 4.2021484375 ms
 safari-polyfill.js:55 [B2B][REG] registerEnvironment rows: {baseRows: 776, contextRows: 776, baseHas25: false, ctxHas25: false, hiddenGroups: Array(1)}
 safari-polyfill.js:55 [B2B][REG] DIAG hiddenRowStores {stateStoreSize: 503, globalStoreSize: 0, hasRows: 776}
 safari-polyfill.js:55 [DEBUG] renderTable ENTRY {sortedOffersLength: 776, tbody: tbody}
 safari-polyfill.js:55 [TableRenderer] _ensureRowsHaveB2BDepth start {totalRows: 776, hasPred: true, allowedCount: 776, sampleAllowed: Array(8)}
 safari-polyfill.js:55 [B2BUtils] meta built {total: 776, allowedCount: 776, sampleAllowed: Array(6)}
 safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Depth computation complete {rows: 96}rows: 96[[Prototype]]: Object
+safari-polyfill.js:55 [B2B] Depth computation complete {rows: 776, longestChainLength: 9, longestChain: Array(9)}
+safari-polyfill.js:55 [B2B] Depth computation complete {rows: 48}
 safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}}
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
@@ -22,9 +128,9 @@ safari-polyfill.js:55 [DEBUG] loadProfile EXIT after updateView {key: 'gobo-R-ja
 safari-polyfill.js:55 [apiClient] Offers table rendered
 safari-polyfill.js:55 [apiClient] Hiding spinner
 safari-polyfill.js:55 Loading spinner hidden
-safari-polyfill.js:55 [apiClient] Post-spinner: Table row count: 97
-safari-polyfill.js:55 [apiClient] Post-spinner: Visible DOM elements: 2715
-safari-polyfill.js:55 [apiClient] Post-spinner: JS Heap Size: 83170291 / 112504719
+safari-polyfill.js:55 [apiClient] Post-spinner: Table row count: 49
+safari-polyfill.js:55 [apiClient] Post-spinner: Visible DOM elements: 1610
+safari-polyfill.js:55 [apiClient] Post-spinner: JS Heap Size: 93060722 / 162864330
 safari-polyfill.js:55 [apiClient] Post-spinner: TableRenderer.lastState: {headers: Array(17), profileId: 1, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …}
 safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}}
@@ -37,8 +143,8 @@ safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {display
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
-7d3d6df5a0586.js:25 [Violation] 'requestAnimationFrame' handler took 120ms
-[Violation] Forced reflow while executing JavaScript took 119ms
+7d3d6df5a0586.js:25 [Violation] 'requestAnimationFrame' handler took 88ms
+[Violation] Forced reflow while executing JavaScript took 87ms
 safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}}
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
@@ -64,7 +170,9 @@ safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {display
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
 safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
-safari-polyfill.js:55 [DEBUG][OfferValueSummary] {totalRows: 1220, computed: '1220 (100.0%)', missing: '0 (0.0%)', matchMiss: 0, reasons: {…}, …}
+safari-polyfill.js:55 [DEBUG][OfferValueSummary] {totalRows: 1148, computed: '1148 (100.0%)', missing: '0 (0.0%)', matchMiss: 0, reasons: {…}, …}
 safari-polyfill.js:55 [DEBUG] renderTable incremental complete {total: 776}
-safari-polyfill.js:55 [B2B] Applied depths after incremental render {rendered: 784, total: 776}
-safari-polyfill.js:55 [DEBUG][OfferValueSummary] {totalRows: 2352, computed: '2352 (100.0%)', missing: '0 (0.0%)', matchMiss: 0, reasons: {…}, …}
+safari-polyfill.js:55 [B2B] Applied depths after incremental render {rendered: 785, total: 776}
+7d3d6df5a0586.js:14 [Violation] 'setTimeout' handler took 58ms
+safari-polyfill.js:55 [DEBUG][OfferValueSummary] {totalRows: 2355, computed: '2355 (100.0%)', missing: '0 (0.0%)', matchMiss: 0, reasons: {…}, …}
+[Violation] 'setInterval' handler took 61ms

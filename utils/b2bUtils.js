@@ -248,13 +248,70 @@
             const depth = dfs(i, seedSet);
             depthMap.set(i, depth);
         }
-        // Diagnostics: compute longest chain path and log to help verify depth calculations
-        try {
-            const longestChain = computeLongestB2BPath(rows, options);
-            console.debug('[B2B] Depth computation complete', { rows: depthMap.size, longestChainLength: longestChain.length, longestChain });
-        } catch (e) {
-            console.debug('[B2B] Depth computation complete (longest chain diagnostic failed)', { rows: depthMap.size, error: (e && e.message) ? e.message : e });
+        // Helper: compute longest chain starting from a specific index (returns array of offerCodes)
+        function computeLongestChainFromIndex(startIdx) {
+            if (!meta[startIdx] || !meta[startIdx].allow) return [];
+            let best = [];
+            function dfsLocal(rootIdx, usedSet, path) {
+                const rootInfo = meta[rootIdx];
+                if (!rootInfo) return;
+                const node = {
+                    offerCode: rootInfo.offerCode || '',
+                    shipName: rootInfo.shipName || rootInfo.shipCode || '',
+                    startISO: rootInfo.startISO || null,
+                    endISO: rootInfo.endISO || null
+                };
+                const curPath = path.concat(node);
+                if (curPath.length > best.length) best = curPath.slice();
+                if (!rootInfo.endISO || !rootInfo.endPort) return;
+                const day = rootInfo.endISO;
+                const nextDay = day ? addDays(day, 1) : null;
+                const portKey = rootInfo.endPort.toLowerCase();
+                const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
+                if (!portKey || !shipKey) return;
+                const keysToCheck = [];
+                if (day) {
+                    keysToCheck.push(day + '|' + portKey + '|' + shipKey);
+                    if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
+                }
+                if (nextDay) {
+                    keysToCheck.push(nextDay + '|' + portKey + '|' + shipKey);
+                    if (allowSideBySide) keysToCheck.push(nextDay + '|' + portKey + '|*');
+                }
+                const usedHere = new Set(usedSet);
+                usedHere.add(rootInfo.offerCode);
+                for (let k = 0; k < keysToCheck.length; k++) {
+                    const bucket = startIndex.get(keysToCheck[k]);
+                    if (!bucket || !bucket.length) continue;
+                    for (let i = 0; i < bucket.length; i++) {
+                        const nextIdx = bucket[i];
+                        if (nextIdx === rootIdx) continue;
+                        const nextInfo = meta[nextIdx];
+                        if (!nextInfo || !nextInfo.allow) continue;
+                        if (!nextInfo.startISO || (nextInfo.startISO !== day && nextInfo.startISO !== nextDay)) continue;
+                        if (usedHere.has(nextInfo.offerCode)) continue;
+                        dfsLocal(nextIdx, usedHere, curPath);
+                    }
+                }
+            }
+            dfsLocal(startIdx, new Set(), []);
+            return best.filter(Boolean);
         }
+        // Diagnostics: sampled per-offer depth evaluations (every 100th allowed offer)
+        try {
+            let allowedSeen = 0;
+            for (let idx = 0; idx < meta.length; idx++) {
+                const info = meta[idx];
+                if (!info || !info.allow) continue;
+                allowedSeen += 1;
+                if (allowedSeen % 100 !== 0) continue;
+                const depth = depthMap.get(idx) || 0;
+                const chain = computeLongestChainFromIndex(idx) || [];
+                const chainSummary = Array.isArray(chain) ? chain.map(n => (n.offerCode || '') + '(@' + (n.shipName || '') + ':' + (n.startISO || '') + ')').join(' -> ') : String(chain || '');
+                try { console.debug('[B2B] Sampled offer depth', { idx, offerCode: info.offerCode, shipName: info.shipName, startISO: info.startISO, endISO: info.endISO, depth, chainLength: chain.length, chain }); } catch(e){}
+                try { console.debug('[B2B] Sampled chain (summary): ' + (chainSummary || '(none)')); } catch(e){}
+            }
+        } catch(e) { /* ignore sampling diagnostic errors */ }
 
         return depthMap;
     }
