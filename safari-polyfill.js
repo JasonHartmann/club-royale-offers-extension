@@ -39,7 +39,21 @@
         const origInfo = (typeof console !== 'undefined' && console.info) ? console.info.bind(console) : noop;
         // Replace console.debug entirely when disabled.
         if (typeof console !== 'undefined') {
-            console.debug = function(...args){ if (!window.GOBO_DEBUG_ENABLED) return; origDebug(...args); };
+            // Suppress known noisy debug patterns even when debug is enabled
+            const DEBUG_SUPPRESS_PATTERNS = [
+                /^\[Filtering\] wasRowHidden check/i
+            ];
+            console.debug = function(...args){
+                try {
+                    if (!window.GOBO_DEBUG_ENABLED) return;
+                    if (args && args.length && typeof args[0] === 'string') {
+                        for (let i = 0; i < DEBUG_SUPPRESS_PATTERNS.length; i++) {
+                            try { if (DEBUG_SUPPRESS_PATTERNS[i].test(args[0])) return; } catch(e){}
+                        }
+                    }
+                } catch(e) {}
+                origDebug(...args);
+            };
             // Filter only explicit [DEBUG] tagged log lines for console.log; leave other logs intact.
             console.log = function(...args){ if (!window.GOBO_DEBUG_ENABLED && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origLog(...args); };
             // Treat console.info as debug-level only if prefixed with [DEBUG] to avoid hiding informational user-facing messages.

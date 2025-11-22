@@ -18,16 +18,16 @@
     const WIDE_CATS = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
 
     function dbg(){
-        try { console.debug('[PricingUtils]', ...arguments); } catch(e){ /* ignore */ }
+        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+            try { console.debug('[PricingUtils]', ...arguments); } catch(e){ /* ignore */ }
+        }
     }
 
     function resolveCategory(raw){
+        try { if (typeof window !== 'undefined' && window.RoomCategoryUtils && typeof window.RoomCategoryUtils.resolveCategory === 'function') return window.RoomCategoryUtils.resolveCategory(raw); } catch(e){}
         if (!raw) { dbg('resolveCategory:none', raw); return null; }
-        raw = (''+raw).trim();
-        const up = raw.toUpperCase();
-        let resolved = null;
-        if (baseCategoryMap[up]) resolved = baseCategoryMap[up];
-        else if (WIDE_CATS.includes(up)) resolved = up;
+        const up = (''+raw).trim().toUpperCase();
+        const resolved = baseCategoryMap[up] || (WIDE_CATS.includes(up) ? up : null);
         dbg('resolveCategory', { raw, up, resolved });
         return resolved;
     }

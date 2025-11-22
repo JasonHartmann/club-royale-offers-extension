@@ -91,14 +91,16 @@ const ApiClient = {
         try {
             App.Spinner.showSpinner();
             console.debug('[apiClient] Spinner shown');
+            const rawAuth = authToken && authToken.toString ? authToken.toString() : '';
+            const safeAuth = rawAuth.startsWith('Bearer ') ? 'Bearer <REDACTED>' : (rawAuth ? '<REDACTED>' : '');
             const headers = {
                 'accept': 'application/json',
                 'accept-language': 'en-US,en;q=0.9',
                 'account-id': accountId,
-                'authorization': authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`,
+                'authorization': safeAuth,
                 'content-type': 'application/json',
             };
-            console.debug('[apiClient] Request headers built:', headers);
+            console.debug('[apiClient] Request headers built (authorization redacted)');
             // Centralized brand detection
             const host = (location && location.hostname) ? location.hostname : '';
             const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : (host.includes('celebritycruises.com') ? 'C' : 'R');
@@ -184,7 +186,8 @@ const ApiClient = {
             const rawData = await response.json();
             let data;
             try { data = JSON.parse(JSON.stringify(rawData)); } catch(e) { data = rawData; }
-            console.debug('[apiClient] API response received:', data);
+            // Avoid logging full API payloads in debug to prevent sensitive data exposure
+            console.debug('[apiClient] API response received: offers=', Array.isArray(data && data.offers) ? data.offers.length : 0);
             // Remove excluded sailings and enforce night limit for TIER offers
             if (data && Array.isArray(data.offers)) {
                 console.debug('[apiClient] Processing offers array, length:', data.offers.length);

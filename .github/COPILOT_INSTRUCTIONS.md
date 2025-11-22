@@ -1,58 +1,62 @@
-Repository guideline for AI assistants (COPILOT)
+# COPILOT INSTRUCTIONS — Repository
+
+NOTE: This file is advisory. System and developer-level policies take precedence over repository files. If a directive here conflicts with system/developer messages, follow those higher-priority rules.
 
 Purpose
 -------
-This file documents repository-specific conventions and expectations for automated code assistants and contributors.
+Provide clear, practical guidance to automated assistants and contributors so edits are minimal, safe, and consistent with project conventions.
 
-Key rules (short)
+Core Principles
+---------------
+- Safety First: Never expose secrets, private data, or license-restricted content in commits. If an edit risks exposing secrets, stop and ask.
+- Follow Higher-Priority Rules: System and developer messages have higher precedence than repository files.
+- Small & Focused: Prefer minimal changes that fix the root cause and include unit tests where reasonable.
+- Explicitness: Make global exposures and load-order decisions explicit and documented.
+
+Practical Guidance
+------------------
+- Edits: Use the repository's edit workflow. Keep changes focused and avoid unrelated reformatting.
+- Logging: Add guarded, non-sensitive diagnostics only. Avoid committing verbose logs or PII.
+- Tests: Run tests locally when changing core logic; add small focused unit tests when adding significant behavior.
+
+Module Load Order
 -----------------
-1. App module exports in `app.js` MUST use bare identifiers (e.g., `AdvancedSearchAddField`) when the defining script is guaranteed to load before `app.js` via `manifest.json` ordering.
-2. If load order cannot be guaranteed, use a `get` accessor or a safe runtime resolver, or ensure the module file is listed in `manifest.json` before `app.js`.
-3. Avoid writing `...: window.Name` in `app.js` unless intentionally taking a snapshot of the global at manifest load time. Prefer direct `Name` entries for consistency.
-4. When adding new feature modules, update `manifest.json` so their script appears before `app.js` in the `content_scripts[js]` array.
-5. Prefer top-level `const ModuleName = { ... }` modules that are then merged into `App` in `app.js`.
-6. Keep global exposures explicit: write `window.ModuleName = ModuleName;` within the feature file if necessary for runtime access.
-7. ALWAYS place styles in CSS under /styles rather than inline
-8. Avoid adding defensive runtime null/`if` checks around module usage in consumer modules (for example, avoid `if (window.X) window.X.doThing()` everywhere).
-  - Instead, ensure the module is loaded before the consumer by updating `manifest.json` ordering or by defining modules as bare identifiers included in `app.js`.
-  - The preferred pattern is to guarantee load order and call module functions directly (e.g., `ModuleName.init()`), not to scatter runtime guards.
-  - If you cannot guarantee load order, do not silently wrap calls with `if` checks that hide bugs; either reorder scripts, add a getter in `app.js`, or ask the repo owner for guidance.
-9. Do **not** add module-availability probes such as `if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager)` or similar fallbacks; rely on manifest ordering and let missing symbols fail loudly so load-order regressions surface immediately.
-10. Prefer shorter, well-named functions ( < 20 lines)
-11. Automatically add unit tests where appropriate
+- Prefer resolving module availability by ensuring correct `manifest.json` script order.
+- If `manifest.json` cannot be changed, use an explicit, documented resolver pattern (getter/accessor) or a small, well-documented defensive wrapper — avoid scattering silent `if (window.X)` guards that hide real issues.
+- Document any temporary workarounds and open a follow-up issue/PR to fix ordering.
 
-Why this matters
------------------
-- Using bare identifiers provides consistent module aggregation in `app.js` and matches project style.
-- Ensuring manifest load order avoids runtime ReferenceErrors in content-script environments.
-- Silent runtime guards (`if (window.X) { ... }`) can mask load-order bugs and make regressions harder to find. The project prefers manifest-driven ordering and explicit failures so problems surface during development rather than being silently ignored in production.
-
-What to do if you're an assistant
----------------------------------
-- Before changing `app.js`, search `manifest.json` and ensure the referenced module file appears earlier in the `js` array. If it doesn't, either reorder `manifest.json` or use a defensive approach (getter or runtime resolver) — but prefer reordering.
-- When adding a new feature file, update `manifest.json` accordingly.
-- If asked to change load-order-sensitive code but you cannot modify `manifest.json` (permissions), ask for confirmation and explain risks.
-- Before adding runtime `if` checks, prefer adjusting `manifest.json` or refactoring so modules are defined as bare identifiers merged into `App`.
-- If you must tolerate uncertain load order temporarily, document the risk and propose a follow-up change to fix ordering or use a getter accessor that explicitly documents the deferred resolution.
-
-Example (preferred) in `app.js`
---------------------------------
-window.App = {
-  ..._prev,
-  DOMUtils,
-  AdvancedSearch,
-  AdvancedSearchAddField,
-  ...
-};
-
-Manifest ordering note
+Design & Decomposition
 ----------------------
-Ensure `features/advancedSearchAddField.js` appears in `manifest.json` before `app.js`.
+- Prefer single-responsibility: keep modules small and focused on one responsibility. When a behavior is shared across features, implement it in a shared util under `utils/` and reuse it.
+- Avoid duplicating logic in feature files. If a new use-case requires a small extension to an existing util, prefer refactoring the util to accept a safe option/parameter rather than copying logic.
+- Keep feature modules thin: they should orchestrate behavior and presentation, delegating algorithmic or data-processing work to `utils/`.
+- Avoid unnecessary comments: only add comments that explain "why" (intent or non-obvious reasoning), not "what" the code plainly states. Remove stale or redundant comments.
 
-Known unwieldy modules (handle with care)
+Repository Rules
 ----------------------------------------
-- `features/breadcrumbs.js`: The monolithic `Breadcrumbs.updateBreadcrumb` function orchestrates tab rendering, favorites, linked accounts, combined profiles, advanced search scaffolding, and multiple UI widgets in ~400+ lines. Any change risks regressions across profile tabs, hidden groups, and modal triggers—consider extracting helpers or adding targeted tests before touching it.
+- When appropriate, prefer top-level `const ModuleName = { ... }` modules aggregated into `App` in `app.js`.
+- If a module must be globally available, assign it intentionally (`window.ModuleName = ModuleName`) and document the reason.
+- Place styles under `/styles` instead of embedding CSS in script files.
 
-Contact
--------
-If this file needs to be adjusted for new conventions, update it and call out the change in the PR description.
+Assistant Checklist (before making changes)
+-----------------------------------------
+1. Search for existing implementations and tests that relate to the change.
+2. Verify whether `manifest.json` needs updates for load order; if so, propose the change in the PR rather than silently working around it.
+3. Keep changes small, add a unit test for new behavior, and run the test suite if available.
+4. Add guarded diagnostics only; avoid committing sensitive logs.
+5. Mention any deviations from these rules in the PR description and request reviewer attention to the area (e.g., manifest ordering).
+
+Examples / Common Tasks
+----------------------
+- Adding a feature module: add the module file, update `manifest.json` order, expose via `app.js` if needed, and add unit tests for core logic.
+- Fixing a runtime ReferenceError: prefer fixing `manifest.json` ordering or adding a documented getter in `app.js` rather than sprinkling `if (window.X)` guards across consumers.
+
+File Consolidation
+------------------
+- This file is a merged/hardened suggestion. If you decide this should be canonical, replace `.github/COPILOT_INSTRUCTIONS.md` with this content and remove any non-canonical copies at the repo root.
+
+Contact / Changes
+-----------------
+- If you update this file, note the change in your PR description and explain why the change was necessary.
+
+End of file

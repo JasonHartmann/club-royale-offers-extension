@@ -275,6 +275,7 @@ function computeAdvancedMinPrice(offer, sailing, key, includeTaxes) {
     }
 }
 
+
 const Filtering = {
     // Debug flag (toggle below to enable/disable debug logging by editing this file)
     DEBUG: false,
@@ -327,7 +328,7 @@ const Filtering = {
                 const stateStoreSize = stateHasStore ? state._hiddenGroupRowKeys.size : null;
                 const globalHasStore = Filtering._globalHiddenRowKeys instanceof Set;
                 const globalStoreSize = globalHasStore ? Filtering._globalHiddenRowKeys.size : null;
-                console.debug('[Filtering] wasRowHidden check', { key, stateHasStore, stateStoreSize, globalHasStore, globalStoreSize });
+                // console.debug('[Filtering] wasRowHidden check', { key, stateHasStore, stateStoreSize, globalHasStore, globalStoreSize });
             }
         } catch (e) { /* ignore debug errors */ }
         if (key) {
@@ -383,11 +384,11 @@ const Filtering = {
             if (!key) return;
             descriptors.push({ key, value: parsed.value, label: parsed.label });
         });
-        try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-                console.debug('[Filtering] Built hidden-group descriptors', { descriptors });
-            }
-        } catch (e) { /* ignore */ }
+        // try {
+        //     if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+        //         console.debug('[Filtering] Built hidden-group descriptors', { descriptors });
+        //     }
+        // } catch (e) { /* ignore */ }
         return descriptors;
     },
     _matchesHiddenDescriptor(wrapper, descriptor) {
@@ -743,7 +744,31 @@ const Filtering = {
                                     return !Filtering.isRowHidden(row, state);
                                 } catch(e) { return true; }
                             };
-                            App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate });
+                            const depthsMap = App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate });
+                            try {
+                                // Compute the longest chain path for diagnostics and log it.
+                                const longestPath = (typeof B2BUtils !== 'undefined' && typeof B2BUtils.computeLongestB2BPath === 'function')
+                                    ? B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate })
+                                    : (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestB2BPath === 'function')
+                                        ? window.B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate })
+                                        : [];
+                                // The displayed child-count equals depth - 1; so path length should equal maxDepth - 1
+                                let maxDepth = 1;
+                                if (depthsMap instanceof Map) {
+                                    for (const v of depthsMap.values()) if (typeof v === 'number' && v > maxDepth) maxDepth = v;
+                                } else if (Array.isArray(state.sortedOffers)) {
+                                    // fallback: inspect assigned __b2bDepth on sailings
+                                    for (const r of state.sortedOffers) {
+                                        const d = r && r.sailing && typeof r.sailing.__b2bDepth === 'number' ? r.sailing.__b2bDepth : 1;
+                                        if (d > maxDepth) maxDepth = d;
+                                    }
+                                }
+                                try {
+                                    if (typeof console !== 'undefined' && console.info) {
+                                        console.info('[Filtering] Longest B2B chain path', { path: longestPath, pathLength: longestPath.length, maxDepthFound: maxDepth, expectedPathLen: Math.max(0, maxDepth - 1) });
+                                    }
+                                } catch(e) { /* ignore logging errors */ }
+                            } catch(e) { /* ignore diagnostics errors */ }
                         }
                     }
                 } catch(e){ /* ignore ensure attempt */ }

@@ -700,6 +700,61 @@
             return options;
         },
 
+        _computeImmediateCount(rowId, simulateAddRowId) {
+            const list = this._listImmediateCandidates ? this._listImmediateCandidates(rowId, simulateAddRowId) : [];
+            try {
+                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                    try { console.debug('[B2B][IMMED] immediate-count', { root: rowId, simulate: simulateAddRowId || null, immediate: list.length }); } catch(e){}
+                }
+            } catch(e) {}
+            return Array.isArray(list) ? list.length : 0;
+        },
+
+        _listImmediateCandidates(rowId, simulateAddRowId) {
+            if (!rowId || !this._context || !this._context.rowMap) return [];
+            const lastMeta = this._getMeta(rowId);
+            if (!lastMeta) return [];
+            const allowSideBySide = this._activeSession ? this._activeSession.allowSideBySide : this._context.allowSideBySide;
+            const chain = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain : [];
+            const usedOfferCodes = new Set(chain.map(id => {
+                const m = this._getMeta(id);
+                return m && m.offerCode ? m.offerCode : null;
+            }).filter(Boolean));
+            if (simulateAddRowId) {
+                const simMeta = this._getMeta(simulateAddRowId);
+                if (simMeta && simMeta.offerCode) usedOfferCodes.add(simMeta.offerCode);
+            }
+            const ctxState = this._context ? this._context.state : null;
+            const isVisibleRow = (r) => {
+                try {
+                    if (!r) return false;
+                    const rowId = r.sailing && r.sailing.__b2bRowId ? r.sailing.__b2bRowId : null;
+                    if (rowId && this._visibilityCache && this._visibilityCache.has(rowId)) return this._visibilityCache.get(rowId);
+                    if (window.Filtering && typeof Filtering.wasRowHidden === 'function') {
+                        const res = !Filtering.wasRowHidden(r, ctxState);
+                        if (rowId && this._visibilityCache) this._visibilityCache.set(rowId, res);
+                        return res;
+                    }
+                    if (window.Filtering && typeof Filtering.isRowHidden === 'function') {
+                        const res = !Filtering.isRowHidden(r, ctxState);
+                        if (rowId && this._visibilityCache) this._visibilityCache.set(rowId, res);
+                        return res;
+                    }
+                    return true;
+                } catch(e) { return true; }
+            };
+            const candidates = [];
+            this._context.rowMap.forEach((entry, rId) => {
+                if (rId === rowId || chain.includes(rId) || (simulateAddRowId && rId === simulateAddRowId)) return;
+                if (!isVisibleRow(entry)) return;
+                const candidateMeta = this._getMeta(rId);
+                if (!candidateMeta) return;
+                if (candidateMeta.offerCode && usedOfferCodes.has(candidateMeta.offerCode)) return;
+                if (this._isLinkable(lastMeta, candidateMeta, allowSideBySide)) candidates.push(rId);
+            });
+            return candidates;
+        },
+
         _isLinkable(currentMeta, nextMeta, allowSideBySide) {
             if (!(currentMeta && nextMeta)) {
                 _dbg('Not linkable: missing meta', { currentMeta, nextMeta });
@@ -732,6 +787,9 @@
 
         _renderOptions() {
             if (!this._activeSession || !this._activeSession.ui) return;
+            // reset diagnostic emission counter for this render and collect mismatches
+            try { this._diagEmitCount = 0; } catch(e) { this._diagEmitCount = 0; }
+            const diagMismatches = [];
             const list = this._activeSession.ui.optionList;
             list.innerHTML = '';
             const options = this._computeNextOptions();
@@ -745,29 +803,52 @@
                 list.appendChild(empty);
                 return;
             }
-            // Compute B2B depths for the current visible context so each option can show a depth pill
+            // Compute B2B depths deterministically per candidate using the same utility that the main table uses.
             try {
                 if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
                     try {
                         const rows = this._context.rows || [];
                         const ctxState = this._context.state || null;
+                        // Build a per-render visibility cache so we only call Filtering.wasRowHidden/isRowHidden once per row
+                        const visibilityCache = new Map();
+                        this._visibilityCache = visibilityCache;
                         const filterPredicate = (row) => {
                             try {
                                 if (!row) return false;
-                                if (window.Filtering && typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, ctxState);
-                                if (window.Filtering && typeof Filtering.isRowHidden === 'function') return !Filtering.isRowHidden(row, ctxState);
-                                return true;
+                                const rowId = row.sailing && row.sailing.__b2bRowId ? row.sailing.__b2bRowId : null;
+                                if (rowId && visibilityCache.has(rowId)) return visibilityCache.get(rowId);
+                                let allow = true;
+                                if (window.Filtering && typeof Filtering.wasRowHidden === 'function') {
+                                    allow = !Filtering.wasRowHidden(row, ctxState);
+                                } else if (window.Filtering && typeof Filtering.isRowHidden === 'function') {
+                                    allow = !Filtering.isRowHidden(row, ctxState);
+                                }
+                                if (rowId) visibilityCache.set(rowId, allow);
+                                return allow;
                             } catch (e) { return true; }
                         };
-                        const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate };
-                        const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
-                        const depthsByRowId = new Map();
-                        depthsMap.forEach((depth, idx) => {
-                            const entry = rows[idx];
-                            if (entry && entry.sailing && entry.sailing.__b2bRowId) depthsByRowId.set(entry.sailing.__b2bRowId, depth);
+
+                        // Map rowId -> index for quick lookup
+                        const rowIndexById = new Map();
+                        rows.forEach((entry, idx) => { if (entry && entry.sailing && entry.sailing.__b2bRowId) rowIndexById.set(entry.sailing.__b2bRowId, idx); });
+
+                        // Precompute the session's used offer codes (excluded globally for the depth calculation)
+                        const sessionUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : [];
+
+                        // For each option, compute depth by seeding the computeB2BDepth with the session's used codes plus the candidate's offer code.
+                        options.forEach(o => {
+                            try {
+                                const optMeta = o.meta || this._getMeta(o.rowId) || {};
+                                const candidateOffer = optMeta.offerCode || null;
+                                const initialUsedOfferCodes = sessionUsedOfferCodes.slice();
+                                if (candidateOffer) initialUsedOfferCodes.push(candidateOffer);
+                                const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes };
+                                const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
+                                const idx = rowIndexById.get(o.rowId);
+                                const depth = (typeof idx === 'number' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
+                                o.depth = depth || 1;
+                            } catch (inner) { o.depth = 1; }
                         });
-                        // attach depth to option entries for sorting and rendering
-                        options.forEach(o => { o.depth = depthsByRowId.get(o.rowId) || 1; });
                     } catch (innerErr) { /* fall back to no depths */ }
                 }
             } catch (e) { /* ignore depth compute errors */ }
@@ -784,48 +865,199 @@
             options.forEach(opt => {
                 const card = document.createElement('div');
                 card.className = 'b2b-option-card' + (opt.isSideBySide ? ' b2b-side-by-side' : '');
+                const metaBlock = document.createElement('div');
+                metaBlock.className = 'b2b-option-meta';
+                // Build header with ship name and badge on same line
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'b2b-option-card-header';
+                const shipTitle = document.createElement('strong');
+                shipTitle.textContent = opt.meta.shipName || opt.meta.shipCode || 'Ship';
                 const badge = document.createElement('div');
                 badge.className = 'badge';
                 badge.textContent = opt.isSideBySide ? 'Side-by-side' : 'Same ship';
-                const metaBlock = document.createElement('div');
-                metaBlock.className = 'b2b-option-meta';
-                const windowLabel = opt.lag === 0 ? 'Boards same day' : 'Boards next day';
-                const routeLabel = this._formatRoute(opt.meta);
+                headerDiv.appendChild(shipTitle);
+                headerDiv.appendChild(badge);
+
+                // Compute route including intermediate regions from timeline
+                let routeLabel = '';
+                try {
+                    const timeline = Array.isArray(opt.meta.timeline) ? opt.meta.timeline : [];
+                    // Build stops with port and region parsed from label (label format: "Port, Region")
+                    const stops = timeline.map(item => {
+                        const lbl = item && item.label ? String(item.label) : '';
+                        const parts = lbl.split(',');
+                        const portName = (parts[0] || '').trim();
+                        const region = (parts[1] || '').trim();
+                        return { portName: portName || '', region: region || '' };
+                    }).filter(s => {
+                        if (!s) return false;
+                        const p = (s.portName || '').toLowerCase();
+                        const r = (s.region || '').toLowerCase();
+                        if (p === 'cruising' || r === 'cruising') return false;
+                        return Boolean(s.portName || s.region);
+                    });
+
+                    const origin = (stops[0] && stops[0].portName) || opt.meta.embarkPort || 'Embark TBA';
+                    const dest = (stops[stops.length - 1] && stops[stops.length - 1].portName) || opt.meta.disembarkPort || 'Return TBA';
+
+                    const midParts = [];
+                    if (stops.length > 1) {
+                        // remember last region to collapse consecutive duplicate regions
+                        // start empty so origin-region does not suppress the first intermediate region
+                        let lastRegion = null;
+                        // iterate stops excluding first and last
+                        for (let i = 1; i < stops.length - 1; i++) {
+                            const stop = stops[i];
+                            const prev = stops[i - 1] || {};
+                            const base = stop.region || stop.portName || '';
+                            const baseLower = String(base).toLowerCase();
+                            if (stop.portName && prev.portName && stop.portName === prev.portName) {
+                                // same port visited twice in a row -> show region (Overnight)
+                                midParts.push((base) + ' (Overnight)');
+                                lastRegion = baseLower;
+                            } else {
+                                // different port: collapse duplicate consecutive regions
+                                if (base && baseLower === lastRegion) {
+                                    // skip duplicate region
+                                    continue;
+                                }
+                                midParts.push(base);
+                                if (base) lastRegion = baseLower;
+                            }
+                        }
+                    }
+
+                    if (midParts.length) {
+                        routeLabel = `${origin} → ${midParts.join(' → ')} → ${dest}`;
+                    } else {
+                        // No intermediate stops: if stops length === 2 we may still want to show any non-origin region
+                        if (stops.length === 2) {
+                            const middle = stops[1];
+                            const maybeRegion = middle && middle.region ? middle.region : null;
+                            if (maybeRegion && maybeRegion.toLowerCase() !== (stops[0] && stops[0].region || '').toLowerCase()) {
+                                routeLabel = `${origin} → ${maybeRegion} → ${dest}`;
+                            } else {
+                                routeLabel = `${origin} → ${dest}`;
+                            }
+                        } else {
+                            routeLabel = `${origin} → ${dest}`;
+                        }
+                    }
+                } catch (e) { routeLabel = this._formatRoute(opt.meta); }
+
+                // Offer info: bold offer code and include room category if present
+                const offerCode = opt.meta.offerCode || 'TBA';
+                const roomLabel = opt.meta.roomLabel || '';
+                const offerInfo = roomLabel ? `Offer <strong>${offerCode}</strong> - <strong>${roomLabel}</strong>` : `Offer <strong>${offerCode}</strong>`;
+
                 metaBlock.innerHTML = `
-                    <strong>${opt.meta.shipName || opt.meta.shipCode || 'Ship'}</strong>
+                    ${headerDiv.outerHTML}
                     <span>${formatRange(opt.meta)}</span>
                     <span>${routeLabel}</span>
-                    <span>${windowLabel} - Offer ${opt.meta.offerCode || 'TBA'}</span>
+                    <span>${offerInfo}</span>
                 `;
                 const selectBtn = document.createElement('button');
                 selectBtn.className = 'b2b-option-select';
                 selectBtn.type = 'button';
                 selectBtn.textContent = 'Add to chain';
                 selectBtn.addEventListener('click', () => this._selectOption(opt.rowId));
-                // Depth pill (reuse existing TableRenderer badge markup when available)
+                // Depth pill (render inside the Add button on the right)
                 try {
-                    const fullDepth = (typeof opt.depth === 'number') ? opt.depth : (opt.meta && opt.meta.sailing && typeof opt.meta.sailing.__b2bDepth === 'number' ? opt.meta.sailing.__b2bDepth : 1);
-                    const childCount = Math.max(0, Number(fullDepth) - 1);
-                    if (childCount > 0) {
-                        let depthMarkup = null;
-                        if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                            depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(childCount);
-                        } else if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                            depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(childCount);
+                    // Prefer immediate next-candidate count so we show 'No more' when there are none,
+                    // even if further descendants exist.
+                    const immediateCount = this._computeImmediateCount(opt.rowId, opt.rowId);
+                    const descendantDepth = (typeof opt.depth === 'number') ? opt.depth : (opt.meta && opt.meta.sailing && typeof opt.meta.sailing.__b2bDepth === 'number' ? opt.meta.sailing.__b2bDepth : 1);
+                    try {
+                        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                            const ocode = opt.meta && opt.meta.offerCode ? opt.meta.offerCode : safeOfferCode(opt.entry || {});
+                            try {
+                                const flag = (Number(immediateCount) !== Number(descendantDepth)) ? '!' : '';
+                                const m = opt.meta || {};
+                                if (flag || (typeof window !== 'undefined' && window.GOBO_DEBUG_VERBOSE)) {
+                                    const sISO = m.startISO || '';
+                                    const eISO = m.endISO || '';
+                                    const sPort = (m.embarkPort || '').replace(/\s+/g,' ');
+                                    const ePort = (m.disembarkPort || '').replace(/\s+/g,' ');
+                                    const ship = m.shipKey || '';
+                                    const offer = m.offerCode || '';
+                                    // collect a compact mismatch record (no console flood)
+                                    diagMismatches.push({ rowId: opt.rowId, offer: offer || ocode || 'TBA', immediate: Number(immediateCount), total: Number(descendantDepth), sISO, eISO, sPort, ePort, ship });
+                                }
+                            } catch(e){}
                         }
-                        const depthDiv = document.createElement('div');
-                        depthDiv.className = 'b2b-depth-pill';
-                        if (depthMarkup) depthDiv.innerHTML = depthMarkup; else depthDiv.textContent = String(childCount);
-                        // accessibility label for additional connections
-                        try { depthDiv.setAttribute('aria-label', `Additional connections ${childCount}`); } catch(e){}
-                        card.appendChild(depthDiv);
+                    } catch(e) {}
+                    const immedList = (this._listImmediateCandidates ? this._listImmediateCandidates(opt.rowId, opt.rowId) : []);
+                    const childCount = Math.max(0, Number(immedList.length));
+                    let depthMarkup = null;
+                    if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
+                        depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(childCount);
+                    } else if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getB2BDepthBadgeMarkup === 'function') {
+                        depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(childCount);
                     }
+                    const depthDiv = document.createElement('div');
+                    depthDiv.className = 'b2b-depth-pill';
+                    if (childCount > 0) {
+                        if (depthMarkup) {
+                            depthDiv.innerHTML = depthMarkup;
+                            try {
+                                const innerText = depthDiv.textContent || '';
+                                if (innerText.trim() === String(childCount)) depthDiv.textContent = `${childCount} more >>`;
+                            } catch(e) {}
+                        } else {
+                            depthDiv.textContent = `${childCount} more >>`;
+                        }
+                        // Also expose descendant depth in tooltip for context
+                        try { depthDiv.setAttribute('title', `${descendantDepth} total depth including descendants`); } catch(e){}
+                        try { depthDiv.setAttribute('aria-label', `Additional connections ${childCount}`); } catch(e){}
+                    } else {
+                        // No more connections available — show explicit 'No more' pill
+                        depthDiv.textContent = 'No more';
+                        depthDiv.classList.add('b2b-depth-pill-empty');
+                        try { depthDiv.setAttribute('aria-label', `No additional connections`); } catch(e){}
+                    }
+                    // If immediate list differs from descendant depth, emit compact sample of rowIds
+                    try {
+                        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && Number(immedList.length) !== Number(descendantDepth)) {
+                            // limit total diagnostic emissions per render to avoid flooding devtools
+                            try { if (!this._diagEmitCount) this._diagEmitCount = 0; } catch(e) { this._diagEmitCount = 0; }
+                            const MAX_DIAG = 6;
+                            if (this._diagEmitCount < MAX_DIAG) {
+                                this._diagEmitCount++;
+                                const sampleImmed = immedList.slice(0,4);
+                                let sampleDesc = [];
+                                try {
+                                    if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
+                                        const rows = this._context.rows || [];
+                                        const initialUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : [];
+                                        const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate: null, initialUsedOfferCodes };
+                                        const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
+                                        const idxs = [];
+                                        depthsMap.forEach((d, idx) => { if (d > 1) idxs.push(idx); });
+                                        for (let i = 0; i < Math.min(4, idxs.length); i++) {
+                                            const entry = rows[idxs[i]];
+                                            if (entry && entry.sailing && entry.sailing.__b2bRowId) sampleDesc.push(entry.sailing.__b2bRowId);
+                                        }
+                                    }
+                                } catch(e) {}
+                                // collect diagnostic summary for this mismatch
+                                diagMismatches.push({ rowId: opt.rowId, immedSample: sampleImmed, descSample: sampleDesc });
+                            }
+                        }
+                    } catch(e) {}
+                    // place pill inside the select button to the right
+                    selectBtn.appendChild(depthDiv);
                 } catch (e) { /* ignore depth badge errors */ }
-                card.appendChild(badge);
                 card.appendChild(metaBlock);
                 card.appendChild(selectBtn);
                 list.appendChild(card);
             });
+            // Emit a single-line JSON summary of any mismatches collected during this render
+            try {
+                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && Array.isArray(diagMismatches) && diagMismatches.length) {
+                    const summary = { tag: 'B2B_MISMATCH_SUMMARY', count: diagMismatches.length, samples: diagMismatches.slice(0,6) };
+                    try { console.debug(JSON.stringify(summary)); } catch(e){}
+                }
+            } catch(e) {}
         },
 
         _selectOption(rowId) {

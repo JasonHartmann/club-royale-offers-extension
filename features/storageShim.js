@@ -3,7 +3,7 @@
 // for all keys beginning with gobo- / gobohidden / goob- plus specific gobo* keys.
 // This lets existing volatile logic keep sequence without broad async refactors.
 (function() {
-    const DEBUG_STORAGE = true; // set true to trace shim behavior during development
+    const DEBUG_STORAGE = false; // set true to trace shim behavior during development
     function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
     const extStorage = (function() {
         if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) return browser.storage.local;
@@ -121,7 +121,7 @@
         // Mimic localStorage.getItem returning a string or null
         getItem(key) {
             const val = internal.get(key);
-            debugStore('getItem', key, val === undefined ? '(undefined)' : 'hit');
+            // debugStore('getItem', key, val === undefined ? '(undefined)' : 'hit');
             if (val === undefined) return null;
             if (typeof val === 'string') return val;
             try { return JSON.stringify(val); } catch(e) { return null; }
@@ -231,9 +231,9 @@ try {
                     if (__goboCombinedDebounce) clearTimeout(__goboCombinedDebounce);
                     __goboCombinedDebounce = setTimeout(() => {
                         try {
-                            if (App && App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
+                                if (App && App.ProfileCache && App.ProfileCache['goob-combined-linked']) {
                                 delete App.ProfileCache['goob-combined-linked'];
-                                console.log('[DEBUG] App.ProfileCache["goob-combined-linked"] deleted due to goboStorageUpdated');
+                                debugStore('App.ProfileCache["goob-combined-linked"] deleted due to goboStorageUpdated');
                             }
                             if (App && App.TableRenderer) {
                                 App.TableRenderer.updateBreadcrumb(App.TableRenderer.lastState?.groupingStack || [], App.TableRenderer.lastState?.groupKeysStack || []);
@@ -246,7 +246,7 @@ try {
                                         try {
                                             const payload = JSON.parse(raw);
                                             if (payload && payload.data) {
-                                                console.log('[DEBUG] Reloading Combined Offers profile in response to storage update');
+                                                debugStore('Reloading Combined Offers profile in response to storage update');
                                                 App.TableRenderer.loadProfile('goob-combined-linked', payload);
                                             }
                                         } catch(e) { /* ignore malformed */ }
@@ -260,9 +260,9 @@ try {
                 // General handling: invalidate cache for changed key and reload if active
                 try {
                     // Invalidate cached DOM/state for this key so next load reads fresh data
-                    if (App && App.ProfileCache && App.ProfileCache[key]) {
+                        if (App && App.ProfileCache && App.ProfileCache[key]) {
                         delete App.ProfileCache[key];
-                        console.log('[DEBUG] App.ProfileCache invalidated due to goboStorageUpdated for', key);
+                        debugStore('App.ProfileCache invalidated due to goboStorageUpdated for', key);
                     }
                     // Update breadcrumb/tabs to reflect possible savedAt changes or added/removed profiles
                     if (App && App.TableRenderer) {
@@ -277,7 +277,7 @@ try {
                                 try {
                                     const payload = JSON.parse(raw);
                                     if (payload && payload.data) {
-                                        console.log('[DEBUG] Reloading active profile in response to goboStorageUpdated for', key);
+                                        debugStore('Reloading active profile in response to goboStorageUpdated for', key);
                                         App.TableRenderer.loadProfile(key, payload);
                                     }
                                 } catch(e) { /* ignore malformed */ }

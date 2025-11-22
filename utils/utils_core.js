@@ -48,7 +48,9 @@ function _logOfferValueSummary(tag='OfferValueSummary') {
         reasons: s.reasons,
         samples: s.samples
     };
-    try { console.debug(`[DEBUG][${tag}]`, summary); } catch(e){}
+    try {
+        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug(`[DEBUG][${tag}]`, summary);
+    } catch(e){}
 }
 
 const Utils = {
@@ -175,17 +177,14 @@ const Utils = {
             try { if (entry && entry.pricingDerived && entry.pricingDerived.categories) categoriesMap = entry.pricingDerived.categories; } catch(e){ }
             // Heuristic classification for stateroom codes (broader mapping than original)
             function classifyBroad(code) {
+                try { if (typeof window !== 'undefined' && window.RoomCategoryUtils && typeof window.RoomCategoryUtils.classifyBroad === 'function') return window.RoomCategoryUtils.classifyBroad(code); } catch(e){}
                 if (!code) return null;
                 const up = String(code).trim().toUpperCase();
-                // Explicit suite / deluxe indicators
                 if (/SUITE|JRSUITE|JR\s?SUITE|JS|SU\b|DLX|DELUXE/.test(up)) return 'DELUXE';
-                // Balcony indicators
                 if (/BALC|BALCONY|BK\b|^\d+B$|BALK?/.test(up) || /\bB$/.test(up)) return 'BALCONY';
-                // Ocean / Outside indicators
                 if (/OCEAN|OUTSIDE|OV|\bO\b|\bN$/.test(up) || /\d+N$/.test(up) || /\d+O$/.test(up)) return 'OUTSIDE';
-                // Interior indicators
                 if (/INTERIOR|INSIDE|INT|\bI\b|\d+V$|\d+I$|\bV$/.test(up)) return 'INTERIOR';
-                return null; // unknown
+                return null;
             }
             const offerCategoryRaw = (sailing.roomType || offer.category || offer.campaignOffer?.category || '').toString().trim();
             let offerBroad = classifyBroad(offerCategoryRaw);
