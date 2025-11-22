@@ -18,16 +18,23 @@
                 return s;
             }
             if (a && typeof a === 'object'){
-                // shallow copy and redact sensitive-looking keys
-                if (Array.isArray(a)) return a.map(redactArg);
-                const c = {};
-                Object.keys(a).forEach(k => {
-                    try {
-                        if (/token|authorization|auth|password|passwd|secret|api[_-]?key/i.test(k)) c[k] = '<REDACTED>';
-                        else c[k] = a[k];
-                    } catch(e) { c[k] = a[k]; }
-                });
-                return c;
+                try {
+                    // Clone to avoid mutating original or returning a live reference that devtools later expands
+                    let clone;
+                    if (typeof structuredClone === 'function') {
+                        clone = structuredClone(a);
+                    } else {
+                        // Fallback to JSON round-trip; if that fails, fall back to shallow copy
+                        try { clone = JSON.parse(JSON.stringify(a)); } catch(e) { clone = Array.isArray(a) ? a.slice() : Object.assign({}, a); }
+                    }
+                    if (Array.isArray(clone)) return clone.map(redactArg);
+                    Object.keys(clone || {}).forEach(k => {
+                        try {
+                            if (/token|authorization|auth|password|passwd|secret|api[_-]?key/i.test(k)) clone[k] = '<REDACTED>';
+                        } catch(e) { /* ignore per-key errors */ }
+                    });
+                    return clone;
+                } catch(e) { return a; }
             }
             return a;
         } catch(e){ return a; }

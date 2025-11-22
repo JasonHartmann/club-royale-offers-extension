@@ -76,7 +76,10 @@ const ApiClient = {
             const currentTime = Date.now();
             if (tokenExpiration < currentTime) {
                 console.debug('[apiClient] Token expired:', new Date(tokenExpiration).toISOString());
-                localStorage.removeItem('persist:session');
+                // Avoid removing the host page's `persist:session` localStorage key.
+                // Deleting this key can log out or interfere with the host app unexpectedly.
+                // If extension-managed session cleanup is required, use extension storage or an internal key.
+                try { console.debug('[apiClient] NOTE: not removing host localStorage persist:session (preserved)'); } catch(e){}
                 App.ErrorHandler.showError('Session expired. Please log in again.');
                 App.ErrorHandler.closeModalIfOpen();
                 return;
@@ -92,12 +95,13 @@ const ApiClient = {
             App.Spinner.showSpinner();
             console.debug('[apiClient] Spinner shown');
             const rawAuth = authToken && authToken.toString ? authToken.toString() : '';
+            const networkAuth = rawAuth ? (rawAuth.startsWith('Bearer ') ? rawAuth : `Bearer ${rawAuth}`) : '';
             const safeAuth = rawAuth.startsWith('Bearer ') ? 'Bearer <REDACTED>' : (rawAuth ? '<REDACTED>' : '');
             const headers = {
                 'accept': 'application/json',
                 'accept-language': 'en-US,en;q=0.9',
                 'account-id': accountId,
-                'authorization': safeAuth,
+                'authorization': networkAuth,
                 'content-type': 'application/json',
             };
             console.debug('[apiClient] Request headers built (authorization redacted)');
