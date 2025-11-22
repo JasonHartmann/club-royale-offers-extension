@@ -69,7 +69,8 @@ const AccordionBuilder = {
                 }
                 case 'b2bDepth': {
                     if (sailing) {
-                        if (sailing.__b2bChainId) {
+                        const viewingFavorites = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+                        if (viewingFavorites && sailing.__b2bChainId) {
                             groupKey = String(sailing.__b2bChainId);
                         } else if (typeof sailing.__b2bDepth === 'number') {
                             const full = Number(sailing.__b2bDepth) || 1;

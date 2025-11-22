@@ -325,8 +325,9 @@ const Modal = {
             const destination = parsed.destination;
             const perksStr = App.Utils.computePerks(offer, sailing);
             const shipClass = App.Utils.getShipClass(sailing.shipName);
-            // Prefer chain ID when present; otherwise fall back to numeric child-count depth
-            const b2bDepth = (sailing && sailing.__b2bChainId) ? String(sailing.__b2bChainId) : ((sailing && typeof sailing.__b2bDepth === 'number') ? Math.max(0, Number(sailing.__b2bDepth) - 1) : '');
+            // Only include chain ID when exporting the Favorites tab; otherwise use numeric child-count depth
+            const includeChainId = activeKey === 'goob-favorites';
+            const b2bDepth = (includeChainId && sailing && sailing.__b2bChainId) ? String(sailing.__b2bChainId) : ((sailing && typeof sailing.__b2bDepth === 'number') ? Math.max(0, Number(sailing.__b2bDepth) - 1) : '');
             return [
                 profileLabel,
                 b2bDepth,

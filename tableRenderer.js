@@ -265,8 +265,9 @@ const TableRenderer = {
         if (!cell) return;
         const normalized = this._normalizeB2BDepthValue(depth);
         const childCount = Math.max(0, Number(normalized) - 1);
-        // If a chainId is provided, render a chain-ID badge for favorites
-        if (chainId) {
+        // If a chainId is provided and we're viewing Favorites, render chain-ID badge
+        const viewingFavorites = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+        if (chainId && viewingFavorites) {
             try {
                 cell.innerHTML = '';
                 const wrapper = document.createElement('div');
@@ -297,7 +298,7 @@ const TableRenderer = {
             }
             try { cell.dataset.chainId = String(chainId); } catch(e) {}
         } else {
-            // Render child-count (additional connections) in the pill for table rows
+            // Default: render numeric child-count pill (keeps sorting deterministic in non-favorites)
             if (typeof cell.innerHTML === 'string') {
                 cell.innerHTML = this.getB2BDepthBadgeMarkup(childCount);
             } else {

@@ -1188,21 +1188,22 @@
         },
 
         _applyDepthToDom(rowIds, depth, chainId) {
+            const useChainId = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
             rowIds.forEach(rowId => {
                 const selector = `tr[data-b2b-row-id="${escapeSelector(rowId)}"] .b2b-depth-cell`;
                 document.querySelectorAll(selector).forEach(cell => {
                     try {
                         if (window.App && App.TableRenderer && typeof App.TableRenderer.updateB2BDepthCell === 'function') {
-                            // If TableRenderer supports a chainId override, prefer it
+                            // Only pass chainId through when viewing Favorites
                             try {
-                                App.TableRenderer.updateB2BDepthCell(cell, depth, chainId);
+                                App.TableRenderer.updateB2BDepthCell(cell, depth, useChainId ? chainId : null);
                                 return;
                             } catch(e) {}
                             App.TableRenderer.updateB2BDepthCell(cell, depth);
                             return;
                         }
-                        // Default rendering: if we're in favorites view and chainId present, show chainId pill
-                        if (chainId && cell) {
+                        // Default rendering: only show chainId pill when viewing Favorites and chainId present
+                        if (useChainId && chainId && cell) {
                             cell.innerHTML = '';
                             const wrapper = document.createElement('div');
                             wrapper.style.display = 'flex';

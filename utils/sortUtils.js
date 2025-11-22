@@ -121,12 +121,19 @@ const SortUtils = {
                 }
                 case 'b2bDepth': {
                     // Prefer chain ID strings when present (favorites), otherwise numeric depth
-                    const aChain = a.sailing && a.sailing.__b2bChainId ? String(a.sailing.__b2bChainId) : null;
-                    const bChain = b.sailing && b.sailing.__b2bChainId ? String(b.sailing.__b2bChainId) : null;
-                    if (aChain || bChain) {
-                        // Normalize so chain IDs sort before numeric depths; prefix ensures consistent string comparison
-                        aValue = aChain ? `0_${aChain.toLowerCase()}` : `1_${String((a.sailing && typeof a.sailing.__b2bDepth === 'number') ? a.sailing.__b2bDepth : 1)}`;
-                        bValue = bChain ? `0_${bChain.toLowerCase()}` : `1_${String((b.sailing && typeof b.sailing.__b2bDepth === 'number') ? b.sailing.__b2bDepth : 1)}`;
+                    const viewingFavorites = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+                    if (viewingFavorites) {
+                        const aChain = a.sailing && a.sailing.__b2bChainId ? String(a.sailing.__b2bChainId) : null;
+                        const bChain = b.sailing && b.sailing.__b2bChainId ? String(b.sailing.__b2bChainId) : null;
+                        if (aChain || bChain) {
+                            aValue = aChain ? `0_${aChain.toLowerCase()}` : `1_${String((a.sailing && typeof a.sailing.__b2bDepth === 'number') ? a.sailing.__b2bDepth : 1)}`;
+                            bValue = bChain ? `0_${bChain.toLowerCase()}` : `1_${String((b.sailing && typeof b.sailing.__b2bDepth === 'number') ? b.sailing.__b2bDepth : 1)}`;
+                        } else {
+                            const aNum = (a.sailing && typeof a.sailing.__b2bDepth === 'number') ? a.sailing.__b2bDepth : 1;
+                            const bNum = (b.sailing && typeof b.sailing.__b2bDepth === 'number') ? b.sailing.__b2bDepth : 1;
+                            aValue = aNum;
+                            bValue = bNum;
+                        }
                     } else {
                         const aNum = (a.sailing && typeof a.sailing.__b2bDepth === 'number') ? a.sailing.__b2bDepth : 1;
                         const bNum = (b.sailing && typeof b.sailing.__b2bDepth === 'number') ? b.sailing.__b2bDepth : 1;
