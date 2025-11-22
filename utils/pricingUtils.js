@@ -18,13 +18,11 @@
     const WIDE_CATS = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
 
     function dbg(){
-        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-            try { console.debug('[PricingUtils]', ...arguments); } catch(e){ /* ignore */ }
-        }
+        try { console.debug('[PricingUtils]', ...arguments); } catch(e){ /* ignore */ }
     }
 
     function resolveCategory(raw){
-        try { if (typeof window !== 'undefined' && window.RoomCategoryUtils && typeof window.RoomCategoryUtils.resolveCategory === 'function') return window.RoomCategoryUtils.resolveCategory(raw); } catch(e){}
+        try { if (window.RoomCategoryUtils && typeof window.RoomCategoryUtils.resolveCategory === 'function') return window.RoomCategoryUtils.resolveCategory(raw); } catch(e){}
         if (!raw) { dbg('resolveCategory:none', raw); return null; }
         const up = (''+raw).trim().toUpperCase();
         const resolved = baseCategoryMap[up] || (WIDE_CATS.includes(up) ? up : null);

@@ -279,7 +279,7 @@ function computeAdvancedMinPrice(offer, sailing, key, includeTaxes) {
 const Filtering = {
     // Debug flag (toggle below to enable/disable debug logging by editing this file)
     DEBUG: false,
-    _dbg(){ if (Filtering.DEBUG && typeof console !== 'undefined' && window.GOBO_DEBUG_ENABLED) { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
+    _dbg(){ if (Filtering.DEBUG) { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
     _globalHiddenRowKeys: new Set(),
     _resetHiddenRowStore(state) {
         if (state) {
@@ -312,25 +312,11 @@ const Filtering = {
         if (!store) return;
         const key = Filtering._rowKey(wrapper);
         if (key) store.add(key);
-        try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-                const code = (wrapper && wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.offerCode) ? String(wrapper.offer.campaignOffer.offerCode).trim() : '';
-                console.debug('[Filtering] Remembered hidden row', { key, code });
-            }
-        } catch (e) { /* ignore */ }
     },
     wasRowHidden(wrapper, state) {
         if (!wrapper) return false;
         const key = Filtering._rowKey(wrapper);
-        try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-                const stateHasStore = !!(state && state._hiddenGroupRowKeys instanceof Set);
-                const stateStoreSize = stateHasStore ? state._hiddenGroupRowKeys.size : null;
-                const globalHasStore = Filtering._globalHiddenRowKeys instanceof Set;
-                const globalStoreSize = globalHasStore ? Filtering._globalHiddenRowKeys.size : null;
-                // console.debug('[Filtering] wasRowHidden check', { key, stateHasStore, stateStoreSize, globalHasStore, globalStoreSize });
-            }
-        } catch (e) { /* ignore debug errors */ }
+        // no-op debug removed
         if (key) {
             if (state && state._hiddenGroupRowKeys instanceof Set && state._hiddenGroupRowKeys.has(key)) return true;
             if (Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;
@@ -384,11 +370,7 @@ const Filtering = {
             if (!key) return;
             descriptors.push({ key, value: parsed.value, label: parsed.label });
         });
-        // try {
-        //     if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-        //         console.debug('[Filtering] Built hidden-group descriptors', { descriptors });
-        //     }
-        // } catch (e) { /* ignore */ }
+        // debug: descriptors built (silent by default)
         return descriptors;
     },
     _matchesHiddenDescriptor(wrapper, descriptor) {
@@ -396,12 +378,6 @@ const Filtering = {
         try {
             const val = Filtering.getOfferColumnValue(wrapper?.offer, wrapper?.sailing, descriptor.key);
             const matched = Filtering._matchesHiddenValue(val, descriptor.value);
-            try {
-                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && matched) {
-                    const code = (wrapper && wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.offerCode) ? String(wrapper.offer.campaignOffer.offerCode).trim() : '';
-                    console.debug('[Filtering] Descriptor matched row', { descriptor, code, value: val });
-                }
-            } catch (e) { /* ignore */ }
             return matched;
         } catch (e) {
             return false;
@@ -425,7 +401,7 @@ const Filtering = {
         return false;
     },
     filterOffers(state, offers) {
-        if (window.GOBO_DEBUG_ENABLED) { try { console.time('Filtering.filterOffers'); } catch(e){} }
+        try { console.time('Filtering.filterOffers'); } catch(e){}
         console.debug('[Filtering] filterOffers ENTRY', { offersLen: Array.isArray(offers) ? offers.length : 0, advancedEnabled: !!(state && state.advancedSearch && state.advancedSearch.enabled) });
         // Reset per-run stats for numeric predicates
         Filtering._lessThanStats = { total:0, incomplete:0, invalidTarget:0, missingActual:0, passed:0, failed:0, samples:[] };
@@ -458,7 +434,7 @@ const Filtering = {
                 working = Filtering.applyAdvancedSearch(working, state);
             }
         } catch(e) { console.warn('[Filtering][AdvancedSearch] applyAdvancedSearch failed', e); }
-        if (window.GOBO_DEBUG_ENABLED) { try { console.timeEnd('Filtering.filterOffers'); } catch(e){} }
+        try { console.timeEnd('Filtering.filterOffers'); } catch(e){}
         if (Filtering.DEBUG && Filtering._lessThanStats && Filtering._lessThanStats.total && window.GOBO_DEBUG_ENABLED) {
             try {
                 const s = Filtering._lessThanStats;

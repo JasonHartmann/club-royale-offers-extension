@@ -703,9 +703,7 @@
         _computeImmediateCount(rowId, simulateAddRowId) {
             const list = this._listImmediateCandidates ? this._listImmediateCandidates(rowId, simulateAddRowId) : [];
             try {
-                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-                    try { console.debug('[B2B][IMMED] immediate-count', { root: rowId, simulate: simulateAddRowId || null, immediate: list.length }); } catch(e){}
-                }
+                try { console.debug('[B2B][IMMED] immediate-count', { root: rowId, simulate: simulateAddRowId || null, immediate: list.length }); } catch(e){}
             } catch(e) {}
             return Array.isArray(list) ? list.length : 0;
         },
@@ -968,23 +966,21 @@
                     const immediateCount = this._computeImmediateCount(opt.rowId, opt.rowId);
                     const descendantDepth = (typeof opt.depth === 'number') ? opt.depth : (opt.meta && opt.meta.sailing && typeof opt.meta.sailing.__b2bDepth === 'number' ? opt.meta.sailing.__b2bDepth : 1);
                     try {
-                        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-                            const ocode = opt.meta && opt.meta.offerCode ? opt.meta.offerCode : safeOfferCode(opt.entry || {});
-                            try {
-                                const flag = (Number(immediateCount) !== Number(descendantDepth)) ? '!' : '';
-                                const m = opt.meta || {};
-                                if (flag || (typeof window !== 'undefined' && window.GOBO_DEBUG_VERBOSE)) {
-                                    const sISO = m.startISO || '';
-                                    const eISO = m.endISO || '';
-                                    const sPort = (m.embarkPort || '').replace(/\s+/g,' ');
-                                    const ePort = (m.disembarkPort || '').replace(/\s+/g,' ');
-                                    const ship = m.shipKey || '';
-                                    const offer = m.offerCode || '';
-                                    // collect a compact mismatch record (no console flood)
-                                    diagMismatches.push({ rowId: opt.rowId, offer: offer || ocode || 'TBA', immediate: Number(immediateCount), total: Number(descendantDepth), sISO, eISO, sPort, ePort, ship });
-                                }
-                            } catch(e){}
-                        }
+                        const ocode = opt.meta && opt.meta.offerCode ? opt.meta.offerCode : safeOfferCode(opt.entry || {});
+                        try {
+                            const flag = (Number(immediateCount) !== Number(descendantDepth)) ? '!' : '';
+                            const m = opt.meta || {};
+                            if (flag || (typeof window !== 'undefined' && window.GOBO_DEBUG_VERBOSE)) {
+                                const sISO = m.startISO || '';
+                                const eISO = m.endISO || '';
+                                const sPort = (m.embarkPort || '').replace(/\s+/g,' ');
+                                const ePort = (m.disembarkPort || '').replace(/\s+/g,' ');
+                                const ship = m.shipKey || '';
+                                const offer = m.offerCode || '';
+                                // collect a compact mismatch record (no console flood)
+                                diagMismatches.push({ rowId: opt.rowId, offer: offer || ocode || 'TBA', immediate: Number(immediateCount), total: Number(descendantDepth), sISO, eISO, sPort, ePort, ship });
+                            }
+                        } catch(e){}
                     } catch(e) {}
                     const immedList = (this._listImmediateCandidates ? this._listImmediateCandidates(opt.rowId, opt.rowId) : []);
                     const childCount = Math.max(0, Number(immedList.length));
@@ -1017,8 +1013,7 @@
                     }
                     // If immediate list differs from descendant depth, emit compact sample of rowIds
                     try {
-                        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && Number(immedList.length) !== Number(descendantDepth)) {
-                            // limit total diagnostic emissions per render to avoid flooding devtools
+                        if (Number(immedList.length) !== Number(descendantDepth)) {
                             try { if (!this._diagEmitCount) this._diagEmitCount = 0; } catch(e) { this._diagEmitCount = 0; }
                             const MAX_DIAG = 6;
                             if (this._diagEmitCount < MAX_DIAG) {
@@ -1039,7 +1034,6 @@
                                         }
                                     }
                                 } catch(e) {}
-                                // collect diagnostic summary for this mismatch
                                 diagMismatches.push({ rowId: opt.rowId, immedSample: sampleImmed, descSample: sampleDesc });
                             }
                         }
@@ -1053,7 +1047,7 @@
             });
             // Emit a single-line JSON summary of any mismatches collected during this render
             try {
-                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && Array.isArray(diagMismatches) && diagMismatches.length) {
+                if (Array.isArray(diagMismatches) && diagMismatches.length) {
                     const summary = { tag: 'B2B_MISMATCH_SUMMARY', count: diagMismatches.length, samples: diagMismatches.slice(0,6) };
                     try { console.debug(JSON.stringify(summary)); } catch(e){}
                 }

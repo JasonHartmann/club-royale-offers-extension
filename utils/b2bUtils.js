@@ -103,43 +103,41 @@
         });
 
         try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
-                const allowedCount = meta.filter(m=>m.allow).length;
-                const sampleAllowed = meta.filter(m=>m.allow).slice(0,6).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
-                console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
-                try {
-                    if (typeof filterPredicate === 'function') {
-                        const excluded = meta.filter(m=>!m.allow).slice(0,8).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
-                        console.debug('[B2BUtils] filterPredicate present - excluded sample', { excludedCount: meta.filter(m=>!m.allow).length, excluded });
-                    }
-                } catch(e) { console.debug('[B2BUtils] debug predicate snapshot failed', e); }
-                try {
-                    // Detect rows that appear in hidden-row stores but are still marked allow===true
-                    const hiddenByKey = (key) => {
-                        try {
-                            if (!key) return false;
-                            if (Filtering && Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;
-                            const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
-                            if (lastState && lastState._hiddenGroupRowKeys instanceof Set && lastState._hiddenGroupRowKeys.has(key)) return true;
-                        } catch(e){}
-                        return false;
-                    };
-                    const problemRows = [];
-                    meta.forEach(m => {
-                        if (!m.allow) return;
-                        try {
-                            const code = (m.offerCode || '').toString().trim().toUpperCase();
-                            const ship = (m.shipCode || m.shipName || '').toString().trim().toUpperCase();
-                            const sail = (m.startISO || '').toString().trim().slice(0,10);
-                            const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                            if (hiddenByKey(key)) {
-                                problemRows.push({ idx: m.idx, offerCode: m.offerCode, startISO: m.startISO, key });
-                            }
-                        } catch(e){}
-                    });
-                    if (problemRows.length) console.debug('[B2BUtils] Hidden rows included in allowed set (possible missing filterPredicate)', { count: problemRows.length, sample: problemRows.slice(0,8) });
-                } catch(e) { console.debug('[B2BUtils] hidden-row diagnostic failed', e); }
-            }
+            const allowedCount = meta.filter(m=>m.allow).length;
+            const sampleAllowed = meta.filter(m=>m.allow).slice(0,6).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
+            console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
+            try {
+                if (typeof filterPredicate === 'function') {
+                    const excluded = meta.filter(m=>!m.allow).slice(0,8).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
+                    console.debug('[B2BUtils] filterPredicate present - excluded sample', { excludedCount: meta.filter(m=>!m.allow).length, excluded });
+                }
+            } catch(e) { console.debug('[B2BUtils] debug predicate snapshot failed', e); }
+            try {
+                // Detect rows that appear in hidden-row stores but are still marked allow===true
+                const hiddenByKey = (key) => {
+                    try {
+                        if (!key) return false;
+                        if (Filtering && Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;
+                        const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                        if (lastState && lastState._hiddenGroupRowKeys instanceof Set && lastState._hiddenGroupRowKeys.has(key)) return true;
+                    } catch(e){}
+                    return false;
+                };
+                const problemRows = [];
+                meta.forEach(m => {
+                    if (!m.allow) return;
+                    try {
+                        const code = (m.offerCode || '').toString().trim().toUpperCase();
+                        const ship = (m.shipCode || m.shipName || '').toString().trim().toUpperCase();
+                        const sail = (m.startISO || '').toString().trim().slice(0,10);
+                        const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                        if (hiddenByKey(key)) {
+                            problemRows.push({ idx: m.idx, offerCode: m.offerCode, startISO: m.startISO, key });
+                        }
+                    } catch(e){}
+                });
+                if (problemRows.length) console.debug('[B2BUtils] Hidden rows included in allowed set (possible missing filterPredicate)', { count: problemRows.length, sample: problemRows.slice(0,8) });
+            } catch(e) { console.debug('[B2BUtils] hidden-row diagnostic failed', e); }
         } catch(e){ /* ignore */ }
 
         // Build index: key = `${endISO}|${port}|${shipKey}` -> array of indices sorted by start date desc
@@ -250,6 +248,14 @@
             const depth = dfs(i, seedSet);
             depthMap.set(i, depth);
         }
+        // Diagnostics: compute longest chain path and log to help verify depth calculations
+        try {
+            const longestChain = computeLongestB2BPath(rows, options);
+            console.debug('[B2B] Depth computation complete', { rows: depthMap.size, longestChainLength: longestChain.length, longestChain });
+        } catch (e) {
+            console.debug('[B2B] Depth computation complete (longest chain diagnostic failed)', { rows: depthMap.size, error: (e && e.message) ? e.message : e });
+        }
+
         return depthMap;
     }
 

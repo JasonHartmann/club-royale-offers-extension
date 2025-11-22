@@ -49,7 +49,7 @@ function _logOfferValueSummary(tag='OfferValueSummary') {
         samples: s.samples
     };
     try {
-        if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug(`[DEBUG][${tag}]`, summary);
+        console.debug(`[DEBUG][${tag}]`, summary);
     } catch(e){}
 }
 

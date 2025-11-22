@@ -140,11 +140,11 @@
                     b2bCell.classList.add('b2b-depth-cell-action');
                     if (!b2bCell.dataset.b2bCellBound) {
                         const handler = (ev) => {
-                            try { if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug('[B2B] cell clicked', { rowId, evType: ev.type }); } catch(e){}
-                            if (!window.BackToBackTool) { try { if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug('[B2B] BackToBackTool missing'); } catch(e){}; return; }
-                            if (typeof BackToBackTool.openByRowId !== 'function') { try { if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug('[B2B] BackToBackTool.openByRowId missing'); } catch(e){}; return; }
+                            try { console.debug('[B2B] cell clicked', { rowId, evType: ev.type }); } catch(e){}
+                            if (!window.BackToBackTool) { try { console.debug('[B2B] BackToBackTool missing'); } catch(e){}; return; }
+                            if (typeof BackToBackTool.openByRowId !== 'function') { try { console.debug('[B2B] BackToBackTool.openByRowId missing'); } catch(e){}; return; }
                             try { ev.preventDefault(); ev.stopPropagation(); } catch(e){}
-                            try { BackToBackTool.openByRowId(rowId); } catch(openErr) { try { if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug('[B2B] openByRowId threw', openErr); } catch(e){} }
+                            try { BackToBackTool.openByRowId(rowId); } catch(openErr) { try { console.debug('[B2B] openByRowId threw', openErr); } catch(e){} }
                         };
                         b2bCell.addEventListener('click', handler, true);
                         b2bCell.addEventListener('pointerdown', handler, true);
@@ -194,7 +194,7 @@
                         let profileId = null;
                         try { if (App && App.CurrentProfile && App.CurrentProfile.state) profileId = App.CurrentProfile.state.profileId; } catch(err){}
                         try { if (Favorites.ensureProfileExists) Favorites.ensureProfileExists(); } catch(err){}
-                        try { Favorites.toggleFavorite(offer, sailing, profileId); } catch(err){ if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug('[favorite-toggle] toggle error', err); }
+                        try { Favorites.toggleFavorite(offer, sailing, profileId); } catch(err){ console.debug('[favorite-toggle] toggle error', err); }
                         // Re-evaluate favorite state
                         let nowFav = false;
                         try { nowFav = Favorites.isFavorite(offer, sailing, profileId); } catch(e2){ /* ignore */ }
@@ -215,7 +215,7 @@
                         e.stopPropagation();
                         // Determine stored profileId (embedded in sailing)
                         let embeddedPid = sailing && (sailing.__profileId !== undefined ? sailing.__profileId : (offer.__favoriteMeta && offer.__favoriteMeta.profileId));
-                        try { Favorites.removeFavorite(offer, sailing, embeddedPid); } catch(err){ if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) console.debug('[trash-favorite] remove error', err); }
+                        try { Favorites.removeFavorite(offer, sailing, embeddedPid); } catch(err){ console.debug('[trash-favorite] remove error', err); }
                         try {
                             // Remove row from DOM immediately for responsiveness
                             row.parentElement && row.parentElement.removeChild(row);
