@@ -68,9 +68,15 @@ const AccordionBuilder = {
                     break;
                 }
                 case 'b2bDepth': {
-                    if (sailing && typeof sailing.__b2bDepth === 'number') {
-                        const full = Number(sailing.__b2bDepth) || 1;
-                        groupKey = Math.max(0, full - 1);
+                    if (sailing) {
+                        if (sailing.__b2bChainId) {
+                            groupKey = String(sailing.__b2bChainId);
+                        } else if (typeof sailing.__b2bDepth === 'number') {
+                            const full = Number(sailing.__b2bDepth) || 1;
+                            groupKey = String(Math.max(0, full - 1));
+                        } else {
+                            groupKey = '-';
+                        }
                     } else groupKey = '-';
                     break;
                 }
@@ -316,7 +322,7 @@ const AccordionBuilder = {
                         try {
                             const cell = row.querySelector('.b2b-depth-cell');
                             if (cell && sailing && typeof sailing.__b2bDepth === 'number') {
-                                if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth);
+                                if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth, sailing && sailing.__b2bChainId ? sailing.__b2bChainId : null);
                                 else cell.textContent = String(sailing.__b2bDepth);
                             }
                         } catch(e){ /* ignore */ }
@@ -346,7 +352,7 @@ const AccordionBuilder = {
                         if (cell && sailing && typeof sailing.__b2bDepth === 'number') {
                             const full = Number(sailing.__b2bDepth) || 1;
                             const childCount = Math.max(0, full - 1);
-                            if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, full);
+                            if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, full, sailing && sailing.__b2bChainId ? sailing.__b2bChainId : null);
                             else cell.textContent = String(childCount);
                         }
                         try {

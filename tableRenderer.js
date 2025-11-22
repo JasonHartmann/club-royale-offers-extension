@@ -261,15 +261,48 @@ const TableRenderer = {
         const normalized = this._normalizeB2BDepthValue(depth);
         return `<span class="b2b-chevrons" aria-hidden="true"><span class="b2b-chevrons-value">${normalized}</span></span>`;
     },
-    updateB2BDepthCell(cell, depth) {
+    updateB2BDepthCell(cell, depth, chainId) {
         if (!cell) return;
         const normalized = this._normalizeB2BDepthValue(depth);
         const childCount = Math.max(0, Number(normalized) - 1);
-        // Render child-count (additional connections) in the pill for table rows
-        if (typeof cell.innerHTML === 'string') {
-            cell.innerHTML = this.getB2BDepthBadgeMarkup(childCount);
+        // If a chainId is provided, render a chain-ID badge for favorites
+        if (chainId) {
+            try {
+                cell.innerHTML = '';
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'flex';
+                wrapper.style.flexDirection = 'column';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.gap = '4px';
+                const idSpan = document.createElement('span');
+                idSpan.className = 'b2b-chain-id-badge';
+                idSpan.textContent = chainId;
+                idSpan.title = `Chain ID: ${chainId}`;
+                idSpan.style.fontSize = '12px';
+                idSpan.style.padding = '2px 6px';
+                idSpan.style.borderRadius = '12px';
+                idSpan.style.background = '#eef2ff';
+                idSpan.style.color = '#3730a3';
+                idSpan.style.border = '1px solid #c7d2fe';
+                wrapper.appendChild(idSpan);
+                const depthSpan = document.createElement('span');
+                depthSpan.className = 'b2b-depth-number';
+                depthSpan.textContent = String(normalized);
+                depthSpan.style.fontSize = '11px';
+                depthSpan.style.color = '#374151';
+                wrapper.appendChild(depthSpan);
+                cell.appendChild(wrapper);
+            } catch(e) {
+                // fallback to default below
+            }
+            try { cell.dataset.chainId = String(chainId); } catch(e) {}
         } else {
-            cell.textContent = String(childCount);
+            // Render child-count (additional connections) in the pill for table rows
+            if (typeof cell.innerHTML === 'string') {
+                cell.innerHTML = this.getB2BDepthBadgeMarkup(childCount);
+            } else {
+                cell.textContent = String(childCount);
+            }
         }
         try {
             // Preserve original full depth for data consumers, and expose child-count
@@ -1088,7 +1121,7 @@ const TableRenderer = {
                     const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
                     const cell = tr.querySelector('.b2b-depth-cell');
                     if (!cell) return;
-                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth);
+                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
                     else cell.textContent = String(depth);
                     try {
                         if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') {
@@ -1114,7 +1147,7 @@ const TableRenderer = {
                                     const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
                                     const cell = tr.querySelector('.b2b-depth-cell');
                                     if (!cell) return;
-                                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth);
+                                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
                                     else cell.textContent = String(depth);
                                     try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
                                 });

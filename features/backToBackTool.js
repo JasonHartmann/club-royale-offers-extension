@@ -1105,13 +1105,45 @@
             try { if (Favorites.ensureProfileExists) Favorites.ensureProfileExists(); } catch (e) {}
             const profileId = this._currentProfileId();
             const depth = chain.length;
+            // Generate a short human-friendly chain ID to tag saved sailings
+            function _generateChainId() {
+                try {
+                    const rootMeta = this._getMeta(chain[0]) || {};
+                    // Prefer alphabetic seed from offerCode or shipName
+                    let seed = (rootMeta.offerCode || rootMeta.shipName || 'B2B').toString().toUpperCase().replace(/[^A-Z]/g, '');
+                    seed = (seed || 'B2B').slice(0,3).padEnd(3, 'X');
+                    const num = Math.floor(Math.random() * 100); // 00-99
+                    const suffix = String(num).padStart(2, '0');
+                    return `${seed}-${suffix}`;
+                } catch (e) { return 'B2B-00'; }
+            }
+            let chainId = _generateChainId.call(this);
+            // Ensure chainId is unique among saved favorites (try a few times)
+            try {
+                if (typeof Favorites.loadProfileObject === 'function') {
+                    const snap = Favorites.loadProfileObject() || { data: { offers: [] } };
+                    const existingIds = new Set();
+                    (snap.data.offers || []).forEach(o => {
+                        (o.campaignOffer && Array.isArray(o.campaignOffer.sailings) ? o.campaignOffer.sailings : []).forEach(s => {
+                            if (s && s.__b2bChainId) existingIds.add(String(s.__b2bChainId));
+                        });
+                    });
+                    let attempts = 0;
+                    while (existingIds.has(chainId) && attempts < 6) {
+                        chainId = _generateChainId.call(this);
+                        attempts++;
+                    }
+                }
+            } catch(e) { /* ignore uniqueness check errors */ }
             let saved = 0;
             try {
                 if (typeof Favorites.bulkAddFavorites === 'function') {
                     const items = chain.map(rowId => {
                         const entry = this._getEntry(rowId);
                         if (!entry) return null;
-                        return { offer: JSON.parse(JSON.stringify(entry.offer || {})), sailing: Object.assign(JSON.parse(JSON.stringify(entry.sailing || {})), { __b2bDepth: depth }) };
+                        const clonedOffer = JSON.parse(JSON.stringify(entry.offer || {}));
+                        const clonedSailing = Object.assign(JSON.parse(JSON.stringify(entry.sailing || {})), { __b2bDepth: depth, __b2bChainId: chainId });
+                        return { offer: clonedOffer, sailing: clonedSailing };
                     }).filter(Boolean);
                     if (items.length) {
                         try {
@@ -1147,7 +1179,7 @@
                 console.warn('[BackToBackTool] bulk save failed, falling back', e);
             }
             if (saved) {
-                this._applyDepthToDom(chain, depth);
+                this._applyDepthToDom(chain, depth, chainId);
                 this._flashMessage('Saved chain to Favorites. View it under the Favorites tab.', 'success');
                 setTimeout(() => this._closeOverlay(), 900);
             } else {
@@ -1155,14 +1187,47 @@
             }
         },
 
-        _applyDepthToDom(rowIds, depth) {
+        _applyDepthToDom(rowIds, depth, chainId) {
             rowIds.forEach(rowId => {
                 const selector = `tr[data-b2b-row-id="${escapeSelector(rowId)}"] .b2b-depth-cell`;
                 document.querySelectorAll(selector).forEach(cell => {
                     try {
                         if (window.App && App.TableRenderer && typeof App.TableRenderer.updateB2BDepthCell === 'function') {
+                            // If TableRenderer supports a chainId override, prefer it
+                            try {
+                                App.TableRenderer.updateB2BDepthCell(cell, depth, chainId);
+                                return;
+                            } catch(e) {}
                             App.TableRenderer.updateB2BDepthCell(cell, depth);
-                        } else {
+                            return;
+                        }
+                        // Default rendering: if we're in favorites view and chainId present, show chainId pill
+                        if (chainId && cell) {
+                            cell.innerHTML = '';
+                            const wrapper = document.createElement('div');
+                            wrapper.style.display = 'flex';
+                            wrapper.style.flexDirection = 'column';
+                            wrapper.style.alignItems = 'center';
+                            wrapper.style.gap = '4px';
+                            const idSpan = document.createElement('span');
+                            idSpan.className = 'b2b-chain-id-badge';
+                            idSpan.textContent = chainId;
+                            idSpan.title = `Chain ID: ${chainId}`;
+                            idSpan.style.fontSize = '12px';
+                            idSpan.style.padding = '2px 6px';
+                            idSpan.style.borderRadius = '12px';
+                            idSpan.style.background = '#eef2ff';
+                            idSpan.style.color = '#3730a3';
+                            idSpan.style.border = '1px solid #c7d2fe';
+                            wrapper.appendChild(idSpan);
+                            const depthSpan = document.createElement('span');
+                            depthSpan.className = 'b2b-depth-number';
+                            depthSpan.textContent = String(depth);
+                            depthSpan.style.fontSize = '11px';
+                            depthSpan.style.color = '#374151';
+                            wrapper.appendChild(depthSpan);
+                            cell.appendChild(wrapper);
+                        } else if (cell) {
                             cell.textContent = String(depth);
                         }
                     } catch (e) {}
