@@ -204,6 +204,65 @@
                                 }
                             } catch(e) { /* ignore */ }
                             try { ev.preventDefault(); ev.stopPropagation(); } catch(e){}
+                            // If autorun is disabled, perform an on-demand depth computation
+                            try {
+                                let persistedAutoRun = true;
+                                if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getAutoRunB2B === 'function') persistedAutoRun = !!App.SettingsStore.getAutoRunB2B();
+                                else if (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') persistedAutoRun = !!App.BackToBackAutoRun;
+                                if (!persistedAutoRun) {
+                                    try {
+                                        const state = App.TableRenderer && App.TableRenderer.lastState ? App.TableRenderer.lastState : null;
+                                        const allowSideBySide = (typeof App.TableRenderer !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getSideBySidePreference === 'function') ? App.TableRenderer.getSideBySidePreference() : true;
+                                        const hiddenStore = (typeof Filtering !== 'undefined' && typeof Filtering._getHiddenRowStore === 'function') ? Filtering._getHiddenRowStore(state) : null;
+                                        const globalHidden = (typeof Filtering !== 'undefined' && Filtering._globalHiddenRowKeys instanceof Set) ? Filtering._globalHiddenRowKeys : null;
+                                        const filterPredicate = (row) => {
+                                            try {
+                                                if (!row) return false;
+                                                const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                                                const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
+                                                const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
+                                                const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                                                if (hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) return false;
+                                                if (globalHidden && globalHidden.has(key)) return false;
+                                                return true;
+                                            } catch (e) { return true; }
+                                        };
+                                        // Run compute with force so B2BUtils doesn't early-return
+                                        const rows = state && Array.isArray(state.sortedOffers) ? state.sortedOffers : [];
+                                        if (rows && rows.length && typeof B2BUtils !== 'undefined' && typeof B2BUtils.computeB2BDepth === 'function') {
+                                            const depthsMap = B2BUtils.computeB2BDepth(rows, { allowSideBySide, filterPredicate, force: true });
+                                            // apply depths back to model
+                                            try {
+                                                rows.forEach((r, i) => {
+                                                    try {
+                                                        if (r && r.sailing) {
+                                                            const d = (depthsMap && typeof depthsMap.get === 'function' && depthsMap.has(i)) ? depthsMap.get(i) : 1;
+                                                            r.sailing.__b2bDepth = d;
+                                                        }
+                                                    } catch(e) {}
+                                                });
+                                            } catch(e) {}
+                                            // Update depth cells only for rows rendered inside the current tbody
+                                            try {
+                                                const tbody = (state && state.tbody) ? state.tbody : (document.querySelector('.table-scroll-container') ? document.querySelector('.table-scroll-container').querySelector('tbody') : null);
+                                                const allRows = tbody ? tbody.querySelectorAll('tr') : document.querySelectorAll('tbody tr');
+                                                const limit = Math.min(allRows.length, rows.length);
+                                                for (let r = 0; r < limit; r++) {
+                                                    try {
+                                                        const tr = allRows[r];
+                                                        const pair = rows[r];
+                                                        if (!pair) continue;
+                                                        const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                                        const cell = tr.querySelector('.b2b-depth-cell');
+                                                        if (!cell) continue;
+                                                        try { App.TableRenderer.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null); } catch(e) { cell.textContent = String(depth); }
+                                                    } catch(e) { /* ignore per-row errors */ }
+                                                }
+                                            } catch(e) {}
+                                        }
+                                    } catch(e) { /* ignore compute errors */ }
+                                }
+                            } catch(e) { /* ignore autorun check errors */ }
                             try { BackToBackTool.openByRowId(rowId); } catch(openErr) { try { console.debug('[B2B] openByRowId threw', openErr); } catch(e){} }
                         };
                         b2bCell.addEventListener('click', handler, true);

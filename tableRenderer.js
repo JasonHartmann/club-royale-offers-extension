@@ -232,7 +232,14 @@ const TableRenderer = {
     _computeB2BDepths(rows, options) {
         if (!Array.isArray(rows) || !rows.length) return null;
         // Respect user preference to avoid heavy background B2B computations
-        const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+        let autoRunB2B = true;
+        try {
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getAutoRunB2B === 'function') {
+                autoRunB2B = !!App.SettingsStore.getAutoRunB2B();
+            } else if (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') {
+                autoRunB2B = !!App.BackToBackAutoRun;
+            }
+        } catch (e) { autoRunB2B = true; }
         if (!autoRunB2B) return null;
         if (!window.B2BUtils || typeof B2BUtils.computeB2BDepth !== 'function') return null;
         // Use state switch token to memoize recent computation to avoid duplicate work
@@ -293,7 +300,14 @@ const TableRenderer = {
             }
         } catch(e) {}
         // Avoid starting background computations when the user disabled auto-run
-        const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+        let autoRunB2B = true;
+        try {
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getAutoRunB2B === 'function') {
+                autoRunB2B = !!App.SettingsStore.getAutoRunB2B();
+            } else if (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') {
+                autoRunB2B = !!App.BackToBackAutoRun;
+            }
+        } catch (e) { autoRunB2B = true; }
         if (!autoRunB2B) return null;
         return this._computeB2BDepths(rows, options);
     },
@@ -308,6 +322,28 @@ const TableRenderer = {
     },
     updateB2BDepthCell(cell, depth, chainId) {
         if (!cell) return;
+        // If depth is not a number and autorun is disabled, render a 'Search' pill
+        let persistedAutoRun = true;
+        try {
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getAutoRunB2B === 'function') persistedAutoRun = !!App.SettingsStore.getAutoRunB2B();
+            else if (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') persistedAutoRun = !!App.BackToBackAutoRun;
+        } catch (e) { persistedAutoRun = true; }
+        const hasNumericDepth = (typeof depth === 'number');
+        if (!hasNumericDepth && !persistedAutoRun) {
+            try {
+                if (typeof cell.innerHTML === 'string') {
+                    cell.innerHTML = `<span class="b2b-chevrons b2b-action-pill" role="button" tabindex="0"><span class="b2b-chevrons-value">Search</span></span>`;
+                } else {
+                    cell.textContent = 'Search';
+                }
+            } catch (e) {
+                try { cell.textContent = 'Search'; } catch(_) {}
+            }
+            try { delete cell.dataset.depth; } catch(e) {}
+            try { cell.setAttribute('aria-label', 'Perform full B2B Search'); } catch(e) {}
+            return;
+        }
+
         const normalized = this._normalizeB2BDepthValue(depth);
         const childCount = Math.max(0, Number(normalized) - 1);
         // If a chainId is provided and we're viewing Favorites, render chain-ID badge
@@ -1207,7 +1243,7 @@ const TableRenderer = {
                                 allRows.forEach((tr, idx) => {
                                     const pair = state.sortedOffers[idx];
                                     if (!pair) return;
-                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
                                     const cell = tr.querySelector('.b2b-depth-cell');
                                     if (!cell) return;
                                     if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
@@ -1230,7 +1266,7 @@ const TableRenderer = {
                                     const tr = allRows[r];
                                     const pair = state.sortedOffers[r];
                                     if (!pair) continue;
-                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
                                     const cell = tr.querySelector('.b2b-depth-cell');
                                     if (!cell) continue;
                                     if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);

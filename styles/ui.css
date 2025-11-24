@@ -166,6 +166,17 @@
     box-shadow: 0 3px 8px rgba(8,52,99,0.25) !important;
 }
 
+/* Exception: when child-count is zero, keep the de-emphasized grey pill even if row is selected */
+.gobo-b2b-selected .b2b-depth-cell[data-child-count="0"] .b2b-chevrons,
+.accordion-table tr.gobo-b2b-selected .b2b-depth-cell[data-child-count="0"] .b2b-chevrons,
+.accordion-table td.gobo-b2b-selected .b2b-depth-cell[data-child-count="0"] .b2b-chevrons {
+    /* Re-apply the grey/neutral background and text for empty child-count pills */
+    background: linear-gradient(90deg,#f1f5f9 0%,#f8fafc 100%) !important;
+    color: #6b7280 !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(15,23,42,0.06) !important;
+}
+
 .accordion-table tr.gobo-b2b-selected .b2b-depth-pill,
 .accordion-table td.gobo-b2b-selected .b2b-depth-pill,
 .gobo-b2b-selected .b2b-depth-pill {

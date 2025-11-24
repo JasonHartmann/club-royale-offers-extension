@@ -72,7 +72,13 @@
         const initialUsedOfferCodes = Array.isArray(options.initialUsedOfferCodes) ? options.initialUsedOfferCodes.map(c => (c || '').toString().trim()) : [];
         if (!Array.isArray(rows) || !rows.length) return new Map();
 
-        const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+        let autoRunB2B = true;
+        try {
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getAutoRunB2B === 'function') {
+                autoRunB2B = !!App.SettingsStore.getAutoRunB2B();
+            }
+        } catch (e) { /* ignore and keep default true */ }
+
         // If auto-run is disabled, bail early unless the caller explicitly forces computation.
         if (!autoRunB2B && !options.force) return new Map();
 
@@ -120,7 +126,7 @@
             const allowedCount = meta.filter(m=>m.allow).length;
             const sampleAllowed = meta.filter(m=>m.allow).slice(0,6).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
             try {
-                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && autoRunB2B) {
+                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && (autoRunB2B || options.force)) {
                     console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
                     try {
                         if (typeof filterPredicate === 'function') {
@@ -314,7 +320,7 @@
         }
         // Diagnostics: only run heavy sampling when debug enabled to avoid noisy logs and expensive chain computations
         try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && autoRunB2B) {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && (autoRunB2B || options.force)) {
                 let allowedSeen = 0;
                 // sample less frequently for large sets to avoid heavy cost
                 const sampleInterval = Math.max(100, Math.floor(meta.length / 20));
