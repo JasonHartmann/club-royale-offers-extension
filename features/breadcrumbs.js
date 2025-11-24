@@ -10,9 +10,12 @@ const Breadcrumbs = {
             console.debug('[DEBUG][breadcrumbs] updateBreadcrumb ENTRY', {groupingStack, groupKeysStack});
             // Skip reacting to internal ID map persistence events to break loop
             if (window.__lastStorageEventKey && /goboProfileId(Map|FreeIds|Next)_v1/.test(window.__lastStorageEventKey)) {
-                console.debug('[breadcrumbs] Skipping breadcrumb refresh for ID map key', window.__lastStorageEventKey);
-                window.__breadcrumbRendering = false;
-                return;
+                // If the ProfileIdManager itself initiated the persist, allow the breadcrumb refresh
+                if (typeof window.__profileIdPersistInProgress === 'undefined' || !window.__profileIdPersistInProgress) {
+                    console.debug('[breadcrumbs] Skipping breadcrumb refresh for ID map key', window.__lastStorageEventKey);
+                    window.__breadcrumbRendering = false;
+                    return;
+                }
             }
             if (typeof GoboStore !== 'undefined' && GoboStore && !GoboStore.ready) {
                 console.debug('[breadcrumbs] GoboStore not ready; deferring breadcrumb render until goboStorageReady');
@@ -104,9 +107,7 @@ const Breadcrumbs = {
                                             try {
                                                 var legacyId = ProfileIdManager.getId(k);
                                                 if (legacyId != null) {
-                                                    ProfileIdManager.map[brandedKey] = legacyId;
-                                                    delete ProfileIdManager.map[k];
-                                                    try { ProfileIdManager.persist(); } catch(ePersist) { /* ignore */ }
+                                                    try { ProfileIdManager.transferId(k, brandedKey); } catch(eTrans) { /* ignore */ }
                                                     try { App.ProfileIdMap = { ...ProfileIdManager.map }; } catch(eMap) { /* ignore */ }
                                                 }
                                             } catch(eId) { /* ignore id migration errors */ }
@@ -133,7 +134,12 @@ const Breadcrumbs = {
                     if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
                         // Re-hydrate the ID map from storage to ensure UI badges reflect persisted IDs
                         try { if (typeof ProfileIdManager._hydrate === 'function') ProfileIdManager._hydrate(); } catch(e) { /* ignore */ }
-                        ProfileIdManager.ensureIds(profileKeys.filter(k => /^gobo-/.test(k)));
+                        const goboKeys = profileKeys.filter((k, i, arr) => /^gobo-[A-Za-z]-/.test(k) && arr.indexOf(k) === i);
+                        if (goboKeys.length) {
+                            console.debug('[breadcrumbs] assignMissingIds called for', goboKeys);
+                            ProfileIdManager.assignMissingIds(goboKeys);
+                            console.debug('[breadcrumbs] assignMissingIds completed for', goboKeys, 'map snapshot:', ProfileIdManager.map);
+                        }
                         App.ProfileIdMap = { ...ProfileIdManager.map };
                     }
                 } catch (e) { /* ignore */ }
@@ -147,6 +153,7 @@ const Breadcrumbs = {
                         const rawStored = (typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k));
                         const payload = rawStored ? JSON.parse(rawStored) : null;
                         if (payload && payload.data && payload.savedAt) {
+                            // ID assignment is handled in batch earlier to avoid reentrancy; do not assign here.
                             let label;
                             let brand = null;
                             if (k === 'goob-favorites') {
@@ -169,13 +176,15 @@ const Breadcrumbs = {
                     } catch (e) {/* ignore */ }
                 });
                 if (profiles.length) {
-                    try {
-                        if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
-                            ProfileIdManager.ensureIds(profiles.filter(p => /^gobo-/.test(p.key)).map(p => p.key));
-                            App.ProfileIdMap = {...ProfileIdManager.map};
-                        }
-                    } catch (e) {/* ignore */
-                    }
+                            try {
+                                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                                    console.debug('[breadcrumbs] assignMissingIds called for profiles', profiles.map(p=>p.key));
+                                    ProfileIdManager.assignMissingIds(profiles.filter(p => /^gobo-[A-Za-z]-/.test(p.key)).map(p => p.key));
+                                    console.debug('[breadcrumbs] assignMissingIds completed for profiles');
+                                    App.ProfileIdMap = {...ProfileIdManager.map};
+                                }
+                            } catch (e) {/* ignore */
+                            }
                     let currentKey = null;
                     try {
                         const raw = localStorage.getItem('persist:session');
@@ -274,7 +283,7 @@ const Breadcrumbs = {
                                     });
                                     // If any missing IDs, attempt to ensure
                                     if (ids.some(id => id === '?')) {
-                                        try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) { ProfileIdManager.ensureIds(linked.slice(0,2).map(acc=>acc.key)); App.ProfileIdMap = { ...ProfileIdManager.map }; } } catch(eEns) { /* ignore */ }
+                                        try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) { ProfileIdManager.assignMissingIds(linked.slice(0,2).map(acc=>acc.key)); App.ProfileIdMap = { ...ProfileIdManager.map }; } } catch(eEns) { /* ignore */ }
                                         for (let i=0;i<ids.length;i++) if (ids[i] === '?') ids[i] = (App.ProfileIdMap && App.ProfileIdMap[linked[i].key]) || '?';
                                     }
                                     badgeText = `${ids[0]}+${ids[1]}`;

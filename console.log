@@ -1,386 +1,346 @@
-safari-polyfill.js:55 [B2B] capture click {target: 'SPAN', hasPill: true, hasCell: true, className: 'b2b-chevrons-value'}
-safari-polyfill.js:55 [B2B] autoOpen attempt {rowId: 'b2b-25VTY304-GR-Grandeur_Of_The_Seas-2026-01-03-35'}
-safari-polyfill.js:55 [B2B] openByRowId called {rowId: 'b2b-25VTY304-GR-Grandeur_Of_The_Seas-2026-01-03-35', hasMap: true}
+safari-polyfill.js:55 Show All Offers button clicked
+safari-polyfill.js:55 [apiClient] fetchOffers called, retryCount: 3
+safari-polyfill.js:55 [apiClient] Parsing session data from localStorage
+safari-polyfill.js:55 [apiClient] Session data parsed successfully
 safari-polyfill.js:55 Loading spinner displaying...
 safari-polyfill.js:55 Loading spinner displayed
-safari-polyfill.js:55 [B2B] cell clicked {rowId: 'b2b-25VTY304-GR-Grandeur_Of_The_Seas-2026-01-03-35', evType: 'pointerdown'}
-safari-polyfill.js:55 [B2B] openByRowId called {rowId: 'b2b-25VTY304-GR-Grandeur_Of_The_Seas-2026-01-03-35', hasMap: true}
-safari-polyfill.js:55 Loading spinner displaying...
-safari-polyfill.js:55 Loading spinner displayed
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-backToBackTool.js:403 [B2B DIAG] rowId=b2b-25VTY304-GR-Grandeur_Of_The_Seas-2026-01-03-35 idx=35
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2BUtils] filterPredicate present - excluded sample {excludedCount: 0, excluded: Array(0)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B][IMMED] immediate-count {root: 'b2b-25BFM105-GR-Grandeur_Of_The_Seas-2026-01-10-232', simulate: 'b2b-25BFM105-GR-Grandeur_Of_The_Seas-2026-01-10-232', immediate: 7}
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B][IMMED] immediate-count {root: 'b2b-25RCL1104-GR-Grandeur_Of_The_Seas-2026-01-10-421', simulate: 'b2b-25RCL1104-GR-Grandeur_Of_The_Seas-2026-01-10-421', immediate: 7}
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B][IMMED] immediate-count {root: 'b2b-25CLS704-GR-Grandeur_Of_The_Seas-2026-01-10-499', simulate: 'b2b-25CLS704-GR-Grandeur_Of_The_Seas-2026-01-10-499', immediate: 6}
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B][IMMED] immediate-count {root: 'b2b-25JAN104-GR-Grandeur_Of_The_Seas-2026-01-10-547', simulate: 'b2b-25JAN104-GR-Grandeur_Of_The_Seas-2026-01-10-547', immediate: 5}
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
-safari-polyfill.js:55 [B2B][IMMED] immediate-count {root: 'b2b-25MIX305-GR-Grandeur_Of_The_Seas-2026-01-10-650', simulate: 'b2b-25MIX305-GR-Grandeur_Of_The_Seas-2026-01-10-650', immediate: 5}
-safari-polyfill.js:55 [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
-safari-polyfill.js:55 [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
-safari-polyfill.js:55 [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
- [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
- [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
- [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
- [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
- [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
- [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
- [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
- [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
- [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
- [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
- [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
- [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
- [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
- [B2B][IMMED] immediate-count {root: 'b2b-25TIER3-GR-Grandeur_Of_The_Seas-2026-01-10-933', simulate: 'b2b-25TIER3-GR-Grandeur_Of_The_Seas-2026-01-10-933', immediate: 5}
- [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
- [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
- [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
- [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
- [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
- [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
- [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
- [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
- [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
- [B2B] Sampled offer depth {idx: 499, offerCode: '25CLS704', shipName: 'Grandeur Of The Seas', startISO: '2026-01-10', endISO: '2026-01-17', …}
- [B2B] Sampled chain (summary): 25CLS704(@Grandeur Of The Seas:2026-01-10) -> 25VTY304(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25JAN104(@Grandeur Of The Seas:2026-01-31) -> 25MIX305(@Grandeur Of The Seas:2026-02-07) -> 25TIER3(@Grandeur Of The Seas:2026-02-14) -> 25LVA504(@Grandeur Of The Seas:2026-02-21) -> 25VAR1004(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07)
- [B2B] Sampled offer depth {idx: 599, offerCode: '25NEW405', shipName: 'Utopia Of The Seas', startISO: '2026-02-13', endISO: '2026-02-16', …}
- [B2B] Sampled chain (summary): 25NEW405(@Utopia Of The Seas:2026-02-13) -> 25TIER3(@Utopia Of The Seas:2026-02-16) -> 25BFM105(@Utopia Of The Seas:2026-02-20)
- [B2B] Sampled offer depth {idx: 699, offerCode: '25MIX305', shipName: 'Freedom Of The Seas', startISO: '2026-03-02', endISO: '2026-03-07', …}
- [B2B] Sampled chain (summary): 25MIX305(@Freedom Of The Seas:2026-03-02) -> 25VAR1004(@Freedom Of The Seas:2026-03-07) -> 25RCL1104(@Freedom Of The Seas:2026-03-12) -> 25TIER3(@Freedom Of The Seas:2026-03-16) -> 25BFM105(@Freedom Of The Seas:2026-03-21) -> 25VTY304(@Freedom Of The Seas:2026-03-26) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
- [B2B] Sampled offer depth {idx: 799, offerCode: '25TIER3', shipName: 'Freedom Of The Seas', startISO: '2025-12-04', endISO: '2025-12-08', …}
- [B2B] Sampled chain (summary): 25TIER3(@Freedom Of The Seas:2025-12-04) -> 25VTY304(@Wonder Of The Seas:2025-12-08) -> 25VAR1004(@Wonder Of The Seas:2025-12-12)
- [B2B] Sampled offer depth {idx: 899, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-01-03', endISO: '2026-01-08', …}
- [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-01-03) -> 25VTY304(@Enchantment Of The Seas:2026-01-08) -> 25JAN104(@Enchantment Of The Seas:2026-01-12) -> 25CLS704(@Grandeur Of The Seas:2026-01-17) -> 25BFM105(@Grandeur Of The Seas:2026-01-24) -> 25RCL1104(@Grandeur Of The Seas:2026-01-31) -> 25LVA504(@Grandeur Of The Seas:2026-02-07) -> 25MIX305(@Enchantment Of The Seas:2026-02-14) -> 25VAR1004(@Enchantment Of The Seas:2026-02-19)
- [B2B] Sampled offer depth {idx: 999, offerCode: '25TIER3', shipName: 'Serenade Of The Seas', startISO: '2026-01-24', endISO: '2026-01-31', …}
- [B2B] Sampled chain (summary): 25TIER3(@Serenade Of The Seas:2026-01-24)
- [B2B] Sampled offer depth {idx: 1099, offerCode: '25TIER3', shipName: 'Enchantment Of The Seas', startISO: '2026-02-19', endISO: '2026-02-23', …}
- [B2B] Sampled chain (summary): 25TIER3(@Enchantment Of The Seas:2026-02-19) -> 25VTY304(@Enchantment Of The Seas:2026-02-23) -> 25CLS704(@Grandeur Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25BFM105(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25MIX305(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
- [B2B] Sampled offer depth {idx: 1199, offerCode: '25TIER3', shipName: 'Independence Of The Seas', startISO: '2026-03-15', endISO: '2026-03-22', …}
- [B2B] Sampled chain (summary): 25TIER3(@Independence Of The Seas:2026-03-15) -> 25BFM105(@Symphony Of The Seas:2026-03-22) -> 25NEW405(@Wonder Of The Seas:2026-03-30)
- [B2B][IMMED] immediate-count {root: 'b2b-25MIX305-RH-Rhapsody_Of_The_Seas-2026-01-10-652', simulate: 'b2b-25MIX305-RH-Rhapsody_Of_The_Seas-2026-01-10-652', immediate: 1}
- {"tag":"B2B_MISMATCH_SUMMARY","count":13,"samples":[{"rowId":"b2b-25BFM105-GR-Grandeur_Of_The_Seas-2026-01-10-232","offer":"25BFM105","immediate":7,"total":8,"sISO":"2026-01-10","eISO":"2026-01-17","sPort":"Tampa","ePort":"Tampa","ship":"gr"},{"rowId":"b2b-25BFM105-GR-Grandeur_Of_The_Seas-2026-01-10-232","immedSample":["b2b-25CLS704-GR-Grandeur_Of_The_Seas-2026-01-17-502","b2b-25JAN104-EN-Enchantment_Of_The_Seas-2026-01-17-556","b2b-25JAN104-GR-Grandeur_Of_The_Seas-2026-01-17-557","b2b-25MIX305-EN-Enchantment_Of_The_Seas-2026-01-17-657"],"descSample":["b2b-25NER604-OY-Odyssey_Of_The_Seas-2026-02-07-1","b2b-25NER604-ID-Independence_Of_The_Seas-2026-04-23-5","b2b-25VTY304-EN-Enchantment_Of_The_Seas-2025-12-01-9","b2b-25VTY304-LB-Liberty_Of_The_Seas-2025-12-01-10"]},{"rowId":"b2b-25RCL1104-GR-Grandeur_Of_The_Seas-2026-01-10-421","offer":"25RCL1104","immediate":7,"total":8,"sISO":"2026-01-10","eISO":"2026-01-17","sPort":"Tampa","ePort":"Tampa","ship":"gr"},{"rowId":"b2b-25RCL1104-GR-Grandeur_Of_The_Seas-2026-01-10-421","immedSample":["b2b-25CLS704-GR-Grandeur_Of_The_Seas-2026-01-17-502","b2b-25JAN104-EN-Enchantment_Of_The_Seas-2026-01-17-556","b2b-25JAN104-GR-Grandeur_Of_The_Seas-2026-01-17-557","b2b-25MIX305-EN-Enchantment_Of_The_Seas-2026-01-17-657"],"descSample":["b2b-25NER604-OY-Odyssey_Of_The_Seas-2026-02-07-1","b2b-25NER604-ID-Independence_Of_The_Seas-2026-04-23-5","b2b-25VTY304-EN-Enchantment_Of_The_Seas-2025-12-01-9","b2b-25VTY304-LB-Liberty_Of_The_Seas-2025-12-01-10"]},{"rowId":"b2b-25CLS704-GR-Grandeur_Of_The_Seas-2026-01-10-499","offer":"25CLS704","immediate":6,"total":8,"sISO":"2026-01-10","eISO":"2026-01-17","sPort":"Tampa","ePort":"Tampa","ship":"gr"},{"rowId":"b2b-25CLS704-GR-Grandeur_Of_The_Seas-2026-01-10-499","immedSample":["b2b-25JAN104-EN-Enchantment_Of_The_Seas-2026-01-17-556","b2b-25JAN104-GR-Grandeur_Of_The_Seas-2026-01-17-557","b2b-25MIX305-EN-Enchantment_Of_The_Seas-2026-01-17-657","b2b-25MIX305-GR-Grandeur_Of_The_Seas-2026-01-17-658"],"descSample":["b2b-25NER604-OY-Odyssey_Of_The_Seas-2026-02-07-1","b2b-25NER604-ID-Independence_Of_The_Seas-2026-04-23-5","b2b-25VTY304-EN-Enchantment_Of_The_Seas-2025-12-01-9","b2b-25VTY304-LB-Liberty_Of_The_Seas-2025-12-01-10"]}]}
- Loading spinner hidden
-backToBackTool.js:188 [Violation] 'setTimeout' handler took 18169ms
- [B2BUtils] meta built {total: 1267, allowedCount: 1267, sampleAllowed: Array(6)}
- [B2B] Sampled offer depth {idx: 99, offerCode: '25VTY304', shipName: 'Quantum Of The Seas', startISO: '2026-04-07', endISO: '2026-04-10', …}
- [B2B] Sampled chain (summary): 25VTY304(@Quantum Of The Seas:2026-04-07) -> 25BFM105(@Navigator Of The Seas:2026-04-10)
- [B2B] Sampled offer depth {idx: 199, offerCode: '25JKP1902', shipName: 'Liberty Of The Seas', startISO: '2025-11-24', endISO: '2025-11-28', …}
- [B2B] Sampled chain (summary): 25JKP1902(@Liberty Of The Seas:2025-11-24) -> 25TIER3(@Liberty Of The Seas:2025-11-28) -> 25VTY304(@Liberty Of The Seas:2025-12-01) -> 25RCL1104(@Liberty Of The Seas:2025-12-05) -> 25CLS704(@Liberty Of The Seas:2025-12-08) -> 25VAR1004(@Radiance Of The Seas:2025-12-12)
- [B2B] Sampled offer depth {idx: 299, offerCode: '25BFM105', shipName: 'Rhapsody Of The Seas', startISO: '2026-02-21', endISO: '2026-02-28', …}
- [B2B] Sampled chain (summary): 25BFM105(@Rhapsody Of The Seas:2026-02-21) -> 25VTY304(@Rhapsody Of The Seas:2026-02-28) -> 25RCL1104(@Grandeur Of The Seas:2026-03-07) -> 25MIX305(@Enchantment Of The Seas:2026-03-14) -> 25LVA504(@Enchantment Of The Seas:2026-03-19) -> 25TIER3(@Enchantment Of The Seas:2026-03-23) -> 25VAR1004(@Rhapsody Of The Seas:2026-03-28)
- [B2B] Sampled offer depth {idx: 399, offerCode: '25RCL1104', shipName: 'Navigator Of The Seas', startISO: '2025-12-08', endISO: '2025-12-12', …}
- [B2B] Sampled chain (summary): 25RCL1104(@Navigator Of The Seas:2025-12-08)
+safari-polyfill.js:55 [apiClient] Spinner shown
+safari-polyfill.js:55 [apiClient] Request headers built (authorization redacted)
+safari-polyfill.js:55 [apiClient] Endpoint resolved: /api/casino/casino-offers/v1 brand: R
+safari-polyfill.js:55 [apiClient] Sending fetch request to offers API
+safari-polyfill.js:55 [apiClient] Network request completed, status: 200
+safari-polyfill.js:55 [apiClient] API response received: offers= 0
+safari-polyfill.js:55 [apiClient] Processing offers array, length: 0
+safari-polyfill.js:55 [apiClient] Offers array processed
+safari-polyfill.js:55 [apiClient] Normalizing offers data
+ [ItineraryCache] Loaded cache from storage {entries: 593}
+ [ItineraryCache] Rebuilt shipDate index {ships: 29}
+ [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+ [breadcrumbs] Skipping breadcrumb refresh for ID map key goboProfileIdNext_v1
+ [ItineraryCache] Cache persisted {entries: 593}
+ [ItineraryCache] buildOrUpdateFromOffers complete {offersProcessed: 0, sailingsProcessed: 0, newEntries: 0, updatedEntries: 0, totalCacheSize: 593}
+ [apiClient] Offers data normalized
+ [apiClient] Persisting normalized offers to storage (brand aware)
+ [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+ [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+ [apiClient] Seeded legacy profile key gobo-jason2_percex.com
+ [apiClient] Saved normalized offers to branded key: gobo-R-jason2_percex.com
+ [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+ [apiClient] updateCombinedOffersCache called after account data update
+ [apiClient] Rendering offers table
+ [ProfileIdManager] assignMissingIds called {keys: Array(1)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(2), mapKeys: Array(2)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(2), mapKeys: Array(2)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-jason2_percex.com existingId: undefined
+safari-polyfill.js:55 [ProfileIdManager] skipping free id already in use 1
+safari-polyfill.js:55 [ProfileIdManager] skipping free id already in use 2
+safari-polyfill.js:55 [ProfileIdManager] assigned {key: 'gobo-jason2_percex.com', id: 3}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(1), mapSnapshot: {…}}
+safari-polyfill.js:55 [tableBuilder] createMainTable ENTRY
+safari-polyfill.js:55 [tableBuilder] createMainTable EXIT
+safari-polyfill.js:55 [tableBuilder] createTableHeader ENTRY {backdrop: div#gobo-backdrop.fixed.inset-0.bg-black.bg-opacity-50.z-[2147483646], container: div#gobo-offers-table.fixed.inset-0.m-auto.z-[2147483647], table: table.w-full.border-collapse.table-auto, tbody: tbody, accordionContainer: div.w-full, …}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'favorite', label: '★'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'b2bDepth', label: 'B2B'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerCode', label: 'Code'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerDate', label: 'Rcvd'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'expiration', label: 'Expires'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'tradeInValue', label: 'Trade'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerValue', label: 'Value'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerName', label: 'Name'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'shipClass', label: 'Class'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'ship', label: 'Ship'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'sailDate', label: 'Sail Date'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'departurePort', label: 'Departs'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'nights', label: 'Nights'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'destination', label: 'Destination'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'category', label: 'Category'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'guests', label: 'Guests'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'perks', label: 'Perks'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader EXIT
+safari-polyfill.js:55 [TableRenderer] assignMissingIds called for gobo-R-jason2_percex.com
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(1)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(2), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(2), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: undefined
+safari-polyfill.js:55 [ProfileIdManager] skipping free id already in use 1
+safari-polyfill.js:55 [ProfileIdManager] skipping free id already in use 2
+safari-polyfill.js:55 [ProfileIdManager] bumping next from 3 to 4
+safari-polyfill.js:55 [ProfileIdManager] assigned {key: 'gobo-R-jason2_percex.com', id: 4}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(1), mapSnapshot: {…}}
+safari-polyfill.js:55 [TableRenderer] assignMissingIds completed for gobo-R-jason2_percex.com id: 4
+safari-polyfill.js:55 [TableRenderer] assignMissingIds called for loadProfile gobo-R-jason2_percex.com
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(1)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [TableRenderer] assignMissingIds completed for loadProfile gobo-R-jason2_percex.com id: 4
+safari-polyfill.js:55 [DEBUG] loadProfile ENTRY {key: 'gobo-R-jason2_percex.com', payload: {…}, typeofKey: 'string', typeofPayload: 'object', switchToken: '<REDACTED>'}
+safari-polyfill.js:55 [DEBUG] App.ProfileCache: []
+safari-polyfill.js:55 [DEBUG] App.CurrentProfile: null
+safari-polyfill.js:55 [DEBUG] Building new profile for key gobo-R-jason2_percex.com
+safari-polyfill.js:55 [DEBUG] prepareOfferData result: {originalOffers: Array(0), sortedOffers: Array(0)}
+safari-polyfill.js:55 [DEBUG] gobo storage goboHideTier: null
+safari-polyfill.js:55 [tableBuilder] createTableHeader ENTRY {headers: Array(17), profileId: 4, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'favorite', label: '★'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'b2bDepth', label: 'B2B'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerCode', label: 'Code'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerDate', label: 'Rcvd'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'expiration', label: 'Expires'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'tradeInValue', label: 'Trade'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerValue', label: 'Value'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'offerName', label: 'Name'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'shipClass', label: 'Class'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'ship', label: 'Ship'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'sailDate', label: 'Sail Date'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'departurePort', label: 'Departs'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'nights', label: 'Nights'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'destination', label: 'Destination'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'category', label: 'Category'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'guests', label: 'Guests'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader header loop {key: 'perks', label: 'Perks'}
+safari-polyfill.js:55 [tableBuilder] createTableHeader EXIT
+safari-polyfill.js:55 [tableBuilder] createMainTable ENTRY
+safari-polyfill.js:55 [tableBuilder] createMainTable EXIT
+safari-polyfill.js:55 [DEBUG] New profile state built {headers: Array(17), profileId: 4, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …}
+safari-polyfill.js:55 [DEBUG] currentScroll: <div class=​"table-scroll-container">​…​</div>​
+safari-polyfill.js:55 [DEBUG] Replaced scrollContainer in DOM
+safari-polyfill.js:55 [DEBUG] Cached new profile gobo-R-jason2_percex.com
+safari-polyfill.js:55 [DEBUG] Updated App.TableRenderer.lastState and App.CurrentProfile {headers: Array(17), profileId: 4, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …} {key: 'gobo-R-jason2_percex.com', scrollContainer: div.table-scroll-container, state: {…}}
+safari-polyfill.js:55 [DEBUG] Calling updateView with state
+safari-polyfill.js:55 [DEBUG][tableRenderer] updateView ENTRY {state: {…}, dbg: {…}}
+safari-polyfill.js:55 [Filtering] filterOffers ENTRY {offersLen: 0, advancedEnabled: false}
+filtering.js:541 Filtering.filterOffers: 0.424072265625 ms
+safari-polyfill.js:55 [B2B][REG] registerEnvironment rows: {baseRows: 0, contextRows: 0, baseHas25: false, ctxHas25: false, hiddenGroups: Array(1)}
+safari-polyfill.js:55 [B2B][REG] DIAG hiddenRowStores {stateStoreSize: 0, globalStoreSize: 0, hasRows: 0}
+safari-polyfill.js:55 [B2B][REG] registerEnvironment filtered {beforeCount: 0, afterCount: 0, removed: 0, sampleRemoved: Array(0), sampleCodes: Array(0), …}
+safari-polyfill.js:55 [DEBUG] renderTable ENTRY {sortedOffersLength: 0, tbody: tbody}
+safari-polyfill.js:55 [B2B] Depth computation complete {rows: 1}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com'] map snapshot: {gobo-R-jason1_percex.com: 1, gobo-R-scraptwink_verizon.net: 2, gobo-R-jason2_percex.com: 4}
+ [breadcrumbs] assignMissingIds called for profiles (4) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'goob-favorites', 'gobo-R-jason2_percex.com']
+ [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+ [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+ [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+ [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+ [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+ [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+ [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+ [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+ [breadcrumbs] assignMissingIds completed for profiles
+ [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}, callCount: 1, rapid: 0}
+ [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
+ [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
+ [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
+ [DEBUG][tableRenderer] updateView EXIT
+ [ItineraryCache] recacheItineraries begin
+ [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+ [breadcrumbs] assignMissingIds called for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com']
+ [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+ [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+ [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+ [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+ [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+ [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+ [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+ [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+ [breadcrumbs] assignMissingIds completed for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com'] map snapshot: {gobo-R-jason1_percex.com: 1, gobo-R-scraptwink_verizon.net: 2, gobo-R-jason2_percex.com: 4}
+ [breadcrumbs] assignMissingIds called for profiles (4) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'goob-favorites', 'gobo-R-jason2_percex.com']
+ [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+ [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+ [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+ [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+ [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+ [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+ [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+ [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+ [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+ [breadcrumbs] assignMissingIds completed for profiles
+ [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}, callCount: 2, rapid: 1}
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
+safari-polyfill.js:55 [ItineraryCache] Cache persisted {entries: 593}
+safari-polyfill.js:55 [DEBUG] loadProfile EXIT after updateView {key: 'gobo-R-jason2_percex.com'}
+safari-polyfill.js:55 [apiClient] Offers table rendered
+safari-polyfill.js:55 [apiClient] Hiding spinner
+safari-polyfill.js:55 Loading spinner hidden
+safari-polyfill.js:55 [apiClient] Post-spinner: Table row count: 2
+safari-polyfill.js:55 [apiClient] Post-spinner: Visible DOM elements: 251
+safari-polyfill.js:55 [apiClient] Post-spinner: JS Heap Size: 67714257 / 73263185
+safari-polyfill.js:55 [apiClient] Post-spinner: TableRenderer.lastState: {headers: Array(17), profileId: 4, currentSortColumn: 'offerDate', currentSortOrder: 'desc', currentGroupColumn: null, …}
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com'] map snapshot: {gobo-R-jason1_percex.com: 1, gobo-R-scraptwink_verizon.net: 2, gobo-R-jason2_percex.com: 4}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for profiles (4) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'goob-favorites', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for profiles
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}, callCount: 3, rapid: 2}
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com'] map snapshot: {gobo-R-jason1_percex.com: 1, gobo-R-scraptwink_verizon.net: 2, gobo-R-jason2_percex.com: 4}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for profiles (4) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'goob-favorites', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for profiles
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}, callCount: 4, rapid: 3}
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com'] map snapshot: {gobo-R-jason1_percex.com: 1, gobo-R-scraptwink_verizon.net: 2, gobo-R-jason2_percex.com: 4}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for profiles (4) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'goob-favorites', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for profiles
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}, callCount: 5, rapid: 4}
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] Skipping breadcrumb refresh for ID map key goboProfileIdFreeIds_v1
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] Skipping breadcrumb refresh for ID map key goboProfileIdMap_v1
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] Skipping breadcrumb refresh for ID map key goboProfileIdNext_v1
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com'] map snapshot: {gobo-R-jason1_percex.com: 1, gobo-R-scraptwink_verizon.net: 2, gobo-R-jason2_percex.com: 4}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for profiles (4) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'goob-favorites', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for profiles
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}, callCount: 6, rapid: 5}
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
+safari-polyfill.js:55 [DEBUG][breadcrumbs] updateBreadcrumb ENTRY {groupingStack: Array(0), groupKeysStack: Array(0)}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for (3) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'gobo-R-jason2_percex.com'] map snapshot: {gobo-R-jason1_percex.com: 1, gobo-R-scraptwink_verizon.net: 2, gobo-R-jason2_percex.com: 4}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds called for profiles (4) ['gobo-R-jason1_percex.com', 'gobo-R-scraptwink_verizon.net', 'goob-favorites', 'gobo-R-jason2_percex.com']
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds called {keys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds state before {next: 3, free: Array(3), mapKeys: Array(3)}
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason1_percex.com existingId: 1
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason1_percex.com 1
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-scraptwink_verizon.net existingId: 2
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-scraptwink_verizon.net 2
+safari-polyfill.js:55 [ProfileIdManager] consider key gobo-R-jason2_percex.com existingId: 4
+safari-polyfill.js:55 [ProfileIdManager] already had id for gobo-R-jason2_percex.com 4
+safari-polyfill.js:55 [ProfileIdManager] assignMissingIds result {assigned: Array(0), mapSnapshot: {…}}
+safari-polyfill.js:55 [breadcrumbs] assignMissingIds completed for profiles
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList ENTRY (GLOBAL) {displayElement: div#hidden-groups-display, state: {…}, callCount: 7, rapid: 6}
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList loaded hiddenGroups (GLOBAL): ['Code: 25TIER3']
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList DOM updated with hidden groups (GLOBAL)
+safari-polyfill.js:55 [Filtering] updateHiddenGroupsList EXIT (GLOBAL)
+safari-polyfill.js:55 [DEBUG][OfferValueSummary] {totalRows: 0, computed: '0 (0.0%)', missing: '0 (0.0%)', matchMiss: 0, reasons: {…}, …}

@@ -24,47 +24,204 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
         _reentrant: false,
         init: function(){
             if (this.ready) return;
+            try { console.debug('[ProfileIdManager] init starting'); } catch(e) {}
             this._hydrate();
             this.ready = true;
+            try { console.debug('[ProfileIdManager] init completed', { ready: this.ready, next: this.next, mapKeys: Object.keys(this.map || {}) }); } catch(e) {}
             this._applyDeferredAssign();
+        },
+        // Return true for branded profile keys like `gobo-R-foo`
+        _isBrandedKey: function(k){ return typeof k === 'string' && /^gobo-[A-Za-z]-/.test(k); },
+        _unbrandedForBranded: function(brandedKey){
+            if (!this._isBrandedKey(brandedKey)) return null;
+            return brandedKey.replace(/^gobo-[A-Za-z]-/, 'gobo-');
         },
         _hydrate: function(){
             try { var rawMap = safeGet(STORAGE_KEY); this.map = rawMap ? JSON.parse(rawMap) : this.map; } catch(e){ error('map parse', e); }
             try { var rawFree = safeGet(FREE_KEY); this.free = rawFree ? JSON.parse(rawFree) : this.free; } catch(e){ error('free parse', e); }
             try { var rawNext = safeGet(NEXT_KEY); if (rawNext) this.next = JSON.parse(rawNext); else { var maxId = 0; for (var k in this.map) if (this.map.hasOwnProperty(k)) if (this.map[k] > maxId) maxId = this.map[k]; this.next = maxId + 1 || 1; } } catch(e){ var maxId2 = 0; for (var k2 in this.map) if (this.map.hasOwnProperty(k2)) if (this.map[k2] > maxId2) maxId2 = this.map[k2]; this.next = maxId2 + 1 || 1; }
+            // Cleanup: if both unbranded `gobo-username` and branded `gobo-X-username` exist,
+            // prefer the branded mapping and remove the unbranded one (freeing its ID).
+            try {
+                var keys = Object.keys(this.map || {});
+                if (keys.length) {
+                    for (var idx = 0; idx < keys.length; idx++) {
+                        var k = keys[idx];
+                        // skip already branded keys like `gobo-R-foo`
+                        if (/^gobo-[A-Za-z]-/.test(k)) continue;
+                        // only consider keys that start with `gobo-`
+                        if (!/^gobo-/.test(k)) continue;
+                        var suffix = k.replace(/^gobo-/, '');
+                        // look for any branded version
+                        var brandedFound = false;
+                        for (var letter = 0; letter < 26; letter++) {
+                            // construct branded pattern `gobo-<Letter>-<suffix>` (case-insensitive)
+                            var patternKeyUpper = 'gobo-' + String.fromCharCode(65 + letter) + '-' + suffix;
+                            var patternKeyLower = 'gobo-' + String.fromCharCode(97 + letter) + '-' + suffix;
+                            if (this.map.hasOwnProperty(patternKeyUpper) || this.map.hasOwnProperty(patternKeyLower)) {
+                                brandedFound = true;
+                                break;
+                            }
+                        }
+                        if (brandedFound) {
+                            try {
+                                var legacyId = this.map[k];
+                                if (legacyId != null && this.free.indexOf(legacyId) === -1) this.free.push(legacyId);
+                                delete this.map[k];
+                            } catch (delErr) { /* ignore */ }
+                        }
+                    }
+                }
+            } catch (cleanupErr) { /* ignore cleanup errors */ }
+
+            // Deduplicate numeric IDs: if a numeric ID is assigned to multiple keys,
+            // keep a single mapping (prefer branded `gobo-<Letter>-...`) and free the rest.
+            try {
+                var idToKeys = {};
+                var allKeys = Object.keys(this.map || {});
+                for (var ii = 0; ii < allKeys.length; ii++) {
+                    var kk = allKeys[ii];
+                    var iid = this.map[kk];
+                    if (iid == null) continue;
+                    if (!idToKeys[iid]) idToKeys[iid] = [];
+                    idToKeys[iid].push(kk);
+                }
+                for (var iidStr in idToKeys) {
+                    var coll = idToKeys[iidStr];
+                    if (!coll || coll.length < 2) continue;
+                    coll.sort(function(a,b){
+                        var aBr = /^gobo-[A-Za-z]-/.test(a) ? 0 : 1;
+                        var bBr = /^gobo-[A-Za-z]-/.test(b) ? 0 : 1;
+                        if (aBr !== bBr) return aBr - bBr;
+                        return a.localeCompare(b);
+                    });
+                    for (var ci = 1; ci < coll.length; ci++) {
+                        var removeKey = coll[ci];
+                        try {
+                            var freed = this.map[removeKey];
+                            if (freed != null && this.free.indexOf(freed) === -1) this.free.push(freed);
+                            delete this.map[removeKey];
+                        } catch (eDel) { /* ignore */ }
+                    }
+                }
+                // Ensure `free` has unique IDs
+                if (this.free && this.free.length) {
+                    var seen = {};
+                    var uniq = [];
+                    for (var fi = 0; fi < this.free.length; fi++) {
+                        var v = this.free[fi];
+                        if (v == null) continue;
+                        if (!seen[v]) { seen[v] = true; uniq.push(v); }
+                    }
+                    this.free = uniq;
+                }
+            } catch (dedupeErr) { /* ignore */ }
         },
         _persist: function(force){
             if (!this.ready && !force) return;
-            if (this._reentrant) return; // do not persist while inside ensureIds
+            if (this._reentrant && !force) return; // do not persist while inside ensureIds unless forced
             try {
+                // Before persisting, ensure there are no duplicate numeric IDs assigned.
+                try {
+                    var seenId = {};
+                    var mapKeys = Object.keys(this.map || {});
+                    // prefer branded keys when choosing which mapping to keep
+                    mapKeys.sort(function(a,b){
+                        var aBr = /^gobo-[A-Za-z]-/.test(a) ? 0 : 1;
+                        var bBr = /^gobo-[A-Za-z]-/.test(b) ? 0 : 1;
+                        if (aBr !== bBr) return aBr - bBr;
+                        return a.localeCompare(b);
+                    });
+                    for (var mi=0; mi<mapKeys.length; mi++) {
+                        var mk = mapKeys[mi];
+                        var mv = this.map[mk];
+                        if (mv == null) continue;
+                        if (!seenId[mv]) {
+                            seenId[mv] = mk;
+                        } else {
+                            // duplicate id: remove this mapping and free the id
+                            try {
+                                delete this.map[mk];
+                                if (this.free.indexOf(mv) === -1) this.free.push(mv);
+                            } catch (e) { /* ignore */ }
+                        }
+                    }
+                    // normalize free list to unique values
+                    if (this.free && this.free.length) {
+                        var fseen = {};
+                        var uniq = [];
+                        for (var fi=0; fi<this.free.length; fi++) {
+                            var fv = this.free[fi];
+                            if (fv == null) continue;
+                            if (!fseen[fv]) { fseen[fv] = true; uniq.push(fv); }
+                        }
+                        this.free = uniq;
+                    }
+                    // ensure next is at least max(map)+1
+                    try {
+                        var maxId = 0;
+                        for (var k2 in this.map) if (this.map.hasOwnProperty(k2)) if (this.map[k2] > maxId) maxId = this.map[k2];
+                        this.next = Math.max(this.next || 1, maxId + 1 || 1);
+                    } catch (eNext) { /* ignore */ }
+                } catch (dedupeErr) { /* ignore dedupe errors */ }
+
+                try { if (typeof window !== 'undefined') window.__profileIdPersistInProgress = true; } catch(ignore) {}
                 safeSet(STORAGE_KEY, JSON.stringify(this.map));
                 safeSet(FREE_KEY, JSON.stringify(this.free));
                 safeSet(NEXT_KEY, JSON.stringify(this.next));
+                // Clear the in-progress flag on the next tick so other listeners know this was an internal write
+                try { if (typeof window !== 'undefined') { setTimeout(function(){ try{ window.__profileIdPersistInProgress = false; } catch(e){} }, 0); } } catch(ignore2) {}
             } catch(e){ error('persist fail', e); }
         },
         ensureIds: function(keys){
             this.init();
+            try { console.debug('[ProfileIdManager] ensureIds called', { keys: keys, reentrant: this._reentrant, next: this.next, free: (this.free || []).slice(), mapSnapshot: { ...this.map } }); } catch(e) {}
             if (!Array.isArray(keys) || !keys.length) return this.map;
             var assignable = [];
             for (var i=0;i<keys.length;i++) {
                 var k = keys[i];
-                if (!/^gobo-/.test(k)) continue;
+                // Do not assign IDs to unbranded legacy keys (they should be migrated)
+                if (!this._isBrandedKey(k)) continue;
                 if (this.map[k] == null && assignable.indexOf(k) === -1) assignable.push(k);
             }
+            try { console.debug('[ProfileIdManager] computed assignable', { assignable: assignable.slice() }); } catch(e) {}
             if (!assignable.length) return this.map;
-            if (this._reentrant) return this.map;
+            if (this._reentrant) {
+                try {
+                    try { console.debug('[ProfileIdManager] deferring assignable due to reentrant', { assignable: assignable.slice(), deferredBefore: this._deferredAssign.slice() }); } catch(e) {}
+                    for (var ai = 0; ai < assignable.length; ai++) {
+                        var ak = assignable[ai];
+                        if (this._deferredAssign.indexOf(ak) === -1) this._deferredAssign.push(ak);
+                    }
+                    try { console.debug('[ProfileIdManager] deferredAssign after push', { deferredAssign: this._deferredAssign.slice() }); } catch(e) {}
+                } catch (dq) { /* ignore */ }
+                return this.map;
+            }
             this._reentrant = true;
             try {
                 if (this.free.length) this.free.sort(function(a,b){ return a-b; });
                 for (var j=0;j<assignable.length;j++) {
                     var key = assignable[j];
+                    // If there's an unbranded legacy key with an ID for this suffix, transfer it
+                    try {
+                        var legacyKey = this._unbrandedForBranded(key);
+                        if (legacyKey && this.map.hasOwnProperty(legacyKey) && this.map[legacyKey] != null) {
+                            this.transferId(legacyKey, key);
+                            continue;
+                        }
+                    } catch(eLegacy) { /* ignore and proceed to allocate */ }
                     var id;
                     if (this.free.length) { id = this.free.shift(); }
                     else { id = this.next++; }
                     this.map[key] = id;
                 }
-                this._persist();
+                try { console.debug('[ProfileIdManager] assigned ids', { assignedKeys: assignable.slice(), mapSnapshot: assignable.reduce(function(acc,kk){ acc[kk]=this.map[kk]; return acc; }.bind(this), {}) }); } catch(e) {}
             } finally { this._reentrant = false; }
+            this._persist();
+            // If other callers queued keys while we were assigning, process them now.
+            if (this._deferredAssign && this._deferredAssign.length) {
+                try { this._applyDeferredAssign(); } catch(eDeferred) { /* ignore */ }
+            }
             return this.map;
         },
         removeKeys: function(keys){
@@ -111,7 +268,129 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
             return {filteredKeys: keys, removedKeys: removed};
         },
         persist: function(){ this._persist(true); },
-        getId: function(k){ this.init(); return this.map[k] != null ? this.map[k] : null; },
+        // Move an existing ID from oldKey to newKey (used during migration)
+        transferId: function(oldKey, newKey){
+            this.init();
+            try {
+                if (!oldKey || !newKey) return null;
+                if (!this.map || !this.map.hasOwnProperty(oldKey)) return null;
+                var id = this.map[oldKey];
+                if (id == null) return null;
+                // If newKey already has an ID, do nothing
+                if (this.map.hasOwnProperty(newKey) && this.map[newKey] != null) return this.map[newKey];
+                // Move id
+                this.map[newKey] = id;
+                delete this.map[oldKey];
+                // Ensure free/next consistency
+                if (this.free && this.free.indexOf(id) !== -1) {
+                    this.free = this.free.filter(function(v){ return v !== id; });
+                }
+                // Ensure next is at least max(map)+1
+                try {
+                    var maxId = 0;
+                    for (var k in this.map) if (this.map.hasOwnProperty(k)) if (this.map[k] > maxId) maxId = this.map[k];
+                    this.next = Math.max(this.next || 1, maxId + 1 || 1);
+                } catch(e){}
+                this._persist(true);
+                return id;
+            } catch(e) { return null; }
+        },
+        // Synchronously assign numeric IDs for any missing keys (used by UI rendering)
+        assignMissingIds: function(keys){
+            this.init();
+            try { console.debug('[ProfileIdManager] assignMissingIds called', { keys: keys && keys.slice ? keys.slice() : keys }); } catch(e) {}
+            if (!Array.isArray(keys) || !keys.length) return this.map;
+            // Deduplicate incoming keys and preserve order
+            var seenIn = {};
+            var processKeys = [];
+            for (var pi=0; pi<keys.length; pi++) {
+                var pk = keys[pi];
+                if (!pk) continue;
+                if (seenIn[pk]) continue;
+                seenIn[pk] = true;
+                processKeys.push(pk);
+            }
+            var assigned = [];
+            try {
+                if (!this.free) this.free = [];
+                try { console.debug('[ProfileIdManager] assignMissingIds state before', { next: this.next, free: (this.free||[]).slice(), mapKeys: Object.keys(this.map||{}) }); } catch(e) {}
+                try { console.debug('[ProfileIdManager] assignMissingIds state before', { next: this.next, free: (this.free||[]).slice(), mapKeys: Object.keys(this.map||{}) }); } catch(e) {}
+                for (var i=0;i<processKeys.length;i++){
+                    var k = processKeys[i];
+                    try { console.debug('[ProfileIdManager] consider key', k, 'existingId:', this.map[k]); } catch(e) {}
+                    // Skip non-gobo and legacy unbranded gobo keys — only branded keys should receive IDs here
+                    if (!this._isBrandedKey(k)) {
+                        try { console.debug('[ProfileIdManager] skipping unbranded/non-gobo key (no ID assigned)', k); } catch(e) {}
+                        continue;
+                    }
+                    if (this.map[k] == null) {
+                        // If a legacy unbranded key already has an ID for this suffix, transfer it instead of allocating
+                        try {
+                            var legacy = this._unbrandedForBranded(k);
+                            if (legacy && this.map.hasOwnProperty(legacy) && this.map[legacy] != null) {
+                                var moved = this.transferId(legacy, k);
+                                if (moved != null) {
+                                    assigned.push({key:k,id:moved});
+                                    try { console.debug('[ProfileIdManager] transferred id from legacy', { legacy: legacy, key: k, id: moved }); } catch(e) {}
+                                    continue;
+                                }
+                            }
+                        } catch(eTrans) { /* ignore and proceed */ }
+                        var id;
+                        // Ensure free list does not contain IDs that are already used in map
+                        try {
+                            if (this.free && this.free.length) {
+                                var used = {};
+                                for (var mk in this.map) if (this.map.hasOwnProperty(mk)) { var mv = this.map[mk]; if (mv != null) used[mv] = true; }
+                                // filter free in-place to only IDs not present in used
+                                var newFree = [];
+                                for (var fi=0; fi<this.free.length; fi++) {
+                                    var fv = this.free[fi];
+                                    if (fv == null) continue;
+                                    if (used[fv]) {
+                                        try { console.debug('[ProfileIdManager] skipping free id already in use', fv); } catch(e) {}
+                                        continue;
+                                    }
+                                    newFree.push(fv);
+                                }
+                                this.free = newFree;
+                            }
+                        } catch(filterErr) { /* ignore */ }
+                        // Ensure `next` is greater than any ID currently used in the map
+                        try {
+                            var maxUsed = 0;
+                            for (var umk in this.map) if (this.map.hasOwnProperty(umk)) { var umv = this.map[umk]; if (umv != null && umv > maxUsed) maxUsed = umv; }
+                            if (!this.next || this.next <= maxUsed) {
+                                try { console.debug('[ProfileIdManager] bumping next from', this.next, 'to', maxUsed + 1); } catch(e) {}
+                                this.next = (maxUsed || 0) + 1;
+                            }
+                        } catch(bumpErr) { /* ignore */ }
+                        if (this.free.length) { this.free.sort(function(a,b){return a-b;}); id = this.free.shift(); }
+                        else { id = this.next++; }
+                        this.map[k] = id;
+                        assigned.push({key:k,id:id});
+                        try { console.debug('[ProfileIdManager] assigned', { key: k, id: id }); } catch(e) {}
+                    } else {
+                        try { console.debug('[ProfileIdManager] already had id for', k, this.map[k]); } catch(e) {}
+                    }
+                }
+                if (assigned.length) this._persist(true);
+            } catch(e) { /* ignore */ }
+            try { console.debug('[ProfileIdManager] assignMissingIds result', { assigned: assigned.slice(), mapSnapshot: { ...this.map } }); } catch(e) {}
+            return assigned;
+        },
+        getId: function(k){
+            this.init();
+            if (this.map[k] != null) return this.map[k];
+            try {
+                // Only assign IDs for branded gobo keys
+                if (this._isBrandedKey(k)) {
+                    try { this.ensureIds([k]); } catch(e) { /* ignore */ }
+                    return this.map[k] != null ? this.map[k] : null;
+                }
+            } catch(e) { /* ignore */ }
+            return null;
+        },
         dump: function(){ this.init(); return { ready:this.ready, map:this.map, free:this.free, next:this.next }; },
         _applyDeferredAssign: function(){ if (!this._deferredAssign.length) return; this.ensureIds(this._deferredAssign.slice()); this._deferredAssign = []; }
     };
@@ -292,17 +571,15 @@ function getLinkedAccounts() {
                             try { if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(payload)); else localStorage.setItem(brandedKey, JSON.stringify(payload)); } catch(e) {}
                             try { if (typeof goboStorageRemove === 'function') goboStorageRemove(k); else localStorage.removeItem(k); } catch(e) {}
                             // Preserve ProfileIdManager mapping if present
-                            try {
-                                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
-                                    var legacyId = ProfileIdManager.getId(k);
-                                    if (legacyId != null) {
-                                        ProfileIdManager.map[brandedKey] = legacyId;
-                                        delete ProfileIdManager.map[k];
-                                        try { ProfileIdManager.persist(); } catch(ePersist) { /* ignore */ }
-                                        try { App.ProfileIdMap = { ...ProfileIdManager.map }; } catch(eMap) { /* ignore */ }
-                                    }
-                                }
-                            } catch(e) { /* ignore */ }
+                                    try {
+                                        if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                                            var legacyId = ProfileIdManager.getId(k);
+                                            if (legacyId != null) {
+                                                try { ProfileIdManager.transferId(k, brandedKey); } catch(eTrans) { /* ignore */ }
+                                                try { App.ProfileIdMap = { ...ProfileIdManager.map }; } catch(eMap) { /* ignore */ }
+                                            }
+                                        }
+                                    } catch(e) { /* ignore */ }
                             changed = true;
                             return { ...acc, key: brandedKey };
                         }

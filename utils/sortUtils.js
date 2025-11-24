@@ -145,6 +145,15 @@ const SortUtils = {
              }
             if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+            // Primary values are equal. If the active sort column is not 'sailDate',
+            // use sailDate (ascending) as a stable secondary key so rows are grouped
+            // by the selected column and then ordered by sail date.
+            if (sortColumn !== 'sailDate') {
+                const aSail = a && a.sailing && a.sailing.sailDate ? new Date(a.sailing.sailDate).getTime() : 0;
+                const bSail = b && b.sailing && b.sailing.sailDate ? new Date(b.sailing.sailDate).getTime() : 0;
+                if (aSail < bSail) return -1;
+                if (aSail > bSail) return 1;
+            }
             return 0;
         });
     }

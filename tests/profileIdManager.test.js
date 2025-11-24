@@ -42,35 +42,35 @@ function loadProfileIdManager() {
 describe('ProfileIdManager', () => {
   test('assigns sequential IDs to new gobo profile keys', () => {
     const manager = loadProfileIdManager();
-    manager.ensureIds(['gobo-alpha', 'gobo-beta']);
+    manager.ensureIds(['gobo-X-alpha', 'gobo-X-beta']);
 
-    expect(manager.getId('gobo-alpha')).toBe(1);
-    expect(manager.getId('gobo-beta')).toBe(2);
+    expect(manager.getId('gobo-X-alpha')).toBe(1);
+    expect(manager.getId('gobo-X-beta')).toBe(2);
 
-    expect(manager.map).toEqual({ 'gobo-alpha': 1, 'gobo-beta': 2 });
+    expect(manager.map).toEqual({ 'gobo-X-alpha': 1, 'gobo-X-beta': 2 });
     expect(manager.next).toBe(3);
   });
 
   test('reuses freed IDs after profiles are removed', () => {
     const manager = loadProfileIdManager();
-    manager.ensureIds(['gobo-alpha', 'gobo-beta']);
+    manager.ensureIds(['gobo-X-alpha', 'gobo-X-beta']);
 
-    manager.removeKeys(['gobo-alpha']);
+    manager.removeKeys(['gobo-X-alpha']);
     expect(manager.free).toContain(1);
 
-    manager.ensureIds(['gobo-gamma']);
-    expect(manager.getId('gobo-gamma')).toBe(1);
+    manager.ensureIds(['gobo-X-gamma']);
+    expect(manager.getId('gobo-X-gamma')).toBe(1);
 
-    expect(manager.map['gobo-gamma']).toBe(1);
+    expect(manager.map['gobo-X-gamma']).toBe(1);
   });
 
   test('sanitizeProfileKeys removes restricted keys', () => {
     const manager = loadProfileIdManager();
     const removeSpy = jest.spyOn(manager, 'removeKeys');
 
-    const result = manager.sanitizeProfileKeys(['gobo-R-blocked', 'gobo-alpha']);
+    const result = manager.sanitizeProfileKeys(['gobo-R-blocked', 'gobo-X-alpha']);
 
-    expect(result.filteredKeys).toEqual(['gobo-alpha']);
+    expect(result.filteredKeys).toEqual(['gobo-X-alpha']);
     expect(result.removedKeys).toEqual(['gobo-R-blocked']);
 
     expect(removeSpy).toHaveBeenCalledWith(['gobo-R-blocked']);

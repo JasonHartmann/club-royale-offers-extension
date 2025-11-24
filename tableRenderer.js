@@ -56,9 +56,7 @@ const TableRenderer = {
                                 try {
                                     var legacyId = ProfileIdManager.getId(safeKey);
                                     if (legacyId != null) {
-                                        ProfileIdManager.map[branded] = legacyId;
-                                        delete ProfileIdManager.map[safeKey];
-                                        try { ProfileIdManager.persist(); } catch(ePersist) { /* ignore */ }
+                                        try { ProfileIdManager.transferId(safeKey, branded); } catch(eTrans) { /* ignore */ }
                                         try { App.ProfileIdMap = { ...ProfileIdManager.map }; } catch(eMap) { /* ignore */ }
                                     }
                                 } catch(eId) { /* ignore id migration errors */ }
@@ -535,21 +533,27 @@ const TableRenderer = {
         } catch(e) { /* ignore key normalization errors */ }
         // Ensure stable ID for this key immediately WITHOUT allocating a new one if preserved
         try {
-            if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
                 const alreadyId = ProfileIdManager.map[key];
-                if (alreadyId == null) ProfileIdManager.ensureIds([key]);
+                    if (alreadyId == null) {
+                    try { console.debug('[TableRenderer] assignMissingIds called for', key); } catch(e) {}
+                    if (/^gobo-[A-Za-z]-/.test(key)) ProfileIdManager.assignMissingIds([key]);
+                    try { console.debug('[TableRenderer] assignMissingIds completed for', key, 'id:', ProfileIdManager.map[key]); } catch(e) {}
+                }
                 App.ProfileIdMap = { ...ProfileIdManager.map };
             }
         } catch(e){ /* ignore */ }
         const switchToken = Date.now() + '_' + Math.random().toString(36).slice(2);
         this.currentSwitchToken = switchToken;
         if (!App.ProfileIdMap) App.ProfileIdMap = {};
-        try {
-            if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
-                ProfileIdManager.ensureIds([key]);
-                App.ProfileIdMap = { ...ProfileIdManager.map };
-            }
-        } catch(e) { /* ignore */ }
+            try {
+                if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {
+                    try { console.debug('[TableRenderer] assignMissingIds called for loadProfile', key); } catch(e) {}
+                    if (/^gobo-[A-Za-z]-/.test(key)) ProfileIdManager.assignMissingIds([key]);
+                    try { console.debug('[TableRenderer] assignMissingIds completed for loadProfile', key, 'id:', ProfileIdManager.map[key]); } catch(e) {}
+                    App.ProfileIdMap = { ...ProfileIdManager.map };
+                }
+            } catch(e) { /* ignore */ }
         console.debug('[DEBUG] loadProfile ENTRY', { key, payload, typeofKey: typeof key, typeofPayload: typeof payload, switchToken });
         console.debug('[DEBUG] App.ProfileCache:', App.ProfileCache);
         console.debug('[DEBUG] App.CurrentProfile:', App.CurrentProfile);
@@ -816,7 +820,7 @@ const TableRenderer = {
                     if (selectedProfileKey && /^gobo-/.test(selectedProfileKey) && !keys.includes(selectedProfileKey)) keys.push(selectedProfileKey);
                     if (currentKey && /^gobo-/.test(currentKey) && !keys.includes(currentKey)) keys.push(currentKey);
                     if (keys.length) {
-                        ProfileIdManager.ensureIds(keys);
+                        ProfileIdManager.assignMissingIds(keys);
                         App.ProfileIdMap = { ...ProfileIdManager.map };
                     }
                 }
