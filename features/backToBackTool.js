@@ -1128,7 +1128,11 @@
                     const lastChainId = chain.length ? chain[chain.length - 1] : null;
                     const lastMeta = lastChainId ? this._getMeta(lastChainId) : null;
                     const lastRoom = lastMeta && lastMeta.roomLabel ? String(lastMeta.roomLabel).trim() : '';
-                    if (lastRoom && roomLabel && String(roomLabel).trim() === lastRoom) {
+                    const lastShipKey = lastMeta && lastMeta.shipKey ? String(lastMeta.shipKey).trim() : '';
+                    const thisShipKey = opt.meta && opt.meta.shipKey ? String(opt.meta.shipKey).trim() : '';
+                    const sameRoom = lastRoom && roomLabel && String(roomLabel).trim() === lastRoom;
+                    const sameShip = lastShipKey && thisShipKey && lastShipKey === thisShipKey;
+                    if (sameRoom && sameShip) {
                         offerInfo = `<strong><span style="color: #059669">${offerText}</span></strong>`; // green-600
                     }
                 } catch (e) { /* ignore matching errors */ }
