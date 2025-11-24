@@ -13,6 +13,20 @@ const ErrorHandler = {
             console.debug('Failed to show error:', error.message);
         }
     },
+    showWarning(message) {
+        try {
+            const existingWarn = document.getElementById('gobo-warning');
+            if (existingWarn) existingWarn.remove();
+            const warnDiv = document.createElement('div');
+            warnDiv.id = 'gobo-warning';
+            warnDiv.className = 'fixed top-16 right-4 bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg shadow-lg z-[2147483647]';
+            warnDiv.textContent = message;
+            document.body.appendChild(warnDiv);
+            setTimeout(() => warnDiv.remove(), 10000);
+        } catch (error) {
+            console.debug('Failed to show warning:', error.message);
+        }
+    },
     closeModalIfOpen() {
         const container = document.getElementById('gobo-offers-table');
         const backdrop = document.getElementById('gobo-backdrop');

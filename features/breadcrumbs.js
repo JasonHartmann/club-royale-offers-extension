@@ -491,6 +491,22 @@ const Breadcrumbs = {
                             } catch (e) {
                             }
                             state.selectedProfileKey = clickedStorageKey;
+                            const warnIfStale = (payload) => {
+                                try {
+                                    const savedAt = Number(payload?.savedAt || payload?.data?.savedAt || 0);
+                                    if (!savedAt) return false;
+                                    const ageMs = Date.now() - savedAt;
+                                    const fortyEightHrs = 48 * 60 * 60 * 1000;
+                                    if (ageMs > fortyEightHrs) {
+                                        if (App.ErrorHandler && typeof App.ErrorHandler.showWarning === 'function') {
+                                            App.ErrorHandler.showWarning('This profile appears out-of-date. Please logout and refresh the account before loading.');
+                                        }
+                                        return true;
+                                    }
+                                } catch (e) { /* ignore */ }
+                                return false;
+                            };
+
                             if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
                                 Spinner.showSpinner();
                                 setTimeout(() => {
@@ -503,10 +519,11 @@ const Breadcrumbs = {
                                               return;
                                             }
                                             const payload = JSON.parse(raw);
-                                            if (payload?.data) {
-                                              App.TableRenderer.loadProfile('goob-combined-linked', payload);
-                                              Spinner.hideSpinner();
-                                            } else {
+                                                                                        if (payload?.data) {
+                                                                                            try { warnIfStale(payload); } catch(e) {}
+                                                                                            App.TableRenderer.loadProfile('goob-combined-linked', payload);
+                                                                                            Spinner.hideSpinner();
+                                                                                        } else {
                                               App.ErrorHandler.showError('Combined Offers data is malformed.');
                                               Spinner.hideSpinner();
                                             }
@@ -521,6 +538,7 @@ const Breadcrumbs = {
                                                 data: {offers: []},
                                                 savedAt: Date.now()
                                             };
+                                            try { warnIfStale(payload); } catch(e) {}
                                             App.TableRenderer.loadProfile('goob-favorites', payload);
                                         } catch (err) {
                                             App.ErrorHandler.showError('Failed to load Favorites profile.');
@@ -553,13 +571,14 @@ const Breadcrumbs = {
                                               }
                                             } catch (e) {
                                             }
-                                            if (payload?.data) {
-                                              App.TableRenderer.loadProfile(clickedStorageKey, payload);
-                                              Spinner.hideSpinner();
-                                            } else {
-                                              App.ErrorHandler.showError('Profile data malformed.');
-                                              Spinner.hideSpinner();
-                                            }
+                                                                                        if (payload?.data) {
+                                                                                            try { warnIfStale(payload); } catch(e) {}
+                                                                                            App.TableRenderer.loadProfile(clickedStorageKey, payload);
+                                                                                            Spinner.hideSpinner();
+                                                                                        } else {
+                                                                                            App.ErrorHandler.showError('Profile data malformed.');
+                                                                                            Spinner.hideSpinner();
+                                                                                        }
                                         } catch (err) {
                                             App.ErrorHandler.showError('Failed to load profile.');
                                             Spinner.hideSpinner();
@@ -580,7 +599,10 @@ const Breadcrumbs = {
                                     };
                                     if (!payload.data || typeof payload.data !== 'object') payload.data = {offers: []};
                                     if (!Array.isArray(payload.data.offers)) payload.data.offers = [];
-                                    if (payload?.data) App.TableRenderer.loadProfile(clickedStorageKey, payload); else App.ErrorHandler.showError('Saved profile data is malformed.');
+                                                                        if (payload?.data) {
+                                                                            try { warnIfStale(payload); } catch(e) {}
+                                                                            App.TableRenderer.loadProfile(clickedStorageKey, payload);
+                                                                        } else App.ErrorHandler.showError('Saved profile data is malformed.');
                                 } catch (err) {
                                     App.ErrorHandler.showError('Failed to load saved profile.');
                                 }
