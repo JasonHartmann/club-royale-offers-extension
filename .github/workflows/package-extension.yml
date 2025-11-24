@@ -35,3 +35,8 @@ jobs:
             **/*.svg
             **/*.css
             manifest.json
+            !**/node_modules/**
+            !scripts/**
+            !**/scripts/**
+            !tests/**
+            !**/tests/**
