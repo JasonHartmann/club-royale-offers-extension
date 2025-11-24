@@ -4,9 +4,11 @@
   "private": true,
   "description": "Developer tooling for the Club Royale Offers browser extension",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "convert:royal": "node ./scripts/convert-royal.js"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "sharp": "^0.32.0"
   }
 }

@@ -168,6 +168,11 @@ const TableBuilder = {
                         if (performance.now() - tStart > 12) break; // yield to keep frame responsive
                     }
                     if (statusRow.parentNode) tbody.insertBefore(frag, statusRow);
+                    // Notify that a chunk was rendered so other modules can react (e.g., B2B depth badges)
+                    try {
+                        const chunkEvt = new CustomEvent('tableChunkRendered', { detail: { token, rendered: Math.min(index, total) } });
+                        document.dispatchEvent(chunkEvt);
+                    } catch(e) { /* ignore dispatch errors */ }
                     // Update status text
                     if (statusRow && statusRow.firstChild) {
                         const rendered = Math.min(index, total);

@@ -1,4 +1,25 @@
 const TableRenderer = {
+    // Deterministic color for a chain ID: returns { background, color }
+    getChainColor(chainId) {
+        try {
+            if (!chainId) return { background: '#6b7280', color: '#ffffff' };
+            // Simple hash -> hue mapping
+            let h = 0;
+            const s = String(chainId);
+            for (let i = 0; i < s.length; i++) {
+                h = ((h << 5) - h) + s.charCodeAt(i);
+                h |= 0;
+            }
+            // normalize to 0..360
+            const hue = Math.abs(h) % 360;
+            // choose a pleasant saturation and lightness for background so white text is readable
+            const saturation = 62; // percent
+            const lightness = 35; // percent
+            const background = `hsl(${hue} ${saturation}% ${lightness}%)`;
+            const color = '#ffffff';
+            return { background, color };
+        } catch(e) { return { background: '#6b7280', color: '#ffffff' }; }
+    },
     _sanitizeStorageKey(k) {
         try {
             if (!k && k !== 0) return null;
@@ -210,6 +231,19 @@ const TableRenderer = {
     _computeB2BDepths(rows, options) {
         if (!Array.isArray(rows) || !rows.length) return null;
         if (!window.B2BUtils || typeof B2BUtils.computeB2BDepth !== 'function') return null;
+        // Use state switch token to memoize recent computation to avoid duplicate work
+        const stateToken = (this.lastState && this.lastState._switchToken) ? this.lastState._switchToken : null;
+        if (stateToken && this._metaCache && this._metaCache.has('b2bDepth:' + stateToken)) {
+            const cached = this._metaCache.get('b2bDepth:' + stateToken);
+            try {
+                // reapply depths from cached map
+                cached.forEach((depth, idx) => {
+                    if (!rows[idx] || !rows[idx].sailing) return;
+                    rows[idx].sailing.__b2bDepth = depth;
+                });
+            } catch(e) { /* ignore cache reapply errors */ }
+            return cached;
+        }
         const defaultAllow = (typeof this.getSideBySidePreference === 'function') ? this.getSideBySidePreference() : true;
         const opts = Object.assign({ allowSideBySide: defaultAllow }, options || {});
         const finish = this._startB2BDepthComputation();
@@ -217,9 +251,12 @@ const TableRenderer = {
             const depthsMap = B2BUtils.computeB2BDepth(rows, opts);
             rows.forEach((row, idx) => {
                 if (!row || !row.sailing) return;
-                const depth = depthsMap.get(idx) || 1;
+                const depth = (depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
                 row.sailing.__b2bDepth = depth;
             });
+            try {
+                if (stateToken && this._metaCache) this._metaCache.set('b2bDepth:' + stateToken, depthsMap);
+            } catch(e) { /* ignore caching errors */ }
             return depthsMap;
         } catch (err) {
             console.warn('[TableRenderer] B2B depth computation failed', err);
@@ -255,7 +292,8 @@ const TableRenderer = {
     },
     _normalizeB2BDepthValue(depth) {
         const num = Number(depth);
-        return Number.isFinite(num) && num > 0 ? num : 1;
+        // Accept zero as a valid depth value (don't coerce 0 to 1).
+        return Number.isFinite(num) && num >= 0 ? num : 1;
     },
     getB2BDepthBadgeMarkup(depth) {
         const normalized = this._normalizeB2BDepthValue(depth);
@@ -280,11 +318,18 @@ const TableRenderer = {
                 idSpan.textContent = chainId;
                 idSpan.title = `Chain ID: ${chainId}`;
                 idSpan.style.fontSize = '12px';
-                idSpan.style.padding = '2px 6px';
+                idSpan.style.padding = '2px 8px';
                 idSpan.style.borderRadius = '12px';
-                idSpan.style.background = '#eef2ff';
-                idSpan.style.color = '#3730a3';
-                idSpan.style.border = '1px solid #c7d2fe';
+                try {
+                    const c = this.getChainColor(chainId || '');
+                    idSpan.style.background = c.background;
+                    idSpan.style.color = c.color;
+                    idSpan.style.border = '1px solid rgba(0,0,0,0.08)';
+                } catch(e) {
+                    idSpan.style.background = '#eef2ff';
+                    idSpan.style.color = '#3730a3';
+                    idSpan.style.border = '1px solid #c7d2fe';
+                }
                 wrapper.appendChild(idSpan);
                 const depthSpan = document.createElement('span');
                 depthSpan.className = 'b2b-depth-number';
@@ -962,7 +1007,16 @@ const TableRenderer = {
         if (this.currentSwitchToken === state._switchToken) this._applyActiveTabHighlight(key);
     },
     updateView(state) {
-        console.debug('[DEBUG][tableRenderer] updateView ENTRY', state);
+        try {
+            if (!this._updateViewDbg) this._updateViewDbg = { count:0, last:0 };
+            const tv = Date.now();
+            this._updateViewDbg.count += 1;
+            if (tv - this._updateViewDbg.last < 200) this._updateViewDbg.rapid = (this._updateViewDbg.rapid || 0) + 1; else this._updateViewDbg.rapid = 0;
+            this._updateViewDbg.last = tv;
+            console.debug('[DEBUG][tableRenderer] updateView ENTRY', { state, dbg: this._updateViewDbg });
+        } catch(e) { console.debug('[DEBUG][tableRenderer] updateView ENTRY', state); }
+        this._inUpdateView = true;
+        try {
         const switchToken = state._switchToken;
         // Refined stale token handling: allow intra-profile interactions (like grouping to accordion)
         if (switchToken && this.currentSwitchToken && this.currentSwitchToken !== switchToken) {
@@ -1156,6 +1210,28 @@ const TableRenderer = {
                             } catch(e) { /* ignore post-render assignment errors */ }
                         };
                         try { document.addEventListener('tableRenderComplete', handler, { once: true }); } catch(e) { document.addEventListener('tableRenderComplete', handler); }
+
+                        // Progressive update: when incremental chunks render, apply depths to newly rendered rows.
+                        const chunkHandler = (chunkEv) => {
+                            try {
+                                if (!chunkEv || !chunkEv.detail) return;
+                                if (token && chunkEv.detail.token && chunkEv.detail.token !== token) return;
+                                const renderedSoFar = Number(chunkEv.detail.rendered) || 0;
+                                const allRows = tbody.querySelectorAll('tr');
+                                for (let r = 0; r < Math.min(renderedSoFar, allRows.length); r++) {
+                                    const tr = allRows[r];
+                                    const pair = state.sortedOffers[r];
+                                    if (!pair) continue;
+                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                    const cell = tr.querySelector('.b2b-depth-cell');
+                                    if (!cell) continue;
+                                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
+                                    else cell.textContent = String(depth);
+                                    try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
+                                }
+                            } catch(e) { /* ignore chunk handler errors */ }
+                        };
+                        try { document.addEventListener('tableChunkRendered', chunkHandler); } catch(e) { /* ignore */ }
                     }
                 } catch(e) { /* ignore incremental render detection errors */ }
                 console.debug('[B2B] Depth computation complete', { rows: rows.length });
@@ -1233,6 +1309,9 @@ const TableRenderer = {
             } catch (diagErr) { /* ignore diagnostic errors */ }
         }
         console.debug('[DEBUG][tableRenderer] updateView EXIT');
+        } finally {
+            try { this._inUpdateView = false; } catch(e) {}
+        }
     },
     // Removed updateBreadcrumb; logic moved to features/breadcrumbs.js
     updateItineraries(hydrated) {

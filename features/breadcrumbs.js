@@ -305,15 +305,32 @@ const Breadcrumbs = {
                                 }
                                 // Add brand badge (R or C) if brand present
                                 if (brand) {
+                                    const b = String(brand || '').toUpperCase();
                                     const brandBadge = document.createElement('span');
-                                    brandBadge.className = 'profile-brand-badge';
-                                    brandBadge.textContent = brand.toUpperCase();
+                                    brandBadge.className = `profile-brand-badge profile-brand-badge--${b === 'R' ? 'royal' : (b === 'C' ? 'celebrity' : b.toLowerCase())}`;
                                     brandBadge.style.marginRight = '6px';
-                                    brandBadge.style.background = '#eee';
-                                    brandBadge.style.borderRadius = '6px';
-                                    brandBadge.style.padding = '2px 6px';
-                                    brandBadge.style.fontSize = '11px';
-                                    brandBadge.title = `Brand: ${brand.toUpperCase()}`;
+                                    brandBadge.title = `Brand: ${b}`;
+                                    try {
+                                        if (b === 'R') {
+                                            const img = document.createElement('img');
+                                            img.src = getAssetUrl('images/royal-16.png');
+                                            img.width = 16;
+                                            img.height = 16;
+                                            img.alt = 'Royal';
+                                            brandBadge.appendChild(img);
+                                        } else if (b === 'C') {
+                                            // Celebrity: bold sans-serif X on white background
+                                            const xSpan = document.createElement('span');
+                                            xSpan.className = 'celebrity-x';
+                                            xSpan.textContent = 'X';
+                                            brandBadge.appendChild(xSpan);
+                                            brandBadge.setAttribute('aria-label', 'Celebrity');
+                                        } else {
+                                            brandBadge.textContent = b;
+                                        }
+                                    } catch (err) {
+                                        brandBadge.textContent = b;
+                                    }
                                     wrapper.appendChild(brandBadge);
                                 }
                                 wrapper.appendChild(labelDiv);
@@ -649,32 +666,14 @@ const Breadcrumbs = {
                 console.warn('[breadcrumbs] AdvancedSearch buildToggleButton failed', e);
             }
 
-            // Replace B2B button with a persisted side-by-side toggle
-            const sbsToggle = document.createElement('label');
-            sbsToggle.className = 'b2b-side-by-side-toggle';
-            const sbsCheckbox = document.createElement('input');
-            sbsCheckbox.type = 'checkbox';
-            sbsCheckbox.id = 'b2b-side-by-side-checkbox';
+            // Add Settings gear button (moves controls into a centralized modal)
+            let settingsBtn = null;
             try {
-                sbsCheckbox.checked = (App && App.TableRenderer && typeof App.TableRenderer.getSideBySidePreference === 'function')
-                    ? App.TableRenderer.getSideBySidePreference()
-                    : true;
-            } catch (prefErr) {
-                sbsCheckbox.checked = true;
-            }
-            sbsCheckbox.addEventListener('change', () => {
-                try {
-                    if (App && App.TableRenderer && typeof App.TableRenderer.setSideBySidePreference === 'function') {
-                        App.TableRenderer.setSideBySidePreference(!!sbsCheckbox.checked);
-                    }
-                } catch (e) {
-                    console.warn('[breadcrumbs] Unable to update side-by-side preference', e);
+                if (typeof Settings !== 'undefined' && Settings.buildGearButton) {
+                    settingsBtn = Settings.buildGearButton();
+                    settingsBtn.style.marginLeft = '8px';
                 }
-            });
-            const sbsLabel = document.createElement('span');
-            sbsLabel.textContent = 'Include Side-by-Sides';
-            sbsToggle.appendChild(sbsCheckbox);
-            sbsToggle.appendChild(sbsLabel);
+            } catch(e) { /* ignore */ }
 
             const hiddenGroupsLabel = document.createElement('span');
             hiddenGroupsLabel.textContent = 'Hidden Groups:';
@@ -686,7 +685,7 @@ const Breadcrumbs = {
                 Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
             } catch (e) {
             }
-            hiddenGroupsPanel.appendChild(sbsToggle);
+            if (settingsBtn) hiddenGroupsPanel.appendChild(settingsBtn);
             hiddenGroupsPanel.appendChild(hiddenGroupsLabel);
             hiddenGroupsPanel.appendChild(hiddenGroupsDisplay);
             crumbsRow.appendChild(hiddenGroupsPanel);

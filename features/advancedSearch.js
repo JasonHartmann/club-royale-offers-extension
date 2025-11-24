@@ -335,10 +335,21 @@ const AdvancedSearch = {
             if (state._advFieldCache[cacheKey]) return state._advFieldCache[cacheKey];
             let source;
             try {
-                const committedOnly = {...state, _advPreviewPredicateId: null};
-                const base = state.fullOriginalOffers || state.originalOffers || [];
-                // Apply advanced search committed predicates first, then hidden group filter
-                source = Filtering.applyAdvancedSearch(base, committedOnly);
+                const useStaticIndex = !!state._advStaticFieldIndex;
+                // If static index missing or currently building, avoid expensive applyAdvancedSearch and use a fast fallback
+                if (!useStaticIndex || state._advIndexBuilding) {
+                    source = Array.isArray(state.sortedOffers) && state.sortedOffers.length ? state.sortedOffers : (Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : (state.fullOriginalOffers || []));
+                    // schedule background index build to improve subsequent interactions
+                    try {
+                        const schedule = () => { try { if (!state._advIndexBuilding) this.buildStaticFieldIndex(state); } catch(e){} };
+                        if (typeof requestIdleCallback === 'function') requestIdleCallback(schedule, {timeout: 800}); else setTimeout(schedule, 200);
+                    } catch(eSched) { /* ignore */ }
+                } else {
+                    const committedOnly = {...state, _advPreviewPredicateId: null};
+                    const base = state.fullOriginalOffers || state.originalOffers || [];
+                    // Apply advanced search committed predicates first, then hidden group filter
+                    source = Filtering.applyAdvancedSearch(base, committedOnly);
+                }
             } catch (e) { /* fallback below */ }
             if (!source || !Array.isArray(source) || !source.length) {
                 source = Array.isArray(state.sortedOffers) && state.sortedOffers.length ? state.sortedOffers : (Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : (state.fullOriginalOffers || []));
@@ -906,6 +917,12 @@ const AdvancedSearch = {
     buildStaticFieldIndex(state) {
         try {
             if (!state) return;
+            // Avoid concurrent or repeated synchronous builds which can block UI
+            if (state._advIndexBuilding) {
+                this._logDebug('buildStaticFieldIndex:alreadyBuilding');
+                return;
+            }
+            state._advIndexBuilding = true;
             // Hidden groups signature collected up-front; static index excludes hidden offers
             let hiddenGroups = [];
             try { hiddenGroups = (typeof Filtering !== 'undefined' && Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
@@ -940,6 +957,7 @@ const AdvancedSearch = {
                     return true;
                 });
             };
+            try { window.__ADV_INDEX_BUILDING = true; } catch(e){}
             const base = filterHiddenOffers(baseAll);
             state._advIndexOfferCount = offerCount; // keep original count for threshold math
             const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
@@ -983,7 +1001,16 @@ const AdvancedSearch = {
             }
             state._advStaticFieldIndex = index;
             state._advIndexHiddenGroupsSig = hgSig;
+            try { window.__ADV_INDEX_BUILDING = false; } catch(e){}
+            // mark build complete and schedule a light re-render to pick up the new index
+            state._advIndexBuilding = false;
             this._logDebug('buildStaticFieldIndex:rebuilt', { fields: Object.keys(index).length, offerCount, hgSig });
+            try {
+                setTimeout(() => {
+                    try { this.renderPredicates(state); } catch (e) { /* ignore */ }
+                    try { this.ensureAddFieldDropdown(state); } catch (e) { /* ignore */ }
+                }, 0);
+            } catch (e) { /* ignore */ }
         } catch(e){ this._logDebug('buildStaticFieldIndex:error', e); }
     },
     buildToggleButton(state) {
@@ -1223,6 +1250,8 @@ const AdvancedSearch = {
     },
     scaffoldPanel(state, container) {
         try {
+            // Keep a reference to the last state for global utilities (e.g., Settings)
+            try { AdvancedSearch._lastState = state; } catch(e){}
             this.ensureState(state);
             this._logDebug('scaffoldPanel:start', { enabled: !!state?.advancedSearch?.enabled, containerExists: !!container });
             if (!container) return;
@@ -1254,31 +1283,18 @@ const AdvancedSearch = {
                 setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
             });
             header.appendChild(clearBtn);
-            // Include Taxes & Fees checkbox
-            const includeWrap = document.createElement('label');
-            includeWrap.className = 'adv-include-taxes-wrap';
-            const includeCb = document.createElement('input');
-            includeCb.type = 'checkbox';
-            includeCb.title = 'Toggle inclusion of Taxes & Fees in price-based filters';
-            includeCb.checked = state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false; // default true
-            includeCb.addEventListener('change', () => {
-                state.advancedSearch.includeTaxesAndFeesInPriceFilters = includeCb.checked;
-                // Invalidate cached field values so suggestions reflect new pricing basis
-                try { if (state._advFieldCache) Object.keys(state._advFieldCache).forEach(k => { if (k.includes('min')) delete state._advFieldCache[k]; }); } catch(e){}
-                this.lightRefresh(state, { showSpinner: true });
-                this.debouncedPersist(state);
-            });
-            const includeSpan = document.createElement('span');
-            includeSpan.textContent = 'Include T&F in Price Filters';
-            includeWrap.appendChild(includeCb);
-            includeWrap.appendChild(includeSpan);
-            header.appendChild(includeWrap);
+            // 'Include Taxes & Fees in Price Filters' has moved to Settings modal
             const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
             if (committedCount) {
                 const badge = document.createElement('span'); badge.className='adv-badge'; badge.textContent = committedCount + ' active'; header.appendChild(badge);
             }
             state.advancedSearchPanel = panel;
-            try { this.buildStaticFieldIndex(state); } catch(eIdx){ this._logDebug('buildStaticFieldIndex scaffold error', eIdx); }
+            try {
+                const scheduleBuild = () => {
+                    try { this.buildStaticFieldIndex(state); } catch(eIdx){ this._logDebug('buildStaticFieldIndex scaffold error', eIdx); }
+                };
+                if (typeof requestIdleCallback === 'function') requestIdleCallback(scheduleBuild, {timeout: 500}); else setTimeout(scheduleBuild, 50);
+            } catch(eSched) { this._logDebug('buildStaticFieldIndex:scheduleError', eSched); }
             this.renderPredicates(state);
             this._logDebug('scaffoldPanel:end', { committedCount });
         } catch(e){ this._logDebug('scaffoldPanel:error', e); }

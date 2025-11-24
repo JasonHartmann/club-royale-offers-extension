@@ -29,6 +29,7 @@
         B2BUtils,
         BackToBackTool,
         Favorites,
+        Settings,
         ProfileCache: _prev.ProfileCache || [],
         init() {
             this.DOMUtils.waitForDom();

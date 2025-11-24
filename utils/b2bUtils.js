@@ -46,9 +46,10 @@
             }
             if (rawStart && nights != null) {
                 const startISO = String(rawStart).trim().slice(0, 10);
-                const d = new Date(startISO);
+                // Use UTC date arithmetic to avoid timezone shifts
+                const d = new Date(startISO + 'T00:00:00Z');
                 if (!isNaN(d.getTime())) {
-                    d.setDate(d.getDate() + nights);
+                    d.setUTCDate(d.getUTCDate() + nights);
                     const endISO = d.toISOString().slice(0, 10);
                     const port = (sailing.arrivalPort && sailing.arrivalPort.name) || (sailing.departurePort && sailing.departurePort.name) || '';
                     return { endISO, endPort: (port || '').trim(), startISO, startPort: (startPort || '').trim() };
@@ -79,14 +80,23 @@
             const shipName = (sailing.shipName || '').toString().trim();
             const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
             let allow = !filterPredicate || filterPredicate(row);
-            // Fallback: if caller didn't provide a filterPredicate, consult Filtering stores
+            // Fallback: if caller didn't provide a filterPredicate, consult hidden-row Sets directly
+            // IMPORTANT: do NOT call into Filtering.wasRowHidden/isRowHidden here because those
+            // may call back into B2B diagnostics and cause recursion. Use the Stores directly.
             if (!filterPredicate && typeof Filtering !== 'undefined') {
                 try {
-                    if (typeof Filtering.wasRowHidden === 'function') {
-                        allow = allow && !Filtering.wasRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
-                    } else if (typeof Filtering.isRowHidden === 'function') {
-                        allow = allow && !Filtering.isRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
-                    }
+                    const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                    const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
+                    const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
+                    try {
+                        const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                        const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
+                        const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
+                        const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                        if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) {
+                            allow = false;
+                        }
+                    } catch(e) { /* ignore per-row key build errors */ }
                 } catch(e) { /* ignore filtering fallback errors */ }
             }
             return {
@@ -184,9 +194,9 @@
 
         function addDays(iso, delta) {
             try {
-                const d = new Date(iso);
+                const d = new Date(String(iso).slice(0,10) + 'T00:00:00Z');
                 if (isNaN(d.getTime())) return iso;
-                d.setDate(d.getDate() + delta);
+                d.setUTCDate(d.getUTCDate() + delta);
                 return d.toISOString().slice(0, 10);
             } catch(e){ return iso; }
         }
@@ -201,7 +211,8 @@
             }
             let maxDepth = 1;
             const day = rootInfo.endISO;
-            const nextDay = day ? addDays(day, 1) : null;
+            // Only allow same-day connections here; do not consider next-day links
+            const nextDay = null;
             const portKey = rootInfo.endPort.toLowerCase();
             const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
             if (!portKey || !shipKey) {
@@ -212,10 +223,6 @@
             if (day) {
                 keysToCheck.push(day + '|' + portKey + '|' + shipKey);
                 if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
-            }
-            if (nextDay) {
-                keysToCheck.push(nextDay + '|' + portKey + '|' + shipKey);
-                if (allowSideBySide) keysToCheck.push(nextDay + '|' + portKey + '|*');
             }
             const offerUsedHere = usedGlobal.has(rootInfo.offerCode) ? usedGlobal : new Set(usedGlobal);
             offerUsedHere.add(rootInfo.offerCode);
@@ -297,19 +304,27 @@
             dfsLocal(startIdx, new Set(), []);
             return best.filter(Boolean);
         }
-        // Diagnostics: sampled per-offer depth evaluations (every 100th allowed offer)
+        // Diagnostics: only run heavy sampling when debug enabled to avoid noisy logs and expensive chain computations
         try {
-            let allowedSeen = 0;
-            for (let idx = 0; idx < meta.length; idx++) {
-                const info = meta[idx];
-                if (!info || !info.allow) continue;
-                allowedSeen += 1;
-                if (allowedSeen % 100 !== 0) continue;
-                const depth = depthMap.get(idx) || 0;
-                const chain = computeLongestChainFromIndex(idx) || [];
-                const chainSummary = Array.isArray(chain) ? chain.map(n => (n.offerCode || '') + '(@' + (n.shipName || '') + ':' + (n.startISO || '') + ')').join(' -> ') : String(chain || '');
-                try { console.debug('[B2B] Sampled offer depth', { idx, offerCode: info.offerCode, shipName: info.shipName, startISO: info.startISO, endISO: info.endISO, depth, chainLength: chain.length, chain }); } catch(e){}
-                try { console.debug('[B2B] Sampled chain (summary): ' + (chainSummary || '(none)')); } catch(e){}
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                let allowedSeen = 0;
+                // sample less frequently for large sets to avoid heavy cost
+                const sampleInterval = Math.max(100, Math.floor(meta.length / 20));
+                for (let idx = 0; idx < meta.length; idx++) {
+                    const info = meta[idx];
+                    if (!info || !info.allow) continue;
+                    allowedSeen += 1;
+                    if (allowedSeen % sampleInterval !== 0) continue;
+                    const depth = depthMap.get(idx) || 0;
+                    // computeLongestChainFromIndex is expensive; only run it for small sets
+                    let chain = [];
+                    if (meta.length <= 500) {
+                        try { chain = computeLongestChainFromIndex(idx) || []; } catch(e) { chain = []; }
+                    }
+                    const chainSummary = Array.isArray(chain) ? chain.map(n => (n.offerCode || '') + '(@' + (n.shipName || '') + ':' + (n.startISO || '') + ')').join(' -> ') : String(chain || '');
+                    try { console.debug('[B2B] Sampled offer depth', { idx, offerCode: info.offerCode, shipName: info.shipName, startISO: info.startISO, endISO: info.endISO, depth, chainLength: chain.length, chain }); } catch(e){}
+                    try { console.debug('[B2B] Sampled chain (summary): ' + (chainSummary || '(none)')); } catch(e){}
+                }
             }
         } catch(e) { /* ignore sampling diagnostic errors */ }
 
@@ -319,6 +334,19 @@
     // Compute the longest B2B chain path (array of offer codes) for diagnostics or UI.
     function computeLongestB2BPath(rows, options) {
         options = options || {};
+        try {
+            if (!computeLongestB2BPath._dbg) computeLongestB2BPath._dbg = { count:0, last:0 };
+            const now = Date.now();
+            computeLongestB2BPath._dbg.count += 1;
+            if (now - computeLongestB2BPath._dbg.last < 200) computeLongestB2BPath._dbg.rapid = (computeLongestB2BPath._dbg.rapid || 0) + 1; else computeLongestB2BPath._dbg.rapid = 0;
+            computeLongestB2BPath._dbg.last = now;
+            // If invoked excessively in a short window, avoid expensive recursion/diagnostics
+            if (computeLongestB2BPath._dbg.rapid > 8) {
+                try { console.debug('[B2BUtils] computeLongestB2BPath throttled due to rapid calls', computeLongestB2BPath._dbg); } catch(e){}
+                return [];
+            }
+            try { console.debug('[B2BUtils] computeLongestB2BPath ENTRY', { dbg: computeLongestB2BPath._dbg }); console.debug(new Error('Breadcrumb: computeLongestB2BPath').stack.split('\n').slice(0,6).join('\n')); } catch(e){}
+        } catch(e) {}
         const allowSideBySide = !!options.allowSideBySide;
         const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
         if (!Array.isArray(rows) || !rows.length) return [];
@@ -330,11 +358,22 @@
             const shipKey = (sailing.shipCode || sailing.shipName || '').toString().trim().toLowerCase();
             const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
             let allow = !filterPredicate || filterPredicate(row);
+            // Use hidden-row Sets directly to avoid re-entrancy into Filtering helpers
             if (!filterPredicate && typeof Filtering !== 'undefined') {
                 try {
-                    if (typeof Filtering.wasRowHidden === 'function') allow = allow && !Filtering.wasRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
-                    else if (typeof Filtering.isRowHidden === 'function') allow = allow && !Filtering.isRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
-                } catch (e) { /* ignore */ }
+                    const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                    const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
+                    const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
+                    try {
+                        const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                        const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
+                        const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
+                        const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                        if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) {
+                            allow = false;
+                        }
+                    } catch(e) { /* ignore per-row key build errors */ }
+                } catch(e) { /* ignore */ }
             }
             return { idx, endISO, endPort, startISO, startPort, shipKey, offerCode, allow };
         });
@@ -412,7 +451,117 @@
 
     const B2BUtils = {
         computeB2BDepth,
-        computeLongestB2BPath
+        computeLongestB2BPath,
+        // Compute the longest chain (detailed nodes) starting from a specific index
+        computeLongestChainFromIndex: function(rows, options, startIdx) {
+            options = options || {};
+            const allowSideBySide = !!options.allowSideBySide;
+            const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
+            if (!Array.isArray(rows) || !rows.length) return [];
+
+            // Build meta similarly to computeB2BDepth
+            const meta = rows.map((row, idx) => {
+                const { endISO, endPort, startISO, startPort } = computeEndDateAndPort(row);
+                const sailing = row.sailing || {};
+                const shipName = (sailing.shipName || sailing.shipCode || '').toString().trim();
+                const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
+                let allow = !filterPredicate || filterPredicate(row);
+                if (!filterPredicate && typeof Filtering !== 'undefined') {
+                    try {
+                        if (typeof Filtering.wasRowHidden === 'function') allow = allow && !Filtering.wasRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
+                        else if (typeof Filtering.isRowHidden === 'function') allow = allow && !Filtering.isRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
+                    } catch(e) { /* ignore */ }
+                }
+                return { idx, endISO, endPort, startISO, startPort, shipName, offerCode, allow };
+            });
+
+            if (!meta[startIdx] || !meta[startIdx].allow) return [];
+
+            function addDays(iso, delta) {
+                try {
+                    const d = new Date(iso);
+                    if (isNaN(d.getTime())) return iso;
+                    d.setDate(d.getDate() + delta);
+                    return d.toISOString().slice(0, 10);
+                } catch(e) { return iso; }
+            }
+
+            // Build startIndex map
+            const startIndex = new Map();
+            meta.forEach(info => {
+                if (!info.startISO || !info.startPort || !info.allow) return;
+                const day = info.startISO;
+                const portKey = info.startPort.toLowerCase();
+                const shipKey = (info.shipName || '').toLowerCase();
+                if (!portKey || !shipKey) return;
+                const key = day + '|' + portKey + '|' + shipKey;
+                if (!startIndex.has(key)) startIndex.set(key, []);
+                startIndex.get(key).push(info.idx);
+                if (allowSideBySide) {
+                    const sideKey = day + '|' + portKey + '|*';
+                    if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
+                    startIndex.get(sideKey).push(info.idx);
+                }
+            });
+
+            // sort buckets by startISO desc
+            startIndex.forEach(arr => {
+                arr.sort((aIdx, bIdx) => {
+                    const aISO = meta[aIdx].startISO || '';
+                    const bISO = meta[bIdx].startISO || '';
+                    if (aISO < bISO) return 1;
+                    if (aISO > bISO) return -1;
+                    return 0;
+                });
+            });
+
+            let best = [];
+            function dfsLocal(rootIdx, usedSet, path) {
+                const rootInfo = meta[rootIdx];
+                if (!rootInfo) return;
+                const node = {
+                    offerCode: rootInfo.offerCode || '',
+                    shipName: rootInfo.shipName || '',
+                    startISO: rootInfo.startISO || null,
+                    endISO: rootInfo.endISO || null
+                };
+                const curPath = path.concat(node);
+                if (curPath.length > best.length) best = curPath.slice();
+                if (!rootInfo.endISO || !rootInfo.endPort) return;
+                const day = rootInfo.endISO;
+                const nextDay = day ? addDays(day, 1) : null;
+                const portKey = rootInfo.endPort.toLowerCase();
+                const shipKey = (rootInfo.shipName || '').toLowerCase();
+                if (!portKey || !shipKey) return;
+                const keysToCheck = [];
+                if (day) {
+                    keysToCheck.push(day + '|' + portKey + '|' + shipKey);
+                    if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
+                }
+                if (nextDay) {
+                    keysToCheck.push(nextDay + '|' + portKey + '|' + shipKey);
+                    if (allowSideBySide) keysToCheck.push(nextDay + '|' + portKey + '|*');
+                }
+                const usedHere = new Set(usedSet);
+                usedHere.add(rootInfo.offerCode);
+                for (let k = 0; k < keysToCheck.length; k++) {
+                    const bucket = startIndex.get(keysToCheck[k]);
+                    if (!bucket || !bucket.length) continue;
+                    for (let i = 0; i < bucket.length; i++) {
+                        const nextIdx = bucket[i];
+                        if (nextIdx === rootIdx) continue;
+                        const nextInfo = meta[nextIdx];
+                        if (!nextInfo || !nextInfo.allow) continue;
+                        if (!nextInfo.startISO || (nextInfo.startISO !== day && nextInfo.startISO !== nextDay)) continue;
+                        if (usedHere.has(nextInfo.offerCode)) continue;
+                        dfsLocal(nextIdx, usedHere, curPath);
+                    }
+                }
+            }
+
+            dfsLocal(startIdx, new Set(), []);
+            return best.filter(Boolean);
+        }
     };
 
     if (typeof window !== 'undefined') window.B2BUtils = B2BUtils;

@@ -73,7 +73,8 @@ const AccordionBuilder = {
                         if (viewingFavorites && sailing.__b2bChainId) {
                             groupKey = String(sailing.__b2bChainId);
                         } else if (typeof sailing.__b2bDepth === 'number') {
-                            const full = Number(sailing.__b2bDepth) || 1;
+                            const rawFull = Number(sailing.__b2bDepth);
+                            const full = (Number.isFinite(rawFull) && rawFull >= 0) ? rawFull : 1;
                             groupKey = String(Math.max(0, full - 1));
                         } else {
                             groupKey = '-';
@@ -348,6 +349,11 @@ const AccordionBuilder = {
                     const expDate = offer.campaignOffer?.reserveByDate;
                     const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                     const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
+                    try {
+                        if (window.BackToBackTool && BackToBackTool._selectedRowId && row.dataset && row.dataset.b2bRowId && String(row.dataset.b2bRowId) === String(BackToBackTool._selectedRowId)) {
+                            row.classList.add('gobo-b2b-selected');
+                        }
+                    } catch(e) { /* ignore */ }
                     try {
                         const cell = row.querySelector('.b2b-depth-cell');
                         if (cell && sailing && typeof sailing.__b2bDepth === 'number') {

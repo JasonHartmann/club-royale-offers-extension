@@ -137,6 +137,24 @@
 .b2b-option-select .b2b-depth-pill { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.12); color:#fff; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; min-width:24px; }
 .b2b-option-select .b2b-depth-pill svg { height:14px; width:auto; }
 .b2b-depth-pill-empty { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); font-weight:600; }
+
+/* When there are zero additional connections, visually de-emphasize the pill
+   and remove the chevrons marker. Table cells expose child-count via
+   `data-child-count` on the `.b2b-depth-cell` element. */
+.b2b-depth-cell[data-child-count="0"] .b2b-chevrons {
+    background: linear-gradient(90deg,#f1f5f9 0%,#f8fafc 100%);
+    color: #6b7280;
+    box-shadow: none;
+    border: 1px solid rgba(15,23,42,0.06);
+    font-weight:600;
+}
+.b2b-depth-cell[data-child-count="0"] .b2b-chevrons::after {
+    content: '';
+}
+.b2b-depth-cell[data-child-count="0"] .b2b-chevrons-value {
+    color: #475569;
+    font-weight:600;
+}
 .b2b-center-hint { font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; }
 .b2b-banner { border-radius:12px; padding:10px 14px; background:#e2e8f0; color:#0f172a; font-size:12px; display:flex; align-items:center; gap:10px; }
 .b2b-banner-status { font-weight:600; }

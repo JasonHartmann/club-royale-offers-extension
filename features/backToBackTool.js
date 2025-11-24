@@ -176,6 +176,7 @@
         _context: { rows: [], rowMap: new Map(), allowSideBySide: true, stateKey: null },
         _metaCache: new Map(),
         _activeSession: null,
+        _selectedRowId: null, // persist the currently selected row for B2B highlighting
 
         _scheduleWithSpinner(task) {
             if (typeof task !== 'function') return;
@@ -373,7 +374,66 @@
                         }
                     } catch(e) { try { console.debug('[B2B] DOM reconstruction error', e); } catch(e){}; return; }
                 }
-                try { this._startSession(rowId); } catch(e) { try { console.debug('[B2B] _startSession error', e); } catch(ee){} }
+                try {
+                    // Apply persistent highlight to the corresponding table row so the
+                    // user can see which sailing was used to open the B2B tool. Keep
+                    // the highlight after the B2B overlay is closed.
+                    try {
+                        // Remove any existing B2B-selected marker so there is at most one
+                        // visible selected row at a time.
+                        document.querySelectorAll('.gobo-b2b-selected').forEach(el => el.classList.remove('gobo-b2b-selected'));
+                        const sel = `[data-b2b-row-id="${escapeSelector(rowId)}"]`;
+                        const el = document.querySelector(sel);
+                        if (el) {
+                            const tr = el.closest && el.closest('tr') ? el.closest('tr') : el;
+                            tr.classList.add('gobo-b2b-selected');
+                        }
+                        // persist selection across renders/overlay lifecycle
+                        try { this._selectedRowId = rowId; } catch(e) { /* ignore */ }
+                    } catch (e) { /* non-fatal - proceed with opening */ }
+                    // Diagnostic logging: compute B2B depths and longest chain for clicked row
+                    try {
+                        const rows = (this._context && Array.isArray(this._context.rows)) ? this._context.rows.slice() : ((App && App.TableRenderer && App.TableRenderer.lastState && Array.isArray(App.TableRenderer.lastState.rows)) ? App.TableRenderer.lastState.rows.slice() : []);
+                        let clickedIdx = -1;
+                        for (let i = 0; i < rows.length; i++) {
+                            const r = rows[i];
+                            if (!r) continue;
+                            if (r.sailing && r.sailing.__b2bRowId === rowId) { clickedIdx = i; break; }
+                            if (r.rowId && String(r.rowId) === String(rowId)) { clickedIdx = i; break; }
+                        }
+                        const b2bOpts = { allowSideBySide: !!(this._context && this._context.allowSideBySide) };
+                        try {
+                            if (this._context && this._context.state && typeof this._context.state.filterPredicate === 'function') b2bOpts.filterPredicate = this._context.state.filterPredicate;
+                            else if (App && App.TableRenderer && App.TableRenderer.lastState && typeof App.TableRenderer.lastState.filterPredicate === 'function') b2bOpts.filterPredicate = App.TableRenderer.lastState.filterPredicate;
+                        } catch(e) {}
+                        let depthMap = null;
+                        let longest = null;
+                        try {
+                            // Avoid heavy diagnostics for very large row sets unless debugging explicitly enabled
+                            const doHeavyDiag = (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) || (Array.isArray(rows) && rows.length <= 500);
+                            if (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeB2BDepth === 'function') {
+                                depthMap = window.B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
+                            }
+                            if (doHeavyDiag && typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestChainFromIndex === 'function') {
+                                longest = window.B2BUtils.computeLongestChainFromIndex(rows, b2bOpts, clickedIdx) || [];
+                            }
+                        } catch(e) { if (typeof console !== 'undefined' && console.debug) console.debug('[B2B] diagnostic compute error', e); }
+                        try {
+                            console.groupCollapsed && console.groupCollapsed('[B2B DIAG] rowId=' + rowId + ' idx=' + clickedIdx);
+                            console.log('rowsCount', rows.length);
+                            console.log('clickedIdx', clickedIdx);
+                            try { console.log('depthForClicked', depthMap && depthMap.get(clickedIdx)); } catch(e) {}
+                            try { console.log('longestChainForClicked', longest); } catch(e) {}
+                            // sample meta for first 200 rows
+                            try {
+                                const sample = (rows || []).slice(0, 200).map((rr, ii) => ({ idx: ii, rowId: rr && rr.sailing && rr.sailing.__b2bRowId ? rr.sailing.__b2bRowId : (rr && rr.rowId), offerCode: (rr && rr.offer && rr.offer.campaignOffer && rr.offer.campaignOffer.offerCode) ? rr.offer.campaignOffer.offerCode : '', startISO: (rr && rr.sailing && rr.sailing.sailDate) ? String(rr.sailing.sailDate).slice(0,10) : null, endISO: (rr && rr.sailing && (rr.sailing.endDate || rr.sailing.disembarkDate)) ? String(rr.sailing.endDate || rr.sailing.disembarkDate).slice(0,10) : null }));
+                                console.log('metaSample', sample);
+                            } catch(e) {}
+                            console.groupEnd && console.groupEnd();
+                        } catch(e) {}
+                    } catch(e) { console.debug('[B2B] diagnostic outer error', e); }
+                    this._startSession(rowId);
+                } catch(e) { try { console.debug('[B2B] _startSession error', e); } catch(ee){} }
             });
         },
 
@@ -473,6 +533,8 @@
             modal.appendChild(actions);
 
             overlay.appendChild(modal);
+            // Hide overlay until initial content is rendered to avoid showing stale/incorrect data briefly
+            overlay.style.visibility = 'hidden';
             document.body.appendChild(overlay);
 
             const keyHandler = (ev) => {
@@ -495,8 +557,17 @@
                 resetBtn
             };
             this._activeSession.keyHandler = keyHandler;
-            this._renderChain();
-            this._renderOptions();
+            // Render content then reveal overlay so there is no brief flash of wrong sailing
+            try {
+                this._renderChain();
+                this._renderOptions();
+            } finally {
+                try {
+                    requestAnimationFrame(() => { try { overlay.style.visibility = ''; } catch(e){} });
+                } catch (e) {
+                    try { overlay.style.visibility = ''; } catch(e){}
+                }
+            }
         },
 
         _getEntry(rowId) {
@@ -637,6 +708,28 @@
             this._activeSession.ui.saveBtn.disabled = !canSave;
             this._activeSession.ui.resetBtn.disabled = this._activeSession.chain.length <= 1;
             this._setStatusText();
+            // Ensure the selected sailings viewport scrolls to show the most recently added sailing
+            try { this._scrollChainToBottom(); } catch (e) { /* ignore scroll errors */ }
+        },
+
+        _scrollChainToBottom() {
+            try {
+                if (!this._activeSession || !this._activeSession.ui) return;
+                const container = this._activeSession.ui.chainCards;
+                if (!container) return;
+                // Prefer smooth scrolling when available
+                try {
+                    const maxScrollTop = container.scrollHeight - container.clientHeight;
+                    if (typeof container.scrollTo === 'function') {
+                        container.scrollTo({ top: maxScrollTop >= 0 ? maxScrollTop : 0, behavior: 'smooth' });
+                    } else {
+                        container.scrollTop = maxScrollTop >= 0 ? maxScrollTop : 0;
+                    }
+                } catch (e) {
+                    // Fallback assignment
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (e) { /* ignore */ }
         },
 
         _setStatusText() {
@@ -805,7 +898,8 @@
             try {
                 if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
                     try {
-                        const rows = this._context.rows || [];
+                        // Use the authoritative rowMap values so indices align with rowIds
+                        const rows = (this._context && this._context.rowMap) ? Array.from(this._context.rowMap.values()) : (this._context.rows || []);
                         const ctxState = this._context.state || null;
                         // Build a per-render visibility cache so we only call Filtering.wasRowHidden/isRowHidden once per row
                         const visibilityCache = new Map();
@@ -843,8 +937,8 @@
                                 const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes };
                                 const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
                                 const idx = rowIndexById.get(o.rowId);
-                                const depth = (typeof idx === 'number' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
-                                o.depth = depth || 1;
+                                const depth = (typeof idx === 'number' && depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
+                                o.depth = (typeof depth === 'number' && Number.isFinite(depth)) ? depth : 1;
                             } catch (inner) { o.depth = 1; }
                         });
                     } catch (innerErr) { /* fall back to no depths */ }
@@ -983,7 +1077,9 @@
                         } catch(e){}
                     } catch(e) {}
                     const immedList = (this._listImmediateCandidates ? this._listImmediateCandidates(opt.rowId, opt.rowId) : []);
-                    const childCount = Math.max(0, Number(immedList.length));
+                    // Prefer showing the total descendant depth (excluding the candidate itself)
+                    // so the pill represents how many additional connections will follow if selected.
+                    const childCount = Math.max(0, Number(descendantDepth) - 1);
                     let depthMarkup = null;
                     if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
                         depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(childCount);
@@ -1063,6 +1159,7 @@
             this._scheduleWithSpinner(() => {
                 this._activeSession.chain.push(rowId);
                 this._renderChain();
+                try { this._scrollChainToBottom(); } catch(e) {}
                 this._renderOptions();
                 const meta = this._getMeta(rowId);
                 this._flashMessage(meta ? `Added ${meta.shipName || meta.shipCode || 'sailing'}` : 'Sailing added.', 'info');
@@ -1076,6 +1173,7 @@
             this._scheduleWithSpinner(() => {
                 this._activeSession.chain.splice(idx, 1);
                 this._renderChain();
+                try { this._scrollChainToBottom(); } catch(e) {}
                 this._renderOptions();
                 this._flashMessage('Removed sailing from chain.', 'info');
             });
@@ -1086,6 +1184,7 @@
             this._scheduleWithSpinner(() => {
                 this._activeSession.chain = [this._activeSession.rootRowId];
                 this._renderChain();
+                try { this._scrollChainToBottom(); } catch(e) {}
                 this._renderOptions();
                 this._flashMessage('Chain reset to root sailing.', 'info');
             });
@@ -1215,11 +1314,18 @@
                             idSpan.textContent = chainId;
                             idSpan.title = `Chain ID: ${chainId}`;
                             idSpan.style.fontSize = '12px';
-                            idSpan.style.padding = '2px 6px';
+                            idSpan.style.padding = '2px 8px';
                             idSpan.style.borderRadius = '12px';
-                            idSpan.style.background = '#eef2ff';
-                            idSpan.style.color = '#3730a3';
-                            idSpan.style.border = '1px solid #c7d2fe';
+                            try {
+                                const c = (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getChainColor === 'function') ? TableRenderer.getChainColor(chainId) : { background: '#eef2ff', color: '#3730a3' };
+                                idSpan.style.background = c.background;
+                                idSpan.style.color = c.color;
+                                idSpan.style.border = '1px solid rgba(0,0,0,0.08)';
+                            } catch(e) {
+                                idSpan.style.background = '#eef2ff';
+                                idSpan.style.color = '#3730a3';
+                                idSpan.style.border = '1px solid #c7d2fe';
+                            }
                             wrapper.appendChild(idSpan);
                             const depthSpan = document.createElement('span');
                             depthSpan.className = 'b2b-depth-number';

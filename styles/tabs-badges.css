@@ -53,6 +53,41 @@
 .profile-id-badge-combined-18 { background:#6B2E26 !important; }
 .profile-id-badge-combined-19 { background:#4B1170 !important; }
 .profile-id-badge-combined-20 { background:#283747 !important; }
+/* Brand badge image sizing */
+.profile-brand-badge {
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	width:22px;
+	height:22px;
+	background:#0b2b5a; /* dark blue */
+	border-radius:4px;
+	box-shadow:0 1px 0 rgba(255,255,255,0.06) inset;
+}
+.profile-brand-badge img { max-width:24px; max-height:24px; display:block; vertical-align:middle; }
+
+/* Royal specific */
+.profile-brand-badge--royal { background:#1c488a; }
+
+/* Celebrity specific: white rounded square with bold sans-serif X */
+.profile-brand-badge--celebrity {
+  background: #ffffff;
+  color: #1c488a;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* Slightly widen the X horizontally without changing its height */
+.profile-brand-badge--celebrity .celebrity-x {
+	display:inline-block;
+	transform: scaleX(1.35);
+	transform-origin: center center;
+	font-weight: 800;
+	line-height: 1;
+}
+
 /* --- Horizontal tab scrolling overrides (final refined) --- */
 .profile-tabs-scroll { width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; position:relative; padding-bottom:4px; scrollbar-gutter:stable; }
 .profile-tabs-scroll::-webkit-scrollbar { height:10px; }

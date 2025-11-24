@@ -132,17 +132,74 @@
             <td class="border p-2">${perksStr}</td>
         `;
         try {
+            // If BackToBackTool has a persisted selection, apply persistent highlight
+            try {
+                if (window.BackToBackTool && BackToBackTool._selectedRowId && row.dataset && row.dataset.b2bRowId && String(row.dataset.b2bRowId) === String(BackToBackTool._selectedRowId)) {
+                    row.classList.add('gobo-b2b-selected');
+                }
+            } catch(e) { /* ignore */ }
             const b2bCell = row.querySelector('.b2b-depth-cell');
             if (b2bCell) {
                 const rowId = sailing && sailing.__b2bRowId;
                 if (rowId) {
                     b2bCell.dataset.b2bRowId = rowId;
                     b2bCell.classList.add('b2b-depth-cell-action');
+                    // Expose offerIndex on the cell for easier mapping during incremental updates
+                    try { if (row.dataset && row.dataset.offerIndex !== undefined) b2bCell.dataset.offerIndex = row.dataset.offerIndex; } catch(e) {}
+                    // If the TableRenderer has already computed depths, render the pill immediately
+                    try {
+                        if (App && App.TableRenderer && App.TableRenderer.lastState && typeof App.TableRenderer.updateB2BDepthCell === 'function') {
+                            let idx = null;
+                            try { idx = row.dataset && row.dataset.offerIndex !== undefined ? parseInt(row.dataset.offerIndex, 10) : null; } catch(e) { idx = null; }
+                            if ((idx === null || isNaN(idx)) && row.dataset && row.dataset.b2bRowId) {
+                                const rid = row.dataset.b2bRowId;
+                                const found = (Array.isArray(App.TableRenderer.lastState.sortedOffers) ? App.TableRenderer.lastState.sortedOffers : []).findIndex(p => p && p.sailing && p.sailing.__b2bRowId === rid);
+                                if (found >= 0) idx = found;
+                            }
+                            if (typeof idx === 'number' && idx >= 0 && Array.isArray(App.TableRenderer.lastState.sortedOffers)) {
+                                const pair = App.TableRenderer.lastState.sortedOffers[idx];
+                                if (pair && pair.sailing) {
+                                    const depth = (typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
+                                    const chainId = pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null;
+                                    if (depth !== null) {
+                                        try { App.TableRenderer.updateB2BDepthCell(b2bCell, depth, chainId); } catch(e) {}
+                                    }
+                                }
+                            }
+                        }
+                    } catch(e) { /* ignore immediate render errors */ }
                     if (!b2bCell.dataset.b2bCellBound) {
                         const handler = (ev) => {
                             try { console.debug('[B2B] cell clicked', { rowId, evType: ev.type }); } catch(e){}
                             if (!window.BackToBackTool) { try { console.debug('[B2B] BackToBackTool missing'); } catch(e){}; return; }
                             if (typeof BackToBackTool.openByRowId !== 'function') { try { console.debug('[B2B] BackToBackTool.openByRowId missing'); } catch(e){}; return; }
+                            // If the pill wasn't rendered for this cell (possible during incremental render),
+                            // attempt to render it on-demand using the model's computed depth.
+                            try {
+                                const hasPill = b2bCell.querySelector && b2bCell.querySelector('.b2b-chevrons');
+                                if (!hasPill && App && App.TableRenderer && App.TableRenderer.lastState) {
+                                    try {
+                                        const lastState = App.TableRenderer.lastState;
+                                        let idx = null;
+                                        if (b2bCell.dataset && b2bCell.dataset.offerIndex) idx = parseInt(b2bCell.dataset.offerIndex, 10);
+                                        if ((idx === null || isNaN(idx)) && row.dataset && row.dataset.b2bRowId) {
+                                            const rid = row.dataset.b2bRowId;
+                                            const found = (Array.isArray(lastState.sortedOffers) ? lastState.sortedOffers : []).findIndex(p => p && p.sailing && p.sailing.__b2bRowId === rid);
+                                            if (found >= 0) idx = found;
+                                        }
+                                        if (typeof idx === 'number' && idx >= 0 && Array.isArray(lastState.sortedOffers)) {
+                                            const pair = lastState.sortedOffers[idx];
+                                            if (pair && pair.sailing) {
+                                                const depth = (typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
+                                                const chainId = pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null;
+                                                if (depth !== null && typeof App.TableRenderer.updateB2BDepthCell === 'function') {
+                                                    try { App.TableRenderer.updateB2BDepthCell(b2bCell, depth, chainId); } catch(e) {}
+                                                }
+                                            }
+                                        }
+                                    } catch(e) { /* ignore on-demand render errors */ }
+                                }
+                            } catch(e) { /* ignore */ }
                             try { ev.preventDefault(); ev.stopPropagation(); } catch(e){}
                             try { BackToBackTool.openByRowId(rowId); } catch(openErr) { try { console.debug('[B2B] openByRowId threw', openErr); } catch(e){} }
                         };

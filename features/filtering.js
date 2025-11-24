@@ -706,48 +706,79 @@ const Filtering = {
                 const depthVal = (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : null;
                 if (depthVal != null) return depthVal;
                 try {
-                    if (window.App && App.TableRenderer && typeof App.TableRenderer._ensureRowsHaveB2BDepth === 'function') {
-                        const state = App.TableRenderer.lastState;
-                        if (state && Array.isArray(state.sortedOffers) && state.sortedOffers.length) {
-                            const allowSideBySide = (typeof App.TableRenderer.getSideBySidePreference === 'function')
-                                ? App.TableRenderer.getSideBySidePreference()
-                                : true;
-                            // Provide a filterPredicate that excludes hidden groups so depths ignore hidden rows
-                            const filterPredicate = (row) => {
-                                try {
-                                    if (!row) return false;
-                                    if (typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, state);
-                                    return !Filtering.isRowHidden(row, state);
-                                } catch(e) { return true; }
-                            };
-                            const depthsMap = App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate });
-                            try {
-                                // Compute the longest chain path for diagnostics and log it.
-                                const longestPath = (typeof B2BUtils !== 'undefined' && typeof B2BUtils.computeLongestB2BPath === 'function')
-                                    ? B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate })
-                                    : (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestB2BPath === 'function')
-                                        ? window.B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate })
-                                        : [];
-                                // The displayed child-count equals depth - 1; so path length should equal maxDepth - 1
-                                let maxDepth = 1;
-                                if (depthsMap instanceof Map) {
-                                    for (const v of depthsMap.values()) if (typeof v === 'number' && v > maxDepth) maxDepth = v;
-                                } else if (Array.isArray(state.sortedOffers)) {
-                                    // fallback: inspect assigned __b2bDepth on sailings
-                                    for (const r of state.sortedOffers) {
-                                        const d = r && r.sailing && typeof r.sailing.__b2bDepth === 'number' ? r.sailing.__b2bDepth : 1;
-                                        if (d > maxDepth) maxDepth = d;
-                                    }
-                                }
-                                try {
-                                    if (typeof console !== 'undefined' && console.info) {
-                                        console.info('[Filtering] Longest B2B chain path', { path: longestPath, pathLength: longestPath.length, maxDepthFound: maxDepth, expectedPathLen: Math.max(0, maxDepth - 1) });
-                                    }
-                                } catch(e) { /* ignore logging errors */ }
-                            } catch(e) { /* ignore diagnostics errors */ }
-                        }
+                    if (!(typeof window !== 'undefined' && window.App && App.TableRenderer && typeof App.TableRenderer._ensureRowsHaveB2BDepth === 'function')) {
+                        return (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : 1;
                     }
-                } catch(e){ /* ignore ensure attempt */ }
+
+                    const state = App.TableRenderer.lastState;
+                    if (!state || !Array.isArray(state.sortedOffers) || !state.sortedOffers.length) {
+                        return (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : 1;
+                    }
+
+                    const allowSideBySide = (typeof App.TableRenderer.getSideBySidePreference === 'function')
+                        ? App.TableRenderer.getSideBySidePreference()
+                        : true;
+
+                    const hiddenStore = Filtering._getHiddenRowStore(state);
+                    const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
+
+                    const filterPredicate = (row) => {
+                        try {
+                            if (!row) return false;
+                            const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                            const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
+                            const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
+                            const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                            if (hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) return false;
+                            if (globalHidden && globalHidden.has(key)) return false;
+                            return true;
+                        } catch (e) { return true; }
+                    };
+
+                    // If AdvancedSearch is building its static index, prime depths without diagnostics
+                    if (typeof window !== 'undefined' && window.__ADV_INDEX_BUILDING) {
+                        try { App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate }); } catch (ignore) {}
+                        return (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : 1;
+                    }
+
+                    const depthsMap = App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate });
+
+                    // Compute longest path for diagnostics (best-effort, swallow errors)
+                    try {
+                        let longestPath = [];
+                        try {
+                            if (typeof B2BUtils !== 'undefined' && typeof B2BUtils.computeLongestB2BPath === 'function') {
+                                longestPath = B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate });
+                            } else if (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestB2BPath === 'function') {
+                                longestPath = window.B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate });
+                            }
+                        } catch (ignore) { longestPath = []; }
+
+                        let maxDepth = 1;
+                        if (depthsMap instanceof Map) {
+                            for (const v of depthsMap.values()) if (typeof v === 'number' && v > maxDepth) maxDepth = v;
+                        } else if (Array.isArray(state.sortedOffers)) {
+                            for (const r of state.sortedOffers) {
+                                const d = r && r.sailing && typeof r.sailing.__b2bDepth === 'number' ? r.sailing.__b2bDepth : 1;
+                                if (d > maxDepth) maxDepth = d;
+                            }
+                        }
+
+                        // Throttled diagnostic logging
+                        try {
+                            if (!Filtering._longestPathDbg) Filtering._longestPathDbg = { count:0, last:0 };
+                            const tNow = Date.now();
+                            Filtering._longestPathDbg.count += 1;
+                            if (tNow - Filtering._longestPathDbg.last < 200) Filtering._longestPathDbg.rapid = (Filtering._longestPathDbg.rapid || 0) + 1; else Filtering._longestPathDbg.rapid = 0;
+                            Filtering._longestPathDbg.last = tNow;
+                            if (typeof console !== 'undefined' && console.info) {
+                                console.info('[Filtering] Longest B2B chain path', { path: longestPath, pathLength: longestPath.length, maxDepthFound: maxDepth, expectedPathLen: Math.max(0, maxDepth - 1), dbg: Filtering._longestPathDbg });
+                                try { console.debug(new Error('Breadcrumb: LongestB2BPath called').stack.split('\n').slice(0,6).join('\n')); } catch(e){}
+                            }
+                        } catch (ignore) {}
+                    } catch (ignore) {}
+                } catch (ignore) {}
+
                 return (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : 1;
             }
             case 'offerValue': {
@@ -891,7 +922,23 @@ const Filtering = {
     },
     // Update the hidden groups display element (GLOBAL)
     updateHiddenGroupsList(_ignoredProfileKey, displayElement, state) {
-        console.debug('[Filtering] updateHiddenGroupsList ENTRY (GLOBAL)', { displayElement, state });
+        try {
+            if (Filtering._updateHiddenGroupsListActive) {
+                console.debug('[Filtering] updateHiddenGroupsList re-entrant call ignored');
+                return;
+            }
+            Filtering._updateHiddenGroupsListActive = true;
+            if (!Filtering._updateHiddenGroupsListCalls) Filtering._updateHiddenGroupsListCalls = { count:0, last:0 };
+            const now = Date.now();
+            Filtering._updateHiddenGroupsListCalls.count += 1;
+            if (now - Filtering._updateHiddenGroupsListCalls.last < 200) {
+                Filtering._updateHiddenGroupsListCalls.rapid = (Filtering._updateHiddenGroupsListCalls.rapid || 0) + 1;
+            } else {
+                Filtering._updateHiddenGroupsListCalls.rapid = 0;
+            }
+            Filtering._updateHiddenGroupsListCalls.last = now;
+            console.debug('[Filtering] updateHiddenGroupsList ENTRY (GLOBAL)', { displayElement, state, callCount: Filtering._updateHiddenGroupsListCalls.count, rapid: Filtering._updateHiddenGroupsListCalls.rapid });
+        } catch(e) { console.debug('[Filtering] updateHiddenGroupsList ENTRY (GLOBAL)'); }
         if (!displayElement) {
             console.warn('updateHiddenGroupsList: displayElement is null (GLOBAL)');
             return;
@@ -927,7 +974,7 @@ const Filtering = {
                     try { Spinner.showSpinner(); } catch(e) { try { Spinner.showSpinner(); } catch(_){} }
 
                     // Defer the actual removal/storage/update work so spinner can render first.
-                    setTimeout(() => {
+                        setTimeout(() => {
                         let groups = Filtering.loadHiddenGroups();
                         groups = groups.filter(g => g !== path);
                         try {
@@ -938,11 +985,26 @@ const Filtering = {
                             console.warn('[Filtering] Error removing Hidden Group from storage (GLOBAL)', e);
                         }
 
-                        Filtering.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state);
+                        // If a table update is in progress, defer the DOM update to avoid re-entrancy.
+                        try {
+                            if (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer._inUpdateView) {
+                                // schedule for next tick after renderer finishes
+                                setTimeout(() => Filtering.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state), 50);
+                            } else {
+                                Filtering.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state);
+                            }
+                        } catch(e) { Filtering.updateHiddenGroupsList(null, document.getElementById('hidden-groups-display'), state); }
                         console.debug('[Filtering] updateHiddenGroupsList called after removal (GLOBAL)', { groups });
                         if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.updateView === 'function') {
                             console.debug('[Filtering] Calling App.TableRenderer.updateView after hidden group removal (GLOBAL)');
-                            App.TableRenderer.updateView(state);
+                            try {
+                                if (App.TableRenderer._inUpdateView) {
+                                    console.debug('[Filtering] TableRenderer.updateView busy, deferring update');
+                                    setTimeout(() => { try { App.TableRenderer.updateView(state); } catch(e){} }, 60);
+                                } else {
+                                    App.TableRenderer.updateView(state);
+                                }
+                            } catch(e) { try { App.TableRenderer.updateView(state); } catch(_){} }
                         }
 
                         setTimeout(() => {
@@ -976,6 +1038,7 @@ const Filtering = {
             console.debug('[Filtering] updateHiddenGroupsList: No hidden groups to display (GLOBAL)');
         }
         console.debug('[Filtering] updateHiddenGroupsList EXIT (GLOBAL)');
+        try { Filtering._updateHiddenGroupsListActive = false; } catch(e) {}
     },
     // Debug helper: prints first `limit` offers (or uses state.originalOffers) with pricing diagnostics
     printSuitePricingDiagnostics(state, offers, limit = 40) {
