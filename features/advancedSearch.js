@@ -625,7 +625,7 @@ const AdvancedSearch = {
             const headerKeysSet = new Set(headerFields.map(h => h.key));
             const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
             const allFields = headerFields.concat(advFiltered);
-            const dateFieldKeys = new Set(['offerDate','expiration','sailDate']);
+            const dateFieldKeys = new Set(['offerDate','expiration','sailDate','endDate']);
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
             // Numeric pricing fields that support 'less than'
