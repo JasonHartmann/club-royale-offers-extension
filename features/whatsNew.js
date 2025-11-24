@@ -14,7 +14,7 @@
         return '1.5';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '4'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup by AJ Goldsman
+    const TOUR_REVISION = '5'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 40; // up to ~8s (200ms interval) waiting for elements
 
@@ -108,12 +108,6 @@
             }
             this._steps = [
                 {
-                    id:'tradeInValue',
-                    target:()=> document.querySelector('th[data-key="tradeInValue"]'),
-                    title:'Trade-In Value Column',
-                    body: 'New column showing trade-in value for eligible sailings.',
-                },
-                {
                     id:'offerCodeLookupExternal',
                     target:()=> document.querySelector('.offer-code-link') || document.querySelector('th[data-key="offerCode"]') || document.body,
                     title:'Offer Code Lookup Upgrade',
@@ -132,6 +126,19 @@
                     body:'Destination cells now include clickable itinerary links—open one to see route details & more context.',
                 },
                 {
+                    id:'offerValueColumn',
+                    target:()=> document.querySelector('th[data-key="offerValue"]') || document.body,
+                    title:'Offer Value Column',
+                    body:'Shows estimated monetary value of the offer (dual occupancy base minus taxes; heuristic for single guest). Usable in sorting, grouping, filtering & CSV export.',
+                }
+                ,
+                {
+                    id:'backToBackBuilder',
+                    target:()=> document.querySelector('.b2b-pill-button') || document.querySelector('.b2b-visualizer-overlay') || document.body,
+                    title:'Back-to-Back Builder',
+                    body:'New visual Back-to-Back Builder: open any offer\'s depth pill to explore and assemble chains of connecting sailings. Candidate offers show matching room categories in green for easy scanning.',
+                },
+                {
                     id:'supportCoffee',
                     target:()=> document.querySelector('.buy-coffee-link') || document.body,
                     title:'Support Development',
@@ -143,12 +150,6 @@
                     title:'Get Help',
                     body:'Follow us on Facebook for updates or support!',
                 },
-                {
-                    id:'offerValueColumn',
-                    target:()=> document.querySelector('th[data-key="offerValue"]') || document.body,
-                    title:'Offer Value Column',
-                    body:'Shows estimated monetary value of the offer (dual occupancy base minus taxes; heuristic for single guest). Usable in sorting, grouping, filtering & CSV export.',
-                }
             ];
         },
         _initAndBegin(){
@@ -235,12 +236,26 @@
             if (!step) { this.finish(); return; }
             // Skip missing targets (rare timing issues)
             if (!step.target()) { this.next(); return; }
+            // Attempt to scroll the target into view so the focus ring and tooltip are visible.
+            try {
+                const target = step.target();
+                if (target && typeof target.scrollIntoView === 'function') {
+                    try {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                    } catch (e) {
+                        // Fallback for older browsers
+                        target.scrollIntoView();
+                    }
+                }
+            } catch (e) { /* ignore scroll errors */ }
+
             this._tooltip.querySelector('.gobo-whatsnew-title').textContent = step.title;
             this._tooltip.querySelector('.gobo-whatsnew-body').textContent = step.body;
             // Nav button labels
             if (this._currentStepIndex === this._steps.length -1) this._nav.btnNext.textContent='Done'; else this._nav.btnNext.textContent='Next';
             this._nav.btnBack.disabled = this._currentStepIndex===0;
-            this._positionCurrent();
+            // Allow a short delay for the scroll animation to complete before positioning the focus ring.
+            try { setTimeout(()=>this._positionCurrent(), 220); } catch(e) { this._positionCurrent(); }
         },
         next(){
             this._currentStepIndex++;

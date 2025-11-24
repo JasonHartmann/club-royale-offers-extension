@@ -686,7 +686,7 @@
                 metaBlock.innerHTML = `
                     <strong>${formatRange(meta)}</strong>
                     <span>${routeLabel}</span>
-                    <span>Offer <strong>${meta.offerCode || 'TBA'}</strong> - ${meta.guestsLabel}${meta.roomLabel ? ` - ${meta.roomLabel}` : ''}</span>
+                    <span><strong>Offer ${meta.offerCode || 'TBA'} - ${meta.guestsLabel}${meta.roomLabel ? ` - ${meta.roomLabel}` : ''}</strong></span>
                     ${perksHtml}
                 `;
                 card.appendChild(metaBlock);
@@ -1070,10 +1070,22 @@
                     }
                 } catch (e) { routeLabel = this._formatRoute(opt.meta); }
 
-                // Offer info: bold offer code and include room category if present
+                // Offer info: show offer code, guests and room like selected cards and bold whole line
                 const offerCode = opt.meta.offerCode || 'TBA';
                 const roomLabel = opt.meta.roomLabel || '';
-                const offerInfo = roomLabel ? `Offer <strong>${offerCode}</strong> - <strong>${roomLabel}</strong>` : `Offer <strong>${offerCode}</strong>`;
+                const guestsLabel = opt.meta.guestsLabel || '';
+                const offerText = `Offer ${offerCode} - ${guestsLabel}${roomLabel ? ` - ${roomLabel}` : ''}`;
+                // If candidate room equals the last selected sailing's room, color green
+                let offerInfo = `<strong>${offerText}</strong>`;
+                try {
+                    const chain = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain : [];
+                    const lastChainId = chain.length ? chain[chain.length - 1] : null;
+                    const lastMeta = lastChainId ? this._getMeta(lastChainId) : null;
+                    const lastRoom = lastMeta && lastMeta.roomLabel ? String(lastMeta.roomLabel).trim() : '';
+                    if (lastRoom && roomLabel && String(roomLabel).trim() === lastRoom) {
+                        offerInfo = `<strong><span style="color: #059669">${offerText}</span></strong>`; // green-600
+                    }
+                } catch (e) { /* ignore matching errors */ }
 
                 metaBlock.innerHTML = `
                     ${headerDiv.outerHTML}

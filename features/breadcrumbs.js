@@ -685,9 +685,12 @@ const Breadcrumbs = {
                 Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
             } catch (e) {
             }
-            if (settingsBtn) hiddenGroupsPanel.appendChild(settingsBtn);
             hiddenGroupsPanel.appendChild(hiddenGroupsLabel);
             hiddenGroupsPanel.appendChild(hiddenGroupsDisplay);
+            if (settingsBtn) {
+                try { settingsBtn.style.marginLeft = '8px'; } catch(e) {}
+                hiddenGroupsPanel.appendChild(settingsBtn);
+            }
             crumbsRow.appendChild(hiddenGroupsPanel);
 
             // What's New button

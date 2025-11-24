@@ -6,7 +6,7 @@
 .table-auto td:nth-child(1), .accordion-table td:nth-child(1) { width:32px; min-width:26px; max-width:36px; text-align:center; padding:2px 4px; }
 /* B2B depth */
 .table-auto th[data-key="b2bDepth"], .accordion-table th[data-key="b2bDepth"],
-.table-auto td:nth-child(2), .accordion-table td:nth-child(2) { width:55px; min-width:45px; max-width:65px; text-align:center; white-space:nowrap; }
+.table-auto td:nth-child(2), .accordion-table td:nth-child(2) { width:65px; min-width:55px; max-width:85px; text-align:center; white-space:nowrap; }
 /* Offer Code */
 .table-auto th[data-key="offerCode"], .accordion-table th[data-key="offerCode"], .table-auto td:nth-child(3), .accordion-table td:nth-child(3) { width:120px; min-width:100px; max-width:200px; white-space:nowrap; }
 /* Dates / ShipClass / SailDate grouped width rules */

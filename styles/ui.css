@@ -213,6 +213,21 @@
     .b2b-action-btn { width:100%; }
 }
 
+/* Reduce vertical whitespace for B2B columns and titles on narrow/portrait screens */
+@media (max-width: 640px) and (orientation: portrait) {
+    .b2b-visualizer-header { padding:12px 14px; }
+    .b2b-visualizer-title { font-size:16px; }
+    .b2b-visualizer-subtitle { font-size:12px; margin-top:2px; max-width:360px; }
+    .b2b-visualizer-body { padding:12px 14px; gap:12px; grid-template-columns:1fr; max-height:70vh; }
+    .b2b-chain-column, .b2b-option-column { gap:8px; }
+    .b2b-section-title { font-size:13px; gap:6px; }
+    .b2b-section-title small { font-size:10px; }
+    .b2b-chain-card, .b2b-option-card { padding:10px; gap:6px; }
+    .b2b-chain-cards { gap:10px; }
+    .b2b-option-list { gap:10px; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }
+    .b2b-action-btn { padding:10px 12px; font-size:13px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .b2b-pill-button,
     .b2b-option-select,
