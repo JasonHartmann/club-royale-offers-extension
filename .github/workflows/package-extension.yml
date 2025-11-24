@@ -40,3 +40,5 @@ jobs:
             !**/scripts/**
             !tests/**
             !**/tests/**
+            !jest.config.js
+            !**/jest.config.js
