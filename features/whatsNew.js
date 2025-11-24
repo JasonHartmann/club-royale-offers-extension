@@ -16,7 +16,7 @@
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
     const TOUR_REVISION = '5'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
-    const RETRY_LIMIT = 40; // up to ~8s (200ms interval) waiting for elements
+    const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
     function storageGet(key){
         try { return (typeof goboStorageGet === 'function' ? goboStorageGet(key) : localStorage.getItem(key)); } catch(e){ return null; }
@@ -36,6 +36,8 @@
         _tooltip:null,
         _backdrop:null,
         _nav:{},
+        _starting:false,
+        _hasRenderedOnce:false,
         isAlreadyCompleted(){
             return storageGet(STORAGE_KEY) === 'true';
         },
@@ -62,8 +64,11 @@
             this.start(false);
         },
         start(force){
+            // Prevent multiple concurrent starts (page may fire multiple triggers during load).
+            if (this._starting && !force) return;
             if (this._shown && !force) return;
             if (this.isAlreadyCompleted() && !force) return;
+            this._starting = true;
             this._forced = !!force;
             // Ensure offers modal is open (needs #gobo-offers-table)
             if (!document.getElementById('gobo-offers-table')) {
@@ -109,44 +114,50 @@
             this._steps = [
                 {
                     id:'offerCodeLookupExternal',
-                    target:()=> document.querySelector('.offer-code-link') || document.querySelector('th[data-key="offerCode"]') || document.body,
+                    target:()=> document.querySelector('.offer-code-link') || document.querySelector('th[data-key="offerCode"]') || null,
                     title:'Offer Code Lookup Upgrade',
                     body:'Offer Code links now open AJ Goldsman\'s external lookup tool for richer details. First click shows a one-time safety warning.',
                 },
                 {
                     id:'advancedSearchPreview',
-                    target:()=> document.querySelector('button.adv-search-button') || document.querySelector('#advanced-search-panel') || document.body,
-                    title:'Advanced Search (Preview)',
+                    target:()=> document.querySelector('button.adv-search-button') || document.querySelector('#advanced-search-panel') || null,
+                    title:'Advanced Search',
                     body:'Work-in-progress panel to build filters and instantly search for offers. More operators & polish coming—feedback welcome!',
                 },
                 {
                     id:'itineraryLinks',
-                    target:()=> document.querySelector('a.gobo-itinerary-link') || document.querySelector('th[data-key="destination"]') || document.body,
+                    target:()=> document.querySelector('a.gobo-itinerary-link') || document.querySelector('th[data-key="destination"]') || null,
                     title:'Itinerary Details Links',
                     body:'Destination cells now include clickable itinerary links—open one to see route details & more context.',
                 },
                 {
                     id:'offerValueColumn',
-                    target:()=> document.querySelector('th[data-key="offerValue"]') || document.body,
+                    target:()=> document.querySelector('th[data-key="offerValue"]') || null,
                     title:'Offer Value Column',
                     body:'Shows estimated monetary value of the offer (dual occupancy base minus taxes; heuristic for single guest). Usable in sorting, grouping, filtering & CSV export.',
                 }
                 ,
                 {
                     id:'backToBackBuilder',
-                    target:()=> document.querySelector('.b2b-pill-button') || document.querySelector('.b2b-visualizer-overlay') || document.body,
+                    target:()=> document.querySelector('th[data-key="b2bDepth"]') || document.querySelector('.b2b-visualizer-overlay') || null,
                     title:'Back-to-Back Builder',
                     body:'New visual Back-to-Back Builder: open any offer\'s depth pill to explore and assemble chains of connecting sailings. Candidate offers show matching room categories in green for easy scanning.',
                 },
                 {
+                    id:'settingsGear',
+                    target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
+                    title:'Settings & Preferences',
+                    body:'Open the Settings gear to adjust preferences, edit advanced search defaults, and control features like Back-to-Back auto-run.',
+                },
+                {
                     id:'supportCoffee',
-                    target:()=> document.querySelector('.buy-coffee-link') || document.body,
+                    target:()=> document.querySelector('.buy-coffee-link') || null,
                     title:'Support Development',
                     body:'If this extension saves you time, consider a tip (Ko-Fi or Venmo, your choice!). Thank you for helping me keep up with the requests!',
                 },
                 {
                     id:'support-link',
-                    target:()=> document.querySelector('.support-link') || document.body,
+                    target:()=> document.querySelector('.support-link') || null,
                     title:'Get Help',
                     body:'Follow us on Facebook for updates or support!',
                 },
@@ -180,7 +191,10 @@
             focusRing.style.cssText='position:fixed;border:3px solid #fbbf24;box-shadow:0 0 0 4px rgba(251,191,36,.35),0 0 18px 6px rgba(251,191,36,.5);border-radius:10px;transition:all .25s ease;pointer-events:none;';
             const tooltip = document.createElement('div');
             tooltip.className='gobo-whatsnew-tooltip';
-            tooltip.style.cssText='position:fixed;max-width:360px;background:#fff;color:#111;padding:14px 16px;border-radius:10px;font-size:13px;line-height:1.35;box-shadow:0 8px 28px rgba(0,0,0,.35);z-index:2147483647;pointer-events:auto;display:flex;flex-direction:column;gap:10px;';
+            // start hidden to avoid a blank tooltip in the corner before positioning
+            tooltip.style.cssText='position:fixed;max-width:360px;background:#fff;color:#111;padding:14px 16px;border-radius:10px;font-size:13px;line-height:1.35;box-shadow:0 8px 28px rgba(0,0,0,.35);z-index:2147483647;pointer-events:auto;display:flex;flex-direction:column;gap:10px;opacity:0;transform:translateY(-6px);';
+            // enable smooth fade/slide for tooltip
+            tooltip.style.transition = 'opacity .22s ease, transform .22s ease';
             tooltip.innerHTML = '<div class="gobo-whatsnew-title" style="font-weight:700;font-size:14px;"></div><div class="gobo-whatsnew-body"></div>';
             const nav = document.createElement('div');
             nav.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:8px;';
@@ -233,38 +247,119 @@
         },
         _renderStep(){
             const step = this._steps[this._currentStepIndex];
-            if (!step) { this.finish(); return; }
-            // Skip missing targets (rare timing issues)
-            if (!step.target()) { this.next(); return; }
+            if (!step) { this.finish(); return Promise.resolve(false); }
+            // Resolve target; if not present (or deliberately null) signal caller to skip.
+            const target = step && step.target ? step.target() : null;
+            if (!target) { return Promise.resolve(false); }
+
             // Attempt to scroll the target into view so the focus ring and tooltip are visible.
             try {
-                const target = step.target();
-                if (target && typeof target.scrollIntoView === 'function') {
+                if (typeof target.scrollIntoView === 'function') {
                     try {
                         target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
                     } catch (e) {
-                        // Fallback for older browsers
                         target.scrollIntoView();
                     }
                 }
             } catch (e) { /* ignore scroll errors */ }
 
+            // Update tooltip text after scrolling has been initiated so nav clicks
+            // that call next() will perform scroll first (see next()).
             this._tooltip.querySelector('.gobo-whatsnew-title').textContent = step.title;
             this._tooltip.querySelector('.gobo-whatsnew-body').textContent = step.body;
             // Nav button labels
             if (this._currentStepIndex === this._steps.length -1) this._nav.btnNext.textContent='Done'; else this._nav.btnNext.textContent='Next';
             this._nav.btnBack.disabled = this._currentStepIndex===0;
-            // Allow a short delay for the scroll animation to complete before positioning the focus ring.
-            try { setTimeout(()=>this._positionCurrent(), 220); } catch(e) { this._positionCurrent(); }
+            // Position the focus ring immediately (don't introduce artificial delays).
+            try { this._positionCurrent(); } catch(e) { /* ignore */ }
+            // Resolve immediately to let callers proceed; CSS transitions handle visual timing.
+            return Promise.resolve(true);
         },
-        next(){
-            this._currentStepIndex++;
-            if (this._currentStepIndex >= this._steps.length) { this.finish(); return; }
-            this._renderStep();
+        _fadeOutTooltip(){
+            if (!this._tooltip) return Promise.resolve();
+            const el = this._tooltip;
+            try { const cs = getComputedStyle(el); if (cs && cs.opacity === '0') return Promise.resolve(); } catch(e) {}
+            return new Promise((resolve)=>{
+                let done = false;
+                const onEnd = (ev)=>{
+                    if (ev && ev.target !== el) return;
+                    if (done) return; done = true;
+                    el.removeEventListener('transitionend', onEnd);
+                    resolve();
+                };
+                el.addEventListener('transitionend', onEnd);
+                try {
+                    // Kick off the fade/slide in next frame so the transition applies.
+                    requestAnimationFrame(()=>{
+                        try { el.style.opacity = '0'; el.style.transform = 'translateY(-6px)'; } catch(e){}
+                    });
+                } catch(e){ onEnd(); }
+                // Fallback in case transitionend doesn't fire
+                setTimeout(()=>{ if (!done) { done = true; el.removeEventListener('transitionend', onEnd); resolve(); } }, 600);
+            });
         },
-        prev(){
+        _fadeInTooltip(){
+            if (!this._tooltip) return Promise.resolve();
+            const el = this._tooltip;
+            try { const cs = getComputedStyle(el); if (cs && cs.opacity === '1') return Promise.resolve(); } catch(e) {}
+            return new Promise((resolve)=>{
+                let done = false;
+                const onEnd = (ev)=>{
+                    if (ev && ev.target !== el) return;
+                    if (done) return; done = true;
+                    el.removeEventListener('transitionend', onEnd);
+                    resolve();
+                };
+                el.addEventListener('transitionend', onEnd);
+                try {
+                    requestAnimationFrame(()=>{
+                        try { el.style.transform = 'translateY(0)'; el.style.opacity = '1'; } catch(e){}
+                    });
+                } catch(e){ onEnd(); }
+                // Fallback
+                setTimeout(()=>{ if (!done) { done = true; el.removeEventListener('transitionend', onEnd); resolve(); } }, 600);
+            });
+        },
+        async next(){
+            if (this._animating) return;
+            this._animating = true;
+            // Only fade out if we've rendered at least once (avoid initial blank fade)
+            if (this._hasRenderedOnce) await this._fadeOutTooltip();
+
+            // Advance until we find a valid target or run out of steps
+            while (true) {
+                this._currentStepIndex++;
+                if (this._currentStepIndex >= this._steps.length) { this.finish(); this._animating = false; return; }
+                try {
+                    const ok = await this._renderStep();
+                    if (ok) break; // rendered successfully
+                } catch(e) { /* on error, try next */ }
+            }
+
+            // Mark that we've shown a step at least once and fade in tooltip for the rendered step
+            this._hasRenderedOnce = true;
+            await this._fadeInTooltip();
+            this._animating = false;
+        },
+        async prev(){
+            if (this._animating) return;
             if (this._currentStepIndex <=0) return;
-            this._currentStepIndex--; this._renderStep();
+            this._animating = true;
+            if (this._hasRenderedOnce) await this._fadeOutTooltip();
+
+            // Move backwards until a valid step is found or we hit the start
+            while (true) {
+                this._currentStepIndex--;
+                if (this._currentStepIndex < 0) { this._animating = false; return; }
+                try {
+                    const ok = await this._renderStep();
+                    if (ok) break;
+                } catch(e) { /* try previous */ }
+            }
+
+            this._hasRenderedOnce = true;
+            await this._fadeInTooltip();
+            this._animating = false;
         },
         finish(skipped){
             this.markDone();
@@ -277,6 +372,7 @@
             window.removeEventListener('resize', this._repositionHandler);
             window.removeEventListener('scroll', this._repositionHandler, true);
             this._overlay=null; this._focusRing=null; this._tooltip=null; this._backdrop=null;
+            this._starting = false;
         }
     };
 
