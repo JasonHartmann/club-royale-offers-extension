@@ -315,14 +315,15 @@ function computeAdvancedMinPrice(offer, sailing, key, includeTaxes) {
             || (offer?.campaignOffer?.category ? findOfferPriceEntry(priceEntries, offer.campaignOffer.category) : null)
             || (offer?.campaignOffer?.name ? findOfferPriceEntry(priceEntries, offer.campaignOffer.name) : null);
         let offerBaseDual = offerPriceEntry && typeof offerPriceEntry.priceDual === 'number' ? offerPriceEntry.priceDual : null;
+        // Prefer an explicit price entry for the offer's category
         if (offerBaseDual == null && offerBroad) {
-            const fallback = getCategoryMin(offerBroad);
-            if (fallback != null) offerBaseDual = fallback;
+            const sameCatFallback = getCategoryMin(offerBroad);
+            if (sameCatFallback != null) offerBaseDual = sameCatFallback;
         }
-        if (offerBaseDual == null) {
-            const fallback = Object.values(categoryMins).filter(v => v != null).sort((a, b) => a - b)[0];
-            if (fallback != null) offerBaseDual = fallback;
-        }
+        // Do NOT fall back to prices from other categories. If the offer's
+        // category prices are unavailable (sold out or missing), we must not
+        // assume another category's price (e.g., balcony or suite) as the
+        // offer base — return unknown so numeric predicates don't match.
 
         let computedOfferValue = null;
         try {
