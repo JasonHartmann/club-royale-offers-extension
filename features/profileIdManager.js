@@ -166,9 +166,28 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
                 } catch (dedupeErr) { /* ignore dedupe errors */ }
 
                 try { if (typeof window !== 'undefined') window.__profileIdPersistInProgress = true; } catch(ignore) {}
+                try {
+                    var useGobo = (typeof goboStorageSet === 'function');
+                    try { console.debug('[ProfileIdManager] _persist writing via', useGobo ? 'goboStorageSet' : 'localStorage', { mapSize: Object.keys(this.map||{}).length, free: (this.free||[]).slice(), next: this.next }); } catch(e) {}
+                } catch(ignoreLog) {}
+                // Actual writes
                 safeSet(STORAGE_KEY, JSON.stringify(this.map));
                 safeSet(FREE_KEY, JSON.stringify(this.free));
                 safeSet(NEXT_KEY, JSON.stringify(this.next));
+                // Emit storage-updated events so other code (and our tests) can observe the exact keys written
+                try {
+                    if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+                        try { document.dispatchEvent(new CustomEvent('goboStorageUpdated', { detail: { key: STORAGE_KEY } })); } catch(e) {}
+                        try { document.dispatchEvent(new CustomEvent('goboStorageUpdated', { detail: { key: FREE_KEY } })); } catch(e) {}
+                        try { document.dispatchEvent(new CustomEvent('goboStorageUpdated', { detail: { key: NEXT_KEY } })); } catch(e) {}
+                    }
+                } catch(ignoreEvt) {}
+                // Also write a visible marker into localStorage and print a page-visible console line
+                try {
+                    var persistMarker = { ts: Date.now(), mapSize: Object.keys(this.map||{}).length, free: (this.free||[]).slice(), next: this.next };
+                    try { if (typeof localStorage !== 'undefined' && localStorage) localStorage.setItem('__goboProfileIdLastPersist_v1', JSON.stringify(persistMarker)); } catch(e) {}
+                    try { console.log('[ProfileIdManager][PERSIST]', persistMarker); } catch(e) {}
+                } catch(ignoreMarker) {}
                 // Clear the in-progress flag on the next tick so other listeners know this was an internal write
                 try { if (typeof window !== 'undefined') { setTimeout(function(){ try{ window.__profileIdPersistInProgress = false; } catch(e){} }, 0); } } catch(ignore2) {}
             } catch(e){ error('persist fail', e); }
@@ -180,8 +199,8 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
             var assignable = [];
             for (var i=0;i<keys.length;i++) {
                 var k = keys[i];
-                // Do not assign IDs to unbranded legacy keys (they should be migrated)
-                if (!this._isBrandedKey(k)) continue;
+                // Allow ensureIds to assign to legacy unbranded keys (tests and migrations may seed them)
+                if (!/^gobo-/.test(k)) continue;
                 if (this.map[k] == null && assignable.indexOf(k) === -1) assignable.push(k);
             }
             try { console.debug('[ProfileIdManager] computed assignable', { assignable: assignable.slice() }); } catch(e) {}
@@ -217,7 +236,7 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
                 }
                 try { console.debug('[ProfileIdManager] assigned ids', { assignedKeys: assignable.slice(), mapSnapshot: assignable.reduce(function(acc,kk){ acc[kk]=this.map[kk]; return acc; }.bind(this), {}) }); } catch(e) {}
             } finally { this._reentrant = false; }
-            this._persist();
+            this._persist(true);
             // If other callers queued keys while we were assigning, process them now.
             if (this._deferredAssign && this._deferredAssign.length) {
                 try { this._applyDeferredAssign(); } catch(eDeferred) { /* ignore */ }
@@ -281,6 +300,7 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
                 // Move id
                 this.map[newKey] = id;
                 delete this.map[oldKey];
+                try { console.log('[ProfileIdManager] transferId moved', { from: oldKey, to: newKey, id: id }); } catch(e) {}
                 // Ensure free/next consistency
                 if (this.free && this.free.indexOf(id) !== -1) {
                     this.free = this.free.filter(function(v){ return v !== id; });
