@@ -72,6 +72,10 @@
         const initialUsedOfferCodes = Array.isArray(options.initialUsedOfferCodes) ? options.initialUsedOfferCodes.map(c => (c || '').toString().trim()) : [];
         if (!Array.isArray(rows) || !rows.length) return new Map();
 
+        const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+        // If auto-run is disabled, bail early unless the caller explicitly forces computation.
+        if (!autoRunB2B && !options.force) return new Map();
+
         // Normalize and precompute end/start keys
         const meta = rows.map((row, idx) => {
             const { endISO, endPort, startISO, startPort } = computeEndDateAndPort(row);
@@ -115,39 +119,43 @@
         try {
             const allowedCount = meta.filter(m=>m.allow).length;
             const sampleAllowed = meta.filter(m=>m.allow).slice(0,6).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
-            console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
             try {
-                if (typeof filterPredicate === 'function') {
-                    const excluded = meta.filter(m=>!m.allow).slice(0,8).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
-                    console.debug('[B2BUtils] filterPredicate present - excluded sample', { excludedCount: meta.filter(m=>!m.allow).length, excluded });
-                }
-            } catch(e) { console.debug('[B2BUtils] debug predicate snapshot failed', e); }
-            try {
-                // Detect rows that appear in hidden-row stores but are still marked allow===true
-                const hiddenByKey = (key) => {
+                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && autoRunB2B) {
+                    console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
                     try {
-                        if (!key) return false;
-                        if (Filtering && Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;
-                        const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
-                        if (lastState && lastState._hiddenGroupRowKeys instanceof Set && lastState._hiddenGroupRowKeys.has(key)) return true;
-                    } catch(e){}
-                    return false;
-                };
-                const problemRows = [];
-                meta.forEach(m => {
-                    if (!m.allow) return;
-                    try {
-                        const code = (m.offerCode || '').toString().trim().toUpperCase();
-                        const ship = (m.shipCode || m.shipName || '').toString().trim().toUpperCase();
-                        const sail = (m.startISO || '').toString().trim().slice(0,10);
-                        const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                        if (hiddenByKey(key)) {
-                            problemRows.push({ idx: m.idx, offerCode: m.offerCode, startISO: m.startISO, key });
+                        if (typeof filterPredicate === 'function') {
+                            const excluded = meta.filter(m=>!m.allow).slice(0,8).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
+                            console.debug('[B2BUtils] filterPredicate present - excluded sample', { excludedCount: meta.filter(m=>!m.allow).length, excluded });
                         }
-                    } catch(e){}
-                });
-                if (problemRows.length) console.debug('[B2BUtils] Hidden rows included in allowed set (possible missing filterPredicate)', { count: problemRows.length, sample: problemRows.slice(0,8) });
-            } catch(e) { console.debug('[B2BUtils] hidden-row diagnostic failed', e); }
+                    } catch(e) { console.debug('[B2BUtils] debug predicate snapshot failed', e); }
+                    try {
+                        // Detect rows that appear in hidden-row stores but are still marked allow===true
+                        const hiddenByKey = (key) => {
+                            try {
+                                if (!key) return false;
+                                if (Filtering && Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;
+                                const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                                if (lastState && lastState._hiddenGroupRowKeys instanceof Set && lastState._hiddenGroupRowKeys.has(key)) return true;
+                            } catch(e){}
+                            return false;
+                        };
+                        const problemRows = [];
+                        meta.forEach(m => {
+                            if (!m.allow) return;
+                            try {
+                                const code = (m.offerCode || '').toString().trim().toUpperCase();
+                                const ship = (m.shipCode || m.shipName || '').toString().trim().toUpperCase();
+                                const sail = (m.startISO || '').toString().trim().slice(0,10);
+                                const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                                if (hiddenByKey(key)) {
+                                    problemRows.push({ idx: m.idx, offerCode: m.offerCode, startISO: m.startISO, key });
+                                }
+                            } catch(e){}
+                        });
+                        if (problemRows.length) console.debug('[B2BUtils] Hidden rows included in allowed set (possible missing filterPredicate)', { count: problemRows.length, sample: problemRows.slice(0,8) });
+                    } catch(e) { console.debug('[B2BUtils] hidden-row diagnostic failed', e); }
+                }
+            } catch(e) { /* ignore debug errors */ }
         } catch(e){ /* ignore */ }
 
         // Build index: key = `${endISO}|${port}|${shipKey}` -> array of indices sorted by start date desc
@@ -306,7 +314,7 @@
         }
         // Diagnostics: only run heavy sampling when debug enabled to avoid noisy logs and expensive chain computations
         try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && autoRunB2B) {
                 let allowedSeen = 0;
                 // sample less frequently for large sets to avoid heavy cost
                 const sampleInterval = Math.max(100, Math.floor(meta.length / 20));

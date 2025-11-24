@@ -383,10 +383,33 @@
                         // visible selected row at a time.
                         document.querySelectorAll('.gobo-b2b-selected').forEach(el => el.classList.remove('gobo-b2b-selected'));
                         const sel = `[data-b2b-row-id="${escapeSelector(rowId)}"]`;
-                        const el = document.querySelector(sel);
-                        if (el) {
-                            const tr = el.closest && el.closest('tr') ? el.closest('tr') : el;
-                            tr.classList.add('gobo-b2b-selected');
+                        // Add selection to all matching elements (cells and rows) so both
+                        // table and accordion renderings receive the highlight.
+                        try {
+                            const matches = Array.from(document.querySelectorAll(sel));
+                            if (matches && matches.length) {
+                                matches.forEach(m => {
+                                    try {
+                                        // If element is a table cell, prefer adding class to its row as well
+                                        if (m.closest && typeof m.closest === 'function') {
+                                            const tr = m.closest('tr');
+                                            if (tr) tr.classList.add('gobo-b2b-selected');
+                                        }
+                                        // Also add class directly to the matched element so accordion cells
+                                        // or other custom markup receive styling when appropriate.
+                                        m.classList.add('gobo-b2b-selected');
+                                    } catch(e) {}
+                                });
+                            } else {
+                                // Fallback: try single-element query
+                                const el = document.querySelector(sel);
+                                if (el) {
+                                    const tr = el.closest && el.closest('tr') ? el.closest('tr') : el;
+                                    tr.classList.add('gobo-b2b-selected');
+                                }
+                            }
+                        } catch(e) {
+                            try { const el = document.querySelector(sel); if (el) { const tr = el.closest && el.closest('tr') ? el.closest('tr') : el; tr.classList.add('gobo-b2b-selected'); } } catch(e2) {}
                         }
                         // persist selection across renders/overlay lifecycle
                         try { this._selectedRowId = rowId; } catch(e) { /* ignore */ }
@@ -411,10 +434,11 @@
                         try {
                             // Avoid heavy diagnostics for very large row sets unless debugging explicitly enabled
                             const doHeavyDiag = (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) || (Array.isArray(rows) && rows.length <= 500);
-                            if (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeB2BDepth === 'function') {
+                            const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+                            if (autoRunB2B && typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeB2BDepth === 'function') {
                                 depthMap = window.B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
                             }
-                            if (doHeavyDiag && typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestChainFromIndex === 'function') {
+                            if (autoRunB2B && doHeavyDiag && typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestChainFromIndex === 'function') {
                                 longest = window.B2BUtils.computeLongestChainFromIndex(rows, b2bOpts, clickedIdx) || [];
                             }
                         } catch(e) { if (typeof console !== 'undefined' && console.debug) console.debug('[B2B] diagnostic compute error', e); }
@@ -462,7 +486,7 @@
             const headText = document.createElement('div');
             const title = document.createElement('h2');
             title.className = 'b2b-visualizer-title';
-            title.textContent = 'Back-to-Back Tool';
+            title.textContent = 'Back-to-Back Builder';
             const subtitle = document.createElement('p');
             subtitle.className = 'b2b-visualizer-subtitle';
             const rootMeta = this._getMeta(this._activeSession.rootRowId);
@@ -474,7 +498,7 @@
             headText.appendChild(subtitle);
             const closeBtn = document.createElement('button');
             closeBtn.className = 'b2b-visualizer-close';
-            closeBtn.setAttribute('aria-label', 'Close Back-to-Back Tool');
+            closeBtn.setAttribute('aria-label', 'Close Back-to-Back Builder');
             closeBtn.innerHTML = '&times;';
             closeBtn.addEventListener('click', () => this._closeOverlay());
             header.appendChild(headText);
@@ -895,16 +919,23 @@
                 return;
             }
             // Compute B2B depths deterministically per candidate using the same utility that the main table uses.
-            try {
-                if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
-                    try {
+            // This can be expensive for large datasets; respect the user setting to defer computation until requested.
+            const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+            let precomputed = null;
+            let rowIndexById = null;
+            let visibilityCache = null;
+            let rows = null;
+            let filterPredicate = null;
+            let sessionUsedOfferCodes = null;
+            if (autoRunB2B) {
+                try {
+                    if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
                         // Use the authoritative rowMap values so indices align with rowIds
-                        const rows = (this._context && this._context.rowMap) ? Array.from(this._context.rowMap.values()) : (this._context.rows || []);
+                        rows = (this._context && this._context.rowMap) ? Array.from(this._context.rowMap.values()) : (this._context.rows || []);
                         const ctxState = this._context.state || null;
-                        // Build a per-render visibility cache so we only call Filtering.wasRowHidden/isRowHidden once per row
-                        const visibilityCache = new Map();
+                        visibilityCache = new Map();
                         this._visibilityCache = visibilityCache;
-                        const filterPredicate = (row) => {
+                        filterPredicate = (row) => {
                             try {
                                 if (!row) return false;
                                 const rowId = row.sailing && row.sailing.__b2bRowId ? row.sailing.__b2bRowId : null;
@@ -921,11 +952,11 @@
                         };
 
                         // Map rowId -> index for quick lookup
-                        const rowIndexById = new Map();
+                        rowIndexById = new Map();
                         rows.forEach((entry, idx) => { if (entry && entry.sailing && entry.sailing.__b2bRowId) rowIndexById.set(entry.sailing.__b2bRowId, idx); });
 
                         // Precompute the session's used offer codes (excluded globally for the depth calculation)
-                        const sessionUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : [];
+                        sessionUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : [];
 
                         // For each option, compute depth by seeding the computeB2BDepth with the session's used codes plus the candidate's offer code.
                         options.forEach(o => {
@@ -941,9 +972,9 @@
                                 o.depth = (typeof depth === 'number' && Number.isFinite(depth)) ? depth : 1;
                             } catch (inner) { o.depth = 1; }
                         });
-                    } catch (innerErr) { /* fall back to no depths */ }
-                }
-            } catch (e) { /* ignore depth compute errors */ }
+                    }
+                } catch (e) { /* ignore depth compute errors */ }
+            }
 
             // Sort options by descendant count (depth-1) descending, then by start date (asc)
             options.sort((a, b) => {
@@ -1096,7 +1127,13 @@
                                 if (innerText.trim() === String(childCount)) depthDiv.textContent = `${childCount} more >>`;
                             } catch(e) {}
                         } else {
-                            depthDiv.textContent = `${childCount} more >>`;
+                            // If auto-run is disabled, show a deferred action prompt instead of computing now
+                            if (!autoRunB2B) {
+                                depthDiv.textContent = 'Run >>';
+                                depthDiv.style.fontWeight = '700';
+                            } else {
+                                depthDiv.textContent = `${childCount} more >>`;
+                            }
                         }
                         // Also expose descendant depth in tooltip for context
                         try { depthDiv.setAttribute('title', `${descendantDepth} total depth including descendants`); } catch(e){}
@@ -1117,7 +1154,7 @@
                                 const sampleImmed = immedList.slice(0,4);
                                 let sampleDesc = [];
                                 try {
-                                    if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
+                                    if (autoRunB2B && window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
                                         const rows = this._context.rows || [];
                                         const initialUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : [];
                                         const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate: null, initialUsedOfferCodes };
@@ -1136,6 +1173,49 @@
                     } catch(e) {}
                     // place pill inside the select button to the right
                     selectBtn.appendChild(depthDiv);
+                    // Adjust selection behavior: if auto-run disabled, compute for this option on demand
+                    const originalHandler = () => this._selectOption(opt.rowId);
+                    if (!autoRunB2B) {
+                        selectBtn.addEventListener('click', async () => {
+                            try {
+                                // Recompute depth for this candidate only
+                                if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function') {
+                                    try {
+                                        // Lazily build rows/filterPredicate/sessionUsedOfferCodes if not precomputed
+                                        const rowsLocal = rows || ((this._context && this._context.rowMap) ? Array.from(this._context.rowMap.values()) : (this._context.rows || []));
+                                        const ctxState = this._context.state || null;
+                                        const visibilityLocal = visibilityCache || new Map();
+                                        const filterPredLocal = filterPredicate || ((row) => { try { if (!row) return false; if (window.Filtering && typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, ctxState); if (window.Filtering && typeof Filtering.isRowHidden === 'function') return !Filtering.isRowHidden(row, ctxState); return true; } catch(e){ return true; } });
+                                        const sessionCodes = sessionUsedOfferCodes || ((this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : []);
+                                        const optMeta = opt.meta || this._getMeta(opt.rowId) || {};
+                                        const candidateOffer = optMeta.offerCode || null;
+                                        const initialUsed = sessionCodes.slice(); if (candidateOffer) initialUsed.push(candidateOffer);
+                                        const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate: filterPredLocal, initialUsedOfferCodes: initialUsed };
+                                        // This is a user-initiated lazy compute; force it even when auto-run is off
+                                        b2bOpts.force = true;
+                                        const depthsMap = B2BUtils.computeB2BDepth(rowsLocal, b2bOpts) || new Map();
+                                        // map row id -> index
+                                        const rowIdxMap = new Map(); rowsLocal.forEach((entry, idx) => { if (entry && entry.sailing && entry.sailing.__b2bRowId) rowIdxMap.set(entry.sailing.__b2bRowId, idx); });
+                                        const idx = rowIdxMap.get(opt.rowId);
+                                        const depth = (typeof idx === 'number' && depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
+                                        const descendant = (typeof depth === 'number' && Number.isFinite(depth)) ? depth : 1;
+                                        const childCountLocal = Math.max(0, Number(descendant) - 1);
+                                        if (childCountLocal > 0) {
+                                            depthDiv.textContent = `${childCountLocal} more >>`;
+                                            depthDiv.style.fontWeight = '';
+                                        } else {
+                                            depthDiv.textContent = 'No more';
+                                            depthDiv.classList.add('b2b-depth-pill-empty');
+                                        }
+                                    } catch(e) {}
+                                }
+                            } catch(e) {}
+                            // proceed with original selection behavior
+                            originalHandler();
+                        }, { once: true });
+                    } else {
+                        selectBtn.addEventListener('click', originalHandler);
+                    }
                 } catch (e) { /* ignore depth badge errors */ }
                 card.appendChild(metaBlock);
                 card.appendChild(selectBtn);

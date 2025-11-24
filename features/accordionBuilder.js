@@ -248,20 +248,6 @@ const AccordionBuilder = {
                     th.innerHTML = `<span>${headerObj.label}</span>`;
                     tr.appendChild(th);
                     return; // skip adding listeners
-                } else if (headerObj.key === 'b2bDepth') {
-                    // No grouping UI; allow sorting by clicking label only
-                    th.innerHTML = `<span class="sort-label cursor-pointer">${headerObj.label}</span>`;
-                    const sortLabel = th.querySelector('.sort-label');
-                    sortLabel.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const currentOrder = state.currentSortOrder || 'desc';
-                        const nextOrder = (state.currentSortColumn === 'b2bDepth' && currentOrder === 'desc') ? 'asc' : 'desc';
-                        state.currentSortColumn = 'b2bDepth';
-                        state.currentSortOrder = nextOrder;
-                        App.TableRenderer.updateView(state);
-                    });
-                    tr.appendChild(th);
-                    return;
                 }
                 const groupIcon = document.createElement('span');
                 groupIcon.className = 'group-icon';
@@ -350,9 +336,12 @@ const AccordionBuilder = {
                     const isExpiringSoon = expDate && new Date(expDate).getTime() === soonestExpDate;
                     const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
                     try {
-                        if (window.BackToBackTool && BackToBackTool._selectedRowId && row.dataset && row.dataset.b2bRowId && String(row.dataset.b2bRowId) === String(BackToBackTool._selectedRowId)) {
-                            row.classList.add('gobo-b2b-selected');
-                        }
+                        try {
+                            const viewingFavorites = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+                            if (!viewingFavorites && window.BackToBackTool && BackToBackTool._selectedRowId && row.dataset && row.dataset.b2bRowId && String(row.dataset.b2bRowId) === String(BackToBackTool._selectedRowId)) {
+                                row.classList.add('gobo-b2b-selected');
+                            }
+                        } catch(eInner) { /* ignore */ }
                     } catch(e) { /* ignore */ }
                     try {
                         const cell = row.querySelector('.b2b-depth-cell');

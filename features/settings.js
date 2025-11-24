@@ -20,34 +20,90 @@ const Settings = {
     },
     openSettingsModal() {
         try {
-            // Create backdrop/container using Modal utilities where available
-            const container = Modal.createModalContainer();
-            container.id = 'gobo-settings-modal';
+            // Create overlay/backdrop using B2B overlay pattern so modal centers
+            const overlay = document.createElement('div');
+            overlay.className = 'b2b-visualizer-overlay';
+            overlay.id = 'gobo-settings-modal';
             const backdrop = Modal.createBackdrop();
-            // Build content
-            const content = document.createElement('div');
-            content.className = 'gobo-settings-content';
-            content.style.cssText = 'background:#fff; max-width:600px; margin:40px auto; padding:16px; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,0.3);';
+            // Build modal using the B2B modal classes so the header spans full width
+            const modal = document.createElement('div');
+            modal.className = 'b2b-visualizer-modal';
 
-            const title = document.createElement('h2'); title.textContent = 'Settings'; title.style.marginTop = '0';
-            content.appendChild(title);
+            // Header: match the Back-to-Back Builder title bar styling for consistency
+            const header = document.createElement('div');
+            header.className = 'b2b-visualizer-header';
+            const headText = document.createElement('div');
+            const title = document.createElement('h2');
+            title.className = 'b2b-visualizer-title';
+            title.textContent = 'Settings';
+            const subtitle = document.createElement('p');
+            subtitle.className = 'b2b-visualizer-subtitle';
+            subtitle.textContent = 'Configure display and filter behavior for the offers table.';
+            headText.appendChild(title);
+            headText.appendChild(subtitle);
+            const closeBtnHeader = document.createElement('button');
+            closeBtnHeader.className = 'b2b-visualizer-close';
+            closeBtnHeader.setAttribute('aria-label', 'Close Settings');
+            closeBtnHeader.innerHTML = '&times;';
+            closeBtnHeader.addEventListener('click', () => Modal.closeModal(overlay, backdrop, []));
+            header.appendChild(headText);
+            header.appendChild(closeBtnHeader);
+            modal.appendChild(header);
 
-            // Include Side-by-Sides setting
+            // Body: single-column variant of the B2B body so content lays out nicely
+            const body = document.createElement('div');
+            body.className = 'b2b-visualizer-body';
+            body.style.gridTemplateColumns = '1fr';
+            body.style.padding = '20px 28px';
+            body.style.maxHeight = '70vh';
+            body.style.overflow = 'auto';
+
+            // Include 
+            // `Side-by-Sides setting
+            // --- Auto-run Back-to-Back Calculations setting ---
+            let settingsStore = {};
+            try { settingsStore = (window.App && App.SettingsStore) ? App.SettingsStore.getSettings() : {}; } catch(e) { settingsStore = {}; }
+            const autoRunDefault = (window.App && App.SettingsStore) ? App.SettingsStore.getAutoRunB2B() : (settingsStore.autoRunB2B !== undefined ? !!settingsStore.autoRunB2B : true);
+            const autoArea = document.createElement('div');
+            autoArea.className = 'gobo-setting-area';
+            autoArea.style.cssText = 'margin-bottom:12px;';
+            const autoLabel = document.createElement('label'); autoLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
+            const autoCb = document.createElement('input'); autoCb.type = 'checkbox'; autoCb.id = 'gobo-setting-b2b-auto'; autoCb.checked = autoRunDefault;
+            autoCb.addEventListener('change', () => {
+                try {
+                    const val = !!autoCb.checked;
+                    try { if (window.App && App.SettingsStore && typeof App.SettingsStore.setAutoRunB2B === 'function') App.SettingsStore.setAutoRunB2B(val); else {
+                        settingsStore.autoRunB2B = val;
+                        if (typeof goboStorageSet === 'function') goboStorageSet('goboSettings', JSON.stringify(settingsStore)); else localStorage.setItem('goboSettings', JSON.stringify(settingsStore));
+                        if (window.App) App.BackToBackAutoRun = val;
+                    } } catch(e){}
+                } catch(e){}
+            });
+            const autoTitle = document.createElement('strong'); autoTitle.textContent = 'Auto-run Back-to-Back Builder Calculations';
+            autoLabel.appendChild(autoCb); autoLabel.appendChild(autoTitle);
+            const autoDesc = document.createElement('div'); autoDesc.style.cssText = 'font-size:12px; color:#444; margin-left:28px;';
+            autoDesc.textContent = 'When enabled, the extension will automatically compute back-to-back sailing chains for the Back-to-Back Builder. Disable this to avoid expensive calculations on large datasets.';
+            autoArea.appendChild(autoLabel); autoArea.appendChild(autoDesc);
+            body.appendChild(autoArea);
             const sbsArea = document.createElement('div');
             sbsArea.className = 'gobo-setting-area';
             sbsArea.style.cssText = 'margin-bottom:12px;';
             const sbsLabel = document.createElement('label'); sbsLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
             const sbsCb = document.createElement('input'); sbsCb.type = 'checkbox'; sbsCb.id = 'gobo-setting-sbs';
-            try { sbsCb.checked = (App && App.TableRenderer && typeof App.TableRenderer.getSideBySidePreference === 'function') ? App.TableRenderer.getSideBySidePreference() : true; } catch(e){ sbsCb.checked = true; }
+            try { sbsCb.checked = (App && App.SettingsStore && typeof App.SettingsStore.getIncludeSideBySide === 'function') ? App.SettingsStore.getIncludeSideBySide() : ((App && App.TableRenderer && typeof App.TableRenderer.getSideBySidePreference === 'function') ? App.TableRenderer.getSideBySidePreference() : true); } catch(e){ sbsCb.checked = true; }
             sbsCb.addEventListener('change', () => {
-                try { if (App && App.TableRenderer && typeof App.TableRenderer.setSideBySidePreference === 'function') App.TableRenderer.setSideBySidePreference(!!sbsCb.checked); } catch(e){}
+                try {
+                    const v = !!sbsCb.checked;
+                    if (App && App.SettingsStore && typeof App.SettingsStore.setIncludeSideBySide === 'function') App.SettingsStore.setIncludeSideBySide(v);
+                    else if (App && App.TableRenderer && typeof App.TableRenderer.setSideBySidePreference === 'function') App.TableRenderer.setSideBySidePreference(v);
+                } catch(e){}
             });
             const sbsTitle = document.createElement('strong'); sbsTitle.textContent = 'Include Side-by-Sides';
             sbsLabel.appendChild(sbsCb); sbsLabel.appendChild(sbsTitle);
             const sbsDesc = document.createElement('div'); sbsDesc.style.cssText = 'font-size:12px; color:#444; margin-left:28px;';
-            sbsDesc.textContent = 'When enabled, side-by-side offers (combined or comparison rows) are included in the table. Disable to hide those rows from view.';
+            sbsDesc.textContent = 'When enabled, side-by-side offers (combined or comparison rows) are included in Back-to-Back Builder calculations. Disable to hide those rows from view.';
             sbsArea.appendChild(sbsLabel); sbsArea.appendChild(sbsDesc);
-            content.appendChild(sbsArea);
+            body.appendChild(sbsArea);
 
             // Include Taxes & Fees in Price Filters setting
             const tAndFArea = document.createElement('div');
@@ -55,13 +111,17 @@ const Settings = {
             tAndFArea.style.cssText = 'margin-bottom:12px;';
             const tAndFLabel = document.createElement('label'); tAndFLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
             const tAndFCb = document.createElement('input'); tAndFCb.type = 'checkbox'; tAndFCb.id = 'gobo-setting-tandf';
-            try { tAndFCb.checked = (App && App.AdvancedSearch && App.AdvancedSearch.ensureState) ? (App.AdvancedSearch.ensureState(App.AdvancedSearch._lastState) && App.AdvancedSearch._lastState && App.AdvancedSearch._lastState.advancedSearch && App.AdvancedSearch._lastState.advancedSearch.includeTaxesAndFeesInPriceFilters !== false) : true; } catch(e){ tAndFCb.checked = true; }
+            try { tAndFCb.checked = (App && App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function') ? App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters() : ((App && App.AdvancedSearch && App.AdvancedSearch.ensureState) ? (App.AdvancedSearch.ensureState(App.AdvancedSearch._lastState) && App.AdvancedSearch._lastState && App.AdvancedSearch._lastState.advancedSearch && App.AdvancedSearch._lastState.advancedSearch.includeTaxesAndFeesInPriceFilters !== false) : true); } catch(e){ tAndFCb.checked = true; }
             tAndFCb.addEventListener('change', () => {
                 try {
-                    // Update the live state if available
+                    const v = !!tAndFCb.checked;
+                    if (App && App.SettingsStore && typeof App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters === 'function') {
+                        App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters(v);
+                    }
+                    // Update the live AdvancedSearch state if available
                     const state = App && App.AdvancedSearch && App.AdvancedSearch._lastState ? App.AdvancedSearch._lastState : null;
                     if (state && state.advancedSearch) {
-                        state.advancedSearch.includeTaxesAndFeesInPriceFilters = !!tAndFCb.checked;
+                        state.advancedSearch.includeTaxesAndFeesInPriceFilters = v;
                         try { App.AdvancedSearch.debouncedPersist(state); } catch(e){}
                         try { App.AdvancedSearch.lightRefresh(state, { showSpinner: true }); } catch(e){}
                     }
@@ -72,19 +132,21 @@ const Settings = {
             const tAndFDesc = document.createElement('div'); tAndFDesc.style.cssText = 'font-size:12px; color:#444; margin-left:28px;';
             tAndFDesc.textContent = 'If enabled, price-based filters will include Taxes & Fees when calculating matches and suggestions. Disable to use base prices only.';
             tAndFArea.appendChild(tAndFLabel); tAndFArea.appendChild(tAndFDesc);
-            content.appendChild(tAndFArea);
+            body.appendChild(tAndFArea);
 
-            // Close button
-            const closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.className = 'gobo-settings-close'; closeBtn.textContent = 'Close';
-            closeBtn.style.cssText = 'margin-top:8px; padding:8px 12px;';
-            closeBtn.addEventListener('click', () => Modal.closeModal(container, backdrop, []));
-            content.appendChild(closeBtn);
+            // Footer-style close is not needed; header close button is used above
 
-            container.appendChild(content);
+            // Finish building modal and append to overlay/backdrop so it's centered
+            modal.appendChild(body);
+            overlay.appendChild(modal);
+            // Hide overlay until content is rendered to avoid flash
+            overlay.style.visibility = 'hidden';
             document.body.appendChild(backdrop);
-            document.body.appendChild(container);
+            document.body.appendChild(overlay);
             // allow ESC to close using Modal handlers
-            Modal._container = container; Modal._backdrop = backdrop; Modal._escapeHandler = Modal.handleEscapeKey.bind(Modal);
+            Modal._container = overlay; Modal._backdrop = backdrop; Modal._escapeHandler = Modal.handleEscapeKey.bind(Modal);
+            // Reveal overlay after a tick so layout can settle (mirrors B2B behavior)
+            setTimeout(() => { try { overlay.style.visibility = ''; } catch(e){} }, 0);
             document.addEventListener('keydown', Modal._escapeHandler);
         } catch (e) { console.warn('openSettingsModal error', e); }
     }

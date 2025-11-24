@@ -62,6 +62,7 @@
         "features/offerCodeLookup.js",
         "features/filtering.js",
         "features/whatsNew.js",
+        "features/settings.js",
         "features/advancedSearch.js",
         "features/advancedSearchAddField.js",
         "features/backToBackTool.js",

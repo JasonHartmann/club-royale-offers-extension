@@ -131,13 +131,16 @@
             <td class="border p-2">${guestsText}</td>
             <td class="border p-2">${perksStr}</td>
         `;
-        try {
-            // If BackToBackTool has a persisted selection, apply persistent highlight
             try {
-                if (window.BackToBackTool && BackToBackTool._selectedRowId && row.dataset && row.dataset.b2bRowId && String(row.dataset.b2bRowId) === String(BackToBackTool._selectedRowId)) {
-                    row.classList.add('gobo-b2b-selected');
-                }
-            } catch(e) { /* ignore */ }
+                // If BackToBackTool has a persisted selection, apply persistent highlight
+                // Do NOT apply this highlight when viewing the Favorites pseudo-profile
+                // (it produces a persistent highlight that doesn't make sense in that view).
+                try {
+                    const viewingFavorites = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+                    if (!viewingFavorites && window.BackToBackTool && BackToBackTool._selectedRowId && row.dataset && row.dataset.b2bRowId && String(row.dataset.b2bRowId) === String(BackToBackTool._selectedRowId)) {
+                        row.classList.add('gobo-b2b-selected');
+                    }
+                } catch(e) { /* ignore */ }
             const b2bCell = row.querySelector('.b2b-depth-cell');
             if (b2bCell) {
                 const rowId = sailing && sailing.__b2bRowId;

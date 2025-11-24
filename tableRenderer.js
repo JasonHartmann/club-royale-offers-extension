@@ -103,24 +103,25 @@ const TableRenderer = {
     },
     getSideBySidePreference() {
         if (typeof this._sideBySidePreferenceCache === 'boolean') return this._sideBySidePreferenceCache;
-        let pref = true;
         try {
-            const key = this.SIDE_BY_SIDE_PREF_KEY;
-            const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
-            if (raw !== null && raw !== undefined) pref = raw === 'true';
-        } catch (e) {
-            console.warn('[TableRenderer] Unable to read side-by-side preference; defaulting to enabled', e);
+            const storePref = (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getIncludeSideBySide === 'function') ? App.SettingsStore.getIncludeSideBySide() : true;
+            this._sideBySidePreferenceCache = !!storePref;
+            return this._sideBySidePreferenceCache;
+        } catch(e) {
+            try { this._sideBySidePreferenceCache = true; } catch(_) {}
+            return true;
         }
-        this._sideBySidePreferenceCache = pref;
-        return pref;
     },
     setSideBySidePreference(value) {
         const boolVal = !!value;
         this._sideBySidePreferenceCache = boolVal;
         try {
-            const key = this.SIDE_BY_SIDE_PREF_KEY;
-            if (typeof goboStorageSet === 'function') goboStorageSet(key, String(boolVal));
-            else localStorage.setItem(key, String(boolVal));
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.setIncludeSideBySide === 'function') {
+                App.SettingsStore.setIncludeSideBySide(boolVal);
+            } else {
+                const key = this.SIDE_BY_SIDE_PREF_KEY;
+                if (typeof goboStorageSet === 'function') goboStorageSet(key, String(boolVal)); else localStorage.setItem(key, String(boolVal));
+            }
         } catch (e) {
             console.warn('[TableRenderer] Unable to persist side-by-side preference', e);
         }
@@ -230,6 +231,9 @@ const TableRenderer = {
     },
     _computeB2BDepths(rows, options) {
         if (!Array.isArray(rows) || !rows.length) return null;
+        // Respect user preference to avoid heavy background B2B computations
+        const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+        if (!autoRunB2B) return null;
         if (!window.B2BUtils || typeof B2BUtils.computeB2BDepth !== 'function') return null;
         // Use state switch token to memoize recent computation to avoid duplicate work
         const stateToken = (this.lastState && this.lastState._switchToken) ? this.lastState._switchToken : null;
@@ -288,6 +292,9 @@ const TableRenderer = {
                 } catch(e) { console.debug('[TableRenderer] _ensureRowsHaveB2BDepth debug failed', e); }
             }
         } catch(e) {}
+        // Avoid starting background computations when the user disabled auto-run
+        const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+        if (!autoRunB2B) return null;
         return this._computeB2BDepths(rows, options);
     },
     _normalizeB2BDepthValue(depth) {
@@ -1056,7 +1063,8 @@ const TableRenderer = {
         };
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         const allowSideBySidePref = (typeof this.getSideBySidePreference === 'function') ? this.getSideBySidePreference() : true;
-        if (window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
+        const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+        if (autoRunB2B && window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
             try {
                 // Exclude hidden groups from B2B context — hidden groups should not be visible to B2B
                 // Use the already-filtered originalOffers (visible rows) as the base for B2B context
@@ -1234,7 +1242,10 @@ const TableRenderer = {
                         try { document.addEventListener('tableChunkRendered', chunkHandler); } catch(e) { /* ignore */ }
                     }
                 } catch(e) { /* ignore incremental render detection errors */ }
-                console.debug('[B2B] Depth computation complete', { rows: rows.length });
+                try {
+                    const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
+                    if (autoRunB2B) console.debug('[B2B] Depth computation complete', { rows: rows.length });
+                } catch(e) {}
             } catch(e) { /* ignore B2B calculation errors so table still renders */ }
             if (!table.contains(thead)) table.appendChild(thead);
             if (!table.contains(tbody)) table.appendChild(tbody);

@@ -66,10 +66,14 @@ const AdvancedSearch = {
             __advSession.setItem(key, JSON.stringify(payload));
             // Also persist a global unbranded flag for includeTaxes so it's truly global across brands
             try {
-                // Persist under a global unbranded key to avoid profile migration logic
-                const globalFlagKey = 'advPriceIncludeTF';
-                const flagVal = payload.includeTaxesAndFeesInPriceFilters ? '1' : '0';
-                if (typeof goboStorageSet === 'function') goboStorageSet(globalFlagKey, flagVal); else localStorage.setItem(globalFlagKey, flagVal);
+                // Persist under the unified SettingsStore when available
+                if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters === 'function') {
+                    App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters(!!payload.includeTaxesAndFeesInPriceFilters);
+                } else {
+                    const globalFlagKey = 'advPriceIncludeTF';
+                    const flagVal = payload.includeTaxesAndFeesInPriceFilters ? '1' : '0';
+                    if (typeof goboStorageSet === 'function') goboStorageSet(globalFlagKey, flagVal); else localStorage.setItem(globalFlagKey, flagVal);
+                }
             } catch(e) { /* ignore */ }
         } catch (e) { /* ignore persistence errors */ }
     },
@@ -93,18 +97,28 @@ const AdvancedSearch = {
             }
             // Restore includeTaxes flag (default true)
             try {
-                // Prefer global unbranded flag if present in extension storage
-                // Prefer explicit global key first
                 const globalFlagKey = 'advPriceIncludeTF';
-                let globalRaw = null;
+                let resolved = undefined;
+
                 try {
-                    if (typeof goboStorageGet === 'function') globalRaw = goboStorageGet(globalFlagKey);
-                    else if (typeof localStorage !== 'undefined') globalRaw = localStorage.getItem(globalFlagKey);
-                } catch(e) { globalRaw = null; }
-                if (globalRaw === '1' || globalRaw === '0') {
-                    state.advancedSearch.includeTaxesAndFeesInPriceFilters = (globalRaw === '1');
-                } else {
-                    // Backwards compatibility: look for any branded legacy key like gobo-*-advPriceIncludeTF and migrate
+                    if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function') {
+                        resolved = !!App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters();
+                    }
+                } catch (e) { /* ignore */ }
+
+                if (typeof resolved === 'undefined') {
+                    try {
+                        let globalRaw = null;
+                        if (typeof goboStorageGet === 'function') globalRaw = goboStorageGet(globalFlagKey);
+                        else if (typeof localStorage !== 'undefined') globalRaw = localStorage.getItem(globalFlagKey);
+                        if (globalRaw === '1' || globalRaw === '0') {
+                            resolved = (globalRaw === '1');
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+
+                // If still unresolved, scan legacy branded keys and migrate the first valid one we find
+                if (typeof resolved === 'undefined') {
                     try {
                         const allKeys = (typeof GoboStore !== 'undefined' && GoboStore && typeof GoboStore.listKeys === 'function') ? GoboStore.listKeys() : (typeof localStorage !== 'undefined' ? Object.keys(localStorage) : []);
                         for (let i = 0; i < allKeys.length; i++) {
@@ -114,22 +128,26 @@ const AdvancedSearch = {
                                 try {
                                     const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(k) : localStorage.getItem(k);
                                     if (raw === '1' || raw === '0') {
-                                        state.advancedSearch.includeTaxesAndFeesInPriceFilters = (raw === '1');
-                                        // migrate to global key and remove legacy
-                                        if (typeof goboStorageSet === 'function') goboStorageSet(globalFlagKey, raw); else localStorage.setItem(globalFlagKey, raw);
+                                        resolved = (raw === '1');
+                                        // migrate to unified SettingsStore or global key and remove legacy
+                                        try {
+                                            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters === 'function') {
+                                                App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters(resolved);
+                                            } else if (typeof goboStorageSet === 'function') goboStorageSet(globalFlagKey, raw); else localStorage.setItem(globalFlagKey, raw);
+                                        } catch (e) { /* ignore migration write errors */ }
                                         try { if (typeof goboStorageRemove === 'function') goboStorageRemove(k); else localStorage.removeItem(k); } catch(e) {}
                                         break;
                                     }
                                 } catch(e) { /* ignore single-key errors */ }
                             }
                         }
-                    } catch(e) {
-                        state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
-                    }
-                    // If still unset, fall back to parsed payload
-                    if (typeof state.advancedSearch.includeTaxesAndFeesInPriceFilters === 'undefined') state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
+                    } catch (e) { /* ignore listing errors */ }
                 }
-            } catch(e) {
+
+                // Final fallback to the parsed payload (default true)
+                if (typeof resolved === 'undefined') resolved = parsed.includeTaxesAndFeesInPriceFilters !== false;
+                state.advancedSearch.includeTaxesAndFeesInPriceFilters = !!resolved;
+            } catch (e) {
                 state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
             }
             const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range', 'less than', 'greater than']);

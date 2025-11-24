@@ -143,7 +143,7 @@
   font-weight: 700 !important;
 }
 
-/* Persistent highlight for a row selected by Back-to-Back tool */
+/* Persistent highlight for a row selected by Back-to-Back Builder */
 .gobo-b2b-selected {
   animation: gobo-b2b-flash 1s ease-in-out;
   background: rgba(255,245,170,0.9) !important;
@@ -161,4 +161,13 @@
   .gobo-itinerary-table tbody tr { border-bottom:1px solid #e5e7eb; }
   .gobo-itinerary-table tbody tr:last-child { border-bottom:none; }
   .gobo-itinerary-refresh { right: 44px; } /* slightly closer on small screens */
+}
+
+/* Ensure selected state is visible for accordion table rows and individual cells */
+.accordion-table tr.gobo-b2b-selected td,
+.accordion-table tr.gobo-b2b-selected th,
+.accordion-table td.gobo-b2b-selected,
+.accordion-table th.gobo-b2b-selected {
+  background: rgba(255,245,170,0.95) !important;
+  box-shadow: none !important;
 }

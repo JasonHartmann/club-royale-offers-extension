@@ -155,6 +155,32 @@
     color: #475569;
     font-weight:600;
 }
+
+/* When a row is highlighted with .gobo-b2b-selected the parent background can tint
+   translucent child pills. Force the pills to keep their intended backgrounds/colors. */
+.accordion-table tr.gobo-b2b-selected .b2b-chevrons,
+.accordion-table td.gobo-b2b-selected .b2b-chevrons,
+.gobo-b2b-selected .b2b-chevrons {
+    background: linear-gradient(90deg,#0c4ea3 0%,#1f7edc 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 3px 8px rgba(8,52,99,0.25) !important;
+}
+
+.accordion-table tr.gobo-b2b-selected .b2b-depth-pill,
+.accordion-table td.gobo-b2b-selected .b2b-depth-pill,
+.gobo-b2b-selected .b2b-depth-pill {
+    /* Keep option pills readable (white translucent on blue backgrounds) */
+    background: rgba(255,255,255,0.12) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+}
+
+.accordion-table tr.gobo-b2b-selected .b2b-chain-id-badge,
+.gobo-b2b-selected .b2b-chain-id-badge {
+    background: #eef2ff !important;
+    color: #3730a3 !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+}
 .b2b-center-hint { font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; }
 .b2b-banner { border-radius:12px; padding:10px 14px; background:#e2e8f0; color:#0f172a; font-size:12px; display:flex; align-items:center; gap:10px; }
 .b2b-banner-status { font-weight:600; }
@@ -208,6 +234,18 @@
 /* Offer rows highlighting */
 .newest-offer-row { background:#DFD !important; }
 .expiring-soon-row { background:#FDD !important; }
+
+/* Group icon interactivity for headers (table + accordion) */
+.group-icon { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:6px; cursor:pointer; opacity:0.95; transition:background .12s, transform .08s, box-shadow .12s; }
+.group-icon svg { display:block; width:16px; height:16px; }
+.group-icon:hover { background: rgba(2,6,23,0.06); transform: translateY(-1px); box-shadow: 0 6px 12px rgba(2,6,23,0.06); }
+.group-icon:active { transform: translateY(0); box-shadow: none; }
+.group-icon:focus-visible { outline: 2px solid rgba(59,130,246,0.9); outline-offset:2px; }
+
+/* Slightly larger hit area on small screens */
+@media (max-width:640px) {
+    .group-icon { width:24px; height:24px; border-radius:8px; }
+}
 /* Updated: tier filter now inline inside breadcrumb */
 .tier-filter-toggle { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; background:rgba(255,255,255,0.9); padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.08); font-weight:500; }
 /* Expanded breadcrumb layout variant */
