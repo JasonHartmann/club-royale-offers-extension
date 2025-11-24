@@ -39,6 +39,9 @@
 .b2b-pill-button { border:none; cursor:pointer; transition:transform .15s, box-shadow .15s; }
 .b2b-pill-button:focus-visible { outline:2px solid rgba(255,255,255,0.85); outline-offset:2px; }
 .b2b-pill-button:hover { transform:translateY(-1px); box-shadow:0 6px 14px rgba(9,45,92,0.35); }
+/* Ensure pill areas show interactive cursor across table and accordion views */
+.b2b-depth-cell-action, .b2b-depth-cell-action .b2b-chevrons, .b2b-chevrons { cursor: pointer; }
+.b2b-depth-cell-action:hover .b2b-chevrons, .b2b-chevrons:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(9,45,92,0.28); }
 /* Ensure the inner chevrons show interactive cues only when the cell is actually bound */
 .b2b-depth-cell-action[data-b2b-cell-bound="true"] { cursor: pointer; pointer-events: auto; }
 .b2b-depth-cell-action[data-b2b-cell-bound="true"] .b2b-chevrons,

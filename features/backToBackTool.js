@@ -342,6 +342,52 @@
                 document.addEventListener('pointerdown', dbg, true);
                 document.addEventListener('click', autoOpen, true);
                 document.addEventListener('pointerdown', autoOpen, true);
+                // Also install a delegated handler to ensure clicks on B2B pills
+                // from table or accordion views open the builder regardless of
+                // how the DOM was constructed by the page.
+                const delegatedHandler = (ev) => {
+                    try {
+                        const t = ev.target;
+                        const pill = t.closest && t.closest('.b2b-chevrons');
+                        const cell = t.closest && t.closest('.b2b-depth-cell');
+                        const el = pill || cell;
+                        if (!el) return;
+                        // If event came from a nested interactive element (like a button inside),
+                        // allow native handling but also attempt to open B2B.
+                        let rowId = el.dataset && el.dataset.b2bRowId ? el.dataset.b2bRowId : null;
+                        if (!rowId) {
+                            const tr = el.closest && el.closest('tr');
+                            if (tr && tr.dataset && tr.dataset.b2bRowId) rowId = tr.dataset.b2bRowId;
+                        }
+                        if (!rowId) return;
+                        if (window.BackToBackTool && typeof BackToBackTool.openByRowId === 'function') {
+                            try { BackToBackTool.openByRowId(rowId); } catch(e) { /* ignore open errors */ }
+                        }
+                    } catch(e) {}
+                };
+                document.addEventListener('click', delegatedHandler, false);
+                document.addEventListener('keydown', (ev) => {
+                    try {
+                        if (ev.key === 'Enter' || ev.key === ' ') {
+                            const t = ev.target;
+                            const pill = t.closest && t.closest('.b2b-chevrons');
+                            const cell = t.closest && t.closest('.b2b-depth-cell');
+                            const el = pill || cell;
+                            if (el) {
+                                ev.preventDefault();
+                                ev.stopPropagation();
+                                let rowId = el.dataset && el.dataset.b2bRowId ? el.dataset.b2bRowId : null;
+                                if (!rowId) {
+                                    const tr = el.closest && el.closest('tr');
+                                    if (tr && tr.dataset && tr.dataset.b2bRowId) rowId = tr.dataset.b2bRowId;
+                                }
+                                if (rowId && window.BackToBackTool && typeof BackToBackTool.openByRowId === 'function') {
+                                    try { BackToBackTool.openByRowId(rowId); } catch(e) {}
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                }, false);
                     this._debugCaptureInstalled = true;
                 } catch(e) { try { console.debug('[B2B] installGlobalDebugCapture failed', e); } catch(e){} }
         },

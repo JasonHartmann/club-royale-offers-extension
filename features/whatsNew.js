@@ -11,7 +11,7 @@
             if (typeof browser !== 'undefined' && browser.runtime?.getManifest) return browser.runtime.getManifest().version || '1.4';
             if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) return chrome.runtime.getManifest().version || '1.4';
         } catch(e) {}
-        return '1.5';
+        return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
     const TOUR_REVISION = '5'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder
