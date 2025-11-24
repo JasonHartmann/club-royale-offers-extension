@@ -1011,6 +1011,12 @@ const AdvancedSearch = {
                         arr = weekOrder.filter(d => present.has(d));
                         const extras = Array.from(present).filter(v => !weekOrder.includes(v));
                         if (extras.length) arr = arr.concat(extras.sort());
+                    } else if (k === 'departureMonth') {
+                        const monthOrder = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                        const present = new Set(Array.from(set));
+                        arr = monthOrder.filter(m => present.has(m));
+                        const extras = Array.from(present).filter(v => !monthOrder.includes(v));
+                        if (extras.length) arr = arr.concat(extras.sort());
                     } else {
                         arr = Array.from(set).sort();
                     }

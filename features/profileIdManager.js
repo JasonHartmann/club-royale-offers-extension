@@ -203,6 +203,40 @@ function mergeProfiles(profileA, profileB) {
                 offerA.category = upgradedRoomType;
                 offerA.guests = '2 guests';
             }
+            // Merge perk codes from both offers and include sailing-level bonus perks
+            try {
+                const aPerks = Array.isArray(offerA.campaignOffer?.perkCodes) ? offerA.campaignOffer.perkCodes.slice() : [];
+                const bPerks = Array.isArray(matchObj.offerB?.campaignOffer?.perkCodes) ? matchObj.offerB.campaignOffer.perkCodes.slice() : [];
+                const seen = new Set();
+                const combined = [];
+                const pushPerk = (p) => {
+                    if (!p) return;
+                    const name = (p && (p.perkName || p.perkCode)) ? (p.perkName || p.perkCode) : String(p);
+                    const key = String(name).trim();
+                    if (!key) return;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    if (typeof p === 'string') combined.push({ perkCode: p }); else combined.push(p);
+                };
+                aPerks.forEach(pushPerk);
+                bPerks.forEach(pushPerk);
+                // include sailing-level bonus from matched B sailing if present
+                try {
+                    const bonusB = matchObj.sailingB && matchObj.sailingB.nextCruiseBonusPerkCode ? matchObj.sailingB.nextCruiseBonusPerkCode : null;
+                    if (bonusB) {
+                        const bonusName = (bonusB.perkName || bonusB.perkCode) ? (bonusB.perkName || bonusB.perkCode) : String(bonusB);
+                        if (bonusName && !seen.has(String(bonusName).trim())) {
+                            seen.add(String(bonusName).trim());
+                            if (typeof bonusB === 'string') combined.push({ perkCode: bonusB }); else combined.push(bonusB);
+                        }
+                    }
+                } catch (bonusErr) { /* ignore */ }
+                if (combined.length) {
+                    // Ensure campaignOffer exists
+                    if (!offerA.campaignOffer) offerA.campaignOffer = {};
+                    offerA.campaignOffer.perkCodes = combined;
+                }
+            } catch (perkMergeErr) { /* ignore */ }
             return true;
         });
     });

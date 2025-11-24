@@ -1,6 +1,7 @@
 // Ensures advanced-only predicates stay active even if App.FilterUtils is unavailable (e.g., tests)
 const ADVANCED_ONLY_FALLBACK_KEYS = [
     'departureDayOfWeek',
+    'departureMonth',
     'visits',
     'endDate',
     'minInteriorPrice',
@@ -931,6 +932,17 @@ const Filtering = {
                     if (!sailing.sailDate || isNaN(d.getTime())) return '-';
                     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
                     return days[d.getUTCDay()] || '-';
+                } catch(e){ return '-'; }
+            }
+            case 'departureMonth': {
+                try {
+                    if (App && App.FilterUtils && typeof App.FilterUtils.computeDepartureMonth === 'function') {
+                        return App.FilterUtils.computeDepartureMonth(sailing.sailDate);
+                    }
+                    const d = new Date(sailing.sailDate);
+                    if (!sailing.sailDate || isNaN(d.getTime())) return '-';
+                    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                    return months[d.getUTCMonth()] || '-';
                 } catch(e){ return '-'; }
             }
             case 'visits': {
