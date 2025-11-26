@@ -1110,8 +1110,15 @@ const TableRenderer = {
         if (autoRunB2B && window.BackToBackTool && typeof BackToBackTool.registerEnvironment === 'function') {
             try {
                 // Exclude hidden groups from B2B context — hidden groups should not be visible to B2B
-                // Use the already-filtered originalOffers (visible rows) as the base for B2B context
-                const baseRows = Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : (Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length ? state.fullOriginalOffers : state.sortedOffers || []);
+                // Use the full original offer set as the authoritative base for B2B context
+                // so advanced/accordion filtering does not restrict builder computations.
+                // Then exclude only Hidden Groups via `rowIsHidden`.
+                //
+                // NOTE NOTE NOTE IMPORTANT!
+                // This line controls whether filtered rows are included in the B2B Back-to-Back pills and builder tool!
+                // fullOriginalOffers if we want unfiltered B2B context
+                // originalOffers if we want advanced search filtering to apply to B2B context
+                const baseRows = Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length ? state.fullOriginalOffers : (Array.isArray(state.originalOffers) && state.originalOffers.length ? state.originalOffers : state.sortedOffers || []);
                 const rowIsHidden = (row) => {
                     try {
                         if (!window.Filtering) return false;

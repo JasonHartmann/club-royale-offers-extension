@@ -210,21 +210,28 @@
                 try { if (Filtering && Filtering._globalHiddenRowKeys instanceof Set) globalStoreSize = Filtering._globalHiddenRowKeys.size; } catch(e){}
                 try { console.debug('[B2B][REG] DIAG hiddenRowStores', { stateStoreSize, globalStoreSize, hasRows: Array.isArray(rows) ? rows.length : 0 }); } catch(e){}
             } catch(e){}
-            // Defensive: ensure hidden groups are excluded from the B2B context
+            // Defensive: ensure only Hidden Groups are excluded from the B2B context.
+            // Do NOT apply advanced or accordion filters here. Consult hidden-row
+            // stores directly to avoid invoking higher-level predicates.
             try {
-                if (window.Filtering && (typeof Filtering.excludeHidden === 'function' || typeof Filtering.isRowHidden === 'function' || typeof Filtering.wasRowHidden === 'function')) {
+                if (window.Filtering) {
                     const stateObj = (opts && opts._state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
                     const beforeCount = Array.isArray(rows) ? rows.length : 0;
-                    // Prefer fast single-row predicate if available
                     let filtered = rows;
                     try {
-                        if (typeof Filtering.wasRowHidden === 'function') {
-                            filtered = rows.filter(r => !Filtering.wasRowHidden(r, stateObj));
-                        } else if (typeof Filtering.isRowHidden === 'function') {
-                            filtered = rows.filter(r => !Filtering.isRowHidden(r, stateObj));
-                        } else if (typeof Filtering.excludeHidden === 'function') {
-                            filtered = Filtering.excludeHidden(rows, stateObj);
-                        }
+                        const globalHidden = (typeof Filtering !== 'undefined' && Filtering._globalHiddenRowKeys instanceof Set) ? Filtering._globalHiddenRowKeys : null;
+                        const stateHidden = (stateObj && stateObj._hiddenGroupRowKeys instanceof Set) ? stateObj._hiddenGroupRowKeys : null;
+                        filtered = (rows || []).filter(r => {
+                            try {
+                                if (!r) return false;
+                                const code = (r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                                const ship = (r.sailing && (r.sailing.shipCode || r.sailing.shipName)) ? String(r.sailing.shipCode || r.sailing.shipName).trim().toUpperCase() : '';
+                                const sail = (r.sailing && r.sailing.sailDate) ? String(r.sailing.sailDate).trim().slice(0,10) : '';
+                                const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                                if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) return false;
+                                return true;
+                            } catch(e) { return true; }
+                        });
                     } catch(e) { /* fall back to original rows on error */ }
                     const afterCount = Array.isArray(filtered) ? filtered.length : 0;
                     if (window && window.GOBO_DEBUG_ENABLED) {
@@ -232,8 +239,6 @@
                             const removed = beforeCount - afterCount;
                             const sampleRemoved = [];
                             if (removed > 0) {
-                                const diff = new Set((rows || []).map(r => (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() + '|' + (r.sailing && (r.sailing.shipName || r.sailing.shipCode) || '') : ''));
-                                // Build a small sample from original rows that are not present in filtered
                                 for (let i = 0; i < Math.min(8, rows.length); i++) {
                                     const r = rows[i];
                                     const code = (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() : '';
@@ -242,12 +247,11 @@
                             }
                             try {
                                 const sampleCodes = (filtered || []).slice(0,6).map(r => (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim() : null).filter(Boolean);
-                                // Try to report hidden-row store sizes if present
                                 let stateStoreSize = null;
                                 let globalStoreSize = null;
                                 try {
-                                    const stateObj = (opts && opts._state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
-                                    if (stateObj && stateObj._hiddenGroupRowKeys instanceof Set) stateStoreSize = stateObj._hiddenGroupRowKeys.size;
+                                    const st = (opts && opts._state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
+                                    if (st && st._hiddenGroupRowKeys instanceof Set) stateStoreSize = st._hiddenGroupRowKeys.size;
                                     if (Filtering && Filtering._globalHiddenRowKeys instanceof Set) globalStoreSize = Filtering._globalHiddenRowKeys.size;
                                 } catch(e) { /* ignore */ }
                                 console.debug('[B2B][REG] registerEnvironment filtered', { beforeCount, afterCount, removed, sampleRemoved, sampleCodes, stateStoreSize, globalStoreSize, hiddenGroups: (Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : null });
@@ -495,8 +499,24 @@
                             }
                         } catch(e) {}
                         try {
-                            if (this._context && this._context.state && typeof this._context.state.filterPredicate === 'function') b2bOpts.filterPredicate = this._context.state.filterPredicate;
-                            else if (App && App.TableRenderer && App.TableRenderer.lastState && typeof App.TableRenderer.lastState.filterPredicate === 'function') b2bOpts.filterPredicate = App.TableRenderer.lastState.filterPredicate;
+                            // IMPORTANT: Do NOT propagate advanced/table-level filter predicates
+                            // into B2B computations. Only exclude rows that belong to Hidden
+                            // Groups. Build a predicate that consults the hidden-group stores
+                            // (global and state) and nothing else.
+                            const ctxState = (this._context && this._context.state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
+                            b2bOpts.filterPredicate = (row) => {
+                                try {
+                                    if (!row) return false;
+                                    const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                                    const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
+                                    const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
+                                    const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                                    const globalHidden = (typeof Filtering !== 'undefined' && Filtering._globalHiddenRowKeys instanceof Set) ? Filtering._globalHiddenRowKeys : null;
+                                    const stateHidden = (ctxState && ctxState._hiddenGroupRowKeys instanceof Set) ? ctxState._hiddenGroupRowKeys : null;
+                                    if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) return false;
+                                    return true;
+                                } catch(e) { return true; }
+                            };
                         } catch(e) {}
                         let depthMap = null;
                         let longest = null;
