@@ -2,6 +2,8 @@
     const DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
     const DOW_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
     const DEBUG = false;
+    // Dev-only toggle: set to true to always print in-code B2B chain diagnostics when opening builder
+    const DEV_B2B_DEBUG = true;
     function _dbg() { if (!DEBUG) return; try { if (window && window.console && window.console.debug) console.debug('[B2B]', ...arguments); } catch(e){} }
 
     function normalizeIso(value) {
@@ -260,9 +262,13 @@
             rows.forEach((entry, idx) => {
                 if (!entry || !entry.sailing) return;
                 if (!entry.sailing.__b2bRowId) {
-                    const baseParts = [safeOfferCode(entry), entry.sailing.shipCode, entry.sailing.shipName, normalizeIso(entry.sailing.sailDate), idx];
-                    const safe = baseParts.filter(Boolean).join('-').replace(/[^a-zA-Z0-9_-]/g, '_');
-                    entry.sailing.__b2bRowId = `b2b-${safe || idx}`;
+                    const rawParts = [safeOfferCode(entry), entry.sailing.shipCode, entry.sailing.shipName, normalizeIso(entry.sailing.sailDate)];
+                    const baseParts = rawParts.filter(p => p !== undefined && p !== null && String(p).trim() !== '').map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
+                    if (baseParts.length) {
+                        entry.sailing.__b2bRowId = `b2b-${baseParts.join('-')}`;
+                    } else {
+                        entry.sailing.__b2bRowId = `b2b-${idx}`;
+                    }
                 }
                 rowMap.set(entry.sailing.__b2bRowId, entry);
             });
@@ -471,6 +477,23 @@
                             if (r.rowId && String(r.rowId) === String(rowId)) { clickedIdx = i; break; }
                         }
                         const b2bOpts = { allowSideBySide: !!(this._context && this._context.allowSideBySide) };
+                        // Dev diagnostic: print both table and builder chains for the clicked idx/rowId
+                        try {
+                            if (DEV_B2B_DEBUG && typeof B2BUtils !== 'undefined' && typeof B2BUtils.debugChainFor === 'function') {
+                                try {
+                                    const tableRows = (App && App.TableRenderer && App.TableRenderer.lastState && Array.isArray(App.TableRenderer.lastState.sortedOffers)) ? App.TableRenderer.lastState.sortedOffers : null;
+                                    const b2bRows = (this._context && this._context.rowMap) ? Array.from(this._context.rowMap.values()) : null;
+                                    if (tableRows) {
+                                        const t = B2BUtils.debugChainFor({ rows: tableRows, idx: clickedIdx });
+                                        console.debug && console.debug('[B2B DEV] tableRows chain', t);
+                                    }
+                                    if (b2bRows) {
+                                        const b = B2BUtils.debugChainFor({ rows: b2bRows, idx: clickedIdx });
+                                        console.debug && console.debug('[B2B DEV] b2bRows chain', b);
+                                    }
+                                } catch(e) { console.debug && console.debug('[B2B DEV] debugChainFor error', e); }
+                            }
+                        } catch(e) {}
                         try {
                             if (this._context && this._context.state && typeof this._context.state.filterPredicate === 'function') b2bOpts.filterPredicate = this._context.state.filterPredicate;
                             else if (App && App.TableRenderer && App.TableRenderer.lastState && typeof App.TableRenderer.lastState.filterPredicate === 'function') b2bOpts.filterPredicate = App.TableRenderer.lastState.filterPredicate;

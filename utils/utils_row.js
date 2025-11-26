@@ -14,10 +14,16 @@
             // Ensure sailing has a stable __b2bRowId so handlers can attach during incremental render
             try {
                 if (sailing && !sailing.__b2bRowId) {
-                    const baseParts = [offer && offer.campaignOffer && offer.campaignOffer.offerCode, sailing.shipCode, sailing.shipName, sailing.sailDate, idx]
-                        .filter(Boolean)
+                    const rawParts = [offer && offer.campaignOffer && offer.campaignOffer.offerCode, sailing.shipCode, sailing.shipName, sailing.sailDate];
+                    const baseParts = rawParts
+                        .filter(p => p !== undefined && p !== null && String(p).trim() !== '')
                         .map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
-                    sailing.__b2bRowId = `b2b-${baseParts.join('-') || idx}`;
+                    if (baseParts.length) {
+                        sailing.__b2bRowId = `b2b-${baseParts.join('-')}`;
+                    } else {
+                        // Fallback: use provided index if available, otherwise a short random id
+                        sailing.__b2bRowId = `b2b-${(idx !== null && idx !== undefined) ? idx : Math.random().toString(36).slice(2,9)}`;
+                    }
                 }
                 if (sailing && sailing.__b2bRowId) row.dataset.b2bRowId = sailing.__b2bRowId;
             } catch(e){}
@@ -223,16 +229,24 @@
                                     } catch (e) { return true; }
                                 };
                                 // Run compute with force so B2BUtils doesn't early-return
-                                const rows = state && Array.isArray(state.sortedOffers) ? state.sortedOffers : [];
-                                if (rows && rows.length && typeof B2BUtils !== 'undefined' && typeof B2BUtils.computeB2BDepth === 'function') {
-                                    const depthsMap = B2BUtils.computeB2BDepth(rows, { allowSideBySide, filterPredicate, force: true });
-                                    // apply depths back to model
+                                const renderedRows = state && Array.isArray(state.sortedOffers) ? state.sortedOffers : [];
+                                if (typeof B2BUtils !== 'undefined' && typeof B2BUtils.computeB2BDepth === 'function') {
+                                    // Prefer the BackToBackTool context rows (the same dataset used by the builder)
+                                    const contextRows = (window.BackToBackTool && BackToBackTool._context && Array.isArray(BackToBackTool._context.rows) && BackToBackTool._context.rows.length)
+                                        ? BackToBackTool._context.rows
+                                        : renderedRows;
+                                    const depthsMap = B2BUtils.computeB2BDepth(contextRows, { allowSideBySide, filterPredicate, force: true });
+                                    // Map depths from contextRows back into the renderedRows model by stable rowId
                                     try {
-                                        rows.forEach((r, i) => {
+                                        contextRows.forEach((ctxRow, ctxIdx) => {
                                             try {
-                                                if (r && r.sailing) {
-                                                    const d = (depthsMap && typeof depthsMap.get === 'function' && depthsMap.has(i)) ? depthsMap.get(i) : 1;
-                                                    r.sailing.__b2bDepth = d;
+                                                const d = (depthsMap && typeof depthsMap.get === 'function' && depthsMap.has(ctxIdx)) ? depthsMap.get(ctxIdx) : null;
+                                                if (d == null) return;
+                                                const rid = ctxRow && ctxRow.sailing && ctxRow.sailing.__b2bRowId ? String(ctxRow.sailing.__b2bRowId) : null;
+                                                if (!rid) return;
+                                                const found = renderedRows.findIndex(p => p && p.sailing && String(p.sailing.__b2bRowId) === rid);
+                                                if (found >= 0) {
+                                                    try { if (renderedRows[found] && renderedRows[found].sailing) renderedRows[found].sailing.__b2bDepth = d; } catch(e){}
                                                 }
                                             } catch(e) {}
                                         });
@@ -240,19 +254,36 @@
                                     // Update depth cells only for rows rendered inside the current tbody
                                     try {
                                         const tbody = (state && state.tbody) ? state.tbody : (document.querySelector('.table-scroll-container') ? document.querySelector('.table-scroll-container').querySelector('tbody') : null);
-                                        const allRows = tbody ? tbody.querySelectorAll('tr') : document.querySelectorAll('tbody tr');
-                                        const limit = Math.min(allRows.length, rows.length);
-                                        for (let r = 0; r < limit; r++) {
+                                        const allRows = tbody ? Array.from(tbody.querySelectorAll('tr')) : Array.from(document.querySelectorAll('tbody tr'));
+                                        // Build map from stable rowId -> DOM tr so we survive sorting/reorder
+                                        const domById = new Map();
+                                        allRows.forEach(tr => {
                                             try {
-                                                const tr = allRows[r];
-                                                const pair = rows[r];
-                                                if (!pair) continue;
-                                                const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                                const rid = tr.dataset && tr.dataset.b2bRowId ? String(tr.dataset.b2bRowId) : null;
+                                                if (rid) domById.set(rid, tr);
+                                            } catch(inner) {}
+                                        });
+                                        renderedRows.forEach((pair, i) => {
+                                            try {
+                                                if (!pair) return;
+                                                const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
+                                                let tr = null;
+                                                if (rowId && domById.has(rowId)) tr = domById.get(rowId);
+                                                // Fallback: try matching by offerIndex dataset if present on rows
+                                                if (!tr) {
+                                                    const possible = allRows.find(t => { try { return t.dataset && t.dataset.offerIndex !== undefined && Number(t.dataset.offerIndex) === i; } catch(e){ return false; } });
+                                                    if (possible) tr = possible;
+                                                }
+                                                // Final fallback to positional mapping
+                                                if (!tr && allRows[i]) tr = allRows[i];
+                                                if (!tr) return;
                                                 const cell = tr.querySelector('.b2b-depth-cell');
-                                                if (!cell) continue;
-                                                try { App.TableRenderer.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null); } catch(e) { cell.textContent = String(depth); }
+                                                if (!cell) return;
+                                                const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                                const chainId = pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null;
+                                                try { App.TableRenderer.updateB2BDepthCell(cell, depth, chainId); } catch(e) { cell.textContent = String(depth); }
                                             } catch(e) { /* ignore per-row errors */ }
-                                        }
+                                        });
                                     } catch(e) {}
                                 }
                             } catch(e) { /* ignore compute errors */ }

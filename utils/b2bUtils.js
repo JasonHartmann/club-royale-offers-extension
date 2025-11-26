@@ -318,29 +318,27 @@
             dfsLocal(startIdx, new Set(), []);
             return best.filter(Boolean);
         }
-        // Diagnostics: only run heavy sampling when debug enabled to avoid noisy logs and expensive chain computations
-        try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && (autoRunB2B || options.force)) {
-                let allowedSeen = 0;
-                // sample less frequently for large sets to avoid heavy cost
-                const sampleInterval = Math.max(100, Math.floor(meta.length / 20));
-                for (let idx = 0; idx < meta.length; idx++) {
-                    const info = meta[idx];
-                    if (!info || !info.allow) continue;
-                    allowedSeen += 1;
-                    if (allowedSeen % sampleInterval !== 0) continue;
-                    const depth = depthMap.get(idx) || 0;
-                    // computeLongestChainFromIndex is expensive; only run it for small sets
-                    let chain = [];
-                    if (meta.length <= 500) {
-                        try { chain = computeLongestChainFromIndex(idx) || []; } catch(e) { chain = []; }
-                    }
-                    const chainSummary = Array.isArray(chain) ? chain.map(n => (n.offerCode || '') + '(@' + (n.shipName || '') + ':' + (n.startISO || '') + ')').join(' -> ') : String(chain || '');
-                    try { console.debug('[B2B] Sampled offer depth', { idx, offerCode: info.offerCode, shipName: info.shipName, startISO: info.startISO, endISO: info.endISO, depth, chainLength: chain.length, chain }); } catch(e){}
-                    try { console.debug('[B2B] Sampled chain (summary): ' + (chainSummary || '(none)')); } catch(e){}
-                }
-            }
-        } catch(e) { /* ignore sampling diagnostic errors */ }
+        // // Diagnostics: only run heavy sampling when debug enabled to avoid noisy logs and expensive chain computations
+        // try {
+        //     if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && (autoRunB2B || options.force)) {
+        //         let allowedSeen = 0;
+        //         // sample less frequently for large sets to avoid heavy cost
+        //         const sampleInterval = Math.max(100, Math.floor(meta.length / 20));
+        //         for (let idx = 0; idx < meta.length; idx++) {
+        //             const info = meta[idx];
+        //             if (!info || !info.allow) continue;
+        //             allowedSeen += 1;
+        //             if (allowedSeen % sampleInterval !== 0) continue;
+        //             const depth = depthMap.get(idx) || 0;
+        //             // computeLongestChainFromIndex is expensive; only run it for small sets
+        //             let chain = [];
+        //             try { chain = computeLongestChainFromIndex(idx) || []; } catch(e) { chain = []; }
+        //             const chainSummary = Array.isArray(chain) ? chain.map(n => (n.offerCode || '') + '(@' + (n.shipName || '') + ':' + (n.startISO || '') + ')').join(' -> ') : String(chain || '');
+        //             try { console.debug('[B2B] Sampled offer depth', { idx, offerCode: info.offerCode, shipName: info.shipName, startISO: info.startISO, endISO: info.endISO, depth, chainLength: chain.length, chain }); } catch(e){}
+        //             try { console.debug('[B2B] Sampled chain (summary): ' + (chainSummary || '(none)')); } catch(e){}
+        //         }
+        //     }
+        // } catch(e) { /* ignore sampling diagnostic errors */ }
 
         return depthMap;
     }
@@ -576,6 +574,30 @@
             dfsLocal(startIdx, new Set(), []);
             return best.filter(Boolean);
         }
+    };
+
+    // Dev helper: compute the longest chain for a given index or offer on a provided rows array
+    // Usage: B2BUtils.debugChainFor({ rows: rowsArray, idx: 123 })
+    //        B2BUtils.debugChainFor({ rows: rowsArray, offer: '25BFM105' })
+    B2BUtils.debugChainFor = function(opts) {
+        try {
+            if (!opts || !Array.isArray(opts.rows)) return null;
+            const rows = opts.rows;
+            let idx = (typeof opts.idx === 'number' && opts.idx >= 0) ? opts.idx : null;
+            const offer = opts.offer ? String(opts.offer).trim().toUpperCase() : null;
+            if (offer && idx == null) {
+                for (let i = 0; i < rows.length; i++) {
+                    try {
+                        const code = rows[i] && rows[i].offer && rows[i].offer.campaignOffer && rows[i].offer.campaignOffer.offerCode ? String(rows[i].offer.campaignOffer.offerCode).trim().toUpperCase() : '';
+                        if (code === offer) { idx = i; break; }
+                    } catch(e) { /* ignore */ }
+                }
+            }
+            if (idx == null || idx < 0 || idx >= rows.length) return null;
+            const chain = B2BUtils.computeLongestChainFromIndex(rows, opts || {}, idx) || [];
+            const summary = Array.isArray(chain) ? chain.map(n => (n.offerCode || '') + '(@' + (n.shipName || '') + ':' + (n.startISO || '') + ')').join(' -> ') : String(chain || '');
+            return { idx, chainLength: (chain && chain.length) || 0, chain, summary };
+        } catch (e) { return null; }
     };
 
     if (typeof window !== 'undefined') window.B2BUtils = B2BUtils;

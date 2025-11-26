@@ -1088,16 +1088,19 @@ const TableRenderer = {
     const filtered = Filtering.filterOffers(state, base);
         state.originalOffers = filtered;
         const filteredSet = new Set(Array.isArray(filtered) ? filtered : []);
+        // For B2B depth computations we only want to exclude rows that are
+        // explicitly hidden by Hidden Groups. Do NOT apply Advanced Search or
+        // accordion filtering here — those filters control which rows are
+        // displayed, but depth calculations should reflect availability across
+        // the full (non-hidden) dataset so the builder and table remain
+        // consistent.
         const allowRowForDepth = (row) => {
             if (!row) return false;
-            if (filteredSet.size && !filteredSet.has(row)) return false;
             if (window.Filtering) {
                 try {
                     if (typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, state);
                     if (typeof Filtering.isRowHidden === 'function') return !Filtering.isRowHidden(row, state);
-                } catch (e) {
-                    return filteredSet.has(row);
-                }
+                } catch (e) { /* ignore and allow row */ }
             }
             return true;
         };
@@ -1217,22 +1220,32 @@ const TableRenderer = {
                     allowSideBySide: allowSideBySidePref,
                     filterPredicate: allowRowForDepth
                 });
-                const rows = tbody.querySelectorAll('tr');
-                rows.forEach((tr, idx) => {
-                    const pair = state.sortedOffers[idx];
-                    if (!pair) return;
-                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
-                    const cell = tr.querySelector('.b2b-depth-cell');
-                    if (!cell) return;
-                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
-                    else cell.textContent = String(depth);
+                const domRows = Array.from(tbody.querySelectorAll('tr'));
+                // Build a map from rowId -> DOM tr for robust matching when sorting/reordering occurs
+                const domRowById = new Map();
+                domRows.forEach((tr) => {
                     try {
-                        if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') {
-                            BackToBackTool.attachToCell(cell, pair);
-                        }
-                    } catch (attachErr) {
-                        console.debug('[tableRenderer] Unable to attach BackToBackTool trigger', attachErr);
-                    }
+                        const rid = tr.dataset && tr.dataset.b2bRowId ? String(tr.dataset.b2bRowId) : null;
+                        if (rid) domRowById.set(rid, tr);
+                    } catch(e) {}
+                });
+                // Apply depths by looking up the rendered row by its stable rowId when possible.
+                state.sortedOffers.forEach((pair, idx) => {
+                    try {
+                        if (!pair) return;
+                        const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
+                        const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                        let tr = null;
+                        if (rowId && domRowById.has(rowId)) tr = domRowById.get(rowId);
+                        // Fallback to positional mapping when dataset not present or mismatch
+                        if (!tr && domRows[idx]) tr = domRows[idx];
+                        if (!tr) return;
+                        const cell = tr.querySelector('.b2b-depth-cell');
+                        if (!cell) return;
+                        if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
+                        else cell.textContent = String(depth);
+                        try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(attachErr) { console.debug('[tableRenderer] Unable to attach BackToBackTool trigger', attachErr); }
+                    } catch(e) { /* ignore per-row errors */ }
                 });
                 // If incremental rendering is still in progress, ensure newly appended rows also get depth badges
                 try {
@@ -1243,17 +1256,26 @@ const TableRenderer = {
                         const handler = (ev) => {
                             try {
                                 if (ev && ev.detail && token && ev.detail.token && ev.detail.token !== token) return; // ignore other renders
-                                const allRows = tbody.querySelectorAll('tr');
-                                allRows.forEach((tr, idx) => {
-                                    const pair = state.sortedOffers[idx];
-                                    if (!pair) return;
-                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
-                                    const cell = tr.querySelector('.b2b-depth-cell');
-                                    if (!cell) return;
-                                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
-                                    else cell.textContent = String(depth);
-                                    try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
-                                });
+                                        const allRows = Array.from(tbody.querySelectorAll('tr'));
+                                        const domById = new Map();
+                                        allRows.forEach(r => { try { const rid = r.dataset && r.dataset.b2bRowId ? String(r.dataset.b2bRowId) : null; if (rid) domById.set(rid, r); } catch(e){} });
+                                        // Apply depths using stable rowId mapping where possible
+                                        state.sortedOffers.forEach((pair, i) => {
+                                            try {
+                                                if (!pair) return;
+                                                const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
+                                                const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
+                                                let tr = null;
+                                                if (rowId && domById.has(rowId)) tr = domById.get(rowId);
+                                                if (!tr && allRows[i]) tr = allRows[i];
+                                                if (!tr) return;
+                                                const cell = tr.querySelector('.b2b-depth-cell');
+                                                if (!cell) return;
+                                                if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
+                                                else cell.textContent = String(depth);
+                                                try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
+                                            } catch(e) { /* ignore post-render per-row errors */ }
+                                        });
                                 try { console.debug('[B2B] Applied depths after incremental render', { rendered: allRows.length, total: totalCount }); } catch(e){}
                             } catch(e) { /* ignore post-render assignment errors */ }
                         };
@@ -1265,17 +1287,25 @@ const TableRenderer = {
                                 if (!chunkEv || !chunkEv.detail) return;
                                 if (token && chunkEv.detail.token && chunkEv.detail.token !== token) return;
                                 const renderedSoFar = Number(chunkEv.detail.rendered) || 0;
-                                const allRows = tbody.querySelectorAll('tr');
-                                for (let r = 0; r < Math.min(renderedSoFar, allRows.length); r++) {
-                                    const tr = allRows[r];
-                                    const pair = state.sortedOffers[r];
-                                    if (!pair) continue;
-                                    const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
-                                    const cell = tr.querySelector('.b2b-depth-cell');
-                                    if (!cell) continue;
-                                    if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
-                                    else cell.textContent = String(depth);
-                                    try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
+                                const allRows = Array.from(tbody.querySelectorAll('tr'));
+                                const domById = new Map();
+                                allRows.forEach(r => { try { const rid = r.dataset && r.dataset.b2bRowId ? String(r.dataset.b2bRowId) : null; if (rid) domById.set(rid, r); } catch(e){} });
+                                for (let rr = 0; rr < Math.min(renderedSoFar, allRows.length); rr++) {
+                                    try {
+                                        const pair = state.sortedOffers[rr];
+                                        if (!pair) continue;
+                                        const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
+                                        const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
+                                        let tr = null;
+                                        if (rowId && domById.has(rowId)) tr = domById.get(rowId);
+                                        if (!tr && allRows[rr]) tr = allRows[rr];
+                                        if (!tr) continue;
+                                        const cell = tr.querySelector('.b2b-depth-cell');
+                                        if (!cell) continue;
+                                        if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
+                                        else cell.textContent = String(depth);
+                                        try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
+                                    } catch(e) { /* ignore */ }
                                 }
                             } catch(e) { /* ignore chunk handler errors */ }
                         };
