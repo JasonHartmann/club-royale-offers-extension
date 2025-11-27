@@ -58,11 +58,12 @@
 .b2b-visualizer-close:hover { background:rgba(255,255,255,0.3); transform:translateY(-1px); }
 .b2b-visualizer-body { padding:24px 28px; display:grid; grid-template-columns:320px 1fr; gap:24px; overflow:auto; flex:1; min-height:0; }
 .b2b-chain-column, .b2b-option-column { display:flex; flex-direction:column; gap:16px; min-height:0; overflow:hidden; }
-.b2b-chain-cards, .b2b-option-list { flex:1 1 auto; min-height:0; overflow:auto; }
+.b2b-chain-cards, .b2b-option-list { flex:1 1 auto; min-height:0; overflow:auto; /* reserve space for scrollbars so cards don't overlap them */ padding-right: 11px; scrollbar-gutter: stable both-edges; }
 .b2b-section-title { font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px; margin:0; }
 .b2b-section-title small { font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; }
 .b2b-chain-cards { display:flex; flex-direction:column; gap:14px; min-height:0; overflow:auto; }
-.b2b-chain-card { border-radius:18px; background:#fff; padding:16px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:8px; }
+.b2b-chain-card { border-radius:18px; background:#fff; padding:16px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:8px; /* allow the card to grow horizontally to fit long single-line timelines */ min-width: max-content; overflow: visible; }
+.b2b-chain-card, .b2b-option-card { z-index: 0; }
 .b2b-chain-card.is-root { background:linear-gradient(135deg,#e0ecff,#f2f6ff); border-color:rgba(12,78,163,0.2); }
 .b2b-chain-step-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
 .b2b-chain-step-head h4 { margin:0; font-size:15px; color:#0f172a; }
@@ -71,13 +72,17 @@
 .b2b-chain-meta strong { font-size:12px; color:#0f172a; }
 .b2b-chain-ports { font-size:12px; color:#475569; line-height:1.4; border-left:3px solid rgba(15,23,42,0.15); padding-left:10px; margin-top:6px; }
 .b2b-chain-card .b2b-timeline-table {
-    width: 100%;
+    /* let the timeline determine its own width and avoid forcing fixed cell layout
+       so each day-by-day row stays on a single line */
+    width: auto;
     border-collapse: collapse;
     box-sizing: border-box;
     font-size: 13px;
     display: table;
+    table-layout: auto;
     max-height: none;
     overflow: visible;
+    white-space: nowrap;
 }
 .b2b-chain-card .b2b-timeline-table tbody {
     display: table-row-group;
@@ -93,23 +98,23 @@
     width: 60px;
     font-weight: bold;
     color: #0f172a;
-    padding: 2px 6px;
+    padding: 2px 4px; /* reduce left/right padding a bit */
     white-space: nowrap;
     font-size: 13px;
 }
 .b2b-timeline-dow {
     width: 48px;
     color: #64748b;
-    padding: 2px 6px;
+    padding: 2px 4px; /* reduce left/right padding a bit */
     white-space: nowrap;
     font-size: 13px;
 }
 .b2b-timeline-label {
     color: #475569;
-    padding: 2px 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 2px 4px; /* reduce left padding to tighten up the line start */
+    white-space: nowrap; /* keep each summary on a single line */
+    overflow: visible; /* allow the card to grow instead of clipping */
+    text-overflow: clip;
     font-size: 13px;
 }
 .b2b-chain-card .b2b-timeline::-webkit-scrollbar {
@@ -125,9 +130,9 @@
 .b2b-chain-remove { position:absolute; top:12px; right:12px; border:none; background:rgba(239,68,68,0.08); color:#b91c1c; border-radius:999px; width:28px; height:28px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .b2b-chain-remove:hover { background:rgba(239,68,68,0.18); }
 .b2b-timeline { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; font-size:12px; color:#475569; }
-.b2b-timeline li { display:flex; gap:8px; align-items:flex-start; }
+.b2b-timeline li { display:flex; gap:6px; align-items:flex-start; /* slightly tighter gap */ }
 .b2b-timeline .dot { width:6px; height:6px; border-radius:50%; background:#0f172a; margin-top:6px; flex-shrink:0; }
-.b2b-option-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+.b2b-option-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; align-items: start; align-content: start; grid-auto-rows: auto; }
 .b2b-option-card { background:#fff; border-radius:16px; border:1px solid rgba(15,23,42,0.08); padding:16px; display:flex; flex-direction:column; gap:10px; box-shadow:0 8px 18px rgba(15,23,42,0.08); position:relative; }
 .b2b-option-card .b2b-option-card-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .b2b-option-card .b2b-option-card-header .badge { margin:0; }
@@ -135,6 +140,8 @@
 .b2b-option-card.b2b-side-by-side { border-color:rgba(217,119,6,0.5); box-shadow:0 10px 24px rgba(217,119,6,0.15); }
 .b2b-option-meta { font-size:13px; color:#0f172a; display:flex; flex-direction:column; gap:4px; }
 .b2b-option-select { margin-top:auto; border:none; border-radius:12px; padding:10px 12px; font-weight:600; font-size:13px; cursor:pointer; background:#0f9d58; color:#fff; transition:background .15s, transform .1s; }
+
+.b2b-option-list .b2b-option-card { align-self: start; }
 .b2b-option-select:hover { background:#0a7a43; transform:translateY(-1px); }
 .b2b-option-select { display:inline-flex; align-items:center; justify-content:center; gap:10px; position:relative; padding-right:36px; }
 .b2b-option-select .b2b-depth-pill { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.12); color:#fff; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; min-width:24px; }

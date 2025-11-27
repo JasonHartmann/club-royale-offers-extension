@@ -670,6 +670,16 @@
                 saveBtn,
                 resetBtn
             };
+            // Install a debounced resize handler so card heights remain normalized
+            try {
+                const normalize = () => { try { this._normalizeOptionCardHeights(); } catch(e){} };
+                this._activeSession.ui._b2bResizeTimer = null;
+                this._activeSession.ui._b2bResizeHandler = () => {
+                    try { clearTimeout(this._activeSession.ui._b2bResizeTimer); } catch(e){}
+                    this._activeSession.ui._b2bResizeTimer = setTimeout(normalize, 120);
+                };
+                window.addEventListener('resize', this._activeSession.ui._b2bResizeHandler);
+            } catch (e) { /* ignore resize handler install errors */ }
             this._activeSession.keyHandler = keyHandler;
             // Render content then reveal overlay so there is no brief flash of wrong sailing
             try {
@@ -900,10 +910,83 @@
                     lag
                 });
             });
-            options.sort((a, b) => {
-                if (a.meta.startISO === b.meta.startISO) return 0;
-                return a.meta.startISO < b.meta.startISO ? -1 : 1;
-            });
+            // Advanced sort:
+            // 1) Perfect matches: same ship, same room category, same guests as last sailing
+            // 2) Same-ship options (non side-by-side) ordered by room category (best first)
+            // 3) Side-by-side options ordered by room category (best first)
+            // 4) Tie-breaker: startISO ascending
+            try {
+                const rankForCategory = (cat) => {
+                    if (!cat) return 0;
+                    const map = { 'DELUXE': 4, 'BALCONY': 3, 'OUTSIDE': 2, 'INTERIOR': 1 };
+                    return map[String(cat).toUpperCase()] || 0;
+                };
+                const classify = (label) => {
+                    try {
+                        if (typeof window !== 'undefined' && window.RoomCategoryUtils && typeof window.RoomCategoryUtils.classifyBroad === 'function') {
+                            return window.RoomCategoryUtils.classifyBroad(label);
+                        }
+                    } catch (e) {}
+                    try {
+                        // fallback to util if available in scope
+                        if (typeof RoomCategoryUtils !== 'undefined' && typeof RoomCategoryUtils.classifyBroad === 'function') return RoomCategoryUtils.classifyBroad(label);
+                    } catch (e) {}
+                    return null;
+                };
+                const lastRoom = lastMeta && lastMeta.roomLabel ? String(lastMeta.roomLabel).trim() : '';
+                const lastGuests = lastMeta && lastMeta.guestsLabel ? String(lastMeta.guestsLabel).trim() : '';
+                const lastShipKey = lastMeta && lastMeta.shipKey ? String(lastMeta.shipKey).trim() : '';
+
+                options.sort((a, b) => {
+                    try {
+                        const aMeta = a.meta || {};
+                        const bMeta = b.meta || {};
+                        const aRoom = aMeta.roomLabel ? String(aMeta.roomLabel).trim() : '';
+                        const bRoom = bMeta.roomLabel ? String(bMeta.roomLabel).trim() : '';
+                        const aGuests = aMeta.guestsLabel ? String(aMeta.guestsLabel).trim() : '';
+                        const bGuests = bMeta.guestsLabel ? String(bMeta.guestsLabel).trim() : '';
+                        const aShip = aMeta.shipKey ? String(aMeta.shipKey).trim() : '';
+                        const bShip = bMeta.shipKey ? String(bMeta.shipKey).trim() : '';
+
+                        const aSameRoom = lastRoom && aRoom && aRoom === lastRoom;
+                        const bSameRoom = lastRoom && bRoom && bRoom === lastRoom;
+                        const aSameGuests = lastGuests && aGuests && aGuests === lastGuests;
+                        const bSameGuests = lastGuests && bGuests && bGuests === lastGuests;
+                        const aSameShip = lastShipKey && aShip && lastShipKey === aShip && !a.isSideBySide;
+                        const bSameShip = lastShipKey && bShip && lastShipKey === bShip && !b.isSideBySide;
+
+                        const aPerfect = aSameShip && aSameRoom && aSameGuests;
+                        const bPerfect = bSameShip && bSameRoom && bSameGuests;
+                        if (aPerfect !== bPerfect) return aPerfect ? -1 : 1;
+
+                        // Prefer same-ship (non side-by-side) over side-by-side
+                        if (aSameShip !== bSameShip) return aSameShip ? -1 : 1;
+
+                        // Both same-ship or both not; rank by room category if possible
+                        const aCat = classify(aRoom) || classify(aMeta.roomLabel) || null;
+                        const bCat = classify(bRoom) || classify(bMeta.roomLabel) || null;
+                        const aRank = rankForCategory(aCat);
+                        const bRank = rankForCategory(bCat);
+                        if (aRank !== bRank) return bRank - aRank; // higher rank first
+
+                        // If one is side-by-side and the other not, prefer non side-by-side (already handled by aSameShip)
+                        if (a.isSideBySide !== b.isSideBySide) return a.isSideBySide ? 1 : -1;
+
+                        // final tie-breaker: start date ascending
+                        if (a.meta && b.meta && a.meta.startISO === b.meta.startISO) return 0;
+                        return a.meta.startISO < b.meta.startISO ? -1 : 1;
+                    } catch (e) {
+                        try { if (a.meta.startISO === b.meta.startISO) return 0; } catch(e){}
+                        return a.meta.startISO < b.meta.startISO ? -1 : 1;
+                    }
+                });
+            } catch (e) {
+                // fallback to date sort on error
+                options.sort((a, b) => {
+                    if (a.meta.startISO === b.meta.startISO) return 0;
+                    return a.meta.startISO < b.meta.startISO ? -1 : 1;
+                });
+            }
             return options;
         },
 
@@ -1315,6 +1398,8 @@
                     try { console.debug(JSON.stringify(summary)); } catch(e){}
                 }
             } catch(e) {}
+            // Normalize card heights so cards in the same grid row share the same vertical size
+            try { this._normalizeOptionCardHeights(); } catch(e) {}
         },
 
         _selectOption(rowId) {
@@ -1509,6 +1594,40 @@
             });
         },
 
+        _normalizeOptionCardHeights() {
+            // Make cards shrink to their content then set equal heights per visual row.
+            // Strategy:
+            // 1. Find all option cards in the current UI list.
+            // 2. Clear any explicit height so they can measure natural content height.
+            // 3. Group by top offset (rounded) to infer rows, compute max height per row.
+            // 4. Apply the max height to all cards in that row.
+            try {
+                if (!this._activeSession || !this._activeSession.ui || !this._activeSession.ui.optionList) return;
+                const list = this._activeSession.ui.optionList;
+                const cards = Array.from(list.querySelectorAll('.b2b-option-card'));
+                if (!cards.length) return;
+                // Reset heights so natural measurement is possible
+                cards.forEach(c => { c.style.height = ''; c.style.minHeight = ''; });
+                // Force a reflow to get accurate offsets
+                // eslint-disable-next-line no-unused-expressions
+                list.offsetHeight;
+                const rows = new Map();
+                cards.forEach(c => {
+                    const rect = c.getBoundingClientRect();
+                    const top = Math.round(rect.top);
+                    const h = Math.round(rect.height);
+                    if (!rows.has(top)) rows.set(top, []);
+                    rows.get(top).push({ el: c, h });
+                });
+                rows.forEach(group => {
+                    let maxH = 0;
+                    group.forEach(item => { if (item.h > maxH) maxH = item.h; });
+                    // Apply max height with a small tolerance so content doesn't overflow
+                    group.forEach(item => { item.el.style.height = `${maxH}px`; item.el.style.minHeight = `${maxH}px`; });
+                });
+            } catch (e) { /* best-effort */ }
+        },
+
         _currentProfileId() {
             try {
                 if (window.App && App.CurrentProfile && App.CurrentProfile.state && App.CurrentProfile.state.profileId != null) {
@@ -1527,9 +1646,15 @@
             if (this._activeSession.keyHandler) {
                 document.removeEventListener('keydown', this._activeSession.keyHandler);
             }
-            if (this._activeSession.ui && this._activeSession.ui.overlay) {
-                this._activeSession.ui.overlay.remove();
-            }
+            try {
+                if (this._activeSession.ui) {
+                    if (this._activeSession.ui._b2bResizeHandler) {
+                        try { window.removeEventListener('resize', this._activeSession.ui._b2bResizeHandler); } catch(e){}
+                        try { clearTimeout(this._activeSession.ui._b2bResizeTimer); } catch(e){}
+                    }
+                    if (this._activeSession.ui.overlay) this._activeSession.ui.overlay.remove();
+                }
+            } catch(e) { try { if (this._activeSession.ui && this._activeSession.ui.overlay) this._activeSession.ui.overlay.remove(); } catch(ee){} }
             this._activeSession = null;
         }
     };

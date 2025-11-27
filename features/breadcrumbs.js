@@ -228,7 +228,8 @@ const Breadcrumbs = {
                     tabs.className = 'profile-tabs';
                     const tabsScroll = document.createElement('div');
                     tabsScroll.className = 'profile-tabs-scroll';
-                    tabsScroll.style.cssText = 'overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch;';
+                    // Do not force overflow via inline styles; allow CSS and the outer .table-scroll-container to control scrolling
+                    tabsScroll.style.cssText = 'overflow-x:visible; width:100%; -webkit-overflow-scrolling:touch;';
                     tabs.style.cssText = 'display:inline-flex; flex-direction:row; gap:8px; flex-wrap:nowrap;';
                     let activeKey = (App.CurrentProfile && App.CurrentProfile.key) ? App.CurrentProfile.key : state.selectedProfileKey;
                     if (TableRenderer._initialOpenPending && !TableRenderer.hasSelectedDefaultTab && profiles.length) {

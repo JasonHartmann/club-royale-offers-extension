@@ -19,7 +19,11 @@ const ErrorHandler = {
             if (existingWarn) existingWarn.remove();
             const warnDiv = document.createElement('div');
             warnDiv.id = 'gobo-warning';
-            warnDiv.className = 'fixed top-16 right-4 bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg shadow-lg z-[2147483647]';
+            warnDiv.className = 'fixed top-16 right-4 text-white font-semibold py-2 px-4 rounded-lg shadow-lg z-[2147483647]';
+            // Ensure background color is explicitly set inline to avoid cases where global CSS
+            // or missing utility classes render the element transparent.
+            try { warnDiv.style.backgroundColor = '#f97316'; /* Tailwind orange-500 */ } catch(e){}
+            try { warnDiv.style.color = '#ffffff'; } catch(e){}
             warnDiv.textContent = message;
             document.body.appendChild(warnDiv);
             setTimeout(() => warnDiv.remove(), 10000);

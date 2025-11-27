@@ -618,6 +618,8 @@ const TableRenderer = {
             preparedData = {};
         }
         // Build new profile content
+        // If caller provided a preserved sort (e.g. favorites refresh), apply it so we don't lose user's sort
+        const preservedSort = (payload && payload._preserveSort) ? payload._preserveSort : null;
         const state = {
             headers: [
                 { key: 'favorite', label: '\u2605' },
@@ -639,8 +641,8 @@ const TableRenderer = {
                 { key: 'perks', label: 'Perks' }
             ],
             profileId: App.ProfileIdMap[key] || null,
-            currentSortColumn: 'offerDate', // Default sort by Rcvd
-            currentSortOrder: 'desc', // Descending (newest first)
+            currentSortColumn: (preservedSort && preservedSort.currentSortColumn) ? preservedSort.currentSortColumn : 'offerDate', // Default sort by Rcvd
+            currentSortOrder: (preservedSort && preservedSort.currentSortOrder) ? preservedSort.currentSortOrder : 'desc', // Descending (newest first)
             currentGroupColumn: null,
             viewMode: 'table',
             groupSortStates: {},

@@ -276,7 +276,18 @@
             if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites') {
                 // Re-load favorites profile into current view
                 if (App && App.TableRenderer && typeof App.TableRenderer.loadProfile === 'function') {
-                    App.TableRenderer.loadProfile('goob-favorites', profile);
+                    // Preserve the current sort state so removing a favorite doesn't reset sorting
+                    try {
+                        const preserve = {};
+                        const last = (App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                        if (last && last.currentSortColumn) preserve.currentSortColumn = last.currentSortColumn;
+                        if (last && last.currentSortOrder) preserve.currentSortOrder = last.currentSortOrder;
+                        const payload = Object.assign({}, profile || {});
+                        if (Object.keys(preserve).length) payload._preserveSort = preserve;
+                        App.TableRenderer.loadProfile('goob-favorites', payload);
+                    } catch(e) {
+                        App.TableRenderer.loadProfile('goob-favorites', profile);
+                    }
                 }
             }
         } catch(e){ /* ignore */ }

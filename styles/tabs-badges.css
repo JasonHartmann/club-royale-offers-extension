@@ -1,7 +1,7 @@
 /* Profile tabs, scrolling wrappers, hidden groups, and badge styles extracted from styles.css */
-.profile-tabs { display: flex; gap: 6px; align-items: center; width: 100%; overflow-x: auto !important; white-space: nowrap !important; min-width: 0; max-width: 100vw; flex-shrink: 0; min-height: 56px; border: 2px dashed #f00 !important; background: #fffbe7 !important; position: relative; z-index: 10; }
+.profile-tabs { display: flex; gap: 6px; align-items: center; width: auto; /* size to content so the scroll wrapper can own scrolling */ overflow-x: visible; white-space: nowrap; min-width: 0; max-width: 100%; flex-shrink: 0; min-height: 56px; position: relative; z-index: 10; }
 .profile-tabs::-webkit-scrollbar { height:12px; background:#fff; }
-.breadcrumb-tabs-row { width: 100%; margin-bottom: 0; overflow-x: auto !important; white-space: nowrap !important; max-width: 100vw; flex-shrink: 0; min-height: 56px; border: 2px dashed #00f !important; background: #e7f7ff !important; position: relative; z-index: 10; }
+.breadcrumb-tabs-row { width: 100%; margin-bottom: 0; overflow-x: visible; white-space: nowrap; max-width: 100%; flex-shrink: 1; min-height: 56px; position: relative; z-index: 10; }
 .breadcrumb-tabs-row::-webkit-scrollbar { height:8px; }
 .profile-tabs .profile-tab { display:flex; flex-direction:row; align-items:center; justify-content:space-between; padding:6px 10px; min-width:80px; min-height:50px; line-height:1.2; appearance:none; -webkit-appearance:none; background:transparent; border:1px solid transparent; border-radius:8px 8px 0 0; font-size:13px; cursor:pointer; color:#0f172a; transition:background .12s, box-shadow .12s; margin-bottom:0; vertical-align:middle; }
 .profile-tabs .profile-tab { background:#d1d5db; color:#0b1220; border:1px solid #e5e7eb; border-bottom-color:transparent; font-weight:500; box-shadow:none; position:relative; z-index:1; transition:background .2s; }
@@ -15,7 +15,8 @@
 .profile-tab-refreshed { font-size:10px; color:#888; margin-top:2px; }
 .profile-tabs { min-height:60px !important; height:60px !important; align-items:center !important; }
 .profile-tabs .profile-tab { height:62px !important; padding:16px 10px !important; font-size:15px !important; line-height:1.25 !important; }
-.profile-tabs-scroll { padding-bottom:8px !important; }
+/* Make the scrolling wrapper only show an overflow when the parent forces it */
+.profile-tabs-scroll { padding-bottom:8px !important; overflow-x: visible; max-width: none; width:100%; margin:0; box-sizing:border-box; }
 #hidden-groups-display { margin-left:4px; max-width:350px; max-height:80px; overflow-y:auto; font-size:12px; color:#555; white-space:pre-line; padding:2px 6px; background:#f8f8f8; border-radius:4px; border:1px solid #eee; }
 .hidden-group-row { display:flex; align-items:center; justify-content:space-between; padding:2px 0; }
 .hidden-group-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -64,7 +65,7 @@
 	border-radius:4px;
 	box-shadow:0 1px 0 rgba(255,255,255,0.06) inset;
 }
-.profile-brand-badge img { max-width:24px; max-height:24px; display:block; vertical-align:middle; }
+.profile-brand-badge img { max-width:24px; max-height:24px; display:block; }
 
 /* Royal specific */
 .profile-brand-badge--royal { background:#1c488a; }
@@ -89,17 +90,32 @@
 }
 
 /* --- Horizontal tab scrolling overrides (final refined) --- */
-.profile-tabs-scroll { width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; position:relative; padding-bottom:4px; scrollbar-gutter:stable; }
+.profile-tabs-scroll { width:100%; overflow-x: visible; overflow-y:hidden; -webkit-overflow-scrolling:touch; position:relative; padding-bottom:4px; scrollbar-gutter:stable; }
 .profile-tabs-scroll::-webkit-scrollbar { height:10px; }
 .profile-tabs-scroll::-webkit-scrollbar-track { background:transparent; }
 .profile-tabs-scroll::-webkit-scrollbar-thumb { background:#c5cad1; border-radius:6px; }
 .profile-tabs-scroll::-webkit-scrollbar-thumb:hover { background:#9ca3af; }
-.profile-tabs { display:inline-flex !important; flex-wrap:nowrap !important; width:auto !important; max-width:none !important; gap:6px; padding:0 4px 0 0; background:transparent !important; border:none !important; min-height:48px; height:48px; align-items:stretch; box-sizing:content-box; }
-.profile-tabs .profile-tab { flex:0 0 auto !important; white-space:nowrap !important; height:46px; line-height:1.15; display:flex; align-items:center; }
+.profile-tabs { display:inline-flex !important; flex-wrap:nowrap !important; width: max-content !important; max-width: none !important; gap:8px; padding:6px 4px; background:transparent !important; border:none !important; align-items:center; box-sizing:content-box; }
+.profile-tabs .profile-tab { flex: 0 0 auto !important; white-space:nowrap !important; height:auto; line-height:1.15; display:inline-flex; align-items:center; min-width: auto; box-sizing:border-box; padding:8px 10px; }
+.profile-tab-label { overflow:visible; text-overflow:clip; white-space:nowrap; }
 .breadcrumb-tabs-row { overflow:visible !important; }
 .profile-tabs-scroll:before, .profile-tabs-scroll:after { content:''; position:absolute; top:0; bottom:4px; width:18px; pointer-events:none; z-index:2; }
 .profile-tabs-scroll:before { left:0; background:linear-gradient(90deg, rgba(255,255,255,1) 30%, rgba(255,255,255,0)); }
 .profile-tabs-scroll:after { right:0; background:linear-gradient(270deg, rgba(255,255,255,1) 30%, rgba(255,255,255,0)); }
 .profile-tabs-scroll.no-overflow:before, .profile-tabs-scroll.no-overflow:after { display:none; }
 .profile-tabs, .breadcrumb-tabs-row { background:transparent !important; border:none !important; }
+
+/* Defensive: never show a scrollbar on the tabs wrapper itself. The outer
+   .table-scroll-container should be the only element that scrolls horizontally. */
+.profile-tabs-scroll {
+	overflow-x: visible !important;
+	overflow-y: visible !important;
+	-webkit-overflow-scrolling: auto !important;
+}
+.profile-tabs-scroll::-webkit-scrollbar { display: none !important; height: 0 !important; }
+.profile-tabs-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* Also ensure the tab elements themselves do not create scrollbars */
+.profile-tabs { overflow: visible !important; }
+.profile-tabs * { overflow: visible !important; }
 

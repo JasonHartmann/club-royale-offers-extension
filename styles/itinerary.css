@@ -152,12 +152,28 @@
 }
 @keyframes gobo-b2b-flash { 0% { background: rgba(255,245,170,0.0);} 30% { background: rgba(255,245,170,0.95);} 100% { background: rgba(255,245,170,0.9);} }
 
-/* Responsive tweaks */
+/* Responsive tweaks: keep the prices table as a single-row-per-offer table on phones
+   by allowing horizontal scrolling instead of stacking each column vertically. */
 @media (max-width: 540px) {
   .gobo-itinerary-panel { padding: 16px 16px 24px; }
   .gobo-itinerary-title { font-size: 18px; }
-  .gobo-itinerary-table thead { display: none; }
-  .gobo-itinerary-table tbody td { display:block; padding:6px 2px; }
+  /* Make the table horizontally scrollable and avoid converting cells to blocks */
+  .gobo-itinerary-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap; /* keep numeric columns on one line */
+    min-width: 420px; /* ensure reasonable minimum width for columns to display */
+  }
+  .gobo-itinerary-table thead {
+    display: table-header-group; /* keep headers visible when possible */
+  }
+  .gobo-itinerary-table th,
+  .gobo-itinerary-table td {
+    white-space: nowrap;
+    display: table-cell;
+    padding: 8px 10px; /* slightly larger horizontal padding for touch targets */
+  }
   .gobo-itinerary-table tbody tr { border-bottom:1px solid #e5e7eb; }
   .gobo-itinerary-table tbody tr:last-child { border-bottom:none; }
   .gobo-itinerary-refresh { right: 44px; } /* slightly closer on small screens */
