@@ -462,7 +462,7 @@ function mergeProfiles(profileA, profileB) {
             const matchObj = sailingMapB.get(key);
             if (!matchObj) return false;
             const offerNameB = (matchObj.offerB?.campaignOffer?.name || '').toLowerCase();
-            if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) return false;
+            // if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) return false;
             const isGOBOA = sailingA.isGOBO === true;
             const isGOBOB = matchObj.sailingB.isGOBO === true;
             // NEW: propagate GTY if either sailing is GTY
