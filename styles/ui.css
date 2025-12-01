@@ -116,6 +116,8 @@
     width: min(1100px, 95vw);
     /* Cap the modal to the viewport minus a small chrome margin so it never grows past the screen */
     max-height: calc(100vh - 40px);
+    /* Open at the largest practical height so it does not grow as the chain fills */
+    min-height: min(860px, calc(100vh - 40px));
     background: #f7f9fc;
     border-radius: 22px;
     box-shadow: 0 30px 60px rgba(0,0,0,0.45);
@@ -161,9 +163,14 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    /* reserve space for scrollbars so cards don't overlap them */
+    /* let scrollbars reserve their own space without clipping card edges */
+    padding-right: 0;
+    scrollbar-gutter: stable;
+}
+
+/* Keep extra breathing room to the right of option cards so the scrollbar never overlaps them */
+.b2b-option-list {
     padding-right: 11px;
-    scrollbar-gutter: stable both-edges;
 }
 .b2b-section-title { font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px; margin:0; }
 .b2b-section-title small { font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; }
@@ -371,7 +378,7 @@
 /* Landscape phones with very short viewport height: conserve vertical space
    Hide non-essential header subtitle and the bottom depth banner; keep action
    buttons side-by-side to avoid stacking and save vertical room. */
-@media (orientation: landscape) and (max-height: 420px) {
+@media (orientation: landscape) and (max-height: 730px) {
     .b2b-visualizer-header { padding:8px 12px; }
     .b2b-visualizer-title { font-size:16px; }
     /* Hide the ship/dates/side-by-side subtitle to save vertical space */

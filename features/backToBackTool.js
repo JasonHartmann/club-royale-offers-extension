@@ -1,9 +1,9 @@
 (function(){
     const DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
     const DOW_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
-    const DEBUG = true;
+    const DEBUG = false;
     // Dev-only toggle: set to true to always print in-code B2B chain diagnostics when opening builder
-    const DEV_B2B_DEBUG = true;
+    const DEV_B2B_DEBUG = false;
     function _dbg() { if (!DEBUG) return; try { if (window && window.console && window.console.debug) console.debug('[B2B]', ...arguments); } catch(e){} }
 
     function normalizeIso(value) {
