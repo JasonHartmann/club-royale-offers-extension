@@ -6,12 +6,12 @@
   <title>Comp Royale — Cruise Offers Viewer Extension</title>
   <meta name="description" content="Chrome extension that transforms Royal Caribbean and Celebrity Cruises offers into a sortable, groupable, power-user interface." />
   <meta name="theme-color" content="#0a4d8c" />
-  <meta property="og:title" content="RCCL Cruise Offers Viewer" />
-  <meta property="og:description" content="View, sort, group, and explore Royal Caribbean and Celebrity Cruises offers effortlessly." />
+  <meta property="og:title" content="Cruise Offers Viewer" />
+  <meta property="og:description" content="Faster Royal Caribbean & Celebrity offer browsing with multi-profile tabs, combined upgrades, and zero tracking." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://comproyale.com/" />
-  <meta property="og:image" content="https://comproyale.com/offer-screen.png" />
-  <link rel="icon" type="image/png" href="offer-screen.png" />
+  <meta property="og:image" content="https://comproyale.com/images/macbook-03-base.png" />
+  <link rel="icon" type="image/png" href="images/macbook-03-base.png" />
   <link rel="stylesheet" href="static-styles.css" />
   <!-- Google Material Symbols (outlined) for simple icon usage -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
@@ -34,12 +34,13 @@
   <header class="gradient-hero">
     <div class="hero-inner">
       <div>
-        <h1>RCCL Cruise Offers Viewer</h1>
-        <p class="lead">Supercharge your Royal Caribbean and Celebrity Cruises offer browsing. Instantly view all cruise offers in a fast, sortable table or drillable accordion group, filter, highlight, and plan smarter. <strong>Now with multi-profile support and combined offer upgrades!</strong></p>
+        <h1>Royal Caribbean and Celebrity Cruises Offers Viewer v2.0</h1>
+        <p class="lead">High-level visibility for Royal Caribbean and Celebrity offers. Fan out every tile into a sortable table or grouped accordion, pair two profiles, and scan upgrade value without leaving the page. <strong>Nothing leaves your browser.</strong></p>
         <div class="cta-row">
           <a class="btn" href="#install">Install Extension</a>
           <a class="btn firefox" href="https://addons.mozilla.org/en-US/firefox/addon/rcl-club-offers/" target="_blank" rel="noopener" aria-label="Install extension on Firefox (desktop and Firefox for Android)">Install for Firefox</a>
           <a class="btn alt" href="#screens">See Screens</a>
+          <a class="btn alt" href="faq.html">FAQ</a>
           <a class="btn venmo" href="https://venmo.com/percex" target="_blank" rel="noopener" aria-label="Buy me a coffee (opens in new tab)">
             <!-- Coffee cup icon replaced with Material Symbol -->
             <span class="material-symbols-outlined" aria-hidden="true">local_cafe</span>
@@ -48,19 +49,20 @@
         </div>
         <div class="pill-row" aria-label="Key benefits">
           <span class="pill">Multiple Profiles</span>
-          <span class="pill">Combined Offers</span>
+          <span class="pill">Profile Linking Assist</span>
           <span class="pill">Celebrity & Royal Support</span>
           <span class="pill">Zero Tracking</span>
-          <span class="pill">Grouping</span>
+          <span class="pill">Depth-aware B2B</span>
           <span class="pill">Fast Sorting</span>
-          <span class="pill">Highlight Expiring</span>
+          <span class="pill">Upgrade Filters</span>
           <span class="pill">Favorites</span>
+          <span class="pill">Low-Spec Mode</span>
         </div>
         <p class="support-note">Support: <a class="support-link" href="mailto:admin@comproyale.com">admin@comproyale.com</a></p>
       </div>
       <div class="screen-card hero-peek">
         <h4>At a Glance</h4>
-        <img class="resp" src="offer-screen.png" alt="Offers table screenshot" />
+        <img class="resp" src="images/macbook-03-base.png" alt="Screenshot of Cruise Offers Viewer table view on macOS" />
       </div>
     </div>
   </header>
@@ -68,32 +70,30 @@
   <main>
     <section id="whatsnew">
       <div class="wrapper">
-        <h2>What's New in v1.5</h2>
+        <h2>What's New in v2.0</h2>
         <ul class="details">
-          <li><strong>Advanced Search (Preview):</strong> New filters builder panel — define complex filters and have them auto-apply when the panel is enabled.</li>
-          <li><strong>Trade-In Value Column:</strong> Added a dedicated column showing trade-in values to help compare upgrade options at a glance.</li>
-          <li><strong>Itinerary Detail Links:</strong> Destination cells now include itinerary links that open a popup with route and port-call information.</li>
-          <li><strong>Support & Tips Button Restored:</strong> Quick access to support and tips, including Ko-Fi and Venmo links for donations.</li>
-          <li><strong>Performance & UI:</strong> Continued improvements to table rendering and smoother UI updates.</li>
-          <li><strong>Bugfixes:</strong> Updated to deal with changing underlying APIs.</li>
+          <li><strong>Profile Linking Assistant:</strong> Guided prompts ensure the second profile is stored correctly and combined tabs show the right upgrade inventory.</li>
+          <li><strong>B2B Depth Explorer:</strong> Back-to-back builder now highlights depth bands, so you can see how many stacked sailings you have before needing a gap night.</li>
+          <li><strong>Upgrade Price Search:</strong> Filter and highlight offers by trade-up cost or minimum upgrade delta directly from the Search panel.</li>
+          <li><strong>Mobile Parity:</strong> Refined iOS/Android layout and improved Safari instructions with new screenshots.</li>
+          <li><strong>Stability:</strong> Quieter logging, better detection of offer API changes, and dozens of paper cuts resolved.</li>
         </ul>
       </div>
     </section>
     <section id="features">
       <div class="wrapper">
         <h2>Why it helps</h2>
-        <p class="intro-text">Scrolling raw offer cards is slow. This extension structures everything into actionable data so you can focus on planning not parsing. Quick sorting, multi-profile tabs, grouping, and frictionless reading all save time. <strong>Works for both Royal Caribbean and Celebrity Cruises offers.</strong></p>
+        <p class="intro-text">Stop scrolling endless tiles. Cruise Offers Viewer restructures the page into tidy data so you can compare like a pro. Sort, group, or filter in one click, pair profiles for upgrade math, and keep everything on-device. <strong>Works on Royal Caribbean <em>and</em> Celebrity offers.</strong></p>
         <div class="features-grid">
-          <div class="feature"><h3>Celebrity & Royal Support</h3><p>Works on both Royal Caribbean and Celebrity Cruises offers pages.</p></div>
-          <div class="feature"><h3>Multiple Profiles</h3><p>Switch between player accounts with tabs. Each profile is saved and managed separately.</p></div>
-          <div class="feature"><h3>Combined Offers</h3><p>Link two profiles to see upgrade-eligible offers in a new combined tab.</p></div>
-          <div class="feature"><h3>Smart Table</h3><p>Sortable by any column with 3-state cycle: asc, desc, original order.</p></div>
-          <div class="feature"><h3>Accordion Groups</h3><p>Group by code, ship, port, destination, category, or guests.</p></div>
-          <div class="feature"><h3>Hide by Group</h3><p>Use the trash icon to hide all offers in a group (per profile).</p></div>
-          <div class="feature"><h3>Visual Highlights</h3><p>Newest offers + soon expiring flagged for fast triage.</p></div>
-          <div class="feature"><h3>Favorites</h3><p>Save individual sailings to your Favorites tab for quick access works across profiles and combined views.</p></div>
-          <div class="feature"><h3>Privacy First</h3><p>No remote calls beyond the site itself; no tracking or analytics.</p></div>
-          <div class="feature"><h3>Low Overhead</h3><p>Lightweight content script, fast DOM operations, minimal styles.</p></div>
+          <div class="feature"><h3>Celebrity & Royal Support</h3><p>Runs on the official offers pages for both cruise lines, desktop or mobile.</p></div>
+          <div class="feature"><h3>Profile Tabs & Linking</h3><p>Save each loyalty account, then chain two together to surface upgrade-ready combos.</p></div>
+          <div class="feature"><h3>Upgrade Signals</h3><p>Columns for trade-in value, upgrade delta, and highlight rules keep the best sailings on top.</p></div>
+          <div class="feature"><h3>Smart Table & Accordion</h3><p>Three-state sorting and flexible grouping (ship, port, code, guests, more).</p></div>
+          <div class="feature"><h3>B2B Builder</h3><p>Generate back-to-back itineraries with depth indicators and gap warnings.</p></div>
+          <div class="feature"><h3>Noise Filters</h3><p>Hide per-group clutter, mute ships you’re skipping, or pin favorites for later.</p></div>
+          <div class="feature"><h3>Keyboard Friendly</h3><p>Navigate tabs, search, and actions with shortcuts—no mouse required.</p></div>
+          <div class="feature"><h3>Privacy First</h3><p>No telemetry, no network calls beyond the page you already loaded.</p></div>
+          <div class="feature"><h3>Favorites Everywhere</h3><p>Favorites sync across standalone profiles and combined views.</p></div>
         </div>
       </div>
     </section>
@@ -102,8 +102,9 @@
       <div class="wrapper">
         <h2>Interface Views</h2>
         <div class="screens">
-          <div class="screen-card"><h4>Offers Table</h4><img class="resp" src="offer-screen.png" alt="Screenshot of sortable offers table" /></div>
-          <div class="screen-card"><h4>Accordion Mode</h4><img class="resp" src="accordion-screen.png" alt="Screenshot of grouped accordion comp offers" /></div>
+          <div class="screen-card"><h4>Offers Table</h4><img class="resp" src="images/macbook-06-search.png" alt="MacBook screenshot of Cruise Offers Viewer search tools" /></div>
+          <div class="screen-card"><h4>Accordion Mode</h4><img class="resp" src="images/macbook-10-accordion.png" alt="MacBook screenshot of grouped accordion offers" /></div>
+          <div class="screen-card"><h4>On-the-Go</h4><img class="resp" src="images/iPhone14ProMax-03-base.png" alt="iPhone screenshot of Cruise Offers Viewer mobile layout" /></div>
         </div>
       </div>
     </section>
@@ -112,7 +113,7 @@
       <div class="wrapper two-col">
         <div>
           <h2>Install & Use</h2>
-          <p style="margin-top:6px;font-size:.95rem;">Prefer manual install or troubleshooting? See the <a href="download-direct.html">direct download & manual install instructions</a>.</p>
+          <p style="margin-top:6px;font-size:.95rem;">Prefer manual install or troubleshooting? See the <a href="download-direct.html">direct download & manual install instructions</a> or the <a href="faq.html">FAQ</a>.</p>
           <ol class="steps">
             <li>Install from the <a href="https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">Chrome Web Store listing</a>.</li>
             <li>Or install from the <a href="https://addons.mozilla.org/en-US/firefox/addon/rcl-club-offers/" target="_blank" rel="noopener">Firefox Add-ons</a> page (supports Firefox desktop and Firefox for Android).</li>
@@ -129,7 +130,7 @@
         <div>
           <h2>Key Details</h2>
           <ul class="details">
-            <li>Available for Chrome and Firefox (including Firefox for Android)</li>
+            <li>Available for Chrome, Firefox (including Firefox for Android), and Safari</li>
             <li>Works on both Royal Caribbean and Celebrity offers pages</li>
             <li>Switch between multiple player profiles with one click</li>
             <li>Combine offers from two accounts to see upgrade opportunities</li>
@@ -149,7 +150,7 @@
     <section id="privacy">
       <div class="wrapper">
         <h2>Privacy & Scope</h2>
-        <p class="privacy-copy">The extension only reads the existing HTML and API response already delivered to the page while you are authenticated on Royal Caribbean or Celebrity. It does not transmit credentials, tokens, or analytics. You may disable it anytime; it is idle when not on the Offers page.</p>
+        <p class="privacy-copy">The extension only reads the HTML and API response already delivered to the Offers page while you are logged into Royal Caribbean or Celebrity. It does not transmit credentials, tokens, analytics, or profile data anywhere. Disable it anytime—the script sleeps when the Offers page is closed.</p>
       </div>
     </section>
   </main>
@@ -167,8 +168,8 @@
           <li><a href="#screens">Screens</a></li>
           <li><a href="#install">Install</a></li>
           <li><a href="#privacy">Privacy</a></li>
+          <li><a href="faq.html">FAQ</a></li>
           <li><a href="mailto:admin@comproyale.com">Support</a></li>
-          <li><a href="download-direct.html">Direct ZIP Download</a></li>
           <li><a href="b2b.html">Back-to-Back Builder</a></li>
           <li><a href="https://addons.mozilla.org/en-US/firefox/addon/rcl-club-offers/" target="_blank" rel="noopener">Firefox Add-on</a></li>
           <li><a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener" aria-label="Open project repository on GitHub (issues and improvement requests)"><span class="material-symbols-outlined" aria-hidden="true">bug_report</span>Project &amp; Issues on GitHub</a></li>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAQ — Royal Caribbean and Celebrity Cruises Offers Viewer</title>
+  <meta name="description" content="Answers to common Cruise Offers Viewer questions: multi-profile linking, B2B depth, upgrade price search, and performance tuning." />
+  <link rel="stylesheet" href="static-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+</head>
+<body>
+  <header class="gradient-hero" style="padding:2.5rem 1rem;">
+    <div class="hero-inner">
+      <div>
+        <h1>Frequently Asked Questions</h1>
+        <p class="lead">Need help pairing profiles, decoding B2B depths, or speeding up the table? Start here.</p>
+        <div class="cta-row">
+          <a class="btn" href="index.html">Back to Home</a>
+          <a class="btn alt" href="mailto:admin@comproyale.com">Contact Support</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="wrapper" style="padding-top:2rem;">
+      <article class="faq-card">
+        <h2>How do I add a second profile and link them?</h2>
+        <ol>
+          <li>Open the offers page while signed into the first loyalty account and click <strong>Show All Offers</strong>.</li>
+          <li>Select the <strong>Profiles</strong> tab in the header bar, then press <strong>“Add Profile”</strong>.</li>
+          <li>Give the profile a short label (e.g., “Player A”), choose a highlight color, and hit <strong>Save</strong>. The extension stores the minimal ID locally.</li>
+          <li>Log out of the cruise site completely, sign into the second loyalty account, navigate to the offers page, and click <strong>Show All Offers</strong> again. This log-out/log-in sequence is the only way to capture another profile.</li>
+          <li>Once both profiles exist, click the <span class="material-symbols-outlined" aria-hidden="true">link</span> chain icon on both the header tabs.</li>
+          <li>The new <strong>Combined</strong> tab becomes enabled. It surfaces offers that can be upgraded or combined between those two accounts.</li>
+        </ol>
+        <p class="note">Tip: To refresh a profile’s data later, you must redo the same sign-out/sign-in + <strong>Show All Offers</strong> flow for that account, then hit <strong>Refresh Profile</strong> in the Profiles tab. If you rename a profile, re-open the linking dialog to keep the combined tab label accurate.</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>How does the Back-to-Back (B2B) tool work and what do depths mean?</h2>
+        <p>The B2B Builder reads the sailings that are already in your table, and labels each row with a <strong>depth</strong> number. That number is simply the longest uninterrupted chain of cruises you can sail starting with that offer using what you currently have in your account. In other words, a depth of 4 means you could board that sailing and keep hopping from ship to ship four sailings in a row before you run out of eligible comps.</p>
+        <p>Depth is influenced by the <strong>Side-by-Side</strong> toggle in the builder. When Side-by-Side is <em>on</em>, the planner assumes you are comfortable switching ships on the same day in the same port, so the chain length can continue even if two sailings overlap on embarkation day. When it is <em>off</em>, the builder only considers sailings available for the same ship, so the depth number may shrink accordingly.</p>
+        <p>Clicking the depth pill for an offer will display the Back-to-Back Builder tool. Use the tool to construct a chain of sailings for destinations you care about, then click <strong>Add to Favorites</strong>. All sailings in the chain will get added to the Favorite tab with a unique code for that chain in the B2B column</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>How do I search by upgrade price?</h2>
+        <ol>
+          <li>Open the <strong>Advanced Search</strong> drawer by clicking the button.</li>
+          <li>Select one of the custom search criteria from "Interior Price", "Ocean View Price", "Balcony Price", or "Suite Price" in the "Add Field" drawer.</li>
+          <li>Set the <strong>less than</strong> operator on the new filter.</li>
+          <li>Type the max price you are willing to pay for the upgrade (e.g., <code>250</code> for $250).</li>
+          <li>The filter applies instantly to the selected profile and respects whatever group or sort state you already have.</li>
+        </ol>
+      </article>
+
+      <article class="faq-card">
+        <h2>Why is the table slow and how can I speed it up?</h2>
+        <ul>
+          <li>Use the Hidden Groups feature to hide large sections of the table. To do this, open the group picker via the Yellow Folder icon in each column header and use the "Trashcan" icon to hide those groups. For the best results, hide groups with many rows that you know you can't use, such as "Code: 25TIER3".</li>
+          <li>Open <strong>Settings</strong> and toggle <strong>Auto-run Back-to-Back Builder Calculations</strong> to limit depth calculations for the B2B tool.</li>
+        </ul>
+        <p>If performance stays rough, send your browser/OS combo to <a href="mailto:admin@comproyale.com">admin@comproyale.com</a> so we can look into it.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer style="text-align:center;padding:2rem 1rem;font-size:.85rem;color:#666;">
+    <p>Need more help? Email <a href="mailto:admin@comproyale.com">admin@comproyale.com</a> or open an issue on <a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener">GitHub</a>.</p>
+    <p style="font-size:.7rem;margin-top:.5rem;">© 2025 Percex Technologies, LLC.</p>
+  </footer>
+</body>
+</html>
