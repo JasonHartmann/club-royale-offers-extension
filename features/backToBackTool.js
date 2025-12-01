@@ -651,6 +651,53 @@
             overlay.style.visibility = 'hidden';
             document.body.appendChild(overlay);
 
+            // Detect platforms (like Safari on macOS) where scrollbars overlay content instead of
+            // reserving layout space. Apply a fallback padding to each scrollable section.
+            let _cachedScrollbarWidth = null;
+            const _measureScrollbarWidth = () => {
+                if (_cachedScrollbarWidth != null) return _cachedScrollbarWidth;
+                try {
+                    const outer = document.createElement('div');
+                    outer.style.visibility = 'hidden';
+                    outer.style.width = '120px';
+                    outer.style.msOverflowStyle = 'scrollbar';
+                    outer.style.overflow = 'scroll';
+                    document.body.appendChild(outer);
+                    const inner = document.createElement('div');
+                    inner.style.width = '100%';
+                    outer.appendChild(inner);
+                    _cachedScrollbarWidth = Math.max(0, outer.offsetWidth - outer.clientWidth);
+                    outer.remove();
+                } catch (e) {
+                    _cachedScrollbarWidth = 0;
+                }
+                return _cachedScrollbarWidth;
+            };
+
+            const _applyScrollbarFallback = (el) => {
+                try {
+                    if (!el) return;
+                    const hasVScroll = Math.ceil(el.scrollHeight) - Math.ceil(el.clientHeight) > 1;
+                    const reservesSpace = (el.offsetWidth - el.clientWidth) > 1;
+                    if (hasVScroll && !reservesSpace) {
+                        const gapPx = Math.max(12, Math.round((_measureScrollbarWidth() || 0) + 6));
+                        el.style.setProperty('--b2b-scrollbar-gap', gapPx + 'px');
+                        el.classList.add('b2b-scrollbar-overlap');
+                    } else {
+                        el.classList.remove('b2b-scrollbar-overlap');
+                        el.style.removeProperty('--b2b-scrollbar-gap');
+                    }
+                } catch (e) {
+                    /* best-effort, ignore per-element errors */
+                }
+            };
+
+            const _runScrollbarDetection = () => {
+                _applyScrollbarFallback(overlay);
+                _applyScrollbarFallback(chainCards);
+                _applyScrollbarFallback(optionList);
+            };
+
             const keyHandler = (ev) => {
                 if (ev.key === 'Escape') this._closeOverlay();
             };
@@ -670,6 +717,11 @@
                 saveBtn,
                 resetBtn
             };
+
+            try {
+                this._activeSession.ui._runScrollbarDetection = _runScrollbarDetection;
+                _runScrollbarDetection();
+            } catch (e) { /* ignore */ }
 
             // Diagnostic helper: capture current layout metrics to help debug
             // unexpected document growth. Left enabled but guarded by DEV_B2B_DEBUG.
@@ -696,7 +748,14 @@
             };
             // Install a debounced resize handler so card heights remain normalized
             try {
-                const normalize = () => { try { this._normalizeOptionCardHeights(); } catch(e){} };
+                const normalize = () => {
+                    try { this._normalizeOptionCardHeights(); } catch(e){}
+                    try {
+                        if (this._activeSession && this._activeSession.ui && typeof this._activeSession.ui._runScrollbarDetection === 'function') {
+                            this._activeSession.ui._runScrollbarDetection();
+                        }
+                    } catch (err) { /* ignore */ }
+                };
                 this._activeSession.ui._b2bResizeTimer = null;
                 this._activeSession.ui._b2bResizeHandler = () => {
                     try { clearTimeout(this._activeSession.ui._b2bResizeTimer); } catch(e){}
@@ -864,6 +923,11 @@
             this._setStatusText();
             // Ensure the selected sailings viewport scrolls to show the most recently added sailing
             try { this._scrollChainToBottom(); } catch (e) { /* ignore scroll errors */ }
+            try {
+                if (this._activeSession && this._activeSession.ui && typeof this._activeSession.ui._runScrollbarDetection === 'function') {
+                    this._activeSession.ui._runScrollbarDetection();
+                }
+            } catch (e) { /* ignore */ }
         },
 
         _scrollChainToBottom() {
@@ -1430,6 +1494,11 @@
             } catch(e) {}
             // Normalize card heights so cards in the same grid row share the same vertical size
             try { this._normalizeOptionCardHeights(); } catch(e) {}
+            try {
+                if (this._activeSession && this._activeSession.ui && typeof this._activeSession.ui._runScrollbarDetection === 'function') {
+                    this._activeSession.ui._runScrollbarDetection();
+                }
+            } catch (e) { /* ignore */ }
         },
 
         _selectOption(rowId) {

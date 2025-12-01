@@ -146,6 +146,36 @@
        header + actions chrome to leave room for them. */
     max-height: calc(100vh - 160px);
 }
+
+/* Safari workaround: when scrollbars overlay content (do not reserve layout),
+     the selected sailings column can be obscured. Prefer using scrollbar-gutter
+     where supported, otherwise apply a fallback right padding when the overlay
+     has the detection class added by the JS. */
+.b2b-visualizer-overlay {
+    /* Prefer modern API to reserve space for overlay scrollbars */
+    scrollbar-gutter: stable both-edges;
+}
+
+/* Fallback: when scrollbar-gutter isn't supported (older Safari), the JS will
+     add `.b2b-scrollbar-overlap` to any scrollable column/list. Apply padding so
+     the selected cards are not covered by the scrollbar. */
+.b2b-visualizer-overlay.b2b-scrollbar-overlap .b2b-chain-column {
+    /* Use measured scrollbar gap from JS; fallback to 20px */
+    padding-right: var(--b2b-scrollbar-gap, 20px);
+}
+
+.b2b-chain-cards.b2b-scrollbar-overlap {
+    padding-right: var(--b2b-scrollbar-gap, 14px);
+}
+
+/* Slightly increase the chain cards' right-side inset so controls stay visible */
+.b2b-chain-cards.b2b-scrollbar-overlap .b2b-chain-card {
+    margin-right: 4px;
+}
+
+.b2b-option-list.b2b-scrollbar-overlap {
+    padding-right: calc(11px + var(--b2b-scrollbar-gap, 8px));
+}
 .b2b-chain-column, .b2b-option-column {
     display: flex;
     flex-direction: column;
