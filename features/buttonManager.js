@@ -58,6 +58,7 @@ const ButtonManager = {
                 button.style.margin = '0 auto';
                 button.style.position = 'relative';
                 button.style.zIndex = '10';
+                // No automatic scrolling: leave layout and viewport unchanged.
                 console.debug('Button centered in banner div');
             }
             // Value column (offerValue) added – no button adjustments required.

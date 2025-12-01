@@ -36,10 +36,13 @@ const OfferCodeLookup = {
   init() {
     if (this._initialized) return;
     const handler = (e) => {
-      // Only handle left-clicks on 'click' and middle-click on 'auxclick'
-      const isAux = e.type === 'auxclick';
-      // e.button: 0 = left, 1 = middle, 2 = right
-      if ((isAux && e.button !== 1) || (!isAux && e.button !== 0)) return;
+  // Only handle left-clicks on 'click' and middle-click on 'auxclick'.
+  // On some mobile browsers (iOS Safari) touch-generated click events may have
+  // e.button === undefined - treat undefined as a left-click here so taps work.
+  const isAux = e.type === 'auxclick';
+  // e.button: 0 = left, 1 = middle, 2 = right; undefined on some touch events
+  const btn = (typeof e.button === 'number') ? e.button : 0;
+  if ((isAux && btn !== 1) || (!isAux && btn !== 0)) return;
       const a = e.target.closest && e.target.closest('.offer-code-link');
       if (!a) return;
       try {

@@ -5,7 +5,7 @@
 @keyframes goboFocusGlow { 0% { box-shadow:0 0 0 4px rgba(251,191,36,.35),0 0 18px 6px rgba(251,191,36,.5);} 50% { box-shadow:0 0 0 2px rgba(251,191,36,.25),0 0 8px 3px rgba(251,191,36,.35);} 100% { box-shadow:0 0 0 4px rgba(251,191,36,.35),0 0 18px 6px rgba(251,191,36,.5);} }
 .gobo-whatsnew-tooltip { animation:fadeInScale .25s ease; }
 @keyframes fadeInScale { 0% { opacity:0; transform:translateY(6px) scale(.96);} 100% { opacity:1; transform:translateY(0) scale(1);} }
-.close-button { background:#dc2626; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; }
+.close-button { background:#dc2626; }
 .close-button:hover { background:#b91c1c; }
 .buy-coffee-link {
     display: inline-flex;
@@ -25,8 +25,70 @@
 .buy-coffee-link:hover { background: rgba(0,0,0,0.04); transform: translateY(-1px); }
 .buy-coffee-link:focus { outline: 2px solid #ffd166; outline-offset: 2px; }
 .coffee-emoji { font-size: 18px; line-height: 1; display:inline-block; }
-.export-csv-button { background:#22c55e; color:#fff; font-weight:600; padding:8px 16px; border-radius:0.5rem; cursor:pointer; margin-right:12px; transition:background .2s; }
+
+/* Consolidated action button styles: keep padding, font, spacings and sizing consistent
+   across primary footer/action buttons while allowing each to keep its own color. */
+.action-btn, .close-button, .export-csv-button, .whatsnew-btn, .donate-button {
+    color: #fff;
+    font-weight: 600;
+    /* horizontal padding only; use fixed height to ensure exact match */
+    padding: 0 12px;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    line-height: 1;
+    font-family: inherit;
+    font-size: 13px; /* normalize to a consistent button size */
+    box-sizing: border-box;
+    border: none; /* ensure no default border increases height */
+}
+.export-csv-button { background:#22c55e; transition:background .2s; }
 .export-csv-button:hover { background:#16a34a; }
+
+.whatsnew-btn { background:#6922c5; transition:background .2s; }
+.whatsnew-btn:hover { background:#845bba; }
+
+/* Donate button + panel (color-only; sizing/typography come from consolidated action rule) */
+.donate-button {
+    background: #f59e0b; /* amber */
+}
+.donate-button:hover { background: #d97706; }
+.donate-button:focus { outline: 3px solid rgba(245,158,11,0.25); outline-offset: 2px; }
+.donate-button::after { content: ' ▾'; margin-left: 6px; display: inline-block; transition: transform .12s; }
+/* Flip chevron when donate panel is open (aria-expanded on the button) */
+.donate-button[aria-expanded="true"]::after { content: ' ▴'; transform: translateY(-1px); }
+
+/* Base donate panel defaults (hidden by default; modal.js will show it when opened) */
+.donate-panel { display: none; position: absolute; z-index: 2147483650; }
+
+.donate-panel a.buy-coffee-link, .donate-panel a.venmo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    text-decoration: none;
+    color: #111827;
+    border-radius: 6px;
+}
+.donate-panel a.buy-coffee-link { justify-content: center; }
+/* Keep venmo label + icon centered inside the panel for consistent visuals */
+.donate-panel a.venmo-link { justify-content: center; }
+.donate-panel a.venmo-link img { margin-right: 8px; }
+.donate-panel a.buy-coffee-link:hover, .donate-panel a.venmo-link:hover { background: rgba(0,0,0,0.03); }
+.donate-panel .buy-coffee-text { display: inline-block; }
+
+/* Ensure donate-panel is not cut off in small viewports */
+.donate-panel { max-width: 80vw; }
+
+/* Ensure the donate panel's column content is centered horizontally so
+    links like the Venmo entry appear centered on narrow/mobile viewports
+    (fixes iOS layout where the link could appear flush-left). */
+.donate-panel > div { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.donate-panel .donate-panel-link { justify-content: center; width: auto; }
 /* Back-to-Back (B2B) search button styling — moved from inline in tableRenderer.js */
 .b2b-search-button { margin-left:12px; background:#0d3b66; color:#fff; border:none; padding:4px 10px; font-size:11px; border-radius:4px; cursor:pointer; font-weight:600; transition:background .15s, transform .08s; }
 .b2b-search-button:hover { background:#0b3557; transform:translateY(-1px); }
@@ -49,20 +111,63 @@
 .b2b-depth-cell-action[data-b2b-cell-bound="true"] .b2b-chevrons:hover,
 .b2b-depth-cell-action[data-b2b-cell-bound="true"] > .b2b-chevrons:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(9,45,92,0.28); }
 
-.b2b-visualizer-overlay { position:fixed; inset:0; background:rgba(5,13,32,0.65); z-index:2147483651; display:flex; align-items:center; justify-content:center; padding:24px; backdrop-filter:blur(2px); }
-.b2b-visualizer-modal { width:min(1100px,95vw); max-height:92vh; background:#f7f9fc; border-radius:22px; box-shadow:0 30px 60px rgba(0,0,0,0.45); display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,255,255,0.2); }
+.b2b-visualizer-overlay { position:fixed; inset:0; background:rgba(5,13,32,0.65); z-index:2147483651; display:flex; align-items:flex-start; justify-content:center; padding:24px 24px 32px; overflow-y:auto; -webkit-overflow-scrolling:touch; backdrop-filter:blur(2px); }
+.b2b-visualizer-modal {
+    width: min(1100px, 95vw);
+    /* Cap the modal to the viewport minus a small chrome margin so it never grows past the screen */
+    max-height: calc(100vh - 40px);
+    background: #f7f9fc;
+    border-radius: 22px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.2);
+    box-sizing: border-box;
+}
 .b2b-visualizer-header { padding:20px 28px; background:linear-gradient(120deg,#0c4ea3,#1f7edc); color:#fff; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
 .b2b-visualizer-title { font-size:20px; font-weight:700; margin:0; }
 .b2b-visualizer-subtitle { font-size:13px; opacity:0.9; margin-top:4px; max-width:540px; }
 .b2b-visualizer-close { border:none; background:rgba(255,255,255,0.15); color:#fff; width:32px; height:32px; border-radius:8px; font-size:18px; font-weight:600; cursor:pointer; transition:background .15s, transform .1s; }
 .b2b-visualizer-close:hover { background:rgba(255,255,255,0.3); transform:translateY(-1px); }
-.b2b-visualizer-body { padding:24px 28px; display:grid; grid-template-columns:320px 1fr; gap:24px; overflow:auto; flex:1; min-height:0; }
-.b2b-chain-column, .b2b-option-column { display:flex; flex-direction:column; gap:16px; min-height:0; overflow:hidden; }
-.b2b-chain-cards, .b2b-option-list { flex:1 1 auto; min-height:0; overflow:auto; /* reserve space for scrollbars so cards don't overlap them */ padding-right: 11px; scrollbar-gutter: stable both-edges; }
+.b2b-visualizer-body {
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    /* Ensure the body fits inside the viewport and scrolls internally.
+       Use viewport-relative units instead of percentage to avoid circular
+       sizing dependency on the modal's content height. Subtract estimated
+       header + actions chrome to leave room for them. */
+    max-height: calc(100vh - 160px);
+}
+.b2b-chain-column, .b2b-option-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+}
+/* Make the cards container a column flexbox that scrolls vertically. This
+   ensures cards keep their natural height and the list scrolls instead of
+   compressing items on all form factors. */
+.b2b-chain-cards, .b2b-option-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* reserve space for scrollbars so cards don't overlap them */
+    padding-right: 11px;
+    scrollbar-gutter: stable both-edges;
+}
 .b2b-section-title { font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px; margin:0; }
 .b2b-section-title small { font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; }
-.b2b-chain-cards { display:flex; flex-direction:column; gap:14px; min-height:0; overflow:auto; }
-.b2b-chain-card { border-radius:18px; background:#fff; padding:16px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:8px; /* allow the card to grow horizontally to fit long single-line timelines */ min-width: max-content; overflow: visible; }
+.b2b-chain-card { border-radius:18px; background:#fff; padding:12px; box-shadow:0 10px 24px rgba(15,23,42,0.12); border:1px solid rgba(15,23,42,0.08); position:relative; display:flex; flex-direction:column; gap:6px; /* prevent the card from forcing horizontal growth */ max-width: 100%; overflow-x: hidden; word-break: break-word; flex: 0 0 auto; }
 .b2b-chain-card, .b2b-option-card { z-index: 0; }
 .b2b-chain-card.is-root { background:linear-gradient(135deg,#e0ecff,#f2f6ff); border-color:rgba(12,78,163,0.2); }
 .b2b-chain-step-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
@@ -72,17 +177,17 @@
 .b2b-chain-meta strong { font-size:12px; color:#0f172a; }
 .b2b-chain-ports { font-size:12px; color:#475569; line-height:1.4; border-left:3px solid rgba(15,23,42,0.15); padding-left:10px; margin-top:6px; }
 .b2b-chain-card .b2b-timeline-table {
-    /* let the timeline determine its own width and avoid forcing fixed cell layout
-       so each day-by-day row stays on a single line */
-    width: auto;
+    /* Make the timeline table fluid and prevent it from expanding past the card.
+       Use fixed table layout so cells wrap predictably and avoid horizontal growth. */
+    width: 100%;
     border-collapse: collapse;
     box-sizing: border-box;
     font-size: 13px;
     display: table;
-    table-layout: auto;
+    table-layout: fixed; /* allow cells to respect width and wrap */
     max-height: none;
-    overflow: visible;
-    white-space: nowrap;
+    overflow-x: hidden;
+    white-space: normal; /* allow label wrapping */
 }
 .b2b-chain-card .b2b-timeline-table tbody {
     display: table-row-group;
@@ -92,30 +197,32 @@
 .b2b-chain-card .b2b-timeline-table tr {
     display: table-row;
     width: 100%;
-    table-layout: fixed;
 }
 .b2b-timeline-day {
-    width: 60px;
+    width: 48px;
+    min-width: 40px;
     font-weight: bold;
     color: #0f172a;
-    padding: 2px 4px; /* reduce left/right padding a bit */
+    padding: 1px 6px; /* tighten horizontal spacing */
     white-space: nowrap;
-    font-size: 13px;
+    font-size: 12px;
 }
 .b2b-timeline-dow {
-    width: 48px;
+    width: 40px;
+    min-width: 36px;
     color: #64748b;
-    padding: 2px 4px; /* reduce left/right padding a bit */
+    padding: 1px 6px; /* tighten horizontal spacing */
     white-space: nowrap;
-    font-size: 13px;
+    font-size: 12px;
 }
 .b2b-timeline-label {
     color: #475569;
-    padding: 2px 4px; /* reduce left padding to tighten up the line start */
-    white-space: nowrap; /* keep each summary on a single line */
-    overflow: visible; /* allow the card to grow instead of clipping */
-    text-overflow: clip;
-    font-size: 13px;
+    padding: 1px 6px; /* tighten spacing between columns */
+    white-space: normal; /* allow wrapping instead of forcing a single long line */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-overflow: ellipsis;
+    font-size: 12px;
 }
 .b2b-chain-card .b2b-timeline::-webkit-scrollbar {
     width: 8px;
@@ -223,6 +330,29 @@
     .b2b-action-btn { width:100%; }
 }
 
+/* Remove horizontal padding/margins for B2B visualizer cards on narrow viewports
+   so the selected sailings and Next Connections cards use the full width. */
+@media (max-width: 640px) {
+    /* keep left edge flush, but reserve space on the right for the scrollbar */
+    .b2b-visualizer-body { padding-left: 0 !important; padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important; gap: 8px !important; }
+    .b2b-chain-column, .b2b-option-column { padding-left: 0 !important; padding-right: 0 !important; }
+    .b2b-chain-cards { padding-left: 0 !important; padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important; scrollbar-gutter: stable both-edges; }
+    .b2b-option-list { padding-left: 0 !important; padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important; scrollbar-gutter: stable both-edges; }
+    .b2b-chain-card, .b2b-option-card { margin-left: 0 !important; margin-right: 0 !important; border-radius: 12px; }
+    /* Prevent horizontal scrollbar inside selected sailings on narrow screens */
+    .b2b-chain-cards { overflow-x: hidden !important; }
+}
+
+/* Extra-tight: completely remove outer gaps on very narrow screens */
+@media (max-width: 420px) {
+    /* extra-tight: flush left, reserve small gutter on right for scrollbar + safe-area */
+    .b2b-visualizer-body { padding-left: 0 !important; padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important; gap: 6px !important; grid-template-columns: 1fr !important; }
+    .b2b-chain-column, .b2b-option-column { padding-left: 0 !important; padding-right: 0 !important; }
+    .b2b-chain-cards { padding-left: 0 !important; padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important; scrollbar-gutter: stable both-edges; }
+    .b2b-option-list, .b2b-chain-cards { padding-left: 0 !important; padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important; scrollbar-gutter: stable both-edges; }
+    .b2b-chain-card, .b2b-option-card { margin-left: 0 !important; margin-right: 0 !important; border-radius: 10px; }
+}
+
 /* Reduce vertical whitespace for B2B columns and titles on narrow/portrait screens */
 @media (max-width: 640px) and (orientation: portrait) {
     .b2b-visualizer-header { padding:12px 14px; }
@@ -236,6 +366,166 @@
     .b2b-chain-cards { gap:10px; }
     .b2b-option-list { gap:10px; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }
     .b2b-action-btn { padding:10px 12px; font-size:13px; }
+}
+
+/* Landscape phones with very short viewport height: conserve vertical space
+   Hide non-essential header subtitle and the bottom depth banner; keep action
+   buttons side-by-side to avoid stacking and save vertical room. */
+@media (orientation: landscape) and (max-height: 420px) {
+    .b2b-visualizer-header { padding:8px 12px; }
+    .b2b-visualizer-title { font-size:16px; }
+    /* Hide the ship/dates/side-by-side subtitle to save vertical space */
+    .b2b-visualizer-subtitle { display: none !important; }
+
+    /* Hide the depth/status banner that appears above the actions */
+    .b2b-banner { display: none !important; }
+
+    /* Make action buttons horizontal, share space, and reduce padding */
+    .b2b-actions { flex-direction: row !important; gap:8px !important; padding:10px 12px !important; }
+    .b2b-action-btn { width: auto !important; flex: 1 1 auto !important; padding:10px 12px !important; font-size:13px !important; }
+    .b2b-action-btn.primary, .b2b-action-btn.secondary { min-width: 110px; }
+
+    /* Slightly reduce modal vertical chrome so more space for content */
+    .b2b-visualizer-modal { max-height: 96vh !important; }
+    /* Force two-column layout: Selected Sailings on left, Next Connections on right */
+    .b2b-visualizer-body { grid-template-columns: 300px 1fr !important; padding:10px 12px !important; gap:12px !important; }
+    /* Left column sizing adjustments */
+    .b2b-chain-column { min-width: 300px; max-width: 320px; }
+     /* Make chain column a column flex container and ensure its cards area can scroll
+         without compressing card heights as items are added. */
+     .b2b-chain-column { display:flex; flex-direction:column; min-height:0; }
+     .b2b-chain-cards { flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden !important; max-height: none !important; }
+     /* Prevent individual cards from shrinking vertically when the list grows */
+     .b2b-chain-card { flex: 0 0 auto !important; }
+    /* Force Next Connections list to be a single column */
+    .b2b-option-list { display: grid !important; grid-template-columns: 1fr !important; gap:10px !important; }
+    .b2b-option-card { padding:10px !important; }
+}
+
+/* Modal footer responsive rules: ensure footer buttons align and reflow on narrow screens */
+.table-footer-container {
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas: "left center right";
+    align-items: center;
+    column-gap: 12px;
+    padding: 12px 20px;
+    box-sizing: border-box;
+}
+#gobo-footer-left { grid-area: left; justify-self: start; display:flex; align-items:center; gap:8px; }
+#gobo-footer-center { grid-area: center; justify-self: center; display:flex; align-items:center; }
+#gobo-footer-right { grid-area: right; justify-self: end; display:flex; align-items:center; gap:8px; }
+
+/* Make footer buttons and links consistent height and alignment */
+.table-footer-container button,
+.table-footer-container a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+.table-footer-container .export-csv-button,
+.table-footer-container .close-button,
+.table-footer-container .buy-coffee-link,
+.table-footer-container .venmo-link,
+.table-footer-container .whatsnew-btn {
+    height: 36px;
+    line-height: 1;
+    padding: 0 10px !important; /* horizontal padding only */
+    margin: 0 4px !important;
+    /* Ensure footer buttons use the same font as the close button (inherit from container) */
+    font-family: inherit !important;
+    font-size: inherit !important;
+    box-sizing: border-box;
+}
+
+/* Center footer contents and keep compact spacing */
+.table-footer-container { display:flex !important; justify-content:center !important; gap:8px !important; }
+
+@media (max-width: 420px) {
+    /* Left group spans full width on the first row, center & right share the second row side-by-side */
+    .table-footer-container {
+        grid-template-columns: 1fr 1fr !important;
+        grid-template-areas: "left left" "center right" !important;
+        row-gap: 8px !important;
+        padding: 10px 12px !important;
+        width: 100% !important;
+    }
+    /* Make the left group stretch and distribute its children across the full width */
+    #gobo-footer-left { justify-self: stretch !important; width:100% !important; display:flex !important; align-items:center !important; gap:8px !important; justify-content:space-evenly !important; }
+    /* Ensure center/right occupy their grid cells and fill horizontally */
+    #gobo-footer-center { justify-self: stretch !important; width:100% !important; display:flex !important; justify-content:flex-end !important; }
+    #gobo-footer-right { justify-self: stretch !important; width:100% !important; display:flex !important; justify-content:flex-start !important; gap:8px !important; }
+    /* Keep buttons consistent at small widths: explicit height + horizontal padding */
+    .table-footer-container .close-button,
+    .table-footer-container .export-csv-button,
+    .table-footer-container .whatsnew-btn {
+        height: 36px;
+        padding: 0 12px !important;
+        box-sizing: border-box;
+    }
+}
+
+/* Compact footer for narrow+modern phones (covers iPhone 14 Pro Max width ~430px) */
+@media (max-width: 480px) {
+    .table-footer-container {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        padding: 10px 12px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
+    }
+    /* Top row: icons only, evenly spaced */
+    #gobo-footer-left { order: 1 !important; flex: 1 1 100% !important; display: flex !important; justify-content: space-evenly !important; align-items: center !important; }
+    /* Second row: Export and Close as two half-width buttons */
+    #gobo-footer-center { order: 2 !important; flex: 1 1 48% !important; display:flex !important; justify-content: flex-start !important; }
+    #gobo-footer-right { order: 3 !important; flex: 1 1 48% !important; display:flex !important; justify-content: flex-end !important; }
+
+    /* Make export and close consistent but do NOT force full width (prevents unwanted stacking) */
+    /* Ensure export, close, whatsnew and donate share the same mobile sizing */
+    .table-footer-container .export-csv-button,
+    .table-footer-container .close-button,
+    .table-footer-container .whatsnew-btn,
+    .table-footer-container .donate-button {
+        box-sizing: border-box !important;
+        height: 40px !important;
+        padding: 0 8px !important; /* reduced horizontal padding */
+        max-width: 220px !important;
+        font-size: 13px !important; /* slightly smaller font on narrow screens */
+    }
+
+     /* Hide non-essential text on the coffee link only when it's in the footer row to save space
+         (but show full text when the link is inside the donate panel). */
+     .table-footer-container .buy-coffee-link .buy-coffee-text { display: none !important; }
+     .buy-coffee-link { padding: 6px 8px !important; }
+     /* Ensure the donate panel always shows the full coffee text */
+     .donate-panel .buy-coffee-text { display: inline-block !important; }
+
+    /* Venmo: keep icon, slightly larger touch target */
+    .venmo-link { width: 32px !important; height: 32px !important; }
+    .venmo-link img { width: 100% !important; height: 100% !important; object-fit: contain !important; }
+
+    /* Prevent footer items from stretching weirdly */
+    .table-footer-container .buy-coffee-link, .table-footer-container .venmo-link, .table-footer-container { flex: 0 0 auto !important; }
+}
+
+/* Extra-tight rules for very narrow modals (<=420px) to reduce gaps and padding further */
+@media (max-width: 420px) {
+    .table-footer-container { gap: 6px !important; padding: 8px 10px !important; }
+    #gobo-footer-left { gap:6px !important; }
+    .table-footer-container .export-csv-button,
+    .table-footer-container .close-button,
+    .table-footer-container .whatsnew-btn,
+    .table-footer-container .donate-button {
+        padding: 0 6px !important; /* extra-tight horizontal padding */
+        height: 36px !important;
+        font-size: 12px !important; /* reduce font size slightly to avoid wrapping */
+    }
+    /* also reduce spacing for inline links in footer */
+    .table-footer-container .buy-coffee-link, .table-footer-container .venmo-link { margin: 0 2px !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -258,6 +548,18 @@
         transform: none !important;
         will-change: auto !important;
     }
+
+/* Ensure venmo image preserves aspect ratio and is not cropped */
+.venmo-link img {
+    width: 24px !important;
+    height: 24px !important;
+    object-fit: contain !important;
+    display: block !important;
+}
+
+/* Ensure donate / footer buttons stay on single row by default; responsive rules will override when needed */
+.table-footer-container { white-space: nowrap; }
+
 }
 
 /* Breadcrumbs */

@@ -26,7 +26,7 @@ const Modal = {
 
         const exportButton = document.createElement('button');
         exportButton.className = 'export-csv-button';
-        exportButton.textContent = 'Export to CSV';
+        exportButton.textContent = 'CSV Export';
         // Always use the current tab's state for export
         exportButton.addEventListener('click', () => {
             App.Modal.exportToCSV(App.TableRenderer.lastState);
@@ -62,67 +62,211 @@ const Modal = {
         scrollContainer.appendChild(table);
         scrollContainer.appendChild(accordionContainer);
 
-        // Add Buy Me a Coffee button (left-justified)
+        // Prepare Buy Me a Coffee and Venmo links (they will be moved into the Donate panel)
         const coffeeButton = document.createElement('a');
         coffeeButton.className = 'buy-coffee-link';
-        // Point to Ko-fi as requested
         coffeeButton.href = 'https://ko-fi.com/percex';
         coffeeButton.target = '_blank';
         coffeeButton.rel = 'noopener noreferrer';
-        // Use an emoji + text rather than an external image; sizing and layout handled via CSS
         coffeeButton.setAttribute('aria-label', 'Buy me a coffee (opens in new tab)');
         coffeeButton.innerHTML = '<span class="coffee-emoji" aria-hidden="true">☕️</span><span class="buy-coffee-text">Buy me a coffee</span>';
 
-        // Create Venmo circular button placed between coffee and what's new
         const venmoButton = document.createElement('a');
         venmoButton.className = 'venmo-link';
         venmoButton.href = 'https://venmo.com/percex';
         venmoButton.target = '_blank';
         venmoButton.rel = 'noopener noreferrer';
         venmoButton.setAttribute('aria-label', 'Venmo (opens in new tab)');
-        // Inline styles adjusted: 24px circle, no padding so image can fill it
         venmoButton.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; overflow:hidden; border:1px solid #ddd; box-sizing:border-box;';
         const venmoImg = document.createElement('img');
-        // Prefer extension-safe URL if available, fallback to relative path
         try {
             venmoImg.src = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL('images/venmo.png') : 'images/venmo.png';
         } catch(e) {
             venmoImg.src = 'images/venmo.png';
         }
         venmoImg.alt = 'Venmo';
-        // Make the image fill the circular container
-        venmoImg.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+        venmoImg.style.cssText = 'width:100%; height:100%; object-fit:contain; display:block;';
         venmoButton.appendChild(venmoImg);
 
-        // Restructure footer into three groups: left (coffee + whats new), center (export), right (close)
-        footerContainer.style.display = 'grid';
-        footerContainer.style.gridTemplateColumns = '1fr auto 1fr';
-        footerContainer.style.alignItems = 'center';
-        footerContainer.style.columnGap = '12px';
-        const footerLeft = document.createElement('div'); footerLeft.id = 'gobo-footer-left'; footerLeft.style.cssText = 'display:flex; align-items:center; gap:8px; justify-self:start;';
-        const footerCenter = document.createElement('div'); footerCenter.id = 'gobo-footer-center'; footerCenter.style.cssText = 'display:flex; justify-content:center; align-items:center;';
-        const footerRight = document.createElement('div'); footerRight.id = 'gobo-footer-right'; footerRight.style.cssText = 'display:flex; justify-content:flex-end; align-items:center; justify-self:end;';
-        const separator = document.createElement('span');
-        separator.className = 'footer-separator';
-        separator.textContent = '|';
-        separator.setAttribute('aria-hidden', 'true');
-        separator.style.cssText = 'color:#888; margin:0 2px; font-size:24px; align-self:center;';
-
-        footerLeft.appendChild(coffeeButton);
-        footerLeft.appendChild(separator);
-        footerLeft.appendChild(venmoButton);
-        footerCenter.appendChild(exportButton);
-        footerRight.appendChild(closeButton);
-        // Append groups in order
-        footerContainer.innerHTML = '';
-        footerContainer.appendChild(footerLeft);
-        footerContainer.appendChild(footerCenter);
-        footerContainer.appendChild(footerRight);
-        // Fallback: if What's New button already exists (in breadcrumb), relocate it now
+    // Restructure footer into a single clean row: Donate, What's New, Export, Close
+    // Force a single-row layout (no wrap) via inline styles with !important so stylesheet !important rules can't override
         try {
-            const existingWn = document.getElementById('gobo-whatsnew-btn');
-            if (existingWn) footerLeft.appendChild(existingWn);
-        } catch(e) { /* ignore */ }
+        footerContainer.style.setProperty('display', 'flex', 'important');
+        footerContainer.style.setProperty('flex-wrap', 'nowrap', 'important');
+        footerContainer.style.setProperty('flex-direction', 'row', 'important');
+        footerContainer.style.setProperty('align-items', 'center', 'important');
+        // Center the footer buttons horizontally
+        footerContainer.style.setProperty('justify-content', 'center', 'important');
+        // Slightly tighter gap between buttons
+        footerContainer.style.setProperty('gap', '8px', 'important');
+        // Full width so centering is predictable
+        footerContainer.style.setProperty('width', '100%', 'important');
+    } catch (e) {
+        footerContainer.style.display = 'flex';
+        footerContainer.style.flexWrap = 'nowrap';
+        footerContainer.style.flexDirection = 'row';
+        footerContainer.style.alignItems = 'center';
+        footerContainer.style.justifyContent = 'center';
+        footerContainer.style.gap = '8px';
+        footerContainer.style.width = '100%';
+    }
+
+        // Donate button will toggle a small inline panel containing the coffee + venmo links
+        const donateButton = document.createElement('button');
+        donateButton.className = 'donate-button';
+        donateButton.type = 'button';
+        // Default the donate button to collapsed; the panel opens only on user click
+        donateButton.setAttribute('aria-expanded', 'false');
+        donateButton.textContent = 'Tip';
+        donateButton.style.position = 'relative';
+
+        const donatePanel = document.createElement('div');
+        donatePanel.className = 'donate-panel';
+        // Hidden by default; positioned above the donate button
+        // Center the panel horizontally above the Donate button to avoid off-screen placement
+        // The stylesheet controls display; keep positioning/visuals here. Use top instead of bottom
+        donatePanel.style.cssText = 'position:absolute; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #e5e7eb; padding:8px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); z-index:2147483650; min-width:180px;';
+        // Build fresh panel-specific links (avoid reusing elements that may be styled for footer placement)
+        const panelList = document.createElement('div');
+        panelList.style.cssText = 'display:flex; flex-direction:column; gap:8px;';
+        // Coffee link for panel
+        const panelCoffee = document.createElement('a');
+        panelCoffee.className = 'buy-coffee-link donate-panel-link';
+        panelCoffee.href = coffeeButton.href;
+        panelCoffee.target = '_blank';
+        panelCoffee.rel = 'noopener noreferrer';
+        panelCoffee.setAttribute('aria-label', coffeeButton.getAttribute('aria-label') || 'Buy me a coffee');
+        panelCoffee.innerHTML = '<span class="coffee-emoji" aria-hidden="true">☕️</span><span class="buy-coffee-text">Buy me a coffee</span>';
+        panelList.appendChild(panelCoffee);
+        // small visual separator between links
+        const smallSep = document.createElement('div'); smallSep.style.cssText = 'height:1px; background:#f0f0f0; margin:4px 0;';
+        panelList.appendChild(smallSep);
+        // Venmo link for panel (fresh element)
+        const panelVenmo = document.createElement('a');
+        panelVenmo.className = 'venmo-link donate-panel-link';
+        panelVenmo.href = venmoButton.href;
+        panelVenmo.target = '_blank';
+        panelVenmo.rel = 'noopener noreferrer';
+        panelVenmo.setAttribute('aria-label', venmoButton.getAttribute('aria-label') || 'Venmo');
+        // build image
+        const panelVenmoImg = document.createElement('img');
+        try {
+            panelVenmoImg.src = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) ? chrome.runtime.getURL('images/venmo.png') : 'images/venmo.png';
+        } catch(e) { panelVenmoImg.src = 'images/venmo.png'; }
+        panelVenmoImg.alt = 'Venmo';
+        panelVenmoImg.style.cssText = 'width:24px; height:24px; object-fit:contain; display:block; margin-right:8px;';
+        panelVenmo.appendChild(panelVenmoImg);
+        const panelVenmoLabel = document.createElement('span'); panelVenmoLabel.className = 'venmo-text'; panelVenmoLabel.textContent = 'Venmo'; panelVenmoLabel.style.cssText = 'font-weight:600; font-size:13px;';
+        panelVenmo.appendChild(panelVenmoLabel);
+        panelList.appendChild(panelVenmo);
+        donatePanel.appendChild(panelList);
+        // Append panel to modal container (not inside the footer) so footer-scoped CSS doesn't hide or alter panel children
+        container.appendChild(donatePanel);
+
+        // Toggle behavior
+        let _donateOutsideClickHandler = null;
+        function openDonatePanel() {
+            // show the panel then position it centered above the donate button relative to the modal container
+            donatePanel.style.display = 'block';
+            donateButton.setAttribute('aria-expanded', 'true');
+            try {
+                const btnRect = donateButton.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                // compute center x relative to container
+                const centerX = (btnRect.left + btnRect.right) / 2 - containerRect.left;
+                // temporarily ensure panel is visible to measure
+                donatePanel.style.left = '0px';
+                donatePanel.style.transform = 'translateX(-50%)';
+                // measure panel width
+                const panelRect = donatePanel.getBoundingClientRect();
+                const panelWidth = panelRect.width || donatePanel.offsetWidth || 200;
+                // compute left to center the panel at centerX, but keep within container bounds
+                let left = centerX - (panelWidth / 2);
+                const minLeft = 8;
+                const maxLeft = Math.max(8, containerRect.width - panelWidth - 8);
+                if (left < minLeft) left = minLeft;
+                if (left > maxLeft) left = maxLeft;
+                donatePanel.style.left = left + 'px';
+                // compute top so the panel sits above the donate button; if not enough space, place below
+                const panelHeight = panelRect.height || donatePanel.offsetHeight || 150;
+                let top = btnRect.top - containerRect.top - panelHeight - 8; // 8px gap
+                const minTop = 8;
+                if (top < minTop) {
+                    // not enough room above — place below the button instead
+                    top = btnRect.bottom - containerRect.top + 8;
+                }
+                donatePanel.style.top = top + 'px';
+                // clear bottom if present
+                donatePanel.style.bottom = '';
+                donatePanel.style.transform = 'none';
+            } catch (e) {
+                // fallback: center above donate button using percent transform
+                donatePanel.style.left = '50%';
+                donatePanel.style.transform = 'translateX(-50%)';
+            }
+            // close when clicking outside
+            _donateOutsideClickHandler = function(ev) {
+                if (!donatePanel.contains(ev.target) && !donateButton.contains(ev.target)) {
+                    closeDonatePanel();
+                }
+            };
+            setTimeout(() => document.addEventListener('click', _donateOutsideClickHandler));
+        }
+        function closeDonatePanel() {
+            donatePanel.style.display = 'none';
+            donateButton.setAttribute('aria-expanded', 'false');
+            if (_donateOutsideClickHandler) {
+                document.removeEventListener('click', _donateOutsideClickHandler);
+                _donateOutsideClickHandler = null;
+            }
+        }
+    donateButton.addEventListener('click', (e) => { e.stopPropagation(); if (donatePanel.style.display === 'block') closeDonatePanel(); else openDonatePanel(); });
+    // Do not auto-open the donate panel; it will open on user click via the handler above
+
+        // Append in desired order: Donate, What's New, Export, Close
+        footerContainer.innerHTML = '';
+        footerContainer.appendChild(donateButton);
+
+        // Ensure a single authoritative What's New button exists and is placed here (modal-driven)
+        let wnBtn = document.getElementById('gobo-whatsnew-btn');
+        if (!wnBtn) {
+            // Create a footer-local What's New button so ordering is guaranteed
+                try {
+                wnBtn = document.createElement('button');
+                wnBtn.id = 'gobo-whatsnew-btn';
+                wnBtn.type = 'button';
+                wnBtn.textContent = "What's New";
+                // Use same visual language as other footer action buttons
+                wnBtn.className = 'whatsnew-btn';
+                wnBtn.setAttribute('aria-label', "What's New");
+                wnBtn.addEventListener('click', () => {
+                    try { if (window.WhatsNew) WhatsNew.start(true); } catch (e) {}
+                });
+            } catch (e) {
+                wnBtn = null;
+            }
+                } else {
+            // Normalize an existing button and remove it from any current parent so we can reinsert it here
+            try {
+                if (wnBtn.parentElement) wnBtn.parentElement.removeChild(wnBtn);
+                // Apply consistent footer button sizing/typography
+                wnBtn.style.setProperty('display', 'inline-flex', 'important');
+                wnBtn.style.setProperty('align-items', 'center', 'important');
+                wnBtn.style.setProperty('justify-content', 'center', 'important');
+                wnBtn.style.setProperty('margin-left', '8px', 'important');
+                wnBtn.style.setProperty('padding', wnBtn.style.padding ? wnBtn.style.padding : '8px 12px', 'important');
+                wnBtn.style.setProperty('font-size', '13px', 'important');
+                wnBtn.style.setProperty('font-weight', '600', 'important');
+                wnBtn.style.setProperty('line-height', '1', 'important');
+                wnBtn.style.setProperty('min-height', '36px', 'important');
+                wnBtn.style.setProperty('border-radius', wnBtn.style.borderRadius ? wnBtn.style.borderRadius : '6px', 'important');
+                if (!wnBtn.getAttribute('aria-label')) wnBtn.setAttribute('aria-label', "What's New");
+            } catch(e) {/* ignore */}
+        }
+        if (wnBtn) footerContainer.appendChild(wnBtn);
+
+        footerContainer.appendChild(exportButton);
+        footerContainer.appendChild(closeButton);
 
         container.appendChild(scrollContainer);
         container.appendChild(footerContainer);
@@ -197,6 +341,10 @@ const Modal = {
         }, 2000);
         // Store interval id for cleanup
         this._sessionCheckInterval = sessionCheckInterval;
+        // Keep a ref so closeModal can remove donate-panel outside click listener if active
+        this._donatePanelCloseHandler = function() {
+            try { if (typeof _donateOutsideClickHandler === 'function') { document.removeEventListener('click', _donateOutsideClickHandler); } } catch(e){}
+        };
     },
     closeModal(container, backdrop, overlappingElements) {
         // Allow calling with stored references when no args provided
@@ -218,6 +366,10 @@ const Modal = {
             clearInterval(this._sessionCheckInterval);
             this._sessionCheckInterval = null;
         }
+        // Cleanup donate outside-click handler if still attached
+        try {
+            if (this._donatePanelCloseHandler) { this._donatePanelCloseHandler(); this._donatePanelCloseHandler = null; }
+        } catch(e) {}
         // Cleanup stored refs
         this._container = null;
         this._backdrop = null;

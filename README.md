@@ -16,7 +16,7 @@ This Chrome extension enhances the Royal Caribbean Club Royale Offers page by ad
 - **Favorites Profile**: Star individual sailings to add them to a persistent `Favorites` pseudo‑profile.
 - **Linked / Combined Offers**: Link exactly two profiles to view a merged, upgraded “Combined Offers” view.
 - **Stable Profile IDs**: Each saved profile (gobo-* key) gets a permanent numeric ID badge.
-- **Export to CSV**: Download your offers as a CSV file for offline analysis.
+- **CSV Export**: Download your offers as a CSV file for offline analysis.
 - **Responsive UI**: Table columns are sized for readability.
 
 ## New Column: Value
@@ -159,7 +159,7 @@ After conversion:
 - Use the star column to add/remove sailings from Favorites.
 - (Optional) Link two accounts with the chain icon to view Combined Offers.
 - Use **Advanced Search** to layer filters or define a date range for Offer / Expiration / Sail Date.
-- Click **Export to CSV** to download raw data.
+- Click **CSV Export** to download raw data.
 
 ## Development
 

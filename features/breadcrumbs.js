@@ -732,22 +732,38 @@ const Breadcrumbs = {
                     wnBtn.id = 'gobo-whatsnew-btn';
                     wnBtn.type = 'button';
                     wnBtn.textContent = "What's New";
-                    wnBtn.className = 'b2b-search-button';
-                    wnBtn.style.background = '#f59e0b';
-                    wnBtn.style.marginLeft = '8px';
-                    wnBtn.style.padding = '8px 10px';
-                    wnBtn.style.borderRadius = '6px';
                     wnBtn.addEventListener('click', () => {
                         try {
                             if (window.WhatsNew) WhatsNew.start(true);
                         } catch (e) {
                         }
                     });
-                    crumbsRow.appendChild(wnBtn);
-                    try {
-                        const footerLeft = document.getElementById('gobo-footer-left');
-                        if (footerLeft) footerLeft.appendChild(wnBtn);
-                    } catch (relErr) {
+                    // Try to place into the footer; if footer isn't present yet, retry a few times
+                    const tryPlace = () => {
+                        try {
+                            const footer = document.querySelector('.table-footer-container');
+                            if (footer && !footer.contains(wnBtn)) {
+                                footer.appendChild(wnBtn);
+                                return true;
+                            }
+                        } catch (e) {}
+                        return false;
+                    };
+                    if (!tryPlace()) {
+                        let attempts = 0;
+                        const retry = setInterval(() => {
+                            attempts++;
+                            if (tryPlace() || attempts >= 6) {
+                                clearInterval(retry);
+                                // Final fallback: place into crumbsRow only if footer never became available
+                                try {
+                                    const footerNow = document.querySelector('.table-footer-container');
+                                    if (!footerNow) crumbsRow.appendChild(wnBtn);
+                                } catch (e) {
+                                    try { crumbsRow.appendChild(wnBtn); } catch (e2) {}
+                                }
+                            }
+                        }, 200);
                     }
                 }
             } catch (e) {

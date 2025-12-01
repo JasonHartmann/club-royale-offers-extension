@@ -1,7 +1,7 @@
 (function(){
     const DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
     const DOW_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
-    const DEBUG = false;
+    const DEBUG = true;
     // Dev-only toggle: set to true to always print in-code B2B chain diagnostics when opening builder
     const DEV_B2B_DEBUG = true;
     function _dbg() { if (!DEBUG) return; try { if (window && window.console && window.console.debug) console.debug('[B2B]', ...arguments); } catch(e){} }
@@ -670,6 +670,30 @@
                 saveBtn,
                 resetBtn
             };
+
+            // Diagnostic helper: capture current layout metrics to help debug
+            // unexpected document growth. Left enabled but guarded by DEV_B2B_DEBUG.
+            this._logLayoutState = () => {
+                try {
+                    if (!DEV_B2B_DEBUG) return;
+                    const doc = document.documentElement || document.body;
+                    const overlayRect = overlay.getBoundingClientRect ? overlay.getBoundingClientRect() : { width: 0, height: 0, top: 0 };
+                    const modalRect = modal.getBoundingClientRect ? modal.getBoundingClientRect() : { width: 0, height: 0, top: 0 };
+                    const bodyScroll = { scrollHeight: document.body ? document.body.scrollHeight : null, clientHeight: document.body ? document.body.clientHeight : null };
+                    const docScroll = { scrollHeight: doc ? doc.scrollHeight : null, clientHeight: doc ? doc.clientHeight : null };
+                    const chainCardsMetrics = { scrollHeight: chainCards.scrollHeight, clientHeight: chainCards.clientHeight };
+                    const optionListMetrics = { scrollHeight: optionList.scrollHeight, clientHeight: optionList.clientHeight };
+                    console.debug('[B2B-LAYOUT]', {
+                        bodyScroll,
+                        docScroll,
+                        overlayRect,
+                        modalRect,
+                        chainCardsMetrics,
+                        optionListMetrics,
+                        windowInner: { innerWidth: window.innerWidth, innerHeight: window.innerHeight }
+                    });
+                } catch (e) { try { console.debug('[B2B-LAYOUT] log error', e); } catch(_){} }
+            };
             // Install a debounced resize handler so card heights remain normalized
             try {
                 const normalize = () => { try { this._normalizeOptionCardHeights(); } catch(e){} };
@@ -687,9 +711,16 @@
                 this._renderOptions();
             } finally {
                 try {
-                    requestAnimationFrame(() => { try { overlay.style.visibility = ''; } catch(e){} });
+                    // reveal overlay and emit a diagnostic snapshot immediately and after a short delay
+                    requestAnimationFrame(() => {
+                        try { overlay.style.visibility = ''; } catch(e){}
+                        try { this._logLayoutState && this._logLayoutState(); } catch(e){}
+                        // also capture a delayed snapshot after layout settles
+                        setTimeout(() => { try { this._logLayoutState && this._logLayoutState(); } catch(e){} }, 220);
+                    });
                 } catch (e) {
                     try { overlay.style.visibility = ''; } catch(e){}
+                    try { this._logLayoutState && this._logLayoutState(); } catch(e){}
                 }
             }
         },
@@ -779,12 +810,11 @@
 
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-chain-meta';
-                const routeLabel = this._formatRoute(meta);
                 // Only show perks when it's meaningful (not a lone dash '-')
                 const perksHtml = (meta.perksLabel && String(meta.perksLabel).trim() !== '-') ? `<span>${meta.perksLabel}</span>` : '';
+                // NOTE: removed short itinerary summary line (routeLabel) - redundant in this view
                 metaBlock.innerHTML = `
                     <strong>${formatRange(meta)}</strong>
-                    <span>${routeLabel}</span>
                     <span><strong>Offer ${meta.offerCode || 'TBA'} - ${meta.guestsLabel}${meta.roomLabel ? ` - ${meta.roomLabel}` : ''}</strong></span>
                     ${perksHtml}
                 `;
@@ -1409,10 +1439,13 @@
                 return;
             }
             this._scheduleWithSpinner(() => {
+                try { this._logLayoutState && this._logLayoutState(); } catch(e){}
                 this._activeSession.chain.push(rowId);
                 this._renderChain();
                 try { this._scrollChainToBottom(); } catch(e) {}
                 this._renderOptions();
+                // Snapshot after mutation to detect what changed the document
+                try { this._logLayoutState && this._logLayoutState(); } catch(e){}
                 const meta = this._getMeta(rowId);
                 this._flashMessage(meta ? `Added ${meta.shipName || meta.shipCode || 'sailing'}` : 'Sailing added.', 'info');
             });
@@ -1423,10 +1456,12 @@
             const idx = this._activeSession.chain.indexOf(rowId);
             if (idx <= 0) return; // never remove root via this path
             this._scheduleWithSpinner(() => {
+                try { this._logLayoutState && this._logLayoutState(); } catch(e){}
                 this._activeSession.chain.splice(idx, 1);
                 this._renderChain();
                 try { this._scrollChainToBottom(); } catch(e) {}
                 this._renderOptions();
+                try { this._logLayoutState && this._logLayoutState(); } catch(e){}
                 this._flashMessage('Removed sailing from chain.', 'info');
             });
         },
@@ -1622,8 +1657,20 @@
                 rows.forEach(group => {
                     let maxH = 0;
                     group.forEach(item => { if (item.h > maxH) maxH = item.h; });
-                    // Apply max height with a small tolerance so content doesn't overflow
-                    group.forEach(item => { item.el.style.height = `${maxH}px`; item.el.style.minHeight = `${maxH}px`; });
+                    // Clamp the applied height to a fraction of the viewport so cards
+                    // cannot grow the modal beyond the visible area. Use 60% of
+                    // the viewport height as a sensible capped value.
+                    try {
+                        const cap = Math.max(200, Math.round(window.innerHeight * 0.6));
+                        const applied = Math.min(maxH, cap);
+                        group.forEach(item => {
+                            item.el.style.height = `${applied}px`;
+                            item.el.style.minHeight = `${applied}px`;
+                        });
+                    } catch (e) {
+                        // Fallback to original behavior on error
+                        group.forEach(item => { item.el.style.height = `${maxH}px`; item.el.style.minHeight = `${maxH}px`; });
+                    }
                 });
             } catch (e) { /* best-effort */ }
         },
