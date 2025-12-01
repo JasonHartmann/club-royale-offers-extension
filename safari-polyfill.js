@@ -30,7 +30,7 @@
 (function(){
     try {
         if (typeof window !== 'undefined' && !('GOBO_DEBUG_ENABLED' in window)) {
-            Object.defineProperty(window, 'GOBO_DEBUG_ENABLED', { value: true, writable: false, configurable: false });
+            Object.defineProperty(window, 'GOBO_DEBUG_ENABLED', { value: false, writable: false, configurable: false });
         }
         // Monkey patch debug-level logging so existing calls don't need modification.
         const noop = function(){};
