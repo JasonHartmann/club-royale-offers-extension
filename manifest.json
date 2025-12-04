@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Club Royale & Blue Chip Offers",
-  "short_name": "Club Royale Offers",
+  "name": "Comp Royale Offers Viewer",
+  "short_name": "Comp Royale Offers Viewer",
   "version": "2.0",
-  "description": "View Royal Caribbean & Celebrity comp offers in a sortable, groupable table and accordion.",
+  "description": "View Royal Caribbean Club Royale & Celebrity Blue Chip comp offers in a sortable, groupable table and accordion.",
   "browser_specific_settings": {
     "gecko": {
       "id": "club-royale-offers@percex.local",

@@ -321,23 +321,19 @@ const Breadcrumbs = {
                                     brandBadge.style.marginRight = '6px';
                                     brandBadge.title = `Brand: ${b}`;
                                     try {
+                                        const letter = document.createElement('span');
+                                        letter.className = 'profile-brand-letter';
                                         if (b === 'R') {
-                                            const img = document.createElement('img');
-                                            img.src = getAssetUrl('images/royal-16.png');
-                                            img.width = 16;
-                                            img.height = 16;
-                                            img.alt = 'Royal';
-                                            brandBadge.appendChild(img);
+                                            letter.textContent = 'R';
+                                            brandBadge.setAttribute('aria-label', 'Royal');
                                         } else if (b === 'C') {
-                                            // Celebrity: bold sans-serif X on white background
-                                            const xSpan = document.createElement('span');
-                                            xSpan.className = 'celebrity-x';
-                                            xSpan.textContent = 'X';
-                                            brandBadge.appendChild(xSpan);
+                                            letter.textContent = 'C';
                                             brandBadge.setAttribute('aria-label', 'Celebrity');
                                         } else {
-                                            brandBadge.textContent = b;
+                                            letter.textContent = b;
+                                            brandBadge.setAttribute('aria-label', b);
                                         }
+                                        brandBadge.appendChild(letter);
                                     } catch (err) {
                                         brandBadge.textContent = b;
                                     }

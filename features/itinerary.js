@@ -586,7 +586,7 @@
                 panel.appendChild(refreshBtn);
                 const title = document.createElement('h2');
                 title.className = 'gobo-itinerary-title';
-                title.textContent = `${data.itineraryDescription || 'Itinerary'} (${data.totalNights || '?' } nights)`;
+                title.textContent = data.itineraryDescription || 'Itinerary';
                 panel.appendChild(title);
                 const subtitle = document.createElement('div');
                 subtitle.className = 'gobo-itinerary-subtitle';
