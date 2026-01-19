@@ -613,7 +613,7 @@
                     function resolveCategory(raw){ raw=(raw||'').trim(); const up=raw.toUpperCase(); const upCompact = up.replace(/\s+/g,''); if (baseCategoryMap[up]) return baseCategoryMap[up]; if (baseCategoryMap[upCompact]) return baseCategoryMap[upCompact]; if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
                     const sortOrder = {INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3};
 
-                    // Robust taxes parsing (per-person) then convert to dual occupancy
+                    // Robust taxes parsing (assume value is per-person; convert to booking total)
                     let taxesPerPerson = null;
                     try {
                         let tRaw = data.taxesAndFees;
@@ -689,16 +689,17 @@
                     // New rule flag: awarded category and all lower categories sold out (no fallback pricing)
                     const scenarioAllLowerSoldOut = !!(awardedInfo && awardedInfo.soldOut && !awardedInfo.fallback && !awardedInfo.fallbackAny && effectiveOfferPriceNum == null && originalAwardCategoryResolved);
 
-                    // Single-guest offer value computation (with assumed $200 discount)
-                    const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
-                    let singleGuestOfferValue = null; // offerValue = personFare - discount
+                    // Single-guest offer value: mirror Utils.computeOfferValue GOBO math without needing offer/sailing objects
+                    let singleGuestOfferValue = null; // offerValue = base fare for first guest
                     if (isOneGuestOffer) {
-                        if (effectiveOfferPriceNum != null) {
-                            const baseOfferPriceNum = effectiveOfferPriceNum; // dual occupancy price for awarded or fallback lower category
-                            const T = Number(taxesNumber);
-                            const numerator = baseOfferPriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - T;
-                            const ov = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
-                            singleGuestOfferValue = (isFinite(ov) && ov > 0) ? ov : 0;
+                        const broadCat = (awardedInfo && awardedInfo.category) || originalAwardCategoryResolved || resolveCategory(offerCategoryRaw);
+                        const modifierMap = { INTERIOR:125, OUTSIDE:150, BALCONY:200, DELUXE:300 };
+                        const mod = modifierMap[broadCat] ?? 150;
+                        if (effectiveOfferPriceNum != null && isFinite(effectiveOfferPriceNum)) {
+                            // Align with core Utils.computeOfferValue GOBO math: total ≈ 1.4*base - mod + taxesNumber
+                            const baseFareOneGuest = (Number(effectiveOfferPriceNum) + mod - Number(taxesNumber)) / 1.4;
+                            const val = baseFareOneGuest - mod; // subtract modifier after solve
+                            singleGuestOfferValue = (isFinite(val) && val > 0) ? val : 0;
                         } else {
                             singleGuestOfferValue = 0; // awarded + lower sold out
                         }

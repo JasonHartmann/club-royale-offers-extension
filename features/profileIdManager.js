@@ -436,6 +436,61 @@ function mergeProfiles(profileA, profileB) {
     if (!profileB) return profileA;
     const celebrityOrder = ["Interior", "Ocean View", "Veranda", "Concierge"];
     const defaultOrder = ["Interior", "Ocean View", "Balcony", "Junior Suite"];
+    const broadToDisplay = { INTERIOR: 'Interior', OUTSIDE: 'Ocean View', BALCONY: 'Balcony', DELUXE: 'Junior Suite' };
+    const tryResolveBroad = (raw) => {
+        if (!raw) return null;
+        try {
+            if (typeof RoomCategoryUtils !== 'undefined') {
+                if (typeof RoomCategoryUtils.resolveCategory === 'function') {
+                    const resolved = RoomCategoryUtils.resolveCategory(raw);
+                    if (resolved) return resolved;
+                }
+                if (typeof RoomCategoryUtils.classifyBroad === 'function') return RoomCategoryUtils.classifyBroad(raw);
+            }
+        } catch(e) { /* ignore */ }
+        return null;
+    };
+    const normalizeRoomType = (raw) => {
+        if (raw === undefined || raw === null) return '';
+        const cleaned = String(raw).trim();
+        if (!cleaned) return '';
+        const broad = tryResolveBroad(cleaned);
+        if (broad && broadToDisplay[broad]) return broadToDisplay[broad];
+        const upper = cleaned.toUpperCase().replace(/\s+/g, ' ');
+        const manualMap = {
+            'OCEANVIEW': 'Ocean View',
+            'OCEAN VIEW': 'Ocean View',
+            'OCEAN-VIEW': 'Ocean View',
+            'OUTSIDE': 'Ocean View',
+            'SEA VIEW': 'Ocean View',
+            'SEAVIEW': 'Ocean View',
+            'INSIDE': 'Interior',
+            'INTERIOR': 'Interior',
+            'INSIDE CABIN': 'Interior',
+            'BALCONY': 'Balcony',
+            'BALC': 'Balcony',
+            'BALCONY SUITE': 'Balcony',
+            'VERANDA': 'Veranda',
+            'CONCIERGE': 'Concierge',
+            'JS': 'Junior Suite',
+            'JR SUITE': 'Junior Suite',
+            'JR. SUITE': 'Junior Suite',
+            'JUNIOR SUITE': 'Junior Suite',
+            'SUITE': 'Junior Suite',
+            'DELUXE': 'Junior Suite'
+        };
+        if (manualMap[upper]) return manualMap[upper];
+        try { if (typeof Utils !== 'undefined' && typeof Utils.toTitleCase === 'function') return Utils.toTitleCase(cleaned); } catch(e) {}
+        return cleaned;
+    };
+    const getCategoryIndex = (display, order) => {
+        const idx = order.indexOf(display);
+        if (idx >= 0) return idx;
+        const broad = tryResolveBroad(display);
+        if (broad && broadToDisplay[broad] && order.indexOf(broadToDisplay[broad]) >= 0) return order.indexOf(broadToDisplay[broad]);
+        if (/SUITE/i.test(display) && order.indexOf('Junior Suite') >= 0) return order.indexOf('Junior Suite');
+        return 0; // default to the lowest tier to avoid undefined selections
+    };
     const deepCopy = JSON.parse(JSON.stringify(profileA));
     const offersA = deepCopy.data?.offers || [];
     const offersB = profileB.data?.offers || [];
@@ -471,18 +526,18 @@ function mergeProfiles(profileA, profileB) {
             if (isGTYA || isGTYB) {
                 sailingA.isGTY = true;
             }
-            const roomTypeA = sailingA.roomType || '';
-            const roomTypeB = matchObj.sailingB.roomType || '';
+            const roomTypeA = normalizeRoomType(sailingA.roomType || '');
+            const roomTypeB = normalizeRoomType(matchObj.sailingB.roomType || '');
             if (isGOBOA || isGOBOB) {
                 sailingA.isGOBO = false;
                 offerA.guests = '2 guests';
                 let isCelebrity = false;
                 if ((brandA && brandA.toLowerCase().includes('celebrity')) || (matchObj.brandB && matchObj.brandB.toLowerCase().includes('celebrity'))) isCelebrity = true; else if ((offerCodeA && offerCodeA.toLowerCase().includes('celebrity')) || (matchObj.offerCodeB && matchObj.offerCodeB.toLowerCase().includes('celebrity'))) isCelebrity = true;
                 const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
-                const idxA = categoryOrder.indexOf(roomTypeA);
-                const idxB = categoryOrder.indexOf(roomTypeB);
-                let lowestIdx = Math.min(idxA, idxB);
-                let lowestRoomType = categoryOrder[lowestIdx >= 0 ? lowestIdx : 0];
+                const idxA = getCategoryIndex(roomTypeA, categoryOrder);
+                const idxB = getCategoryIndex(roomTypeB, categoryOrder);
+                const lowestIdx = Math.min(idxA, idxB);
+                const lowestRoomType = categoryOrder[lowestIdx >= 0 ? lowestIdx : 0];
                 sailingA.roomType = lowestRoomType;
                 offerA.category = lowestRoomType;
             } else {
@@ -491,10 +546,10 @@ function mergeProfiles(profileA, profileB) {
                 const categoryOrder = isCelebrity ? celebrityOrder : defaultOrder;
                 if (offerCodeA !== matchObj.offerCodeB) offerA.campaignOffer.offerCode = offerCodeA + ' / ' + matchObj.offerCodeB;
                 const canUpgrade = !isGOBOA && !isGOBOB;
-                const idxA = categoryOrder.indexOf(roomTypeA);
-                const idxB = categoryOrder.indexOf(roomTypeB);
+                const idxA = getCategoryIndex(roomTypeA, categoryOrder);
+                const idxB = getCategoryIndex(roomTypeB, categoryOrder);
                 let highestIdx = Math.max(idxA, idxB);
-                let upgradedRoomType = categoryOrder[highestIdx];
+                let upgradedRoomType = categoryOrder[highestIdx >= 0 ? highestIdx : 0];
                 if (canUpgrade) {
                     if (highestIdx >= 0 && highestIdx < categoryOrder.length - 1) upgradedRoomType = categoryOrder[highestIdx + 1];
                 }

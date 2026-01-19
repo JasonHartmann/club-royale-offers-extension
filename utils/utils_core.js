@@ -169,8 +169,10 @@ const Utils = {
                 let rawTaxes = entry && entry.taxesAndFees;
                 if (rawTaxes == null && sailing.taxesAndFees != null) rawTaxes = sailing.taxesAndFees;
                 if (rawTaxes && typeof rawTaxes === 'object' && rawTaxes.value != null) rawTaxes = rawTaxes.value;
-                if (typeof rawTaxes === 'number') taxesNumber = Number(rawTaxes) * 2;
-                else if (typeof rawTaxes === 'string') { const cleaned = rawTaxes.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) taxesNumber = num * 2; }
+                let perGuest = null;
+                if (typeof rawTaxes === 'number') perGuest = Number(rawTaxes);
+                else if (typeof rawTaxes === 'string') { const cleaned = rawTaxes.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) perGuest = num; }
+                if (perGuest != null && isFinite(perGuest)) taxesNumber = perGuest * 2; // assume stored per-guest; use booking total
             } catch(e){ taxesNumber = 0; }
             if (!taxesNumber) _recordReason('taxesMissing', offer, sailing);
             let categoriesMap = null;
@@ -263,9 +265,12 @@ const Utils = {
             // Sentinel zero means no priced awarded or lower category available
             if (offerBasePriceNum === 0) { _recordReason('zeroValue', offer, sailing); return 0; }
             if (isOneGuestOffer) {
-                const SINGLE_GUEST_DISCOUNT_ASSUMED = 200;
-                const numerator = offerBasePriceNum + SINGLE_GUEST_DISCOUNT_ASSUMED - taxesNumber;
-                const val = numerator / 1.4 - SINGLE_GUEST_DISCOUNT_ASSUMED;
+                // For GOBO: total pricing resembles (base - mod + taxes1) + (0.4*base + taxes1) => 1.4*base - mod + taxesNumber
+                const modifierMap = { INTERIOR:125, OUTSIDE:150, BALCONY:200, DELUXE:300 };
+                const mod = modifierMap[offerBroad] ?? 150;
+                // Treat offerBasePriceNum as the observed retail total (often includes taxes); solve directly for base fare.
+                const baseFareOneGuest = (offerBasePriceNum + mod - taxesNumber) / 1.4;
+                const val = baseFareOneGuest - mod; // subtract modifier after solving
                 return (isFinite(val) && val>0)?val:0;
             }
             const diff = offerBasePriceNum - taxesNumber;
