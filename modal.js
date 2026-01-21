@@ -386,6 +386,7 @@ const Modal = {
         let rows = [];
         let usedSubset = false;
         const activeKey = state.selectedProfileKey;
+        const includeTaxesFlag = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(state) : true;
 
         // Helper: shorten profile key or email to base name
         function shorten(value) {
@@ -480,6 +481,18 @@ const Modal = {
             // Only include chain ID when exporting the Favorites tab; otherwise use numeric child-count depth
             const includeChainId = activeKey === 'goob-favorites';
             const b2bDepth = (includeChainId && sailing && sailing.__b2bChainId) ? String(sailing.__b2bChainId) : ((sailing && typeof sailing.__b2bDepth === 'number') ? Math.max(0, Number(sailing.__b2bDepth) - 1) : '');
+            const balconyUpgrade = (function(){
+                try {
+                    const rawBalcony = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesFlag, state }) : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function' ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesFlag }) : null);
+                    return (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawBalcony) : (rawBalcony!=null?`$${Number(rawBalcony).toFixed(2)}`:'-');
+                } catch(e){ return '-'; }
+            })();
+            const suiteUpgrade = (function(){
+                try {
+                    const rawSuite = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesFlag, state }) : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function' ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesFlag }) : null);
+                    return (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawSuite) : (rawSuite!=null?`$${Number(rawSuite).toFixed(2)}`:'-');
+                } catch(e){ return '-'; }
+            })();
             return [
                 profileLabel,
                 b2bDepth,
@@ -488,6 +501,8 @@ const Modal = {
                 offer.campaignOffer?.reserveByDate ? App.Utils.formatDate(offer.campaignOffer.reserveByDate) : '-',
                 (function(){ const t = offer.campaignOffer?.tradeInValue; if (t === null || t === undefined || t === '') return '-'; if (typeof t === 'number') return Number.isInteger(t) ? `$${t.toLocaleString()}` : `$${t.toFixed(2)}`; const cleaned = String(t).replace(/[^0-9.\-]/g, ''); const parsed = cleaned === '' ? NaN : parseFloat(cleaned); if (!isNaN(parsed)) return Number.isInteger(parsed) ? `$${parsed.toLocaleString()}` : `$${parsed.toFixed(2)}`; return String(t); })(),
                 (function(){ try { const raw = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null); return (App && App.Utils && App.Utils.formatOfferValue) ? App.Utils.formatOfferValue(raw) : (raw!=null?`$${Number(raw).toFixed(2)}`:'-'); } catch(e){ return '-'; } })(),
+                balconyUpgrade,
+                suiteUpgrade,
                 offer.campaignOffer?.name || '-',
                 shipClass,
                 sailing.shipName || '-',

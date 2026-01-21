@@ -922,6 +922,24 @@ const Filtering = {
                     return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
                 } catch(e){ return '-'; }
             }
+            case 'suiteUpgrade': {
+                const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
+                        ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                        : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTF }) : null;
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(e){ return '-'; }
+            }
+            case 'balconyUpgrade': {
+                const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
+                        ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                        : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTF }) : null;
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(e){ return '-'; }
+            }
             // Advanced-only virtual fields (not in table headers)
             case 'departureDayOfWeek': {
                 try {
@@ -968,8 +986,24 @@ const Filtering = {
     getOfferColumnValueForFiltering(offer, sailing, key, state) {
         try {
             const includeTF = state && state.advancedSearch && (state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false);
-            const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice']);
+            const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','balconyUpgrade','suiteUpgrade']);
             if (includeTF || !pricingKeys.has(key)) return Filtering.getOfferColumnValue(offer, sailing, key);
+            if (key === 'suiteUpgrade') {
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
+                        ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: false, state })
+                        : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: false }) : null;
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(eSuite){ return '-'; }
+            }
+            if (key === 'balconyUpgrade') {
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
+                        ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: false, state })
+                        : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: false }) : null;
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(eBalcony){ return '-'; }
+            }
             const computed = computeAdvancedMinPrice(offer, sailing, key, false);
             return computed === '-' ? '-' : computed;
         } catch(e){ return Filtering.getOfferColumnValue(offer, sailing, key); }

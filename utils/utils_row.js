@@ -67,6 +67,30 @@
             const rawVal = (App && App.Utils && typeof App.Utils.computeOfferValue === 'function') ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null);
             valueDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawVal) : (Utils.formatOfferValue ? Utils.formatOfferValue(rawVal) : (rawVal!=null?`$${Number(rawVal).toFixed(2)}`:'-'));
         } catch(e){ valueDisplay='-'; }
+        const includeTaxesAndFees = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+        let balconyUpgradeDisplay = '-';
+        try {
+            const balconyRaw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
+                ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
+            balconyUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(balconyRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(balconyRaw) : (balconyRaw!=null?`$${Number(balconyRaw).toFixed(2)}`:'-'));
+        } catch(e){ balconyUpgradeDisplay='-'; }
+        let suiteUpgradeDisplay = '-';
+        try {
+            const suiteRaw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
+                ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
+            suiteUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(suiteRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(suiteRaw) : (suiteRaw!=null?`$${Number(suiteRaw).toFixed(2)}`:'-'));
+            // Emit lightweight diagnostics to confirm row-time suite calculation is running (sample only)
+            try {
+                if (!Utils._suiteRowLogCount) Utils._suiteRowLogCount = 0;
+                Utils._suiteRowLogCount += 1;
+                const n = Utils._suiteRowLogCount;
+                if (n <= 8 || n % 50 === 0) {
+                    console.info('[SuiteRow]', { offerCode: offer.campaignOffer?.offerCode, ship: sailing.shipCode || sailing.shipName, sailDate: sailing.sailDate, includeTaxesAndFees, suiteRaw, display: suiteUpgradeDisplay });
+                }
+            } catch(logErr) { /* ignore logging errors */ }
+        } catch(e){ suiteUpgradeDisplay='-'; }
         // Favorite / ID column setup
         const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
         let favCellHtml;
@@ -126,6 +150,8 @@
             <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
             <td class="border p-2">${tradeDisplay}</td>
             <td class="border p-2">${valueDisplay}</td>
+            <td class="border p-2">${balconyUpgradeDisplay}</td>
+            <td class="border p-2">${suiteUpgradeDisplay}</td>
             <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
             <td class="border p-2">${shipClass}</td>
             <td class="border p-2">${sailing.shipName || '-'}</td>

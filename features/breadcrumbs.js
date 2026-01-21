@@ -703,6 +703,34 @@ const Breadcrumbs = {
                 }
             } catch(e) { /* ignore */ }
 
+            // Add a global itinerary refresh button beside the gear
+            let refreshBtn = null;
+            try {
+                refreshBtn = document.createElement('button');
+                refreshBtn.id = 'gobo-refresh-itins';
+                refreshBtn.type = 'button';
+                refreshBtn.className = 'gobo-itinerary-refresh gobo-itinerary-refresh-inline';
+                refreshBtn.textContent = '\u21bb';
+                refreshBtn.setAttribute('aria-label', 'Refresh itineraries');
+                refreshBtn.title = 'Refresh all itineraries and recalc prices';
+                refreshBtn.style.marginLeft = '8px';
+                refreshBtn.addEventListener('click', async () => {
+                    if (refreshBtn.classList.contains('loading')) return;
+                    refreshBtn.classList.add('loading');
+                    try {
+                        if (typeof Spinner !== 'undefined' && Spinner.showSpinner) Spinner.showSpinner();
+                        if (App && App.TableRenderer && typeof App.TableRenderer.refreshAllItineraries === 'function') {
+                            await App.TableRenderer.refreshAllItineraries();
+                        }
+                    } catch (eRefresh) {
+                        try { console.warn('[Breadcrumbs] itinerary refresh failed', eRefresh); } catch (ignore) {}
+                    } finally {
+                        refreshBtn.classList.remove('loading');
+                        try { if (typeof Spinner !== 'undefined' && Spinner.hideSpinner) Spinner.hideSpinner(); } catch (ignore) {}
+                    }
+                });
+            } catch (e) { refreshBtn = null; }
+
             const hiddenGroupsLabel = document.createElement('span');
             hiddenGroupsLabel.textContent = 'Hidden Groups:';
             hiddenGroupsLabel.style.marginLeft = '16px';
@@ -718,6 +746,9 @@ const Breadcrumbs = {
             if (settingsBtn) {
                 try { settingsBtn.style.marginLeft = '8px'; } catch(e) {}
                 hiddenGroupsPanel.appendChild(settingsBtn);
+            }
+            if (refreshBtn) {
+                hiddenGroupsPanel.appendChild(refreshBtn);
             }
             crumbsRow.appendChild(hiddenGroupsPanel);
 

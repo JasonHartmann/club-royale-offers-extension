@@ -629,7 +629,7 @@ const AdvancedSearch = {
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
             // Numeric pricing fields that support 'less than'
-            const numericFieldKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights','offerValue']);
+            const numericFieldKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights','offerValue','suiteUpgrade']);
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
                 this._logDebug('renderPredicates:headersNotReady', { headerCount: headerFields.length });
@@ -985,7 +985,7 @@ const AdvancedSearch = {
             const headerKeysSet = new Set(headerFields.map(h => h.key));
             const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
             const allFields = headerFields.concat(advFiltered);
-            const priceFields = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','offerValue']);
+            const priceFields = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','offerValue','suiteUpgrade']);
             const skipFields = new Set(['visits']);
             const index = {};
             for (const f of allFields) {

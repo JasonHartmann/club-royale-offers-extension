@@ -119,6 +119,36 @@ const SortUtils = {
                     } catch(e){ aValue = -Infinity; bValue = -Infinity; }
                     break;
                 }
+                case 'suiteUpgrade': {
+                    const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                    try {
+                        const aNum = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function' ? App.PricingUtils.computeSuiteUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF }) : null);
+                        const bNum = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function' ? App.PricingUtils.computeSuiteUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF }) : null);
+                        const aMissing = (aNum === null || aNum === undefined || !isFinite(aNum));
+                        const bMissing = (bNum === null || bNum === undefined || !isFinite(bNum));
+                        if (aMissing && !bMissing) return 1; // always push missing ('-') to bottom
+                        if (!aMissing && bMissing) return -1;
+                        if (aMissing && bMissing) { aValue = 0; bValue = 0; break; }
+                        aValue = aNum;
+                        bValue = bNum;
+                    } catch(e){ aValue = -Infinity; bValue = -Infinity; }
+                    break;
+                }
+                case 'balconyUpgrade': {
+                    const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                    try {
+                        const aNum = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function' ? App.PricingUtils.computeBalconyUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF }) : null);
+                        const bNum = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function' ? App.PricingUtils.computeBalconyUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF }) : null);
+                        const aMissing = (aNum === null || aNum === undefined || !isFinite(aNum));
+                        const bMissing = (bNum === null || bNum === undefined || !isFinite(bNum));
+                        if (aMissing && !bMissing) return 1;
+                        if (!aMissing && bMissing) return -1;
+                        if (aMissing && bMissing) { aValue = 0; bValue = 0; break; }
+                        aValue = aNum;
+                        bValue = bNum;
+                    } catch(e){ aValue = -Infinity; bValue = -Infinity; }
+                    break;
+                }
                 case 'b2bDepth': {
                     // Prefer chain ID strings when present (favorites), otherwise numeric depth
                     const viewingFavorites = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');

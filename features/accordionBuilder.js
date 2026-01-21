@@ -40,6 +40,22 @@ const AccordionBuilder = {
                     // Debug: show mapping from raw value to group key for troubleshooting
                     try { console.debug('[AccordionBuilder] tradeInValue grouping:', { raw: offer.campaignOffer?.tradeInValue, groupKey }); } catch(e) {}
                     break;
+                case 'suiteUpgrade': {
+                    try {
+                        const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                        const raw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : null;
+                        groupKey = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(raw) : (raw!=null?`$${Number(raw).toFixed(2)}`:'-');
+                    } catch(e){ groupKey='-'; }
+                    break;
+                }
+                case 'balconyUpgrade': {
+                    try {
+                        const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                        const raw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : null;
+                        groupKey = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(raw) : (raw!=null?`$${Number(raw).toFixed(2)}`:'-');
+                    } catch(e){ groupKey='-'; }
+                    break;
+                }
                 case 'offerName':
                     groupKey = offer.campaignOffer?.name || '-';
                     break;
@@ -97,7 +113,7 @@ const AccordionBuilder = {
     sortGroupKeys(keys, column) {
         if (!Array.isArray(keys)) return [];
         const isDateCol = ['offerDate','expiration','sailDate','departureDate','offerDate','offerStart','offerEnd'].includes(column) || /date/i.test(column || '');
-        const numericCols = ['nights', 'b2bDepth'];
+        const numericCols = ['nights', 'b2bDepth', 'balconyUpgrade', 'suiteUpgrade'];
         return [...keys].sort((a,b) => {
             if (a === b) return 0;
             // Always push placeholder '-' to end

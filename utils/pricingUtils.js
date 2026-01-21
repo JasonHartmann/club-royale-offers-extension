@@ -82,20 +82,33 @@
         return min;
     }
 
-    // Compute suite (DELUXE) upgrade estimated price for the given sailing/offer pair.
-    // Returns number or null if not computable.
-    App.PricingUtils.computeSuiteUpgradePrice = function(offer, sailing){
+    function computeUpgradePrice(targetBroad, dbgLabel, offer, sailing, options){
         try {
+            const suiteDbg = true; // Sampling-only debug logging
+            const dbgLog = (tag, payload) => {
+                if (!suiteDbg) return;
+                try {
+                    App.PricingUtils._suiteDbgCount = (App.PricingUtils._suiteDbgCount || 0) + 1;
+                    const n = App.PricingUtils._suiteDbgCount;
+                    // Log first few, then every 50th to reduce noise
+                    if (n > 12 && n % 50 !== 0) return;
+                    // Use console.info so it shows even when verbose debug is hidden
+                    console.info('[SuiteUpgradeDBG]', tag, payload);
+                } catch(e) { /* ignore */ }
+            };
+            dbgLog(`${dbgLabel}:entry`, { includeTaxes: options && Object.prototype.hasOwnProperty.call(options, 'includeTaxes') ? !!options.includeTaxes : true, shipCode: sailing && sailing.shipCode, sailDate: sailing && sailing.sailDate, offerCategory: offer && offer.category });
+            const includeTaxes = options && Object.prototype.hasOwnProperty.call(options, 'includeTaxes') ? !!options.includeTaxes : true;
             const shipCode = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : '';
             const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim().slice(0,10) : '';
             // Require sailDate and ItineraryCache. Do NOT require shipCode here —
             // we have a fallback that can resolve entries by sailDate + shipName.
             if (!sailDate || typeof ItineraryCache === 'undefined') {
-                dbg('computeSuiteUpgradePrice:missingPrereqs', { shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined' });
+                dbg('computeUpgradePrice:missingPrereqs', { targetBroad, shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined' });
+                dbgLog(`${dbgLabel}:missingPrereqs`, { shipCode, sailDate, includeTaxes });
                 // Limited logging to help root-cause
                 try {
                     App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1;
-                    if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] missing prereqs for computeSuiteUpgradePrice', { shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined', offerCategory: offer?.category, sailingRoomType: sailing?.roomType });
+                    if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] missing prereqs for computeUpgradePrice', { targetBroad, shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined', offerCategory: offer?.category, sailingRoomType: sailing?.roomType });
                 } catch{}
                 return null;
             }
@@ -124,10 +137,10 @@
             }
 
             if (!entry || !entry.stateroomPricing || !Object.keys(entry.stateroomPricing).length) {
-                dbg('computeSuiteUpgradePrice:noPricingEntry', { key, hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
+                dbg('computeUpgradePrice:noPricingEntry', { key, targetBroad, hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
                 try {
                     App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1;
-                    if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no pricing entry for key', key, { hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
+                    if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no pricing entry for key', key, { targetBroad, hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
                     // Detailed, capped diagnostics to help root-cause: show offer/sailing context and a snapshot of itinerary cache stats
                     App.PricingUtils._detailedNullCount = (App.PricingUtils._detailedNullCount || 0) + 1;
                     if (App.PricingUtils._detailedNullCount <= 50) {
@@ -173,33 +186,44 @@
 
             const offerCategoryRaw = (sailing && sailing.roomType) || (offer && offer.category) || '';
             const offerBroad = resolveCategory(offerCategoryRaw) || null;
-            const suiteBroad = 'DELUXE';
-            const suitePriceNum = cheapestPriceForCategory(entry, suiteBroad);
+            const targetPriceNum = cheapestPriceForCategory(entry, targetBroad);
 
-            if (suitePriceNum == null) {
-                dbg('computeSuiteUpgradePrice:noSuitePricing', { key, suiteBroad });
-                try { App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1; if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no suite pricing in entry', key, { suiteBroad, pricingKeys: Object.keys(entry.stateroomPricing || {}) }); } catch{}
+            if (targetPriceNum == null) {
+                dbg('computeUpgradePrice:noTargetPricing', { key, targetBroad });
+                dbgLog(`${dbgLabel}:noTargetPricing`, { key, shipCode, sailDate, targetBroad, includeTaxes });
+                try { App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1; if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no target pricing in entry', key, { targetBroad, pricingKeys: Object.keys(entry.stateroomPricing || {}) }); } catch{}
                 return null;
             }
 
-            // If the offer is already a DELUXE (suite) the upgrade price is just taxes & fees
-            if (offerBroad === suiteBroad) {
-                dbg('computeSuiteUpgradePrice:offerIsSuite', { offerBroad, taxesNumber });
-                return Number(taxesNumber);
+            // Guard against malformed pricing (zero/negative), which likely means sold out or invalid data
+            const targetPriceValid = isFinite(targetPriceNum) && Number(targetPriceNum) > 0;
+            if (!targetPriceValid) {
+                dbgLog(`${dbgLabel}:targetPriceNonPositive`, { key, shipCode, sailDate, targetPriceNum });
+                return null;
+            }
+
+            // If the offer is already the target category the upgrade price is just taxes & fees
+            if (offerBroad === targetBroad) {
+                dbg('computeUpgradePrice:offerIsTarget', { offerBroad, taxesNumber });
+                const baseVal = includeTaxes ? taxesNumber : 0;
+                dbgLog(`${dbgLabel}:offerIsTarget`, { key, shipCode, sailDate, taxesNumber, includeTaxes, upgrade: baseVal });
+                return Number(baseVal);
             }
 
             // Determine the price for the offer's category (dual occupancy), falling back to attempt to use the exact offer price if available
             let offerCategoryPrice = null;
             if (offerBroad) {
                 offerCategoryPrice = cheapestPriceForCategory(entry, offerBroad);
-                dbg('computeSuiteUpgradePrice:offerCategoryPriceResolved', { offerBroad, offerCategoryPrice });
+                dbg('computeUpgradePrice:offerCategoryPriceResolved', { offerBroad, offerCategoryPrice });
             }
             // If still null, attempt a heuristic: choose the cheapest non-suite category price (best-effort)
             if (offerCategoryPrice == null) {
                 try {
-                    const nonSuiteCats = WIDE_CATS.filter(c => c !== 'DELUXE');
+                    // Do NOT fall back to the target category; that can make the upgrade look like $0 when the base
+                    // category is sold out (e.g., Interior sold out but Balcony has pricing).
+                    const nonTargetCats = WIDE_CATS.filter(c => c !== 'DELUXE' && c !== targetBroad);
                     let best = null;
-                    nonSuiteCats.forEach(cat => {
+                    nonTargetCats.forEach(cat => {
                         try {
                             const p = cheapestPriceForCategory(entry, cat);
                             if (p != null && isFinite(p)) {
@@ -209,7 +233,7 @@
                     });
                     if (best != null) {
                         offerCategoryPrice = best;
-                        dbg('computeSuiteUpgradePrice:offerCategoryPriceFallbackToCheapestNonSuite', { offerCategoryPrice });
+                        dbg('computeUpgradePrice:offerCategoryPriceFallbackToCheapestNonTarget', { offerCategoryPrice });
                         App.PricingUtils._fallbackUsed = (App.PricingUtils._fallbackUsed || 0) + 1;
                     }
                 } catch{}
@@ -233,28 +257,60 @@
                     if (offerCategoryPrice != null && isFinite(offerCategoryPrice)) {
                         // Heuristic: if the parsed offer price looks like a per-person amount (small) it's ambiguous — but we can't be sure.
                         // We'll assume the value represents the full price for the cabin and will NOT multiply again.
-                        dbg('computeSuiteUpgradePrice:offerPriceParsed', { offerCategoryPrice });
+                        dbg('computeUpgradePrice:offerPriceParsed', { offerCategoryPrice });
                     }
                 } catch{} // removed variable in catch to suppress redundant initializer warning
             }
 
             // At this point, we must have suitePriceNum and ideally offerCategoryPrice.
             // If offerCategoryPrice is null, we can't compute a meaningful difference so return null.
-            if (offerCategoryPrice == null || !isFinite(offerCategoryPrice)) {
-                dbg('computeSuiteUpgradePrice:cannotResolveOfferCategoryPrice', { offerBroad, offerCategoryPrice });
+            const offerPriceValid = offerCategoryPrice != null && isFinite(offerCategoryPrice) && Number(offerCategoryPrice) > 0;
+            if (!offerPriceValid) {
+                dbg('computeUpgradePrice:cannotResolveOfferCategoryPrice', { offerBroad, offerCategoryPrice, targetBroad });
+                dbgLog(`${dbgLabel}:cannotResolveOfferCategoryPrice`, { key, shipCode, sailDate, offerBroad, offerCategoryPrice, targetPriceNum, includeTaxes });
                 return null;
             }
 
             // Compute delta: how much more the suite costs vs the offer category (already dual occupancy numbers)
-            const delta = Math.max(0, Number(suitePriceNum) - Number(offerCategoryPrice));
-            const upgradeEstimate = Number(delta) + Number(taxesNumber);
-            dbg('computeSuiteUpgradePrice:computed', { suitePriceNum, offerCategoryPrice, delta, taxesNumber, upgradeEstimate });
+            // GOBO: align with itinerary "You Pay" logic (single-guest award, second guest at 40%)
+            if (sailing && sailing.isGOBO) {
+                const modifierMap = { INTERIOR:125, OUTSIDE:150, BALCONY:200, DELUXE:300 };
+                const mod = modifierMap[offerBroad] ?? 150;
+                // Solve for base fare of first guest from awarded category price (dual-style number)
+                const baseFareOneGuest = (Number(offerCategoryPrice) + mod - Number(taxesNumber)) / 1.4;
+                const singleGuestOfferValue = baseFareOneGuest - mod;
+                let upgrade = Math.max(0, Number(targetPriceNum) - Math.max(0, Number(singleGuestOfferValue)));
+                if (includeTaxes) {
+                    if (upgrade < Number(taxesNumber)) upgrade = Number(taxesNumber);
+                } else {
+                    upgrade = Math.max(0, upgrade - Number(taxesNumber));
+                }
+                dbg('computeUpgradePrice:computedGOBO', { targetPriceNum, offerCategoryPrice, singleGuestOfferValue, taxesNumber, upgrade, includeTaxes, isGOBO:true, targetBroad });
+                dbgLog(`${dbgLabel}:computedGOBO`, { key, shipCode, sailDate, offerBroad, targetBroad, targetPriceNum, offerCategoryPrice, singleGuestOfferValue, taxesNumber, includeTaxes, upgrade, isGOBO:true });
+                return Number(upgrade);
+            }
+
+            let delta = Math.max(0, Number(targetPriceNum) - Number(offerCategoryPrice));
+            const upgradeEstimate = includeTaxes ? (Number(delta) + Number(taxesNumber)) : Number(delta);
+            dbg('computeUpgradePrice:computed', { targetPriceNum, offerCategoryPrice, delta, taxesNumber, upgradeEstimate, includeTaxes, isGOBO: !!(sailing && sailing.isGOBO), targetBroad });
+            dbgLog(`${dbgLabel}:computed`, { key, shipCode, sailDate, offerBroad, targetBroad, targetPriceNum, offerCategoryPrice, delta, taxesNumber, includeTaxes, upgradeEstimate, isGOBO: !!(sailing && sailing.isGOBO) });
             return Number(upgradeEstimate);
 
         } catch(e) {
-            try { console.error('[PricingUtils] computeSuiteUpgradePrice:unexpected', e); } catch(err){}
+            try { console.error('[PricingUtils] computeUpgradePrice:unexpected', e); } catch(err){}
             return null;
         }
+    }
+
+    // Compute suite (DELUXE) upgrade estimated price for the given sailing/offer pair.
+    // Returns number or null if not computable. Supports includeTaxes flag (default true).
+    App.PricingUtils.computeSuiteUpgradePrice = function(offer, sailing, options){
+        return computeUpgradePrice('DELUXE', 'Suite', offer, sailing, options);
+    };
+
+    // Compute balcony (BALCONY) upgrade estimated price for the given sailing/offer pair.
+    App.PricingUtils.computeBalconyUpgradePrice = function(offer, sailing, options){
+        return computeUpgradePrice('BALCONY', 'Balcony', offer, sailing, options);
     };
 
 })();

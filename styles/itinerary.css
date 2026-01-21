@@ -66,6 +66,14 @@
   padding: 4px;
   transition: color .15s ease-in-out, transform .15s ease-in-out;
 }
+.gobo-itinerary-refresh-inline {
+  position: static;
+  top: auto;
+  right: auto;
+  line-height: 1;
+  padding: 4px;
+  vertical-align: middle;
+}
 .gobo-itinerary-refresh:hover { color: #1d4ed8; }
 .gobo-itinerary-refresh.loading { opacity: .7; animation: goboItinSpin .9s linear infinite; }
 @keyframes goboItinSpin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }

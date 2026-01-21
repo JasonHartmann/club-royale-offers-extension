@@ -129,7 +129,7 @@ const TableBuilder = {
         tbody.innerHTML = '';
         if (total === 0) {
             const row = document.createElement('tr');
-            const colSpan = (state.headers && state.headers.length) ? state.headers.length : 14;
+            const colSpan = (state.headers && state.headers.length) ? state.headers.length : 18;
             row.innerHTML = `<td colspan="${colSpan}" class="border p-2 text-center">No offers available</td>`;
             tbody.appendChild(row);
         } else {
@@ -147,7 +147,7 @@ const TableBuilder = {
                 let index = 0;
                 // Optional status row to indicate progressive rendering (removed once complete)
                 const statusRow = document.createElement('tr');
-                const colSpan = (state.headers && state.headers.length) ? state.headers.length : 14;
+                const colSpan = (state.headers && state.headers.length) ? state.headers.length : 18;
                 statusRow.innerHTML = `<td colspan="${colSpan}" class="border p-2 text-left" style="font-size:12px;color:#666;">Rendering ${total.toLocaleString()} offers…</td>`;
                 tbody.appendChild(statusRow);
                 statusRow.classList.add('adv-render-status-row');

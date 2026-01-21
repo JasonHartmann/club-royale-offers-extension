@@ -133,6 +133,91 @@ const Utils = {
         const s = String(rawTrade).trim();
         return s === '' ? '-' : s;
     },
+    formatOfferValue(rawVal) {
+        if (rawVal === null || rawVal === undefined) return '-';
+        const num = Number(rawVal);
+        if (!isFinite(num)) return '-';
+        // Always round to whole dollars to keep display consistent across Offer/Balcony/Suite values.
+        const rounded = Math.round(num);
+        return `$${rounded.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    },
+    getIncludeTaxesAndFeesPreference(state) {
+        try {
+            if (state && state.advancedSearch && typeof state.advancedSearch.includeTaxesAndFeesInPriceFilters !== 'undefined') {
+                return state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false;
+            }
+            if (typeof App !== 'undefined' && App) {
+                try {
+                    if (App.AdvancedSearch && App.AdvancedSearch._lastState && App.AdvancedSearch._lastState.advancedSearch) {
+                        const flag = App.AdvancedSearch._lastState.advancedSearch.includeTaxesAndFeesInPriceFilters;
+                        if (typeof flag !== 'undefined') return flag !== false;
+                    }
+                } catch(e) { /* ignore */ }
+                try {
+                    if (App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function') {
+                        return !!App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters();
+                    }
+                } catch(e) { /* ignore */ }
+            }
+        } catch(e) { /* ignore */ }
+        return true;
+    },
+    computeSuiteUpgradePrice(offer, sailing, options) {
+        const opts = options || {};
+        const includeTaxes = Object.prototype.hasOwnProperty.call(opts, 'includeTaxes')
+            ? !!opts.includeTaxes
+            : Utils.getIncludeTaxesAndFeesPreference(opts.state || (typeof App !== 'undefined' && App && App.TableRenderer ? App.TableRenderer.lastState : null));
+        try {
+            if (!Utils._suiteWrapLogCount) Utils._suiteWrapLogCount = 0;
+            Utils._suiteWrapLogCount += 1;
+            const n = Utils._suiteWrapLogCount;
+            if (n <= 8 || n % 40 === 0) {
+                const shipCode = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : null;
+                const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim().slice(0,10) : null;
+                const hasPricingUtils = typeof PricingUtils !== 'undefined' || (typeof App !== 'undefined' && App && App.PricingUtils);
+                const hasItin = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.all === 'function');
+                console.info('[SuiteWrap]', { includeTaxes, shipCode, sailDate, hasPricingUtils, hasItin });
+            }
+        } catch(eLog) { /* ignore */ }
+        try {
+            if (typeof App !== 'undefined' && App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') {
+                const res = App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
+                try {
+                    const n = Utils._suiteWrapLogCount || 0;
+                    if (n <= 8 || n % 40 === 0) console.info('[SuiteWrapResult]', { result: res });
+                } catch(eRes) { /* ignore */ }
+                return res;
+            }
+        } catch(e) { /* ignore */ }
+        try {
+            if (typeof PricingUtils !== 'undefined' && PricingUtils && typeof PricingUtils.computeSuiteUpgradePrice === 'function') {
+                const res = PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
+                try {
+                    const n = Utils._suiteWrapLogCount || 0;
+                    if (n <= 8 || n % 40 === 0) console.info('[SuiteWrapResult]', { result: res });
+                } catch(eRes2) { /* ignore */ }
+                return res;
+            }
+        } catch(e) { /* ignore */ }
+        return null;
+    },
+    computeBalconyUpgradePrice(offer, sailing, options) {
+        const opts = options || {};
+        const includeTaxes = Object.prototype.hasOwnProperty.call(opts, 'includeTaxes')
+            ? !!opts.includeTaxes
+            : Utils.getIncludeTaxesAndFeesPreference(opts.state || (typeof App !== 'undefined' && App && App.TableRenderer ? App.TableRenderer.lastState : null));
+        try {
+            if (typeof App !== 'undefined' && App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') {
+                return App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes });
+            }
+        } catch(e) { /* ignore */ }
+        try {
+            if (typeof PricingUtils !== 'undefined' && PricingUtils && typeof PricingUtils.computeBalconyUpgradePrice === 'function') {
+                return PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes });
+            }
+        } catch(e) { /* ignore */ }
+        return null;
+    },
     // New: compute raw offer value (numeric) based on itinerary pricing + guest occupancy
     computeOfferValue(offer, sailing) {
         try {
@@ -283,6 +368,9 @@ const Utils = {
             if (!rows || !rows.length) return;
             if (!_offerValueStats) _initOfferValueStats();
             const state = (window.App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+            const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function')
+                ? App.Utils.getIncludeTaxesAndFeesPreference(state)
+                : true;
             // Build quick lookup map by compound key to speed matching fallback (offerCode|sailDateISO|shipName)
             let compoundMap = null;
             if (state && Array.isArray(state.sortedOffers)) {
@@ -299,18 +387,18 @@ const Utils = {
             rows.forEach(r => {
                 try {
                     const cells = r.querySelectorAll('td');
-                    if (cells.length < 7) return;
+                    // Expecting at least Value + Balcony $ + Suite $ after Trade. Abort if too short.
+                    if (cells.length < 9) return;
                     const valCell = cells[6];
+                    const balconyCell = cells[7];
+                    const suiteCell = cells[8];
                     if (!valCell) return;
                     const code = (r.dataset.offerCode || '').trim();
                     const sailISO = (r.dataset.sailDate || '').trim();
                     const shipName = (r.dataset.shipName || '').trim();
                     if (!_offerValueStats) _initOfferValueStats();
                     _offerValueStats.totalRows++;
-                    if (valCell.textContent && valCell.textContent.trim() !== '-') {
-                        _offerValueStats.computed++;
-                        return;
-                    }
+                    const hasValueAlready = valCell.textContent && valCell.textContent.trim() !== '-';
                     let matchObj = null;
                     if (state && Array.isArray(state.sortedOffers)) {
                         // Prefer direct index if present
@@ -337,12 +425,40 @@ const Utils = {
                         _offerValueStats.missing++;
                         return;
                     }
-                    const rawVal = Utils.computeOfferValue(matchObj.offer, matchObj.sailing);
-                    if (rawVal != null && isFinite(rawVal)) {
-                        valCell.textContent = App.Utils.formatOfferValue(rawVal);
-                        _offerValueStats.computed++;
+                    if (!hasValueAlready) {
+                        const rawVal = Utils.computeOfferValue(matchObj.offer, matchObj.sailing);
+                        if (rawVal != null && isFinite(rawVal)) {
+                            valCell.textContent = App.Utils.formatOfferValue(rawVal);
+                            _offerValueStats.computed++;
+                        } else {
+                            _offerValueStats.missing++;
+                        }
                     } else {
-                        _offerValueStats.missing++;
+                        _offerValueStats.computed++;
+                    }
+
+                    // Refresh Balcony $ column after itinerary/pricing hydration
+                    if (balconyCell) {
+                        try {
+                            const rawBalcony = Utils.computeBalconyUpgradePrice(matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state });
+                            const formattedBalcony = (rawBalcony != null && isFinite(rawBalcony)) ? Utils.formatOfferValue(rawBalcony) : '-';
+                            const existingBal = (balconyCell.textContent || '').trim();
+                            if (existingBal !== formattedBalcony) balconyCell.textContent = formattedBalcony;
+                        } catch(eBalcony) {
+                            try { console.debug('[BalconyUpgrade] refresh error', eBalcony); } catch(ignore) {}
+                        }
+                    }
+
+                    // Refresh Suite column after itinerary/pricing hydration (mirrors Offer Value timing)
+                    if (suiteCell) {
+                        try {
+                            const rawSuite = Utils.computeSuiteUpgradePrice(matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state });
+                            const formattedSuite = (rawSuite != null && isFinite(rawSuite)) ? Utils.formatOfferValue(rawSuite) : '-';
+                            const existingSuite = (suiteCell.textContent || '').trim();
+                            if (existingSuite !== formattedSuite) suiteCell.textContent = formattedSuite;
+                        } catch(eSuite) {
+                            try { console.debug('[SuiteUpgrade] refresh error', eSuite); } catch(ignore) {}
+                        }
                     }
                 } catch(e){ _offerValueStats.missing++; }
             });

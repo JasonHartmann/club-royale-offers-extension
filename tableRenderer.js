@@ -506,6 +506,54 @@ const TableRenderer = {
             }
         }
     },
+    async refreshAllItineraries() {
+        if (this._refreshingAllItins) return this._refreshingAllItins;
+        const run = async () => {
+            const state = App && App.TableRenderer ? App.TableRenderer.lastState : null;
+            const keySet = new Set();
+            try {
+                const rows = (state && Array.isArray(state.fullOriginalOffers) && state.fullOriginalOffers.length)
+                    ? state.fullOriginalOffers
+                    : (state && Array.isArray(state.sortedOffers) ? state.sortedOffers : []);
+                rows.forEach(({ sailing }) => {
+                    try {
+                        const sd = sailing?.sailDate ? String(sailing.sailDate).trim().slice(0, 10) : '';
+                        const sc = sailing?.shipCode ? String(sailing.shipCode).trim() : '';
+                        if (sc && sd) keySet.add(`SD_${sc}_${sd}`);
+                    } catch (ignore) { /* ignore individual rows */ }
+                });
+            } catch (e) { /* ignore */ }
+
+            // Hydrate itinerary cache for all keys present in the current table
+            let map = null;
+            try {
+                const hydrateTarget = (typeof window !== 'undefined' && window.App && window.App.ItineraryCache)
+                    ? window.App.ItineraryCache
+                    : ((typeof window !== 'undefined' && window.ItineraryCache)
+                        ? window.ItineraryCache
+                        : (typeof ItineraryCache !== 'undefined' ? ItineraryCache : undefined));
+                if (hydrateTarget && keySet.size) {
+                    if (typeof hydrateTarget.hydrateAlways === 'function') {
+                        await hydrateTarget.hydrateAlways(Array.from(keySet));
+                    } else if (typeof hydrateTarget.hydrateIfNeeded === 'function') {
+                        // Fallback if hydrateAlways is unavailable; still try to re-hydrate all keys.
+                        await hydrateTarget.hydrateIfNeeded(Array.from(keySet));
+                    }
+                }
+                try { if (hydrateTarget && typeof hydrateTarget.computeAllDerivedPricing === 'function') hydrateTarget.computeAllDerivedPricing(); } catch (eDp) { /* ignore derived pricing errors */ }
+                if (hydrateTarget && typeof hydrateTarget.all === 'function') map = hydrateTarget.all();
+            } catch (eHydrate) {
+                console.warn('[ItineraryCache] refreshAllItineraries error', eHydrate);
+            }
+
+            // Re-render itinerary links and recompute upgrade/value columns
+            try { this.updateItineraries(map); } catch (eUi) { /* ignore */ }
+            try { if (typeof Utils !== 'undefined' && Utils && typeof Utils.refreshOfferValues === 'function') Utils.refreshOfferValues(); } catch (eVal) { /* ignore */ }
+            return map;
+        };
+        this._refreshingAllItins = run().finally(() => { this._refreshingAllItins = null; });
+        return this._refreshingAllItins;
+    },
     loadProfile(key, payload) {
         // Normalize legacy unbranded keys to branded keys when possible
         try {
@@ -629,6 +677,8 @@ const TableRenderer = {
                 { key: 'expiration', label: 'Expires' },
                 { key: 'tradeInValue', label: 'Trade' },
                 { key: 'offerValue', label: 'Value' },
+                { key: 'balconyUpgrade', label: 'Balcony' },
+                { key: 'suiteUpgrade', label: 'Suite' },
                 { key: 'offerName', label: 'Name' },
                 { key: 'shipClass', label: 'Class' },
                 { key: 'ship', label: 'Ship' },
@@ -885,6 +935,8 @@ const TableRenderer = {
                     { key: 'expiration', label: 'Expires' },
                     { key: 'tradeInValue', label: 'Trade' },
                     { key: 'offerValue', label: 'Value' },
+                    { key: 'balconyUpgrade', label: 'Balcony' },
+                    { key: 'suiteUpgrade', label: 'Suite' },
                     { key: 'offerName', label: 'Name' },
                     { key: 'shipClass', label: 'Class' },
                     { key: 'ship', label: 'Ship' },
@@ -990,6 +1042,18 @@ const TableRenderer = {
                     if (offerNameIdx !== -1) baseState.headers.splice(offerNameIdx, 0, { key: 'offerValue', label: 'Value' });
                     else baseState.headers.push({ key: 'offerValue', label: 'Value' });
                 }
+            }
+            const hasSuiteUpgrade = baseState.headers.some(h => h.key === 'suiteUpgrade');
+            if (!hasSuiteUpgrade) {
+                const offerValIdx = baseState.headers.findIndex(h => h.key === 'offerValue');
+                if (offerValIdx !== -1) baseState.headers.splice(offerValIdx + 1, 0, { key: 'suiteUpgrade', label: 'Suite' });
+                else baseState.headers.push({ key: 'suiteUpgrade', label: 'Suite' });
+            }
+            const hasBalconyUpgrade = baseState.headers.some(h => h.key === 'balconyUpgrade');
+            if (!hasBalconyUpgrade) {
+                const offerValIdx = baseState.headers.findIndex(h => h.key === 'offerValue');
+                if (offerValIdx !== -1) baseState.headers.splice(offerValIdx + 1, 0, { key: 'balconyUpgrade', label: 'Balcony' });
+                else baseState.headers.push({ key: 'balconyUpgrade', label: 'Balcony' });
             }
         } catch(e) { /* ignore header repair errors */ }
         const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken, profileId: App.ProfileIdMap ? App.ProfileIdMap[key] : null };
