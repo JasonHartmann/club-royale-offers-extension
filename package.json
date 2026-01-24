@@ -1,6 +1,6 @@
 {
   "name": "club-royale-offers-extension",
-  "version": "1.0.0",
+  "version": "2.1",
   "private": true,
   "description": "Developer tooling for the Club Royale Offers browser extension",
   "scripts": {

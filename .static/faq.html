@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FAQ — Royal Caribbean and Celebrity Cruises Offers Viewer</title>
-  <meta name="description" content="Answers to common Cruise Offers Viewer questions: multi-profile linking, B2B depth, upgrade price search, and performance tuning." />
+  <meta name="description" content="Answers to common Cruise Offers Viewer questions: profile linking, B2B depth, upgrade price filters, and performance tuning." />
   <link rel="stylesheet" href="static-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 </head>
@@ -27,21 +27,34 @@
       <article class="faq-card">
         <h2>How do I add a second profile and link them?</h2>
         <ol>
-          <li>Open the offers page while signed into the first loyalty account and click <strong>Show All Offers</strong>.</li>
-          <li>Select the <strong>Profiles</strong> tab in the header bar, then press <strong>“Add Profile”</strong>.</li>
-          <li>Give the profile a short label (e.g., “Player A”), choose a highlight color, and hit <strong>Save</strong>. The extension stores the minimal ID locally.</li>
-          <li>Log out of the cruise site completely, sign into the second loyalty account, navigate to the offers page, and click <strong>Show All Offers</strong> again. This log-out/log-in sequence is the only way to capture another profile.</li>
-          <li>Once both profiles exist, click the <span class="material-symbols-outlined" aria-hidden="true">link</span> chain icon on both the header tabs.</li>
-          <li>The new <strong>Combined</strong> tab becomes enabled. It surfaces offers that can be upgraded or combined between those two accounts.</li>
+          <li>Open the offers page while signed into the first loyalty account and click <strong>Show All Offers</strong>. The extension saves that account as a profile tab automatically.</li>
+          <li>Log out of the cruise site completely, sign into the second loyalty account, navigate to the offers page, and click <strong>Show All Offers</strong> again. A second profile tab appears.</li>
+          <li>Click the <span class="material-symbols-outlined" aria-hidden="true">link</span> chain icon on both profile tabs to link them.</li>
+          <li>The <strong>Combined Offers</strong> tab becomes enabled and shows the merged view of the two linked profiles.</li>
         </ol>
-        <p class="note">Tip: To refresh a profile’s data later, you must redo the same sign-out/sign-in + <strong>Show All Offers</strong> flow for that account, then hit <strong>Refresh Profile</strong> in the Profiles tab. If you rename a profile, re-open the linking dialog to keep the combined tab label accurate.</p>
+        <p class="note">Tip: To refresh a profile’s data later, redo the sign-out/sign-in flow for that account and click <strong>Show All Offers</strong> again.</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>What is Offer Value and how is it used?</h2>
+        <p><strong>Offer Value</strong> estimates the base cruise fare for the awarded category (dual occupancy) after subtracting taxes and fees. The Balcony and Suite upgrade columns use this value to estimate how much you would pay to move up to a higher category.</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>How do the Balcony and Suite upgrade columns work?</h2>
+        <p>Upgrade estimates are calculated using itinerary pricing and your offer’s base value. When taxes/fees are included, the upgrade shows the minimum total “You Pay” for the target category.</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>Can I include or exclude taxes in price filters?</h2>
+        <p>Yes. Open the <strong>Settings</strong> gear and toggle <strong>Include Taxes & Fees in Price Filters</strong>. This affects Advanced Search price fields and upgrade columns.</p>
       </article>
 
       <article class="faq-card">
         <h2>How does the Back-to-Back (B2B) tool work and what do depths mean?</h2>
-        <p>The B2B Builder reads the sailings that are already in your table, and labels each row with a <strong>depth</strong> number. That number is simply the longest uninterrupted chain of cruises you can sail starting with that offer using what you currently have in your account. In other words, a depth of 4 means you could board that sailing and keep hopping from ship to ship four sailings in a row before you run out of eligible comps.</p>
-        <p>Depth is influenced by the <strong>Side-by-Side</strong> toggle in the builder. When Side-by-Side is <em>on</em>, the planner assumes you are comfortable switching ships on the same day in the same port, so the chain length can continue even if two sailings overlap on embarkation day. When it is <em>off</em>, the builder only considers sailings available for the same ship, so the depth number may shrink accordingly.</p>
-        <p>Clicking the depth pill for an offer will display the Back-to-Back Builder tool. Use the tool to construct a chain of sailings for destinations you care about, then click <strong>Add to Favorites</strong>. All sailings in the chain will get added to the Favorite tab with a unique code for that chain in the B2B column</p>
+        <p>The B2B Builder reads the sailings that are already in your table, and labels each row with a <strong>depth</strong> number. That number is the longest uninterrupted chain of cruises you can sail starting with that offer using what you currently have.</p>
+        <p>Side-by-side behavior is controlled by the <strong>Include Side-by-Sides</strong> setting (Settings gear). When enabled, the builder allows same-day connections across ships in the same port. When disabled, it prefers same-ship connections only.</p>
+        <p>Click the depth pill to open the Back-to-Back Builder. Use <strong>Add to chain</strong> to build a sequence, then click <strong>Save Chain to Favorites</strong>. Saved chains show a chain ID badge in the Favorites tab.</p>
       </article>
 
       <article class="faq-card">
@@ -53,6 +66,26 @@
           <li>Type the max price you are willing to pay for the upgrade (e.g., <code>250</code> for $250).</li>
           <li>The filter applies instantly to the selected profile and respects whatever group or sort state you already have.</li>
         </ol>
+      </article>
+
+      <article class="faq-card">
+        <h2>What are itinerary links and what do they show?</h2>
+        <p>Click a destination link to open the itinerary popup. It includes stateroom pricing, estimated “You Pay” amounts, and a day‑by‑day route summary.</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>How do Favorites work?</h2>
+        <p>Click the star icon on any row to save a sailing. Favorites appear in a dedicated tab and are stored locally in your browser.</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>What does the B2B chain ID mean?</h2>
+        <p>When you save a Back‑to‑Back chain, the Favorites tab shows a chain ID badge in the B2B column so you can identify the saved sequence.</p>
+      </article>
+
+      <article class="faq-card">
+        <h2>Can I hide groups I don’t care about?</h2>
+        <p>Yes. Use the group menu in the table headers to hide entire groups. Hidden groups are removed from view until you unhide them.</p>
       </article>
 
       <article class="faq-card">

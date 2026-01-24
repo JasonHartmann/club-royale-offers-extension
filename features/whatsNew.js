@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '5'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder
+    const TOUR_REVISION = '6'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 

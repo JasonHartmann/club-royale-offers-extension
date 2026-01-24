@@ -37,7 +37,6 @@
         BackToBackTool,
         Favorites,
         Settings,
-        // Helper to read/write our extension-backed settings using the storage shim
         SettingsStore: {
             getSettings() {
                 try {
