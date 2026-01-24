@@ -15,8 +15,8 @@
 .adv-summary { font-weight:500; font-size:12px; }
 
 /* Inputs & selects */
-.adv-operator-select, .adv-values-multiselect, .adv-add-field-select, .adv-predicate-box input[type="text"] { background:#ffffff !important; color:#1f2937; font-size:12px; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; }
-.adv-operator-select:focus, .adv-values-multiselect:focus, .adv-add-field-select:focus, .adv-predicate-box input[type="text"]:focus { outline:2px solid #2563eb; outline-offset:1px; }
+.adv-operator-select, .adv-values-multiselect, .adv-add-field-select, .adv-predicate-box input[type="text"], .adv-predicate-box input[type="number"] { background:#ffffff !important; color:#1f2937; font-size:12px; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; }
+.adv-operator-select:focus, .adv-values-multiselect:focus, .adv-add-field-select:focus, .adv-predicate-box input[type="text"]:focus, .adv-predicate-box input[type="number"]:focus { outline:2px solid #2563eb; outline-offset:1px; }
 .adv-values-multiselect { min-width:140px; max-width:200px; padding:4px; }
 .adv-values-multiselect option { font-size:12px; }
 
@@ -108,7 +108,8 @@ body.gobo-dark .adv-chip-remove, body.gobo-dark .adv-chip button { color:#cbd5f5
 body.gobo-dark .adv-operator-select,
 body.gobo-dark .adv-values-multiselect,
 body.gobo-dark .adv-add-field-select,
-body.gobo-dark .adv-predicate-box input[type="text"] { background:#0b1220 !important; color:#e2e8f0; border:1px solid rgba(148,163,184,0.3); }
+body.gobo-dark .adv-predicate-box input[type="text"],
+body.gobo-dark .adv-predicate-box input[type="number"] { background:#0b1220 !important; color:#e2e8f0; border:1px solid rgba(148,163,184,0.3); }
 body.gobo-dark .adv-add-field-btn { background:#0b1220; color:#e2e8f0; border:1px solid rgba(148,163,184,0.3); }
 body.gobo-dark .adv-add-field-popup { background:#0f172a; color:#e2e8f0; border:1px solid rgba(148,163,184,0.2); }
 body.gobo-dark .adv-add-field-item { color:#e2e8f0; }
@@ -119,3 +120,7 @@ body.gobo-dark .adv-date-range-wrapper { background:#0b1220; border:1px solid rg
 body.gobo-dark .adv-date-range-controls button { background:#111827; border:1px solid rgba(148,163,184,0.2); color:#e2e8f0; }
 body.gobo-dark .adv-cal-grid th { color:#cbd5f5; }
 body.gobo-dark .adv-date-range-summary { color:#e2e8f0; }
+body.gobo-dark .adv-search-empty-inline,
+body.gobo-dark .adv-search-disabled-msg {
+	color:#cbd5f5;
+}

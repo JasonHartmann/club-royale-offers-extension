@@ -8,7 +8,7 @@ const ErrorHandler = {
             errorDiv.className = 'fixed top-16 right-4 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg z-[2147483647]';
             errorDiv.textContent = message;
             document.body.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 10000);
+            setTimeout(() => errorDiv.remove(), 4000);
         } catch (error) {
             console.debug('Failed to show error:', error.message);
         }
@@ -26,7 +26,7 @@ const ErrorHandler = {
             try { warnDiv.style.color = '#ffffff'; } catch(e){}
             warnDiv.textContent = message;
             document.body.appendChild(warnDiv);
-            setTimeout(() => warnDiv.remove(), 10000);
+            setTimeout(() => warnDiv.remove(), 4000);
         } catch (error) {
             console.debug('Failed to show warning:', error.message);
         }
