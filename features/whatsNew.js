@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '6'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1
+    const TOUR_REVISION = '7'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -147,7 +147,19 @@
                     id:'settingsGear',
                     target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
                     title:'Settings & Preferences',
-                    body:'Open the Settings gear to adjust preferences, edit advanced search defaults, and control features like Back-to-Back auto-run.',
+                    body:'Use the Settings gear to adjust preferences, edit advanced search defaults, and control features like Back-to-Back auto-run.',
+                },
+                {
+                    id:'darkModeSetting',
+                    target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
+                    title:'Dark Mode',
+                    body:'Open the Settings gear to toggle Dark Mode for the offers table, modals, and panels.',
+                },
+                {
+                    id:'visibleColumnsSetting',
+                    target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
+                    title:'Visible Columns',
+                    body:'Open the Settings gear to hide or show columns in the offers table. CSV export still includes every column.',
                 },
                 {
                     id:'supportCoffee',

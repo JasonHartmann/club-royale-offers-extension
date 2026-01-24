@@ -33,3 +33,37 @@
 
 /* Bolder font weight for table cell contents */
 .table-auto td, .accordion-table td { font-weight:550; font-size:0.75rem; }
+
+/* Dark mode overrides */
+body.gobo-dark #gobo-offers-table {
+	background-color: #0f172a;
+	color: #e2e8f0;
+	box-shadow: 0 10px 18px rgba(0,0,0,0.45);
+	border: 1px solid rgba(148,163,184,0.2);
+}
+body.gobo-dark .table-scroll-container {
+	background: #0f172a;
+}
+body.gobo-dark .table-scroll-container::-webkit-scrollbar-track { background:#0b1220; }
+body.gobo-dark .table-scroll-container::-webkit-scrollbar-thumb { background:#334155; }
+body.gobo-dark .table-scroll-container::-webkit-scrollbar-thumb:hover { background:#475569; }
+body.gobo-dark .table-footer-container {
+	background:#0b1220;
+	border-top:1px solid rgba(148,163,184,0.2);
+}
+body.gobo-dark .table-header,
+body.gobo-dark .accordion-table-header {
+	background:#0b1220;
+	border-bottom:2px solid rgba(148,163,184,0.2);
+}
+body.gobo-dark .table-header tr,
+body.gobo-dark .accordion-table-header tr { background:#111827; }
+body.gobo-dark .table-auto th,
+body.gobo-dark .table-auto td,
+body.gobo-dark .accordion-table th,
+body.gobo-dark .accordion-table td {
+	border:1px solid rgba(148,163,184,0.2);
+	color:#e2e8f0;
+}
+body.gobo-dark .table-auto tbody tr:nth-child(odd) { background:#0b1220; }
+body.gobo-dark .table-auto tbody tr:nth-child(even) { background:#0f172a; }

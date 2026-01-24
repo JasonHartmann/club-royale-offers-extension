@@ -11,6 +11,10 @@
   color: #1d4ed8 !important; /* slightly darker on hover */
 }
 
+body.gobo-dark .gobo-itinerary-link { color:#93c5fd !important; }
+body.gobo-dark .gobo-itinerary-link:hover,
+body.gobo-dark .gobo-itinerary-link:focus { color:#bfdbfe !important; }
+
 /* Backdrop */
 #gobo-itinerary-modal.gobo-itinerary-backdrop {
   position: fixed;
@@ -37,6 +41,21 @@
   position: relative;
   animation: goboItinFadeIn .18s ease-out;
 }
+
+body.gobo-dark .gobo-itinerary-panel {
+  background:#0f172a;
+  color:#e2e8f0;
+  box-shadow:0 6px 22px rgba(0,0,0,0.55);
+  border:1px solid rgba(148,163,184,0.2);
+}
+body.gobo-dark .gobo-itinerary-close { color:#cbd5f5; }
+body.gobo-dark .gobo-itinerary-close:hover { color:#fff; }
+body.gobo-dark .gobo-itinerary-subtitle { color:#cbd5f5; }
+body.gobo-dark .gobo-itinerary-table thead th { background:#0b1220; border-bottom:1px solid rgba(148,163,184,0.25); color:#e2e8f0; }
+body.gobo-dark .gobo-itinerary-table tbody td { border-bottom:1px solid rgba(148,163,184,0.2); }
+body.gobo-dark .gobo-itinerary-taxes,
+body.gobo-dark .gobo-itinerary-offercodes,
+body.gobo-dark .gobo-itinerary-footer { color:#94a3b8; }
 @keyframes goboItinFadeIn { from { opacity:0; transform: translateY(8px);} to { opacity:1; transform: translateY(0);} }
 
 .gobo-itinerary-close {
@@ -151,6 +170,11 @@
   font-weight: 700 !important;
 }
 
+body.gobo-dark .gobo-itinerary-current-category,
+body.gobo-dark .gobo-itinerary-current-category td {
+  color: #34d399 !important;
+}
+
 /* Persistent highlight for a row selected by Back-to-Back Builder */
 .gobo-b2b-selected {
   animation: gobo-b2b-flash 1s ease-in-out;
@@ -159,6 +183,15 @@
   box-shadow: 0 0 0 3px rgba(255,230,120,0.4) inset;
 }
 @keyframes gobo-b2b-flash { 0% { background: rgba(255,245,170,0.0);} 30% { background: rgba(255,245,170,0.95);} 100% { background: rgba(255,245,170,0.9);} }
+
+body.gobo-dark .gobo-b2b-selected {
+  animation: gobo-b2b-flash-dark 1s ease-in-out;
+  background: rgba(120,53,15,0.95) !important;
+  color:#fffbeb;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.35) inset;
+}
+body.gobo-dark .gobo-b2b-selected a { color: inherit; }
+@keyframes gobo-b2b-flash-dark { 0% { background: rgba(120,53,15,0.0);} 30% { background: rgba(120,53,15,0.98);} 100% { background: rgba(120,53,15,0.95);} }
 
 /* Responsive tweaks: keep the prices table as a single-row-per-offer table on phones
    by allowing horizontal scrolling instead of stacking each column vertically. */
@@ -194,4 +227,12 @@
 .accordion-table th.gobo-b2b-selected {
   background: rgba(255,245,170,0.95) !important;
   box-shadow: none !important;
+}
+
+body.gobo-dark .accordion-table tr.gobo-b2b-selected td,
+body.gobo-dark .accordion-table tr.gobo-b2b-selected th,
+body.gobo-dark .accordion-table td.gobo-b2b-selected,
+body.gobo-dark .accordion-table th.gobo-b2b-selected {
+  background: rgba(120,53,15,0.98) !important;
+  color:#fffbeb;
 }

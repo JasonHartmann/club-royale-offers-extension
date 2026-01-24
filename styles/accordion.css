@@ -8,6 +8,19 @@
 .accordion-header[data-depth="4"],
 .accordion-header[data-depth="5"] { background:#f2f7fa; border-left-color:#94a3af; }
 .accordion-header:hover { filter:brightness(0.96); }
+
+body.gobo-dark .accordion-header {
+	background:#0f172a;
+	color:#e2e8f0;
+	border-left-color:#475569;
+}
+body.gobo-dark .accordion-header[data-depth="0"] { background:#111827; border-left-color:#475569; }
+body.gobo-dark .accordion-header[data-depth="1"] { background:#0f172a; border-left-color:#64748b; }
+body.gobo-dark .accordion-header[data-depth="2"] { background:#0b1220; border-left-color:#94a3b8; }
+body.gobo-dark .accordion-header[data-depth="3"],
+body.gobo-dark .accordion-header[data-depth="4"],
+body.gobo-dark .accordion-header[data-depth="5"] { background:#0b1120; border-left-color:#cbd5f5; }
+body.gobo-dark .accordion-header:hover { filter:brightness(1.08); }
 .accordion-content { display:none; padding:8px; }
 .accordion-content.open { display:block; }
 .accordion-table th { cursor:pointer; }

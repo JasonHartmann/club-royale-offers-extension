@@ -52,7 +52,7 @@ const Settings = {
 
             // Body: single-column variant of the B2B body so content lays out nicely
             const body = document.createElement('div');
-            body.className = 'b2b-visualizer-body';
+            body.className = 'b2b-visualizer-body gobo-settings-body';
             body.style.gridTemplateColumns = '1fr';
             body.style.padding = '20px 28px';
             body.style.maxHeight = '70vh';
@@ -81,7 +81,7 @@ const Settings = {
             });
             const autoTitle = document.createElement('strong'); autoTitle.textContent = 'Auto-run Back-to-Back Builder Calculations';
             autoLabel.appendChild(autoCb); autoLabel.appendChild(autoTitle);
-            const autoDesc = document.createElement('div'); autoDesc.style.cssText = 'font-size:12px; color:#444; margin-left:28px;';
+            const autoDesc = document.createElement('div'); autoDesc.className = 'gobo-setting-desc'; autoDesc.style.cssText = 'font-size:12px; margin-left:28px;';
             autoDesc.textContent = 'When enabled, the extension will automatically compute back-to-back sailing chains for the Back-to-Back Builder. Disable this to avoid expensive calculations on large datasets.';
             autoArea.appendChild(autoLabel); autoArea.appendChild(autoDesc);
             body.appendChild(autoArea);
@@ -100,7 +100,7 @@ const Settings = {
             });
             const sbsTitle = document.createElement('strong'); sbsTitle.textContent = 'Include Side-by-Sides';
             sbsLabel.appendChild(sbsCb); sbsLabel.appendChild(sbsTitle);
-            const sbsDesc = document.createElement('div'); sbsDesc.style.cssText = 'font-size:12px; color:#444; margin-left:28px;';
+            const sbsDesc = document.createElement('div'); sbsDesc.className = 'gobo-setting-desc'; sbsDesc.style.cssText = 'font-size:12px; margin-left:28px;';
             sbsDesc.textContent = 'When enabled, side-by-side offers (combined or comparison rows) are included in Back-to-Back Builder calculations. Disable to hide those rows from view.';
             sbsArea.appendChild(sbsLabel); sbsArea.appendChild(sbsDesc);
             body.appendChild(sbsArea);
@@ -129,22 +129,50 @@ const Settings = {
             });
             const tAndFTitle = document.createElement('strong'); tAndFTitle.textContent = 'Include Taxes & Fees in Price Filters';
             tAndFLabel.appendChild(tAndFCb); tAndFLabel.appendChild(tAndFTitle);
-            const tAndFDesc = document.createElement('div'); tAndFDesc.style.cssText = 'font-size:12px; color:#444; margin-left:28px;';
+            const tAndFDesc = document.createElement('div'); tAndFDesc.className = 'gobo-setting-desc'; tAndFDesc.style.cssText = 'font-size:12px; margin-left:28px;';
             tAndFDesc.textContent = 'If enabled, price-based filters will include Taxes & Fees when calculating matches and suggestions. Disable to use base prices only.';
             tAndFArea.appendChild(tAndFLabel); tAndFArea.appendChild(tAndFDesc);
             body.appendChild(tAndFArea);
 
+            // Dark Mode setting
+            const darkArea = document.createElement('div');
+            darkArea.className = 'gobo-setting-area';
+            darkArea.style.cssText = 'margin-bottom:12px;';
+            const darkLabel = document.createElement('label'); darkLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
+            const darkCb = document.createElement('input'); darkCb.type = 'checkbox'; darkCb.id = 'gobo-setting-dark';
+            try { darkCb.checked = (App && App.SettingsStore && typeof App.SettingsStore.getDarkMode === 'function') ? App.SettingsStore.getDarkMode() : ((settingsStore.darkMode !== undefined) ? !!settingsStore.darkMode : false); } catch(e){ darkCb.checked = false; }
+            darkCb.addEventListener('change', () => {
+                try {
+                    const v = !!darkCb.checked;
+                    if (App && App.SettingsStore && typeof App.SettingsStore.setDarkMode === 'function') {
+                        App.SettingsStore.setDarkMode(v);
+                    } else {
+                        settingsStore.darkMode = v;
+                        if (typeof goboStorageSet === 'function') goboStorageSet('goboSettings', JSON.stringify(settingsStore)); else localStorage.setItem('goboSettings', JSON.stringify(settingsStore));
+                    }
+                    try { if (App && typeof App.applyTheme === 'function') App.applyTheme(); } catch(e) {}
+                } catch(e){}
+            });
+            const darkTitle = document.createElement('strong'); darkTitle.textContent = 'Dark Mode';
+            darkLabel.appendChild(darkCb); darkLabel.appendChild(darkTitle);
+            const darkDesc = document.createElement('div'); darkDesc.className = 'gobo-setting-desc'; darkDesc.style.cssText = 'font-size:12px; margin-left:28px;';
+            darkDesc.textContent = 'Apply a darker theme to the offers table, modals, and panels.';
+            darkArea.appendChild(darkLabel); darkArea.appendChild(darkDesc);
+            body.appendChild(darkArea);
+
             // Column visibility settings
             const columnArea = document.createElement('div');
             columnArea.className = 'gobo-setting-area';
-            columnArea.style.cssText = 'margin-bottom:12px;';
+            columnArea.style.cssText = 'margin-bottom:12px; width:100%;';
             const columnTitle = document.createElement('strong');
             columnTitle.textContent = 'Visible Columns';
             const columnDesc = document.createElement('div');
-            columnDesc.style.cssText = 'font-size:12px; color:#444; margin:6px 0 8px 0;';
+            columnDesc.className = 'gobo-setting-desc';
+            columnDesc.style.cssText = 'font-size:12px; margin:6px 0 8px 0;';
             columnDesc.textContent = 'Hide or show columns in the offers table. CSV export always includes all columns.';
             const columnsGrid = document.createElement('div');
-            columnsGrid.style.cssText = 'display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:8px 12px;';
+            columnsGrid.className = 'gobo-columns-grid';
+            columnsGrid.style.cssText = 'display:flex; flex-wrap:wrap; width:100%; gap:8px 12px; align-items:flex-start;';
 
             const defaultHeaders = [
                 { key: 'favorite', label: 'Favorite' },

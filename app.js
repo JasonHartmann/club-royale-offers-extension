@@ -81,13 +81,35 @@
             },
             setIncludeTaxesAndFeesInPriceFilters(val) {
                 try { const s = this.getSettings() || {}; s.includeTaxesAndFeesInPriceFilters = !!val; this.setSettings(s); try { if (window.App && App.AdvancedSearch && App.AdvancedSearch._lastState && App.AdvancedSearch._lastState.advancedSearch) App.AdvancedSearch._lastState.advancedSearch.includeTaxesAndFeesInPriceFilters = !!val; } catch(e) {} } catch(e) {}
+            },
+            getDarkMode() {
+                try { const s = this.getSettings(); return (typeof s.darkMode !== 'undefined') ? !!s.darkMode : false; } catch(e) { return false; }
+            },
+            setDarkMode(val) {
+                try { const s = this.getSettings() || {}; s.darkMode = !!val; this.setSettings(s); } catch(e) {}
             }
         },
         // runtime flag to control expensive B2B computations; default true for backwards compatibility
         BackToBackAutoRun: (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true,
         ProfileCache: _prev.ProfileCache || [],
+        applyTheme() {
+            try {
+                const enabled = (App && App.SettingsStore && typeof App.SettingsStore.getDarkMode === 'function') ? App.SettingsStore.getDarkMode() : false;
+                const root = document.documentElement;
+                const body = document.body;
+                if (root) root.classList.toggle('gobo-dark', !!enabled);
+                if (body) body.classList.toggle('gobo-dark', !!enabled);
+            } catch(e) { /* ignore */ }
+        },
         init() {
             this.DOMUtils.waitForDom();
+            try {
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => App.applyTheme(), { once: true });
+                } else {
+                    App.applyTheme();
+                }
+            } catch(e) { /* ignore */ }
         }
     };
 
@@ -103,6 +125,7 @@
                             const v = (typeof goboStorageGet === 'function') ? goboStorageGet('goboSettings') : null;
                             const parsed = v ? JSON.parse(v) : {};
                             App.BackToBackAutoRun = (typeof parsed.autoRunB2B !== 'undefined') ? !!parsed.autoRunB2B : true;
+                            try { App.applyTheme(); } catch(e) { /* ignore */ }
                         } catch(e) { /* ignore */ }
                     }
                 } catch(e) { /* ignore */ }

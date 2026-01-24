@@ -120,3 +120,32 @@
 .profile-tabs { overflow: visible !important; }
 .profile-tabs * { overflow: visible !important; }
 
+/* Dark mode overrides */
+body.gobo-dark .profile-tabs .profile-tab {
+	background:#1f2937;
+	color:#e2e8f0;
+	border:1px solid rgba(148,163,184,0.2);
+	border-bottom-color: transparent;
+}
+body.gobo-dark .profile-tabs .profile-tab:hover { background:#243046; }
+body.gobo-dark .profile-tabs .profile-tab.active {
+	background:#0f172a;
+	color:#f8fafc;
+	border:1px solid rgba(148,163,184,0.25);
+	border-bottom-color: transparent;
+	box-shadow:0 8px 20px rgba(0,0,0,0.45);
+}
+body.gobo-dark .profile-tab-loyalty,
+body.gobo-dark .profile-tab-refreshed { color:#94a3b8; }
+body.gobo-dark #hidden-groups-display {
+	color:#cbd5f5;
+	background:#0b1220;
+	border:1px solid rgba(148,163,184,0.2);
+}
+body.gobo-dark .profile-tabs-scroll:before {
+	background:linear-gradient(90deg, rgba(15,23,42,1) 30%, rgba(15,23,42,0));
+}
+body.gobo-dark .profile-tabs-scroll:after {
+	background:linear-gradient(270deg, rgba(15,23,42,1) 30%, rgba(15,23,42,0));
+}
+

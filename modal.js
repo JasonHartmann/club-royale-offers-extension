@@ -125,7 +125,7 @@ const Modal = {
         // Hidden by default; positioned above the donate button
         // Center the panel horizontally above the Donate button to avoid off-screen placement
         // The stylesheet controls display; keep positioning/visuals here. Use top instead of bottom
-        donatePanel.style.cssText = 'position:absolute; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #e5e7eb; padding:8px; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); z-index:2147483650; min-width:180px;';
+        donatePanel.style.cssText = 'position:absolute; left:50%; transform:translateX(-50%); background:var(--gobo-donate-panel-bg, #fff); border:1px solid var(--gobo-donate-panel-border, #e5e7eb); padding:8px; border-radius:6px; box-shadow:var(--gobo-donate-panel-shadow, 0 6px 18px rgba(0,0,0,0.12)); z-index:2147483650; min-width:180px;';
         // Build fresh panel-specific links (avoid reusing elements that may be styled for footer placement)
         const panelList = document.createElement('div');
         panelList.style.cssText = 'display:flex; flex-direction:column; gap:8px;';
@@ -139,7 +139,7 @@ const Modal = {
         panelCoffee.innerHTML = '<span class="coffee-emoji" aria-hidden="true">☕️</span><span class="buy-coffee-text">Buy me a coffee</span>';
         panelList.appendChild(panelCoffee);
         // small visual separator between links
-        const smallSep = document.createElement('div'); smallSep.style.cssText = 'height:1px; background:#f0f0f0; margin:4px 0;';
+        const smallSep = document.createElement('div'); smallSep.className = 'donate-panel-sep'; smallSep.style.cssText = 'height:1px; background:var(--gobo-donate-panel-sep, #f0f0f0); margin:4px 0;';
         panelList.appendChild(smallSep);
         // Venmo link for panel (fresh element)
         const panelVenmo = document.createElement('a');
@@ -278,18 +278,20 @@ const Modal = {
         // Legend
         const legend = document.createElement('div');
         legend.style.cssText = 'display: flex; align-items: center; gap: 12px; font-size: 10px; margin-left: 8px;';
+        legend.className = 'gobo-legend';
         // Expiring Soon
         const expiringBox = document.createElement('span');
-        expiringBox.style.cssText = 'display: inline-block; width: 14px; height: 14px; background: #FDD; border: 1px solid #ccc; margin-right: 4px; vertical-align: middle;';
+        expiringBox.className = 'gobo-legend-box gobo-legend-box-expiring';
         const expiringLabel = document.createElement('span');
+        expiringLabel.className = 'gobo-legend-label gobo-legend-label-expiring';
         expiringLabel.textContent = 'Expiring Soon';
         legend.appendChild(expiringBox);
         legend.appendChild(expiringLabel);
         // New Offer
         const newBox = document.createElement('span');
-        newBox.style.cssText = 'display: inline-block; width: 14px; height: 14px; background: #DFD; border: 1px solid #ccc; margin-right: 4px; vertical-align: middle;';
+        newBox.className = 'gobo-legend-box gobo-legend-box-newest';
         const newLabel = document.createElement('span');
-        newLabel.style.cssText = 'color: #14532d;';
+        newLabel.className = 'gobo-legend-label gobo-legend-label-newest';
         newLabel.textContent = 'Newest Offer';
         legend.appendChild(newBox);
         legend.appendChild(newLabel);

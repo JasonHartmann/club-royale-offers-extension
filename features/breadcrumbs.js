@@ -497,8 +497,9 @@ const Breadcrumbs = {
                             } catch (e) {
                             }
                             state.selectedProfileKey = clickedStorageKey;
-                            const warnIfStale = (payload) => {
+                            const warnIfStale = (payload, profileKey) => {
                                 try {
+                                    if (profileKey === 'goob-favorites') return false;
                                     const savedAt = Number(payload?.savedAt || payload?.data?.savedAt || 0);
                                     if (!savedAt) return false;
                                     const ageMs = Date.now() - savedAt;
@@ -526,7 +527,7 @@ const Breadcrumbs = {
                                             }
                                             const payload = JSON.parse(raw);
                                                                                         if (payload?.data) {
-                                                                                            try { warnIfStale(payload); } catch(e) {}
+                                                                                            try { warnIfStale(payload, clickedStorageKey); } catch(e) {}
                                                                                             App.TableRenderer.loadProfile('goob-combined-linked', payload);
                                                                                             Spinner.hideSpinner();
                                                                                         } else {
@@ -544,7 +545,7 @@ const Breadcrumbs = {
                                                 data: {offers: []},
                                                 savedAt: Date.now()
                                             };
-                                            try { warnIfStale(payload); } catch(e) {}
+                                            try { warnIfStale(payload, clickedStorageKey); } catch(e) {}
                                             App.TableRenderer.loadProfile('goob-favorites', payload);
                                         } catch (err) {
                                             App.ErrorHandler.showError('Failed to load Favorites profile.');
@@ -578,7 +579,7 @@ const Breadcrumbs = {
                                             } catch (e) {
                                             }
                                                                                         if (payload?.data) {
-                                                                                            try { warnIfStale(payload); } catch(e) {}
+                                                                                            try { warnIfStale(payload, clickedStorageKey); } catch(e) {}
                                                                                             App.TableRenderer.loadProfile(clickedStorageKey, payload);
                                                                                             Spinner.hideSpinner();
                                                                                         } else {
@@ -606,7 +607,7 @@ const Breadcrumbs = {
                                     if (!payload.data || typeof payload.data !== 'object') payload.data = {offers: []};
                                     if (!Array.isArray(payload.data.offers)) payload.data.offers = [];
                                                                         if (payload?.data) {
-                                                                            try { warnIfStale(payload); } catch(e) {}
+                                                                            try { warnIfStale(payload, clickedStorageKey); } catch(e) {}
                                                                             App.TableRenderer.loadProfile(clickedStorageKey, payload);
                                                                         } else App.ErrorHandler.showError('Saved profile data is malformed.');
                                 } catch (err) {

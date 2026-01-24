@@ -47,7 +47,7 @@ const AdvancedSearchAddField = {
 
             const popup = document.createElement('div'); popup.className = 'adv-add-field-popup';
             popup.style.position = 'absolute'; popup.style.left = '0'; popup.style.top = 'calc(100% + 6px)'; popup.style.minWidth = '390px';
-            popup.style.background = '#fff'; popup.style.border = '1px solid #e5e7eb'; popup.style.boxShadow = '0 6px 18px rgba(15,23,42,0.08)'; popup.style.padding = '8px'; popup.style.borderRadius = '8px'; popup.style.zIndex = 9999; popup.style.display = 'none';
+            popup.style.background = 'var(--gobo-adv-popup-bg, #fff)'; popup.style.border = '1px solid var(--gobo-adv-popup-border, #e5e7eb)'; popup.style.boxShadow = 'var(--gobo-adv-popup-shadow, 0 6px 18px rgba(15,23,42,0.08))'; popup.style.padding = '8px'; popup.style.borderRadius = '8px'; popup.style.zIndex = 9999; popup.style.display = 'none';
 
             const buildSection = (title, items, sectionClass) => {
                 const sec = document.createElement('div'); sec.className = 'adv-add-section' + (sectionClass? ' '+sectionClass : '');
