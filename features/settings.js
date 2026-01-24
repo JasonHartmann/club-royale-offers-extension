@@ -134,6 +134,88 @@ const Settings = {
             tAndFArea.appendChild(tAndFLabel); tAndFArea.appendChild(tAndFDesc);
             body.appendChild(tAndFArea);
 
+            // Column visibility settings
+            const columnArea = document.createElement('div');
+            columnArea.className = 'gobo-setting-area';
+            columnArea.style.cssText = 'margin-bottom:12px;';
+            const columnTitle = document.createElement('strong');
+            columnTitle.textContent = 'Visible Columns';
+            const columnDesc = document.createElement('div');
+            columnDesc.style.cssText = 'font-size:12px; color:#444; margin:6px 0 8px 0;';
+            columnDesc.textContent = 'Hide or show columns in the offers table. CSV export always includes all columns.';
+            const columnsGrid = document.createElement('div');
+            columnsGrid.style.cssText = 'display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:8px 12px;';
+
+            const defaultHeaders = [
+                { key: 'favorite', label: 'Favorite' },
+                { key: 'b2bDepth', label: 'B2B' },
+                { key: 'offerCode', label: 'Code' },
+                { key: 'offerDate', label: 'Rcvd' },
+                { key: 'expiration', label: 'Expires' },
+                { key: 'tradeInValue', label: 'Trade' },
+                { key: 'offerValue', label: 'Value' },
+                { key: 'balconyUpgrade', label: 'Balcony' },
+                { key: 'suiteUpgrade', label: 'Suite' },
+                { key: 'offerName', label: 'Name' },
+                { key: 'shipClass', label: 'Class' },
+                { key: 'ship', label: 'Ship' },
+                { key: 'sailDate', label: 'Sail Date' },
+                { key: 'departurePort', label: 'Departs' },
+                { key: 'nights', label: 'Nights' },
+                { key: 'destination', label: 'Destination' },
+                { key: 'category', label: 'Category' },
+                { key: 'guests', label: 'Guests' },
+                { key: 'perks', label: 'Perks' }
+            ];
+
+            const headers = (App && App.TableRenderer && App.TableRenderer.lastState && Array.isArray(App.TableRenderer.lastState.headers))
+                ? App.TableRenderer.lastState.headers
+                : defaultHeaders;
+            const hiddenColumns = (App && App.SettingsStore && typeof App.SettingsStore.getHiddenColumns === 'function')
+                ? App.SettingsStore.getHiddenColumns()
+                : [];
+            const hiddenSet = new Set(hiddenColumns);
+            const checkboxByKey = {};
+
+            const applyHiddenColumns = () => {
+                const newHidden = headers
+                    .map(h => h.key)
+                    .filter(k => checkboxByKey[k] && checkboxByKey[k].checked === false);
+                try {
+                    if (App && App.SettingsStore && typeof App.SettingsStore.setHiddenColumns === 'function') {
+                        App.SettingsStore.setHiddenColumns(newHidden);
+                    }
+                } catch(e) { /* ignore */ }
+                try {
+                    if (App && App.TableRenderer && App.TableRenderer.lastState) {
+                        App.TableRenderer.lastState.hiddenColumns = newHidden;
+                        if (typeof App.TableRenderer.applyColumnVisibility === 'function') {
+                            App.TableRenderer.applyColumnVisibility(App.TableRenderer.lastState);
+                        }
+                    }
+                } catch(e) { /* ignore */ }
+            };
+
+            headers.forEach(h => {
+                const wrap = document.createElement('label');
+                wrap.style.cssText = 'display:flex; align-items:center; gap:8px; font-size:13px;';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = !hiddenSet.has(h.key);
+                cb.addEventListener('change', applyHiddenColumns);
+                checkboxByKey[h.key] = cb;
+                const text = document.createElement('span');
+                text.textContent = h.label || h.key;
+                wrap.appendChild(cb);
+                wrap.appendChild(text);
+                columnsGrid.appendChild(wrap);
+            });
+
+            columnArea.appendChild(columnTitle);
+            columnArea.appendChild(columnDesc);
+            columnArea.appendChild(columnsGrid);
+            body.appendChild(columnArea);
+
             // Footer-style close is not needed; header close button is used above
 
             // Finish building modal and append to overlay/backdrop so it's centered

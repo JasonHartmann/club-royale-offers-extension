@@ -4,6 +4,14 @@
 
     Utils.createOfferRow = function ({offer, sailing}, isNewest = false, isExpiringSoon = false, idx = null) {
         const row = document.createElement('tr');
+        let hiddenSet = null;
+        try {
+            if (App && App.TableRenderer && typeof App.TableRenderer.getHiddenColumnsSet === 'function') {
+                hiddenSet = App.TableRenderer.getHiddenColumnsSet(App.TableRenderer.lastState);
+            }
+        } catch(e) { hiddenSet = null; }
+        const isHiddenCol = (key) => !!(hiddenSet && hiddenSet.has(key));
+        const tdClass = (key, base) => `${base}${isHiddenCol(key) ? ' gobo-col-hidden' : ''}`;
         // Attach identifying data attributes for recomputation of offerValue
         try {
             row.dataset.offerCode = (offer.campaignOffer?.offerCode || '').toString().trim();
@@ -119,7 +127,7 @@
                 badgeText = String(savedProfileId);
                 badgeClass = `profile-id-badge profile-id-badge-${savedProfileId}`;
             }
-            favCellHtml = `<td class="border p-1 text-center">
+            favCellHtml = `<td class="${tdClass('favorite','border p-1 text-center')}" data-col="favorite">
                 <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
                     <span class="${badgeClass}" title="Profile ID #${savedProfileId}">${badgeText}</span>
                     <span class="trash-favorite" title="Remove from Favorites" style="cursor:pointer;">
@@ -138,30 +146,30 @@
             } catch(e){}
             let isFav = false;
             try { if (window.Favorites && Favorites.isFavorite) isFav = Favorites.isFavorite(offer, sailing, profileId); } catch(e){ /* ignore */ }
-            favCellHtml = `<td class="border p-1 text-center" style="width:32px;">
+            favCellHtml = `<td class="${tdClass('favorite','border p-1 text-center')}" data-col="favorite" style="width:32px;">
                 <button type="button" class="favorite-toggle" aria-label="${isFav ? 'Unfavorite' : 'Favorite'} sailing" title="${isFav ? 'Remove from Favorites' : 'Add to Favorites'}" style="cursor:pointer; background:none; border:none; font-size:14px; line-height:1; color:${isFav ? '#f5c518' : '#bbb'};">${isFav ? '\u2605' : '\u2606'}</button>
             </td>`;
         }
         row.innerHTML = `
             ${favCellHtml}
-            <td class="border p-2 b2b-depth-cell"></td>
-            <td class="border p-2">${codeCell}</td>
-            <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>
-            <td class="border p-2">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
-            <td class="border p-2">${tradeDisplay}</td>
-            <td class="border p-2">${valueDisplay}</td>
-            <td class="border p-2">${balconyUpgradeDisplay}</td>
-            <td class="border p-2">${suiteUpgradeDisplay}</td>
-            <td class="border p-2">${offer.campaignOffer.name || '-'}</td>
-            <td class="border p-2">${shipClass}</td>
-            <td class="border p-2">${sailing.shipName || '-'}</td>
-            <td class="border p-2">${Utils.formatDate(sailing.sailDate)}</td>
-            <td class="border p-2">${sailing.departurePort?.name || '-'}</td>
-            <td class="border p-2">${nights}</td>
-            <td class="border p-2 itinerary" id="${itineraryKey}">${destination}</td>
-            <td class="border p-2">${room || '-'}</td>
-            <td class="border p-2">${guestsText}</td>
-            <td class="border p-2">${perksStr}</td>
+            <td class="${tdClass('b2bDepth','border p-2 b2b-depth-cell')}" data-col="b2bDepth"></td>
+            <td class="${tdClass('offerCode','border p-2')}" data-col="offerCode">${codeCell}</td>
+            <td class="${tdClass('offerDate','border p-2')}" data-col="offerDate">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>
+            <td class="${tdClass('expiration','border p-2')}" data-col="expiration">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
+            <td class="${tdClass('tradeInValue','border p-2')}" data-col="tradeInValue">${tradeDisplay}</td>
+            <td class="${tdClass('offerValue','border p-2')}" data-col="offerValue">${valueDisplay}</td>
+            <td class="${tdClass('balconyUpgrade','border p-2')}" data-col="balconyUpgrade">${balconyUpgradeDisplay}</td>
+            <td class="${tdClass('suiteUpgrade','border p-2')}" data-col="suiteUpgrade">${suiteUpgradeDisplay}</td>
+            <td class="${tdClass('offerName','border p-2')}" data-col="offerName">${offer.campaignOffer.name || '-'}</td>
+            <td class="${tdClass('shipClass','border p-2')}" data-col="shipClass">${shipClass}</td>
+            <td class="${tdClass('ship','border p-2')}" data-col="ship">${sailing.shipName || '-'}</td>
+            <td class="${tdClass('sailDate','border p-2')}" data-col="sailDate">${Utils.formatDate(sailing.sailDate)}</td>
+            <td class="${tdClass('departurePort','border p-2')}" data-col="departurePort">${sailing.departurePort?.name || '-'}</td>
+            <td class="${tdClass('nights','border p-2')}" data-col="nights">${nights}</td>
+            <td class="${tdClass('destination','border p-2 itinerary')}" data-col="destination" id="${itineraryKey}">${destination}</td>
+            <td class="${tdClass('category','border p-2')}" data-col="category">${room || '-'}</td>
+            <td class="${tdClass('guests','border p-2')}" data-col="guests">${guestsText}</td>
+            <td class="${tdClass('perks','border p-2')}" data-col="perks">${perksStr}</td>
         `;
             try {
                 // If BackToBackTool has a persisted selection, apply persistent highlight

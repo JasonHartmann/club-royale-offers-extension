@@ -11,6 +11,12 @@ const TableBuilder = {
     createTableHeader(state) {
         console.debug('[tableBuilder] createTableHeader ENTRY', state);
         const { headers } = state;
+        let hiddenSet = null;
+        try {
+            if (App && App.TableRenderer && typeof App.TableRenderer.getHiddenColumnsSet === 'function') {
+                hiddenSet = App.TableRenderer.getHiddenColumnsSet(state);
+            }
+        } catch(e) { hiddenSet = null; }
         const thead = document.createElement('thead');
         thead.className = 'table-header';
         const tr = document.createElement('tr');
@@ -19,6 +25,7 @@ const TableBuilder = {
             const th = document.createElement('th');
             th.className = 'border p-2 text-left font-semibold';
             th.dataset.key = header.key;
+            if (hiddenSet && hiddenSet.has(header.key)) th.classList.add('gobo-col-hidden');
             if (header.key === 'favorite') {
                 th.style.width = '32px';
                 th.style.textAlign = 'center';

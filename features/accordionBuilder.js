@@ -254,11 +254,18 @@ const AccordionBuilder = {
             const thead = document.createElement('thead');
             thead.className = 'accordion-table-header';
             const tr = document.createElement('tr');
+            let hiddenSet = null;
+            try {
+                if (App && App.TableRenderer && typeof App.TableRenderer.getHiddenColumnsSet === 'function') {
+                    hiddenSet = App.TableRenderer.getHiddenColumnsSet(state);
+                }
+            } catch(e) { hiddenSet = null; }
 
             headers.forEach(headerObj => {
                 const th = document.createElement('th');
                 th.className = 'border p-2 text-left font-semibold';
                 th.dataset.key = headerObj.key;
+                if (hiddenSet && hiddenSet.has(headerObj.key)) th.classList.add('gobo-col-hidden');
                 if (headerObj.key === 'favorite') {
                     // No grouping/sorting UI for favorites column inside accordions
                     th.innerHTML = `<span>${headerObj.label}</span>`;

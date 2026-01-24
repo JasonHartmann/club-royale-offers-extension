@@ -25,9 +25,34 @@
         try { if (window.RoomCategoryUtils && typeof window.RoomCategoryUtils.resolveCategory === 'function') return window.RoomCategoryUtils.resolveCategory(raw); } catch(e){}
         if (!raw) { dbg('resolveCategory:none', raw); return null; }
         const up = (''+raw).trim().toUpperCase();
-        const resolved = baseCategoryMap[up] || (WIDE_CATS.includes(up) ? up : null);
+        const upCompact = up.replace(/\s+/g, '');
+        let resolved = baseCategoryMap[up] || baseCategoryMap[upCompact] || (WIDE_CATS.includes(up) ? up : null);
+        if (!resolved) {
+            try { if (window.RoomCategoryUtils && typeof window.RoomCategoryUtils.classifyBroad === 'function') resolved = window.RoomCategoryUtils.classifyBroad(up); } catch(e){}
+        }
+        if (!resolved) {
+            const cleaned = up.replace(/\bGTY\b/g, '').replace(/[^A-Z]/g, '');
+            if (/SUITE|JRSUITE|JR\s?SUITE|JS|DLX|DELUXE/.test(cleaned)) resolved = 'DELUXE';
+            else if (/BALCONY|BALC|BK/.test(cleaned)) resolved = 'BALCONY';
+            else if (/OCEANVIEW|OCEANVIEW|OUTSIDE|OV/.test(cleaned)) resolved = 'OUTSIDE';
+            else if (/INTERIOR|INSIDE|INT/.test(cleaned)) resolved = 'INTERIOR';
+        }
         dbg('resolveCategory', { raw, up, resolved });
         return resolved;
+    }
+
+    function getOfferValue(offer, sailing){
+        try {
+            if (typeof App !== 'undefined' && App && App.Utils && typeof App.Utils.computeOfferValue === 'function') {
+                return App.Utils.computeOfferValue(offer, sailing);
+            }
+        } catch(e) { /* ignore */ }
+        try {
+            if (typeof Utils !== 'undefined' && Utils && typeof Utils.computeOfferValue === 'function') {
+                return Utils.computeOfferValue(offer, sailing);
+            }
+        } catch(e) { /* ignore */ }
+        return null;
     }
 
     function cheapestPriceForCategory(entry, broadCat){
@@ -184,7 +209,11 @@
                 } else taxesNumber = 0;
             } catch(e) { taxesNumber = 0; }
 
-            const offerCategoryRaw = (sailing && sailing.roomType) || (offer && offer.category) || '';
+            const offerCategoryRaw = (sailing && sailing.roomType)
+                || (offer && offer.category)
+                || (offer && offer.campaignOffer && offer.campaignOffer.category)
+                || (offer && offer.campaignOffer && offer.campaignOffer.name)
+                || '';
             const offerBroad = resolveCategory(offerCategoryRaw) || null;
             const targetPriceNum = cheapestPriceForCategory(entry, targetBroad);
 
@@ -200,6 +229,24 @@
             if (!targetPriceValid) {
                 dbgLog(`${dbgLabel}:targetPriceNonPositive`, { key, shipCode, sailDate, targetPriceNum });
                 return null;
+            }
+
+            // Prefer the shared offer-value pipeline for base pricing to keep consistency with table Value column
+            let offerValueNum = getOfferValue(offer, sailing);
+
+            if (offerValueNum != null && isFinite(offerValueNum)) {
+                // OfferValue is base price minus taxes; upgrade with taxes = max(taxes, target - offerValue)
+                let upgradeWithTaxes = Math.max(Number(taxesNumber), Number(targetPriceNum) - Number(offerValueNum));
+                if (!isFinite(upgradeWithTaxes)) upgradeWithTaxes = null;
+                if (includeTaxes) {
+                    dbg('computeUpgradePrice:usingOfferValue', { offerValueNum, taxesNumber, targetPriceNum, upgradeWithTaxes });
+                    dbgLog(`${dbgLabel}:usingOfferValue`, { key, shipCode, sailDate, offerValueNum, taxesNumber, targetPriceNum, includeTaxes, upgrade: upgradeWithTaxes });
+                    return Number(upgradeWithTaxes);
+                }
+                const upgradeNoTaxes = Math.max(0, Number(targetPriceNum) - Number(offerValueNum) - Number(taxesNumber));
+                dbg('computeUpgradePrice:usingOfferValueNoTaxes', { offerValueNum, taxesNumber, targetPriceNum, upgradeNoTaxes });
+                dbgLog(`${dbgLabel}:usingOfferValueNoTaxes`, { key, shipCode, sailDate, offerValueNum, taxesNumber, targetPriceNum, includeTaxes, upgrade: upgradeNoTaxes });
+                return Number(upgradeNoTaxes);
             }
 
             // If the offer is already the target category the upgrade price is just taxes & fees

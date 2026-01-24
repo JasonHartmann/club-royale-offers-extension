@@ -69,6 +69,40 @@ const TableRenderer = {
             return safeKey;
         } catch(e) { return key; }
     },
+    getHiddenColumns(state) {
+        try {
+            if (state && Array.isArray(state.hiddenColumns)) return state.hiddenColumns;
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getHiddenColumns === 'function') {
+                return App.SettingsStore.getHiddenColumns();
+            }
+        } catch(e) { /* ignore */ }
+        return [];
+    },
+    getHiddenColumnsSet(state) {
+        try {
+            const cols = this.getHiddenColumns(state);
+            return new Set(Array.isArray(cols) ? cols : []);
+        } catch(e) { return new Set(); }
+    },
+    applyColumnVisibility(state) {
+        try {
+            const targetState = state || this.lastState;
+            if (!targetState) return;
+            const hiddenSet = this.getHiddenColumnsSet(targetState);
+            const applyToContainer = (container) => {
+                if (!container) return;
+                const elements = container.querySelectorAll('th[data-key], td[data-col]');
+                elements.forEach(el => {
+                    const key = el.dataset ? (el.dataset.key || el.dataset.col) : null;
+                    if (!key) return;
+                    if (hiddenSet.has(key)) el.classList.add('gobo-col-hidden');
+                    else el.classList.remove('gobo-col-hidden');
+                });
+            };
+            applyToContainer(targetState.table);
+            applyToContainer(targetState.accordionContainer);
+        } catch(e) { /* ignore */ }
+    },
     // Track if the default tab has been selected for the current popup display
     hasSelectedDefaultTab: false,
     // One-time flag to force selecting the first (current profile) tab only on initial modal open
@@ -691,6 +725,7 @@ const TableRenderer = {
                 { key: 'perks', label: 'Perks' }
             ],
             profileId: App.ProfileIdMap[key] || null,
+            hiddenColumns: (App && App.SettingsStore && typeof App.SettingsStore.getHiddenColumns === 'function') ? App.SettingsStore.getHiddenColumns() : [],
             currentSortColumn: (preservedSort && preservedSort.currentSortColumn) ? preservedSort.currentSortColumn : 'offerDate', // Default sort by Rcvd
             currentSortOrder: (preservedSort && preservedSort.currentSortOrder) ? preservedSort.currentSortOrder : 'desc', // Descending (newest first)
             currentGroupColumn: null,
@@ -949,6 +984,7 @@ const TableRenderer = {
                     { key: 'perks', label: 'Perks' }
                 ],
                 profileId: (App.ProfileIdMap && (App.ProfileIdMap[selectedProfileKey] || App.ProfileIdMap[currentKey])) || null,
+                hiddenColumns: (App && App.SettingsStore && typeof App.SettingsStore.getHiddenColumns === 'function') ? App.SettingsStore.getHiddenColumns() : [],
                 currentSortColumn: 'offerDate',
                 currentSortOrder: 'desc',
                 currentGroupColumn: null,
@@ -1055,6 +1091,9 @@ const TableRenderer = {
                 if (offerValIdx !== -1) baseState.headers.splice(offerValIdx + 1, 0, { key: 'balconyUpgrade', label: 'Balcony' });
                 else baseState.headers.push({ key: 'balconyUpgrade', label: 'Balcony' });
             }
+            if (!Array.isArray(baseState.hiddenColumns)) {
+                baseState.hiddenColumns = (App && App.SettingsStore && typeof App.SettingsStore.getHiddenColumns === 'function') ? App.SettingsStore.getHiddenColumns() : [];
+            }
         } catch(e) { /* ignore header repair errors */ }
         const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken, profileId: App.ProfileIdMap ? App.ProfileIdMap[key] : null };
         if (!state.advancedSearch) state.advancedSearch = { enabled:false, predicates: [] };
@@ -1147,6 +1186,13 @@ const TableRenderer = {
         // Always preserve selectedProfileKey, even in recursive calls
         state = preserveSelectedProfileKey(state, App.TableRenderer.lastState);
         App.TableRenderer.lastState = state;
+        // Sync hidden columns from persisted settings so sort/group renders keep visibility
+        try {
+            if (App && App.SettingsStore && typeof App.SettingsStore.getHiddenColumns === 'function') {
+                const storedHidden = App.SettingsStore.getHiddenColumns();
+                if (Array.isArray(storedHidden)) state.hiddenColumns = storedHidden;
+            }
+        } catch(e) { /* ignore */ }
         // Ensure master copy exists
         if (!state.fullOriginalOffers) state.fullOriginalOffers = [...state.originalOffers];
         // Apply filter
@@ -1436,6 +1482,7 @@ const TableRenderer = {
             }
             renderNestedAccordion(accordionContainer, state.sortedOffers, state.groupingStack, state.groupKeysStack, 0);
         }
+        try { this.applyColumnVisibility(state); } catch(e) { /* ignore */ }
         // Replace internal call with external module
         if (!state._skipBreadcrumb) {
             Breadcrumbs.updateBreadcrumb(state.groupingStack, state.groupKeysStack);

@@ -52,6 +52,19 @@
                     else localStorage.setItem('goboSettings', raw);
                 } catch (e) { /* ignore */ }
             },
+            getHiddenColumns() {
+                try {
+                    const s = this.getSettings();
+                    return Array.isArray(s.hiddenColumns) ? s.hiddenColumns : [];
+                } catch (e) { return []; }
+            },
+            setHiddenColumns(cols) {
+                try {
+                    const s = this.getSettings() || {};
+                    s.hiddenColumns = Array.isArray(cols) ? cols : [];
+                    this.setSettings(s);
+                } catch (e) { /* ignore */ }
+            },
             getAutoRunB2B() {
                 try { const s = this.getSettings(); return (typeof s.autoRunB2B !== 'undefined') ? !!s.autoRunB2B : true; } catch(e) { return true; }
             },

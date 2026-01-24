@@ -7,6 +7,7 @@ describe('PricingUtils upgrade calculations', () => {
         jest.resetModules();
         global.window = global.window || {};
         global.App = global.App || {};
+        delete global.App.Utils;
         // Fresh ItineraryCache per test
         const cache = new Map();
         global.ItineraryCache = {
@@ -78,6 +79,32 @@ describe('PricingUtils upgrade calculations', () => {
         const sailing = { shipCode: 'OA', sailDate: '2026-07-01', roomType: 'INT' };
         const res = PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: true });
         expect(res).toBeCloseTo(700); // 1500-1000+200
+    });
+
+    test('uses offer value when available (suite with taxes)', () => {
+        const { cache } = loadModule();
+        const entry = makeEntry({ INT: 500, DLX: 1000 }, 100); // INT dual 1000, DLX dual 2000, taxes dual 200
+        cache.set('SD_OA_2026-09-01', entry);
+        global.App.Utils = {
+            computeOfferValue: () => 800 // base (dual) 1000 - taxes 200
+        };
+        const offer = { category: null, campaignOffer: { offerCode: 'O1' } };
+        const sailing = { shipCode: 'OA', sailDate: '2026-09-01', roomType: null };
+        const res = PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: true });
+        expect(res).toBeCloseTo(1200); // max(taxes=200, target 2000 - offerValue 800)
+    });
+
+    test('uses offer value when available (balcony without taxes)', () => {
+        const { cache } = loadModule();
+        const entry = makeEntry({ INT: 500, B: 750 }, 100); // INT dual 1000, BAL dual 1500, taxes dual 200
+        cache.set('SD_OA_2026-10-01', entry);
+        global.App.Utils = {
+            computeOfferValue: () => 800
+        };
+        const offer = { category: null, campaignOffer: { offerCode: 'B1' } };
+        const sailing = { shipCode: 'OA', sailDate: '2026-10-01', roomType: null };
+        const res = PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: false });
+        expect(res).toBeCloseTo(500); // target 1500 - offerValue 800 - taxes 200
     });
 
     test('returns null when pricing missing or non-positive', () => {
