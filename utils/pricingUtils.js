@@ -55,6 +55,20 @@
         return null;
     }
 
+    function getGuestMultiplier(){
+        try {
+            if (typeof App !== 'undefined' && App) {
+                if (App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') {
+                    return App.SettingsStore.getSoloBooking() ? 1 : 2;
+                }
+                if (App.Utils && typeof App.Utils.getSoloBookingPreference === 'function') {
+                    return App.Utils.getSoloBookingPreference() ? 1 : 2;
+                }
+            }
+        } catch(e){ /* ignore */ }
+        return 2;
+    }
+
     function cheapestPriceForCategory(entry, broadCat){
         if (!entry || !entry.stateroomPricing || !broadCat) {
             dbg('cheapestPriceForCategory:insufficient', { hasEntry: !!entry, hasPricing: !!(entry && entry.stateroomPricing), broadCat });
@@ -200,11 +214,12 @@
             let taxesNumber = 0;
             try {
                 const rawTaxes = entry.taxesAndFees;
-                if (typeof rawTaxes === 'number') taxesNumber = Number(rawTaxes) * 2;
+                const guestMultiplier = getGuestMultiplier();
+                if (typeof rawTaxes === 'number') taxesNumber = Number(rawTaxes) * guestMultiplier;
                 else if (typeof rawTaxes === 'string') {
                     const tClean = (rawTaxes || '').replace(/[^0-9.\-]/g, '');
                     const tNum = Number(tClean);
-                    if (isFinite(tNum)) taxesNumber = tNum * 2;
+                    if (isFinite(tNum)) taxesNumber = tNum * guestMultiplier;
                     else taxesNumber = 0;
                 } else taxesNumber = 0;
             } catch(e) { taxesNumber = 0; }

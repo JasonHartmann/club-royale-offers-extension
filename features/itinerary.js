@@ -412,7 +412,9 @@
                         sigParts.push(`${pr && (pr.code || k)}:${priceVal}`);
                     } catch(e){}
                 });
-                const signature = sigParts.sort().join('|');
+                let soloFlag = 0;
+                try { soloFlag = (App && App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function' && App.SettingsStore.getSoloBooking()) ? 1 : 0; } catch(e) { soloFlag = 0; }
+                const signature = sigParts.sort().join('|') + `|solo:${soloFlag}`;
                 if (entry._pricingDerivedSig === signature && entry.pricingDerived) return; // no changes
                 // Mapping logic (reuse simplified version of popup + PricingUtils maps)
                 const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR',
@@ -436,13 +438,14 @@
                     } catch(e){}
                 });
                 const baseCurrency = Object.keys(currencyCounts).sort((a,b)=>currencyCounts[b]-currencyCounts[a])[0] || null;
-                // Taxes (dual)
+                // Taxes (booking total; solo booking uses single-guest taxes)
                 let taxesDual = 0;
+                const guestMultiplier = (soloFlag === 1) ? 1 : 2;
                 try {
-                    if (typeof entry.taxesAndFees === 'number') taxesDual = entry.taxesAndFees * 2;
+                    if (typeof entry.taxesAndFees === 'number') taxesDual = entry.taxesAndFees * guestMultiplier;
                     else if (typeof entry.taxesAndFees === 'string') {
                         const cleaned = entry.taxesAndFees.replace(/[^0-9.\-]/g,'');
-                        const t = Number(cleaned); if (isFinite(t)) taxesDual = t * 2; }
+                        const t = Number(cleaned); if (isFinite(t)) taxesDual = t * guestMultiplier; }
                 } catch(e){}
                 // Build upgrade deltas matrix (FROM -> TO additional + taxes "you pay" semantics depend on chosen offer later)
                 const categories = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
@@ -622,7 +625,11 @@
                         else if (typeof tRaw === 'string') {
                             const cleaned = tRaw.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) taxesPerPerson = num; }
                     } catch(e) { taxesPerPerson = null; }
-                    const taxesNumber = (taxesPerPerson != null) ? taxesPerPerson * 2 : 0;
+                    const isSoloBooking = (function(){
+                        try { return (App && App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') ? !!App.SettingsStore.getSoloBooking() : false; } catch(e){ return false; }
+                    })();
+                    const guestMultiplier = isSoloBooking ? 1 : 2;
+                    const taxesNumber = (taxesPerPerson != null) ? taxesPerPerson * guestMultiplier : 0;
 
                     const priceEntries = priceKeys.map(k => { const pr = data.stateroomPricing[k] || {}; return { key:k, code:(pr.code||k||'').toString().trim(), priceNum:(typeof pr.price==='number')?Number(pr.price)*2:null, currency: pr.currency||'' }; });
                     const pricedEntries = priceEntries.filter(pe=>pe.priceNum!=null);
@@ -802,10 +809,15 @@
                     if (perPerson && typeof perPerson === 'object' && perPerson.value != null) perPerson = perPerson.value;
                     if (typeof perPerson === 'string') {
                         const cleaned = perPerson.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) perPerson = num; }
-                    let dual = (typeof perPerson === 'number' && isFinite(perPerson)) ? perPerson * 2 : null;
-                    const taxesText = dual != null ? dual.toFixed(2) : '-';
+                    const isSoloBooking = (function(){
+                        try { return (App && App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') ? !!App.SettingsStore.getSoloBooking() : false; } catch(e){ return false; }
+                    })();
+                    const guestMultiplier = isSoloBooking ? 1 : 2;
+                    let totalTaxes = (typeof perPerson === 'number' && isFinite(perPerson)) ? perPerson * guestMultiplier : null;
+                    const taxesText = totalTaxes != null ? totalTaxes.toFixed(2) : '-';
                     const currency = (function(){ try { const first = Object.values(data.stateroomPricing||{})[0]; return first && first.currency ? first.currency : (first && first.currencyCode ? first.currencyCode : ''); } catch(e){ return ''; } })();
-                    tf.textContent = `Taxes & Fees: ${taxesText} ${currency} (${data.taxesAndFeesIncluded?'Included':'Additional'}) - Prices reflect cheapest dual-occupancy category rates.`;
+                    const soloNote = isSoloBooking ? ' Solo Booking is enabled, so taxes & fees reflect one guest.' : '';
+                    tf.textContent = `Taxes & Fees: ${taxesText} ${currency} (${data.taxesAndFeesIncluded?'Included':'Additional'}) - Prices reflect cheapest dual-occupancy category rates.${soloNote}`;
                     panel.appendChild(tf);
                 }
                 if (Array.isArray(data.days) && data.days.length) {

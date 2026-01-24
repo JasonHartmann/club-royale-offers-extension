@@ -219,10 +219,17 @@ function computeDualTaxes(entry, sailing, derived) {
     if (derived && typeof derived.taxesAndFeesDual === 'number' && isFinite(derived.taxesAndFeesDual)) {
         return Number(derived.taxesAndFeesDual);
     }
+    const guestMultiplier = (function(){
+        try {
+            if (App && App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') return App.SettingsStore.getSoloBooking() ? 1 : 2;
+            if (App && App.Utils && typeof App.Utils.getSoloBookingPreference === 'function') return App.Utils.getSoloBookingPreference() ? 1 : 2;
+        } catch(e) {}
+        return 2;
+    })();
     let rawTaxes = entry && entry.taxesAndFees != null ? entry.taxesAndFees : sailing?.taxesAndFees;
     if (rawTaxes && typeof rawTaxes === 'object' && rawTaxes.value != null) rawTaxes = rawTaxes.value;
     const coerced = coercePrice(rawTaxes);
-    return coerced != null ? Number(coerced) * 2 : 0;
+    return coerced != null ? Number(coerced) * guestMultiplier : 0;
 }
 
 function detectSingleGuestScenario(offer, sailing) {

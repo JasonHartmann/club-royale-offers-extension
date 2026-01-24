@@ -162,6 +162,16 @@ const Utils = {
         } catch(e) { /* ignore */ }
         return true;
     },
+    getSoloBookingPreference() {
+        try {
+            if (typeof App !== 'undefined' && App) {
+                if (App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') {
+                    return !!App.SettingsStore.getSoloBooking();
+                }
+            }
+        } catch(e) { /* ignore */ }
+        return false;
+    },
     computeSuiteUpgradePrice(offer, sailing, options) {
         const opts = options || {};
         const includeTaxes = Object.prototype.hasOwnProperty.call(opts, 'includeTaxes')
@@ -257,7 +267,8 @@ const Utils = {
                 let perGuest = null;
                 if (typeof rawTaxes === 'number') perGuest = Number(rawTaxes);
                 else if (typeof rawTaxes === 'string') { const cleaned = rawTaxes.replace(/[^0-9.\-]/g,''); const num = Number(cleaned); if (isFinite(num)) perGuest = num; }
-                if (perGuest != null && isFinite(perGuest)) taxesNumber = perGuest * 2; // assume stored per-guest; use booking total
+                const guestMultiplier = Utils.getSoloBookingPreference() ? 1 : 2;
+                if (perGuest != null && isFinite(perGuest)) taxesNumber = perGuest * guestMultiplier; // assume stored per-guest; use booking total
             } catch(e){ taxesNumber = 0; }
             if (!taxesNumber) _recordReason('taxesMissing', offer, sailing);
             let categoriesMap = null;

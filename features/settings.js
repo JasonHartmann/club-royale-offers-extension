@@ -134,6 +134,35 @@ const Settings = {
             tAndFArea.appendChild(tAndFLabel); tAndFArea.appendChild(tAndFDesc);
             body.appendChild(tAndFArea);
 
+            // Solo Booking setting
+            const soloArea = document.createElement('div');
+            soloArea.className = 'gobo-setting-area';
+            soloArea.style.cssText = 'margin-bottom:12px;';
+            const soloLabel = document.createElement('label'); soloLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
+            const soloCb = document.createElement('input'); soloCb.type = 'checkbox'; soloCb.id = 'gobo-setting-solo';
+            try { soloCb.checked = (App && App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') ? App.SettingsStore.getSoloBooking() : ((settingsStore.soloBooking !== undefined) ? !!settingsStore.soloBooking : false); } catch(e){ soloCb.checked = false; }
+            soloCb.addEventListener('change', () => {
+                try {
+                    const v = !!soloCb.checked;
+                    if (App && App.SettingsStore && typeof App.SettingsStore.setSoloBooking === 'function') {
+                        App.SettingsStore.setSoloBooking(v);
+                    } else {
+                        settingsStore.soloBooking = v;
+                        if (typeof goboStorageSet === 'function') goboStorageSet('goboSettings', JSON.stringify(settingsStore)); else localStorage.setItem('goboSettings', JSON.stringify(settingsStore));
+                    }
+                    try { if (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.computeAllDerivedPricing === 'function') ItineraryCache.computeAllDerivedPricing(); } catch(e) {}
+                    try { if (App && App.TableRenderer && typeof App.TableRenderer.refreshAllItineraries === 'function') App.TableRenderer.refreshAllItineraries(); } catch(e) {}
+                    try { if (App && App.TableRenderer && App.TableRenderer.lastState && typeof App.TableRenderer.updateView === 'function') App.TableRenderer.updateView(App.TableRenderer.lastState); } catch(e) {}
+                    try { if (App && App.Utils && typeof App.Utils.refreshOfferValues === 'function') App.Utils.refreshOfferValues(); } catch(e) {}
+                } catch(e){}
+            });
+            const soloTitle = document.createElement('strong'); soloTitle.textContent = 'Solo Booking';
+            soloLabel.appendChild(soloCb); soloLabel.appendChild(soloTitle);
+            const soloDesc = document.createElement('div'); soloDesc.className = 'gobo-setting-desc'; soloDesc.style.cssText = 'font-size:12px; margin-left:28px;';
+            soloDesc.textContent = 'When enabled, price calculations use single-guest Taxes & Fees (instead of double occupancy).';
+            soloArea.appendChild(soloLabel); soloArea.appendChild(soloDesc);
+            body.appendChild(soloArea);
+
             // Dark Mode setting
             const darkArea = document.createElement('div');
             darkArea.className = 'gobo-setting-area';

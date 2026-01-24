@@ -82,6 +82,12 @@
             setIncludeTaxesAndFeesInPriceFilters(val) {
                 try { const s = this.getSettings() || {}; s.includeTaxesAndFeesInPriceFilters = !!val; this.setSettings(s); try { if (window.App && App.AdvancedSearch && App.AdvancedSearch._lastState && App.AdvancedSearch._lastState.advancedSearch) App.AdvancedSearch._lastState.advancedSearch.includeTaxesAndFeesInPriceFilters = !!val; } catch(e) {} } catch(e) {}
             },
+            getSoloBooking() {
+                try { const s = this.getSettings(); return (typeof s.soloBooking !== 'undefined') ? !!s.soloBooking : false; } catch(e) { return false; }
+            },
+            setSoloBooking(val) {
+                try { const s = this.getSettings() || {}; s.soloBooking = !!val; this.setSettings(s); } catch(e) {}
+            },
             getDarkMode() {
                 try { const s = this.getSettings(); return (typeof s.darkMode !== 'undefined') ? !!s.darkMode : false; } catch(e) { return false; }
             },
