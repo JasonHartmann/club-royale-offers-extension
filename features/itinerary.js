@@ -552,10 +552,58 @@
                     try { if (typeof App !== 'undefined' && App.ErrorHandler && typeof App.ErrorHandler.showError === 'function') App.ErrorHandler.showError('Itinerary details are not available for this sailing. '); } catch (e) {}
                     return;
                 }
+                let youPayTooltipEl = null;
+                let youPayTooltipTimer = null;
+                let youPayTooltipDismissHandler = null;
+                const hideYouPayTooltip = () => {
+                    try { if (youPayTooltipTimer) { clearTimeout(youPayTooltipTimer); youPayTooltipTimer = null; } } catch(e) {}
+                    try { if (youPayTooltipEl) { youPayTooltipEl.remove(); } } catch(e) {}
+                    youPayTooltipEl = null;
+                };
+                const showYouPayTooltip = (targetEl, text) => {
+                    try {
+                        if (!targetEl || !text) return;
+                        hideYouPayTooltip();
+                        const el = document.createElement('div');
+                        el.className = 'gobo-itinerary-tooltip';
+                        el.textContent = text;
+                        document.body.appendChild(el);
+                        const rect = targetEl.getBoundingClientRect();
+                        const pad = 10;
+                        const viewportW = window.innerWidth || document.documentElement.clientWidth;
+                        const viewportH = window.innerHeight || document.documentElement.clientHeight;
+                        const elRect = el.getBoundingClientRect();
+                        let top = rect.bottom + 8;
+                        if (top + elRect.height + pad > viewportH) top = rect.top - elRect.height - 8;
+                        if (top < pad) top = pad;
+                        let left = rect.left + (rect.width / 2) - (elRect.width / 2);
+                        if (left < pad) left = pad;
+                        if (left + elRect.width + pad > viewportW) left = viewportW - elRect.width - pad;
+                        el.style.top = `${Math.round(top)}px`;
+                        el.style.left = `${Math.round(left)}px`;
+                        youPayTooltipEl = el;
+                        youPayTooltipTimer = setTimeout(() => { hideYouPayTooltip(); }, 4500);
+                    } catch(e) { /* ignore */ }
+                };
+                const cleanupYouPayTooltip = () => {
+                    hideYouPayTooltip();
+                    try { if (youPayTooltipDismissHandler) document.removeEventListener('pointerdown', youPayTooltipDismissHandler, true); } catch(e) {}
+                    youPayTooltipDismissHandler = null;
+                };
+                youPayTooltipDismissHandler = (ev) => {
+                    try {
+                        if (!youPayTooltipEl) return;
+                        const target = ev && ev.target;
+                        if (target && (target === youPayTooltipEl || youPayTooltipEl.contains(target))) return;
+                        if (target && target.closest && target.closest('.gobo-itinerary-youpay')) return;
+                        hideYouPayTooltip();
+                    } catch(e) {}
+                };
+                try { document.addEventListener('pointerdown', youPayTooltipDismissHandler, true); } catch(e) {}
                 const backdrop = document.createElement('div');
                 backdrop.id = 'gobo-itinerary-modal';
                 backdrop.className = 'gobo-itinerary-backdrop';
-                backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+                backdrop.addEventListener('click', (e) => { if (e.target === backdrop) { cleanupYouPayTooltip(); backdrop.remove(); } });
                 const panel = document.createElement('div');
                 panel.className = 'gobo-itinerary-panel';
                 const closeBtn = document.createElement('button');
@@ -563,7 +611,7 @@
                 closeBtn.className = 'gobo-itinerary-close';
                 closeBtn.textContent = '\u00d7';
                 closeBtn.setAttribute('aria-label', 'Close');
-                closeBtn.addEventListener('click', () => backdrop.remove());
+                closeBtn.addEventListener('click', () => { cleanupYouPayTooltip(); backdrop.remove(); });
                 panel.appendChild(closeBtn);
                 const refreshBtn = document.createElement('button');
                 refreshBtn.type = 'button';
@@ -629,7 +677,11 @@
                         try { return (App && App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') ? !!App.SettingsStore.getSoloBooking() : false; } catch(e){ return false; }
                     })();
                     const guestMultiplier = isSoloBooking ? 1 : 2;
+                    const includeTaxesFlag = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function')
+                        ? !!App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null)
+                        : true;
                     const taxesNumber = (taxesPerPerson != null) ? taxesPerPerson * guestMultiplier : 0;
+                    const taxesForCalc = includeTaxesFlag ? taxesNumber : 0;
 
                     const priceEntries = priceKeys.map(k => { const pr = data.stateroomPricing[k] || {}; return { key:k, code:(pr.code||k||'').toString().trim(), priceNum:(typeof pr.price==='number')?Number(pr.price)*2:null, currency: pr.currency||'' }; });
                     const pricedEntries = priceEntries.filter(pe=>pe.priceNum!=null);
@@ -724,6 +776,8 @@
                         }
                     }
 
+                    const offerValueForTooltip = isOneGuestOffer ? singleGuestOfferValue : dualGuestOfferValue;
+
                     // Now create header and inject Offer Value span for either scenario
                     const priceTitle = document.createElement('h3');
                     priceTitle.className = 'gobo-itinerary-section-title';
@@ -774,6 +828,7 @@
                         const currency=hasPrice?(entry.currency||currencyFallback||''):(currencyFallback||'');
                         const thisCat = resolveCategory(rawCode);
                         let youPayDisplay='';
+                        let youPayTitle='';
                         if(!hasPrice) { youPayDisplay='Sold Out'; }
                         else {
                             const currentPriceNum=Number(entry.priceNum); let estimatedNum=0;
@@ -782,22 +837,39 @@
                             if (scenarioAllLowerSoldOut && awardIdx >= 0 && thisIdx > awardIdx) {
                                 // All lower tiers including awarded are sold out; unknown discount => You Pay equals base price
                                 estimatedNum = currentPriceNum;
+                                youPayTitle = `You Pay = Base Price (${currentPriceNum.toFixed(2)} ${currency}) because awarded and lower categories are sold out.`;
                             } else if(isOneGuestOffer && singleGuestOfferValue!=null){
                                 let calc = currentPriceNum - singleGuestOfferValue;
-                                if(!isFinite(calc) || calc < Number(taxesNumber)) calc = Number(taxesNumber);
+                                if(!isFinite(calc) || calc < Number(taxesForCalc)) calc = Number(taxesForCalc);
                                 estimatedNum = calc;
+                                const taxesNote = includeTaxesFlag ? `+ Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})` : '+ Taxes & Fees (Excluded)';
+                                youPayTitle = `You Pay = max(Base Price (${currentPriceNum.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency}), Taxes & Fees) = ${Number(estimatedNum).toFixed(2)} ${currency} ${taxesNote}`;
                             } else if(effectiveOfferPriceNum!=null){
                                 const currentMatchesAward = (thisCat && awardedInfo && thisCat===awardedInfo.category);
-                                if(currentMatchesAward){ estimatedNum=taxesNumber; } else {
-                                    let diff=currentPriceNum - effectiveOfferPriceNum; if(isNaN(diff)||diff<0) diff=0; estimatedNum=diff + taxesNumber; }
+                                if(currentMatchesAward){
+                                    estimatedNum=taxesForCalc;
+                                    youPayTitle = includeTaxesFlag
+                                        ? `You Pay = Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency}) for the awarded category.`
+                                        : 'You Pay = 0 (Taxes & Fees excluded).';
+                                } else {
+                                    let diff=currentPriceNum - effectiveOfferPriceNum; if(isNaN(diff)||diff<0) diff=0; estimatedNum=diff + taxesForCalc;
+                                    const taxesNote = includeTaxesFlag ? `+ Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})` : '+ Taxes & Fees (Excluded)';
+                                    const offerValueNote = (offerValueForTooltip != null && isFinite(Number(offerValueForTooltip)))
+                                        ? ` • Offer Value: ${Number(offerValueForTooltip).toFixed(2)} ${currency}`
+                                        : '';
+                                    youPayTitle = `You Pay = Base Price (${currentPriceNum.toFixed(2)} ${currency}) − Awarded Base Price (${Number(effectiveOfferPriceNum).toFixed(2)} ${currency}) ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}${offerValueNote}`;
+                                }
                             } else {
-                                estimatedNum=taxesNumber;
+                                estimatedNum=taxesForCalc;
+                                youPayTitle = includeTaxesFlag
+                                    ? `You Pay = Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency}).`
+                                    : 'You Pay = 0 (Taxes & Fees excluded).';
                             }
                             youPayDisplay = typeof estimatedNum==='number'?Number(estimatedNum).toFixed(2):String(estimatedNum);
                         }
                         try { const resolvedTarget = originalAwardCategoryResolved ? originalAwardCategoryResolved.toUpperCase() : (awardedInfo && awardedInfo.category ? awardedInfo.category.toUpperCase() : null); if (resolvedTarget && thisCat && thisCat.toUpperCase()===resolvedTarget) tr.classList.add('gobo-itinerary-current-category'); } catch(e){}
                         const vals=[label,priceVal,youPayDisplay,currency];
-                        vals.forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if(i===1||i===2) td.style.textAlign='right'; td.title=rawCode; if(i===1&&!hasPrice) td.className='gobo-itinerary-soldout'; if(i===2&&val==='Sold Out') td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
+                        vals.forEach((val,i)=>{ const td=document.createElement('td'); td.textContent=val; if(i===1||i===2) td.style.textAlign='right'; if(i===2 && youPayTitle){ td.title = youPayTitle; td.classList.add('gobo-itinerary-youpay'); td.setAttribute('tabindex','0'); td.setAttribute('role','button'); td.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); showYouPayTooltip(td, youPayTitle); }catch(e){} }); td.addEventListener('touchstart', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); showYouPayTooltip(td, youPayTitle); }catch(e){} }, { passive:false }); td.addEventListener('keydown', (ev)=>{ try{ if(ev.key==='Enter' || ev.key===' '){ ev.preventDefault(); showYouPayTooltip(td, youPayTitle); } }catch(e){} }); } else td.title=rawCode; if(i===1&&!hasPrice) td.className='gobo-itinerary-soldout'; if(i===2&&val==='Sold Out') td.className='gobo-itinerary-soldout'; tr.appendChild(td); });
                         tbody.appendChild(tr);
                     });
                     pTable.appendChild(tbody); panel.appendChild(pTable);
@@ -816,8 +888,12 @@
                     let totalTaxes = (typeof perPerson === 'number' && isFinite(perPerson)) ? perPerson * guestMultiplier : null;
                     const taxesText = totalTaxes != null ? totalTaxes.toFixed(2) : '-';
                     const currency = (function(){ try { const first = Object.values(data.stateroomPricing||{})[0]; return first && first.currency ? first.currency : (first && first.currencyCode ? first.currencyCode : ''); } catch(e){ return ''; } })();
+                    const includeTaxesFlag = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function')
+                        ? !!App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null)
+                        : true;
+                    const includeLabel = includeTaxesFlag ? (data.taxesAndFeesIncluded ? 'Included' : 'Additional') : 'Excluded';
                     const soloNote = isSoloBooking ? ' Solo Booking is enabled, so taxes & fees reflect one guest.' : '';
-                    tf.textContent = `Taxes & Fees: ${taxesText} ${currency} (${data.taxesAndFeesIncluded?'Included':'Additional'}) - Prices reflect cheapest dual-occupancy category rates.${soloNote}`;
+                    tf.textContent = `Taxes & Fees: ${taxesText} ${currency} (${includeLabel}) - Prices reflect cheapest dual-occupancy category rates.${soloNote}`;
                     panel.appendChild(tf);
                 }
                 if (Array.isArray(data.days) && data.days.length) {

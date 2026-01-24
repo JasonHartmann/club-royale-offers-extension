@@ -115,6 +115,31 @@ body.gobo-dark .gobo-itinerary-footer { color:#94a3b8; }
   margin: 16px 0 6px;
 }
 
+.gobo-itinerary-youpay {
+  cursor: help;
+}
+
+.gobo-itinerary-tooltip {
+  position: fixed;
+  max-width: 360px;
+  background: #111827;
+  color: #f9fafb;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+  z-index: 1000001;
+  pointer-events: none;
+}
+
+body.gobo-dark .gobo-itinerary-tooltip {
+  background: #0b1220;
+  color: #e2e8f0;
+  border: 1px solid rgba(148,163,184,0.25);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.6);
+}
+
 .gobo-itinerary-table {
   width: 100%;
   border-collapse: collapse;
