@@ -172,11 +172,14 @@ const Utils = {
         } catch(e) { /* ignore */ }
         return false;
     },
-    computeSuiteUpgradePrice(offer, sailing, options) {
+    _resolveIncludeTaxes(options) {
         const opts = options || {};
-        const includeTaxes = Object.prototype.hasOwnProperty.call(opts, 'includeTaxes')
+        return Object.prototype.hasOwnProperty.call(opts, 'includeTaxes')
             ? !!opts.includeTaxes
             : Utils.getIncludeTaxesAndFeesPreference(opts.state || (typeof App !== 'undefined' && App && App.TableRenderer ? App.TableRenderer.lastState : null));
+    },
+    computeSuiteUpgradePrice(offer, sailing, options) {
+        const includeTaxes = Utils._resolveIncludeTaxes(options);
         try {
             if (!Utils._suiteWrapLogCount) Utils._suiteWrapLogCount = 0;
             Utils._suiteWrapLogCount += 1;
@@ -212,10 +215,7 @@ const Utils = {
         return null;
     },
     computeBalconyUpgradePrice(offer, sailing, options) {
-        const opts = options || {};
-        const includeTaxes = Object.prototype.hasOwnProperty.call(opts, 'includeTaxes')
-            ? !!opts.includeTaxes
-            : Utils.getIncludeTaxesAndFeesPreference(opts.state || (typeof App !== 'undefined' && App && App.TableRenderer ? App.TableRenderer.lastState : null));
+        const includeTaxes = Utils._resolveIncludeTaxes(options);
         try {
             if (typeof App !== 'undefined' && App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') {
                 return App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes });
@@ -227,6 +227,38 @@ const Utils = {
             }
         } catch(e) { /* ignore */ }
         return null;
+    },
+    computeOceanViewUpgradePrice(offer, sailing, options) {
+        const includeTaxes = Utils._resolveIncludeTaxes(options);
+        try {
+            if (typeof App !== 'undefined' && App && App.PricingUtils && typeof App.PricingUtils.computeOceanViewUpgradePrice === 'function') {
+                return App.PricingUtils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes });
+            }
+        } catch(e) { /* ignore */ }
+        try {
+            if (typeof PricingUtils !== 'undefined' && PricingUtils && typeof PricingUtils.computeOceanViewUpgradePrice === 'function') {
+                return PricingUtils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes });
+            }
+        } catch(e) { /* ignore */ }
+        return null;
+    },
+    computeUpgradePriceForColumn(columnKey, offer, sailing, options) {
+        switch (columnKey) {
+            case 'suiteUpgrade':
+                return Utils.computeSuiteUpgradePrice(offer, sailing, options);
+            case 'balconyUpgrade':
+                return Utils.computeBalconyUpgradePrice(offer, sailing, options);
+            case 'oceanViewUpgrade':
+                return Utils.computeOceanViewUpgradePrice(offer, sailing, options);
+            default:
+                return null;
+        }
+    },
+    formatUpgradePriceForColumn(columnKey, offer, sailing, options) {
+        try {
+            const raw = Utils.computeUpgradePriceForColumn(columnKey, offer, sailing, options);
+            return (raw != null && isFinite(raw)) ? Utils.formatOfferValue(raw) : '-';
+        } catch(e) { return '-'; }
     },
     // New: compute raw offer value (numeric) based on itinerary pricing + guest occupancy
     computeOfferValue(offer, sailing) {
@@ -398,11 +430,12 @@ const Utils = {
             rows.forEach(r => {
                 try {
                     const cells = r.querySelectorAll('td');
-                    // Expecting at least Value + Balcony $ + Suite $ after Trade. Abort if too short.
-                    if (cells.length < 9) return;
+                    // Expecting at least Value + OV $ + Balcony $ + Suite $ after Trade. Abort if too short.
+                    if (cells.length < 10) return;
                     const valCell = cells[6];
-                    const balconyCell = cells[7];
-                    const suiteCell = cells[8];
+                    const oceanViewCell = cells[7];
+                    const balconyCell = cells[8];
+                    const suiteCell = cells[9];
                     if (!valCell) return;
                     const code = (r.dataset.offerCode || '').trim();
                     const sailISO = (r.dataset.sailDate || '').trim();
@@ -448,11 +481,21 @@ const Utils = {
                         _offerValueStats.computed++;
                     }
 
+                    // Refresh OV $ column after itinerary/pricing hydration
+                    if (oceanViewCell) {
+                        try {
+                            const formattedOV = Utils.formatUpgradePriceForColumn('oceanViewUpgrade', matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state });
+                            const existingOV = (oceanViewCell.textContent || '').trim();
+                            if (existingOV !== formattedOV) oceanViewCell.textContent = formattedOV;
+                        } catch(eOV) {
+                            try { console.debug('[OceanViewUpgrade] refresh error', eOV); } catch(ignore) {}
+                        }
+                    }
+
                     // Refresh Balcony $ column after itinerary/pricing hydration
                     if (balconyCell) {
                         try {
-                            const rawBalcony = Utils.computeBalconyUpgradePrice(matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state });
-                            const formattedBalcony = (rawBalcony != null && isFinite(rawBalcony)) ? Utils.formatOfferValue(rawBalcony) : '-';
+                            const formattedBalcony = Utils.formatUpgradePriceForColumn('balconyUpgrade', matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state });
                             const existingBal = (balconyCell.textContent || '').trim();
                             if (existingBal !== formattedBalcony) balconyCell.textContent = formattedBalcony;
                         } catch(eBalcony) {
@@ -463,8 +506,7 @@ const Utils = {
                     // Refresh Suite column after itinerary/pricing hydration (mirrors Offer Value timing)
                     if (suiteCell) {
                         try {
-                            const rawSuite = Utils.computeSuiteUpgradePrice(matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state });
-                            const formattedSuite = (rawSuite != null && isFinite(rawSuite)) ? Utils.formatOfferValue(rawSuite) : '-';
+                            const formattedSuite = Utils.formatUpgradePriceForColumn('suiteUpgrade', matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state });
                             const existingSuite = (suiteCell.textContent || '').trim();
                             if (existingSuite !== formattedSuite) suiteCell.textContent = formattedSuite;
                         } catch(eSuite) {

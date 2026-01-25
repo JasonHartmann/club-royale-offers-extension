@@ -711,6 +711,7 @@ const TableRenderer = {
                 { key: 'expiration', label: 'Expires' },
                 { key: 'tradeInValue', label: 'Trade' },
                 { key: 'offerValue', label: 'Value' },
+                { key: 'oceanViewUpgrade', label: 'OV' },
                 { key: 'balconyUpgrade', label: 'Balcony' },
                 { key: 'suiteUpgrade', label: 'Suite' },
                 { key: 'offerName', label: 'Name' },
@@ -970,6 +971,7 @@ const TableRenderer = {
                     { key: 'expiration', label: 'Expires' },
                     { key: 'tradeInValue', label: 'Trade' },
                     { key: 'offerValue', label: 'Value' },
+                    { key: 'oceanViewUpgrade', label: 'OV' },
                     { key: 'balconyUpgrade', label: 'Balcony' },
                     { key: 'suiteUpgrade', label: 'Suite' },
                     { key: 'offerName', label: 'Name' },
@@ -1079,18 +1081,21 @@ const TableRenderer = {
                     else baseState.headers.push({ key: 'offerValue', label: 'Value' });
                 }
             }
-            const hasSuiteUpgrade = baseState.headers.some(h => h.key === 'suiteUpgrade');
-            if (!hasSuiteUpgrade) {
-                const offerValIdx = baseState.headers.findIndex(h => h.key === 'offerValue');
-                if (offerValIdx !== -1) baseState.headers.splice(offerValIdx + 1, 0, { key: 'suiteUpgrade', label: 'Suite' });
-                else baseState.headers.push({ key: 'suiteUpgrade', label: 'Suite' });
-            }
-            const hasBalconyUpgrade = baseState.headers.some(h => h.key === 'balconyUpgrade');
-            if (!hasBalconyUpgrade) {
-                const offerValIdx = baseState.headers.findIndex(h => h.key === 'offerValue');
-                if (offerValIdx !== -1) baseState.headers.splice(offerValIdx + 1, 0, { key: 'balconyUpgrade', label: 'Balcony' });
-                else baseState.headers.push({ key: 'balconyUpgrade', label: 'Balcony' });
-            }
+            const upgradeCols = [
+                { key: 'oceanViewUpgrade', label: 'OV' },
+                { key: 'balconyUpgrade', label: 'Balcony' },
+                { key: 'suiteUpgrade', label: 'Suite' }
+            ];
+            let insertAt = baseState.headers.findIndex(h => h.key === 'offerValue');
+            if (insertAt === -1) insertAt = baseState.headers.length - 1;
+            upgradeCols.forEach(col => {
+                if (!baseState.headers.some(h => h.key === col.key)) {
+                    baseState.headers.splice(insertAt + 1, 0, col);
+                    insertAt += 1;
+                } else {
+                    insertAt = Math.max(insertAt, baseState.headers.findIndex(h => h.key === col.key));
+                }
+            });
             if (!Array.isArray(baseState.hiddenColumns)) {
                 baseState.hiddenColumns = (App && App.SettingsStore && typeof App.SettingsStore.getHiddenColumns === 'function') ? App.SettingsStore.getHiddenColumns() : [];
             }

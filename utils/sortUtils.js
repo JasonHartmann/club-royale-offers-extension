@@ -122,8 +122,12 @@ const SortUtils = {
                 case 'suiteUpgrade': {
                     const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
                     try {
-                        const aNum = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function' ? App.PricingUtils.computeSuiteUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF }) : null);
-                        const bNum = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function' ? App.PricingUtils.computeSuiteUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF }) : null);
+                        const aNum = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                            ? App.Utils.computeUpgradePriceForColumn('suiteUpgrade', a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function' ? App.PricingUtils.computeSuiteUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF }) : null);
+                        const bNum = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                            ? App.Utils.computeUpgradePriceForColumn('suiteUpgrade', b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function') ? App.Utils.computeSuiteUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function' ? App.PricingUtils.computeSuiteUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF }) : null);
                         const aMissing = (aNum === null || aNum === undefined || !isFinite(aNum));
                         const bMissing = (bNum === null || bNum === undefined || !isFinite(bNum));
                         if (aMissing && !bMissing) return 1; // always push missing ('-') to bottom
@@ -137,8 +141,31 @@ const SortUtils = {
                 case 'balconyUpgrade': {
                     const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
                     try {
-                        const aNum = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function' ? App.PricingUtils.computeBalconyUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF }) : null);
-                        const bNum = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function' ? App.PricingUtils.computeBalconyUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF }) : null);
+                        const aNum = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                            ? App.Utils.computeUpgradePriceForColumn('balconyUpgrade', a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function' ? App.PricingUtils.computeBalconyUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF }) : null);
+                        const bNum = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                            ? App.Utils.computeUpgradePriceForColumn('balconyUpgrade', b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function') ? App.Utils.computeBalconyUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function' ? App.PricingUtils.computeBalconyUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF }) : null);
+                        const aMissing = (aNum === null || aNum === undefined || !isFinite(aNum));
+                        const bMissing = (bNum === null || bNum === undefined || !isFinite(bNum));
+                        if (aMissing && !bMissing) return 1;
+                        if (!aMissing && bMissing) return -1;
+                        if (aMissing && bMissing) { aValue = 0; bValue = 0; break; }
+                        aValue = aNum;
+                        bValue = bNum;
+                    } catch(e){ aValue = -Infinity; bValue = -Infinity; }
+                    break;
+                }
+                case 'oceanViewUpgrade': {
+                    const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                    try {
+                        const aNum = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                            ? App.Utils.computeUpgradePriceForColumn('oceanViewUpgrade', a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.Utils && typeof App.Utils.computeOceanViewUpgradePrice === 'function') ? App.Utils.computeOceanViewUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeOceanViewUpgradePrice === 'function' ? App.PricingUtils.computeOceanViewUpgradePrice(a.offer, a.sailing, { includeTaxes: includeTF }) : null);
+                        const bNum = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                            ? App.Utils.computeUpgradePriceForColumn('oceanViewUpgrade', b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.Utils && typeof App.Utils.computeOceanViewUpgradePrice === 'function') ? App.Utils.computeOceanViewUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null }) : (App && App.PricingUtils && typeof App.PricingUtils.computeOceanViewUpgradePrice === 'function' ? App.PricingUtils.computeOceanViewUpgradePrice(b.offer, b.sailing, { includeTaxes: includeTF }) : null);
                         const aMissing = (aNum === null || aNum === undefined || !isFinite(aNum));
                         const bMissing = (bNum === null || bNum === undefined || !isFinite(bNum));
                         if (aMissing && !bMissing) return 1;

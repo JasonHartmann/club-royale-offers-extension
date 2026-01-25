@@ -375,4 +375,9 @@
         return computeUpgradePrice('BALCONY', 'Balcony', offer, sailing, options);
     };
 
+    // Compute ocean view (OUTSIDE) upgrade estimated price for the given sailing/offer pair.
+    App.PricingUtils.computeOceanViewUpgradePrice = function(offer, sailing, options){
+        return computeUpgradePrice('OUTSIDE', 'OceanView', offer, sailing, options);
+    };
+
 })();

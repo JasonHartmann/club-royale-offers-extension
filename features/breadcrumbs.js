@@ -36,10 +36,14 @@ const Breadcrumbs = {
             const tabsRow = document.createElement('div');
             tabsRow.className = 'breadcrumb-tabs-row';
             tabsRow.style.cssText = 'display:block; margin-bottom:8px; overflow:hidden;';
+            const controlsRow = document.createElement('div');
+            controlsRow.className = 'breadcrumb-controls-row';
+            controlsRow.style.cssText = 'display:none; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; width:100%; box-sizing:border-box;';
             const crumbsRow = document.createElement('div');
             crumbsRow.className = 'breadcrumb-crumb-row';
             crumbsRow.style.cssText = 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;';
             container.appendChild(tabsRow);
+            container.appendChild(controlsRow);
             container.appendChild(crumbsRow);
 
             // Build tabs (unchanged)
@@ -751,7 +755,8 @@ const Breadcrumbs = {
             if (refreshBtn) {
                 hiddenGroupsPanel.appendChild(refreshBtn);
             }
-            crumbsRow.appendChild(hiddenGroupsPanel);
+            controlsRow.style.display = 'flex';
+            controlsRow.appendChild(hiddenGroupsPanel);
 
             // What's New button
             try {

@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '7'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns
+    const TOUR_REVISION = '8'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -113,43 +113,6 @@
             }
             this._steps = [
                 {
-                    id:'offerCodeLookupExternal',
-                    target:()=> document.querySelector('.offer-code-link') || document.querySelector('th[data-key="offerCode"]') || null,
-                    title:'Offer Code Lookup Upgrade',
-                    body:'Offer Code links now open AJ Goldsman\'s external lookup tool for richer details. First click shows a one-time safety warning.',
-                },
-                {
-                    id:'advancedSearchPreview',
-                    target:()=> document.querySelector('button.adv-search-button') || document.querySelector('#advanced-search-panel') || null,
-                    title:'Advanced Search',
-                    body:'Work-in-progress panel to build filters and instantly search for offers. More operators & polish coming—feedback welcome!',
-                },
-                {
-                    id:'itineraryLinks',
-                    target:()=> document.querySelector('a.gobo-itinerary-link') || document.querySelector('th[data-key="destination"]') || null,
-                    title:'Itinerary Details Links',
-                    body:'Destination cells now include clickable itinerary links—open one to see route details & more context.',
-                },
-                {
-                    id:'offerValueColumn',
-                    target:()=> document.querySelector('th[data-key="offerValue"]') || null,
-                    title:'Offer Value Column',
-                    body:'Shows estimated monetary value of the offer (dual occupancy base minus taxes; heuristic for single guest). Usable in sorting, grouping, filtering & CSV export.',
-                }
-                ,
-                {
-                    id:'backToBackBuilder',
-                    target:()=> document.querySelector('th[data-key="b2bDepth"]') || document.querySelector('.b2b-visualizer-overlay') || null,
-                    title:'Back-to-Back Builder',
-                    body:'New visual Back-to-Back Builder: open any offer\'s depth pill to explore and assemble chains of connecting sailings. Candidate offers show matching room categories in green for easy scanning.',
-                },
-                {
-                    id:'settingsGear',
-                    target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
-                    title:'Settings & Preferences',
-                    body:'Use the Settings gear to adjust preferences, edit advanced search defaults, and control features like Back-to-Back auto-run.',
-                },
-                {
                     id:'darkModeSetting',
                     target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
                     title:'Dark Mode',
@@ -162,8 +125,20 @@
                     body:'Open the Settings gear to hide or show columns in the offers table. CSV export still includes every column.',
                 },
                 {
+                    id:'soloBookingSetting',
+                    target:()=> document.querySelector('#gobo-setting-solo') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
+                    title:'Solo Booking',
+                    body:'Enable Solo Booking in Settings to use single-guest taxes & fees when calculating prices.',
+                },
+                {
+                    id:'ovBalconySuiteColumns',
+                    target:()=> document.querySelector('th[data-key="oceanViewUpgrade"], td[data-col="oceanViewUpgrade"]') || document.querySelector('th[data-key="balconyUpgrade"], td[data-col="balconyUpgrade"]') || document.querySelector('th[data-key="suiteUpgrade"], td[data-col="suiteUpgrade"]') || null,
+                    title:'OV / Balcony / Suite',
+                    body:'New OV, Balcony, and Suite columns show estimated You Pay pricing for each category.',
+                },
+                {
                     id:'supportCoffee',
-                    target:()=> document.querySelector('.buy-coffee-link') || null,
+                    target:()=> document.querySelector('.donate-button') || document.querySelector('.buy-coffee-link') || null,
                     title:'Support Development',
                     body:'If this extension saves you time, consider a tip (Ko-Fi or Venmo, your choice!). Thank you for helping me keep up with the requests!',
                 },

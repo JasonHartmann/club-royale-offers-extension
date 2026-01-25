@@ -291,7 +291,7 @@ Found a bug or have an improvement idea? Please open an issue or submit a pull r
 
 ## License
 
-© 2025 Percex Technologies, LLC. All rights reserved.
+© 2026 Percex Technologies, LLC. All rights reserved.
 
 ---
 

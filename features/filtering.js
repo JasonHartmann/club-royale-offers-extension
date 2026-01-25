@@ -932,18 +932,33 @@ const Filtering = {
             case 'suiteUpgrade': {
                 const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
                 try {
-                    const raw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
-                        ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
-                        : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTF }) : null;
+                    const raw = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                        ? App.Utils.computeUpgradePriceForColumn('suiteUpgrade', offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                        : (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
+                            ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTF }) : null;
                     return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
                 } catch(e){ return '-'; }
             }
             case 'balconyUpgrade': {
                 const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
                 try {
-                    const raw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
-                        ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
-                        : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTF }) : null;
+                    const raw = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                        ? App.Utils.computeUpgradePriceForColumn('balconyUpgrade', offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                        : (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
+                            ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTF }) : null;
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(e){ return '-'; }
+            }
+            case 'oceanViewUpgrade': {
+                const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                        ? App.Utils.computeUpgradePriceForColumn('oceanViewUpgrade', offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                        : (App && App.Utils && typeof App.Utils.computeOceanViewUpgradePrice === 'function')
+                            ? App.Utils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : (App && App.PricingUtils && typeof App.PricingUtils.computeOceanViewUpgradePrice === 'function') ? App.PricingUtils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes: includeTF }) : null;
                     return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
                 } catch(e){ return '-'; }
             }
@@ -993,23 +1008,37 @@ const Filtering = {
     getOfferColumnValueForFiltering(offer, sailing, key, state) {
         try {
             const includeTF = state && state.advancedSearch && (state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false);
-            const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','balconyUpgrade','suiteUpgrade']);
+            const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','oceanViewUpgrade','balconyUpgrade','suiteUpgrade']);
             if (includeTF || !pricingKeys.has(key)) return Filtering.getOfferColumnValue(offer, sailing, key);
             if (key === 'suiteUpgrade') {
                 try {
-                    const raw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
-                        ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: false, state })
-                        : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: false }) : null;
+                    const raw = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                        ? App.Utils.computeUpgradePriceForColumn('suiteUpgrade', offer, sailing, { includeTaxes: false, state })
+                        : (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
+                            ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: false, state })
+                            : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: false }) : null;
                     return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
                 } catch(eSuite){ return '-'; }
             }
             if (key === 'balconyUpgrade') {
                 try {
-                    const raw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
-                        ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: false, state })
-                        : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: false }) : null;
+                    const raw = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                        ? App.Utils.computeUpgradePriceForColumn('balconyUpgrade', offer, sailing, { includeTaxes: false, state })
+                        : (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
+                            ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: false, state })
+                            : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: false }) : null;
                     return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
                 } catch(eBalcony){ return '-'; }
+            }
+            if (key === 'oceanViewUpgrade') {
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
+                        ? App.Utils.computeUpgradePriceForColumn('oceanViewUpgrade', offer, sailing, { includeTaxes: false, state })
+                        : (App && App.Utils && typeof App.Utils.computeOceanViewUpgradePrice === 'function')
+                            ? App.Utils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes: false, state })
+                            : (App && App.PricingUtils && typeof App.PricingUtils.computeOceanViewUpgradePrice === 'function') ? App.PricingUtils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes: false }) : null;
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(eOV){ return '-'; }
             }
             const computed = computeAdvancedMinPrice(offer, sailing, key, false);
             return computed === '-' ? '-' : computed;

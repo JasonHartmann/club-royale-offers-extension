@@ -629,7 +629,7 @@ const AdvancedSearch = {
             const baseOperators = ['in', 'not in', 'contains', 'not contains'];
             const allowedOperators = baseOperators.slice();
             // Numeric pricing fields that support 'less than'
-            const numericFieldKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights','offerValue','suiteUpgrade']);
+            const numericFieldKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','nights','offerValue','oceanViewUpgrade','suiteUpgrade','balconyUpgrade']);
             const headersReady = headerFields.length > 2;
             if (!headersReady) {
                 this._logDebug('renderPredicates:headersNotReady', { headerCount: headerFields.length });
@@ -838,6 +838,9 @@ const AdvancedSearch = {
                                 case 'minOutsidePrice': helpMsg = (pred.operator==='less than' ? 'Ocean View You Pay below this amount.' : 'Ocean View You Pay above this amount.'); break;
                                 case 'minBalconyPrice': helpMsg = (pred.operator==='less than' ? 'Balcony You Pay below this amount.' : 'Balcony You Pay above this amount.'); break;
                                 case 'minSuitePrice': helpMsg = (pred.operator==='less than' ? 'Suite You Pay below this amount.' : 'Suite You Pay above this amount.'); break;
+                                case 'oceanViewUpgrade': helpMsg = (pred.operator==='less than' ? 'Ocean View You Pay below this amount.' : 'Ocean View You Pay above this amount.'); break;
+                                case 'balconyUpgrade': helpMsg = (pred.operator==='less than' ? 'Balcony You Pay below this amount.' : 'Balcony You Pay above this amount.'); break;
+                                case 'suiteUpgrade': helpMsg = (pred.operator==='less than' ? 'Suite You Pay below this amount.' : 'Suite You Pay above this amount.'); break;
                                 case 'nights': helpMsg = (pred.operator==='less than' ? 'Sailing nights below this number.' : 'Sailing nights above this number.'); break;
                             }
                             help.textContent = helpMsg;
@@ -985,7 +988,7 @@ const AdvancedSearch = {
             const headerKeysSet = new Set(headerFields.map(h => h.key));
             const advFiltered = advOnly.filter(f => f && f.key && f.label && !headerKeysSet.has(f.key));
             const allFields = headerFields.concat(advFiltered);
-            const priceFields = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','offerValue','suiteUpgrade']);
+            const priceFields = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','offerValue','oceanViewUpgrade','balconyUpgrade','suiteUpgrade']);
             const skipFields = new Set(['visits']);
             const index = {};
             for (const f of allFields) {
@@ -1065,40 +1068,23 @@ const AdvancedSearch = {
             // Update button pressed state
             btn.setAttribute('aria-pressed', nowEnabled ? 'true' : 'false');
             btn.title = nowEnabled ? 'Disable Advanced Search filters' : 'Enable Advanced Search filters';
-            // Refresh table (filters applied or removed)
-            try { this._logDebug('Calling lightRefresh after toggle', { showSpinner: true }); this.lightRefresh(state, { showSpinner: true }); } catch(e) { this._logDebug('lightRefresh error', e); }
-            // If we just enabled, ensure panel exists immediately (before delayed breadcrumb rebuild) so user sees Add Field control.
+            // Refresh table (filters applied or removed) after panel animation for smoother UX
+            const refreshDelayMs = nowEnabled ? 420 : 320;
+            try {
+                this._logDebug('Calling lightRefresh after toggle (delayed)', { showSpinner: true, refreshDelayMs });
+                setTimeout(() => {
+                    try { this.lightRefresh(state, { showSpinner: true }); } catch(e) { this._logDebug('lightRefresh error', e); }
+                }, refreshDelayMs);
+            } catch(e) { this._logDebug('lightRefresh schedule error', e); }
+            // If we just enabled, defer panel creation to the breadcrumb rebuild for a smoother drawer animation.
             if (nowEnabled && !prevEnabled) {
-                try {
-                    let container = document.querySelector('.breadcrumb-container');
-                    if (!container) {
-                        container = document.querySelector('.breadcrumb-container') || document.getElementById('app') || document.body;
-                    }
-                    this._logDebug('Enable path: attempting scaffoldPanel', { containerExists: !!container });
-                    if (container) {
-                        const preExistingPanel = !!document.getElementById('advanced-search-panel');
-                        this._logDebug('Panel existence before scaffold', { preExistingPanel });
-                        this.scaffoldPanel(state, container);
-                        const postPanel = !!document.getElementById('advanced-search-panel');
-                        this._logDebug('Panel existence after scaffold', { postPanel });
-                        const headerCountAfterScaffold = Array.isArray(state.headers) ? state.headers.filter(h=>h && h.key && h.label).length : 0;
-                        this._logDebug('Header count after scaffold', { headerCountAfterScaffold });
-                        // If no predicates, force render to inject Add Field dropdown right away
-                        if (state.advancedSearch.predicates.length === 0) {
-                            this._logDebug('No predicates post-enable: forcing renderPredicates');
-                            this.renderPredicates(state);
-                            this.scheduleRerenderIfColumnsPending(state);
-                        }
-                    } else {
-                        this._logDebug('Enable path: no container found');
-                    }
-                } catch (scErr) { this._logDebug('Error during immediate scaffoldPanel enable path', scErr); }
+                // no-op
             } else if (!nowEnabled) {
                 // If disabling, hide panel immediately for responsiveness
                 try {
                     const panel = document.getElementById('advanced-search-panel');
                     if (panel) {
-                        panel.classList.add('adv-hidden');
+                        panel.classList.add('adv-collapsed');
                         this._logDebug('Disable path: panel hidden', { hadPanel: true });
                     } else {
                         this._logDebug('Disable path: no panel to hide');
@@ -1111,6 +1097,7 @@ const AdvancedSearch = {
             const scheduleBreadcrumb = () => {
                 this._logDebug('scheduleBreadcrumb invoked', { nowEnabled, predicateCount: state.advancedSearch.predicates.length });
                 try { Breadcrumbs.updateBreadcrumb(state.groupingStack || [], state.groupKeysStack || []); this._logDebug('Breadcrumbs updated'); } catch(e) { this._logDebug('Breadcrumbs update error', e); }
+                // Breadcrumb rebuild handles panel scaffold and animated open/close.
                 // After rebuild, if enabled and panel missing (edge race) re-scaffold
                 if (nowEnabled) {
                     const existingPanel = document.getElementById('advanced-search-panel');
@@ -1280,15 +1267,35 @@ const AdvancedSearch = {
             this._logDebug('scaffoldPanel:start', { enabled: !!state?.advancedSearch?.enabled, containerExists: !!container });
             if (!container) return;
             let panel = document.getElementById('advanced-search-panel');
+            const created = !panel;
             if (!panel) {
                 panel = document.createElement('div');
                 panel.id = 'advanced-search-panel';
                 panel.className = 'advanced-search-panel';
-                container.appendChild(panel);
                 this._logDebug('scaffoldPanel:created');
             }
+            const crumbsRow = container.querySelector('.breadcrumb-crumb-row');
+            if (crumbsRow) {
+                if (panel.parentElement !== container || panel.nextSibling !== crumbsRow) {
+                    container.insertBefore(panel, crumbsRow);
+                }
+            } else if (panel.parentElement !== container) {
+                container.appendChild(panel);
+            }
             const enabled = !!state.advancedSearch.enabled;
-            panel.classList.toggle('adv-hidden', !enabled);
+            const shouldOpen = enabled;
+            if (enabled) {
+                panel.classList.remove('adv-hidden');
+            }
+            if (shouldOpen) {
+                if (created || panel.classList.contains('adv-collapsed')) {
+                    panel.classList.add('adv-collapsed');
+                    try { panel.getBoundingClientRect(); } catch(e) {}
+                    panel.classList.remove('adv-collapsed');
+                }
+            } else {
+                panel.classList.add('adv-collapsed');
+            }
             panel.classList.toggle('enabled', enabled);
             let header = panel.querySelector('.adv-search-header');
             if (!header) { header = document.createElement('div'); header.className = 'adv-search-header'; panel.appendChild(header); this._logDebug('scaffoldPanel:headerCreated'); }

@@ -211,6 +211,7 @@ const Settings = {
                 { key: 'expiration', label: 'Expires' },
                 { key: 'tradeInValue', label: 'Trade' },
                 { key: 'offerValue', label: 'Value' },
+                { key: 'oceanViewUpgrade', label: 'OV' },
                 { key: 'balconyUpgrade', label: 'Balcony' },
                 { key: 'suiteUpgrade', label: 'Suite' },
                 { key: 'offerName', label: 'Name' },

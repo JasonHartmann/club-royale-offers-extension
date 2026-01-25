@@ -76,29 +76,30 @@
             valueDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawVal) : (Utils.formatOfferValue ? Utils.formatOfferValue(rawVal) : (rawVal!=null?`$${Number(rawVal).toFixed(2)}`:'-'));
         } catch(e){ valueDisplay='-'; }
         const includeTaxesAndFees = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+        const upgradeOptions = { includeTaxes: includeTaxesAndFees, state: App && App.TableRenderer ? App.TableRenderer.lastState : null };
+        let oceanViewUpgradeDisplay = '-';
         let balconyUpgradeDisplay = '-';
-        try {
-            const balconyRaw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
-                ? App.Utils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
-                : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
-            balconyUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(balconyRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(balconyRaw) : (balconyRaw!=null?`$${Number(balconyRaw).toFixed(2)}`:'-'));
-        } catch(e){ balconyUpgradeDisplay='-'; }
         let suiteUpgradeDisplay = '-';
         try {
-            const suiteRaw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
-                ? App.Utils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
-                : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
-            suiteUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(suiteRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(suiteRaw) : (suiteRaw!=null?`$${Number(suiteRaw).toFixed(2)}`:'-'));
-            // Emit lightweight diagnostics to confirm row-time suite calculation is running (sample only)
-            try {
-                if (!Utils._suiteRowLogCount) Utils._suiteRowLogCount = 0;
-                Utils._suiteRowLogCount += 1;
-                const n = Utils._suiteRowLogCount;
-                if (n <= 8 || n % 50 === 0) {
-                    console.info('[SuiteRow]', { offerCode: offer.campaignOffer?.offerCode, ship: sailing.shipCode || sailing.shipName, sailDate: sailing.sailDate, includeTaxesAndFees, suiteRaw, display: suiteUpgradeDisplay });
-                }
-            } catch(logErr) { /* ignore logging errors */ }
-        } catch(e){ suiteUpgradeDisplay='-'; }
+            if (App && App.Utils && typeof App.Utils.formatUpgradePriceForColumn === 'function') {
+                oceanViewUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('oceanViewUpgrade', offer, sailing, upgradeOptions);
+                balconyUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('balconyUpgrade', offer, sailing, upgradeOptions);
+                suiteUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('suiteUpgrade', offer, sailing, upgradeOptions);
+            } else {
+                const oceanRaw = (App && App.Utils && typeof App.Utils.computeOceanViewUpgradePrice === 'function')
+                    ? App.Utils.computeOceanViewUpgradePrice(offer, sailing, upgradeOptions)
+                    : (App && App.PricingUtils && typeof App.PricingUtils.computeOceanViewUpgradePrice === 'function') ? App.PricingUtils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
+                const balconyRaw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
+                    ? App.Utils.computeBalconyUpgradePrice(offer, sailing, upgradeOptions)
+                    : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
+                const suiteRaw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
+                    ? App.Utils.computeSuiteUpgradePrice(offer, sailing, upgradeOptions)
+                    : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
+                oceanViewUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(oceanRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(oceanRaw) : (oceanRaw!=null?`$${Number(oceanRaw).toFixed(2)}`:'-'));
+                balconyUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(balconyRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(balconyRaw) : (balconyRaw!=null?`$${Number(balconyRaw).toFixed(2)}`:'-'));
+                suiteUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(suiteRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(suiteRaw) : (suiteRaw!=null?`$${Number(suiteRaw).toFixed(2)}`:'-'));
+            }
+        } catch(e){ oceanViewUpgradeDisplay='-'; balconyUpgradeDisplay='-'; suiteUpgradeDisplay='-'; }
         // Favorite / ID column setup
         const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
         let favCellHtml;
@@ -158,6 +159,7 @@
             <td class="${tdClass('expiration','border p-2')}" data-col="expiration">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
             <td class="${tdClass('tradeInValue','border p-2')}" data-col="tradeInValue">${tradeDisplay}</td>
             <td class="${tdClass('offerValue','border p-2')}" data-col="offerValue">${valueDisplay}</td>
+            <td class="${tdClass('oceanViewUpgrade','border p-2')}" data-col="oceanViewUpgrade">${oceanViewUpgradeDisplay}</td>
             <td class="${tdClass('balconyUpgrade','border p-2')}" data-col="balconyUpgrade">${balconyUpgradeDisplay}</td>
             <td class="${tdClass('suiteUpgrade','border p-2')}" data-col="suiteUpgrade">${suiteUpgradeDisplay}</td>
             <td class="${tdClass('offerName','border p-2')}" data-col="offerName">${offer.campaignOffer.name || '-'}</td>
