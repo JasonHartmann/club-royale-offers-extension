@@ -151,6 +151,25 @@ Environment overrides:
 
 Artifacts land in `safari-build/artifacts/`, including a zipped macOS app and (when present) a zipped `.appex`.
 
+### Option D: Build from an existing Xcode project (custom code)
+
+If you maintain a dedicated Xcode project repo with custom Swift code, use the script below on a macOS runner and point it at the project. This avoids regenerating the project each build.
+
+```
+./scripts/build-safari-xcode.sh
+```
+
+Required environment:
+
+- `XCODE_PROJECT_PATH` (full path to the `.xcodeproj`)
+
+Optional overrides:
+
+- `APP_NAME` (default: `Club Royale Offers`)
+- `SCHEME` (default: `Club Royale Offers (macOS)`)
+- `CONFIGURATION` (default: `Release`)
+- `ARTIFACTS_DIR` (default: `./safari-build/artifacts`)
+
 ### Required Adjustments for Safari
 
 - **Icons**: Provide PNGs (e.g., `images/icon-48.png`, `images/icon-128.png`). Update `manifest.json` accordingly.

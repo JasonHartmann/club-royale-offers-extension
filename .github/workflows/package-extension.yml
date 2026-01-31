@@ -46,11 +46,25 @@ jobs:
   safari-package:
     runs-on: macos-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout extension repository
         uses: actions/checkout@v4
+        with:
+          path: club-royale-offers-extension
+
+      - name: Checkout Safari Xcode repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SAFARI_XCODE_REPO }}
+          ref: ${{ vars.SAFARI_XCODE_REF || 'main' }}
+          path: ClubRoyaleSafari
+
+      - name: Link extension repo for Xcode references
+        run: ln -s "$GITHUB_WORKSPACE/club-royale-offers-extension" "$GITHUB_WORKSPACE/../club-royale-offers-extension"
 
       - name: Build Safari bundles
-        run: ./scripts/build-safari.sh
+        run: ./club-royale-offers-extension/scripts/build-safari-xcode.sh
+        env:
+          XCODE_PROJECT_PATH: ${{ github.workspace }}/ClubRoyaleSafari/Comp Royale Offers/Comp Royale Offers.xcodeproj
 
       - name: Upload Safari artifacts
         uses: actions/upload-artifact@v4
