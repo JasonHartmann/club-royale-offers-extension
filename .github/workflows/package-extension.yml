@@ -42,3 +42,18 @@ jobs:
             !**/tests/**
             !jest.config.js
             !**/jest.config.js
+
+  safari-package:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Safari bundles
+        run: ./scripts/build-safari.sh
+
+      - name: Upload Safari artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: club-royale-offers-safari
+          path: safari-build/artifacts/*.zip

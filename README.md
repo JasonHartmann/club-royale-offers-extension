@@ -132,6 +132,25 @@ After conversion:
 - Open the generated project in Xcode and supply signing (Developer ID or local signing for testing).
 - Replace/augment icons (PNG) and re-run.
 
+### Option C: Automated macOS build (CI-friendly)
+
+If you want Safari bundles created from the same source used for Chrome/Firefox, use the CI script below on a macOS runner. It regenerates the Xcode project and produces zipped artifacts.
+
+```
+./scripts/build-safari.sh
+```
+
+Environment overrides:
+
+- `APP_NAME` (default: `Club Royale Offers`)
+- `BUNDLE_ID` (default: `com.percex.club-royale-offers`)
+- `PROJECT_LOCATION` (default: `./safari-build`)
+- `CONFIGURATION` (default: `Release`)
+- `SCHEME` (default: `Club Royale Offers (macOS)`)
+- `BUILD_IOS=1` to also build the iOS scheme (optional)
+
+Artifacts land in `safari-build/artifacts/`, including a zipped macOS app and (when present) a zipped `.appex`.
+
 ### Required Adjustments for Safari
 
 - **Icons**: Provide PNGs (e.g., `images/icon-48.png`, `images/icon-128.png`). Update `manifest.json` accordingly.

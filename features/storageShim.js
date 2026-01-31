@@ -13,37 +13,17 @@
 
     const runtimeAPI = resolveRuntimeAPI();
     const nativeHostName = 'com.percex.club_royale_and_blue_chip_offers';
+    let extStorage = null;
 
-    const localStore = (function() {
+    const isIOS = (() => {
         try {
-            if (typeof localStorage !== 'undefined') return localStorage;
-        } catch (e) { /* ignore */ }
-        return null;
+            if (typeof navigator === 'undefined') return false;
+            const ua = navigator.userAgent || '';
+            const iOSDevice = /iPad|iPhone|iPod/.test(ua);
+            const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+            return iOSDevice || iPadOS;
+        } catch (e) { return false; }
     })();
-
-    function shouldBackupKey(key) {
-        if (typeof key !== 'string') return false;
-        return key.startsWith('gobo') || key.startsWith('goob-') || key.startsWith('gobohidden');
-    }
-
-    function serializeForLocal(value) {
-        if (typeof value === 'string') return value;
-        try { return JSON.stringify(value); } catch (e) { return null; }
-    }
-
-    function loadLocalEntries() {
-        if (!localStore) return {};
-        const entries = {};
-        try {
-            for (let i = 0; i < localStore.length; i += 1) {
-                const key = localStore.key(i);
-                if (!shouldBackupKey(key)) continue;
-                const value = localStore.getItem(key);
-                if (value !== null) entries[key] = value;
-            }
-        } catch (e) { /* ignore */ }
-        return entries;
-    }
 
     function callNativeStorage(payload) {
         if (!runtimeAPI || typeof runtimeAPI.sendNativeMessage !== 'function') return null;
@@ -131,24 +111,17 @@
         };
     }
 
-    const extStorage = (function() {
+    const nativeProxy = createNativeStorageProxy();
+    extStorage = (function() {
+        if (isIOS && nativeProxy) return nativeProxy;
         if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) return browser.storage.local;
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) return chrome.storage.local;
-        const nativeProxy = createNativeStorageProxy();
         if (nativeProxy) return nativeProxy;
         return null;
     })();
     const internal = new Map();
     const pendingWrites = new Map();
     let flushScheduled = false;
-
-    // Decide which keys the shim should manage. Historically this filtered by prefixes,
-    // but we now manage all keys; keep this as a single function so callers remain stable.
-    function shouldManage(key) {
-        try {
-            return true;
-        } catch (e) { return false; }
-    }
 
     function scheduleFlush() {
         if (!extStorage) return; // Nothing to do when extension storage isn't present
@@ -186,14 +159,7 @@
     }
 
     function loadAll(resolve) {
-        if (!extStorage) {
-            const localEntries = loadLocalEntries();
-            Object.keys(localEntries).forEach((k) => {
-                if (shouldManage(k) && !internal.has(k)) internal.set(k, localEntries[k]);
-            });
-            resolve();
-            return;
-        }
+        if (!extStorage) { resolve(); return; }
         try {
             // Support both callback-style and Promise-style get
             try {
@@ -203,16 +169,6 @@
                             if (shouldManage(k)) internal.set(k, items[k]);
                         });
                     } catch(e) { /* ignore */ }
-                    try {
-                        const localEntries = loadLocalEntries();
-                        const toSync = {};
-                        Object.keys(localEntries).forEach((k) => {
-                            if (!shouldManage(k) || internal.has(k)) return;
-                            internal.set(k, localEntries[k]);
-                            toSync[k] = localEntries[k];
-                        });
-                        if (Object.keys(toSync).length) extStorage.set(toSync);
-                    } catch (e) { /* ignore */ }
                     resolve();
                 });
                 if (maybePromise && typeof maybePromise.then === 'function') {
@@ -222,16 +178,6 @@
                                 if (shouldManage(k)) internal.set(k, items[k]);
                             });
                         } catch(e) { /* ignore */ }
-                        try {
-                            const localEntries = loadLocalEntries();
-                            const toSync = {};
-                            Object.keys(localEntries).forEach((k) => {
-                                if (!shouldManage(k) || internal.has(k)) return;
-                                internal.set(k, localEntries[k]);
-                                toSync[k] = localEntries[k];
-                            });
-                            if (Object.keys(toSync).length) extStorage.set(toSync);
-                        } catch (e) { /* ignore */ }
                         resolve();
                     }).catch(() => resolve());
                 }
@@ -246,16 +192,6 @@
                                     if (shouldManage(k)) internal.set(k, items[k]);
                                 });
                             } catch(e) { /* ignore */ }
-                            try {
-                                const localEntries = loadLocalEntries();
-                                const toSync = {};
-                                Object.keys(localEntries).forEach((k) => {
-                                    if (!shouldManage(k) || internal.has(k)) return;
-                                    internal.set(k, localEntries[k]);
-                                    toSync[k] = localEntries[k];
-                                });
-                                if (Object.keys(toSync).length) extStorage.set(toSync);
-                            } catch (e) { /* ignore */ }
                             resolve();
                         }).catch(() => resolve());
                     } else {
@@ -296,12 +232,6 @@
             pendingWrites.set(key, value);
             debugStore('setItem queued', key);
             scheduleFlush();
-            try {
-                if (localStore && shouldBackupKey(key)) {
-                    const serialized = serializeForLocal(value);
-                    if (serialized !== null) localStore.setItem(key, serialized);
-                }
-            } catch (e) { /* ignore */ }
             // Dispatch a lightweight in-page event so UI can react immediately to important keys
             try {
                 if (typeof document !== 'undefined') {
@@ -313,9 +243,6 @@
         removeItem(key) {
             internal.delete(key);
             debugStore('removeItem', key);
-            try {
-                if (localStore && shouldBackupKey(key)) localStore.removeItem(key);
-            } catch (e) { /* ignore */ }
             if (extStorage) {
                 try {
                     try {
