@@ -14,6 +14,37 @@
     const runtimeAPI = resolveRuntimeAPI();
     const nativeHostName = 'com.percex.club_royale_and_blue_chip_offers';
 
+    const localStore = (function() {
+        try {
+            if (typeof localStorage !== 'undefined') return localStorage;
+        } catch (e) { /* ignore */ }
+        return null;
+    })();
+
+    function shouldBackupKey(key) {
+        if (typeof key !== 'string') return false;
+        return key.startsWith('gobo') || key.startsWith('goob-') || key.startsWith('gobohidden');
+    }
+
+    function serializeForLocal(value) {
+        if (typeof value === 'string') return value;
+        try { return JSON.stringify(value); } catch (e) { return null; }
+    }
+
+    function loadLocalEntries() {
+        if (!localStore) return {};
+        const entries = {};
+        try {
+            for (let i = 0; i < localStore.length; i += 1) {
+                const key = localStore.key(i);
+                if (!shouldBackupKey(key)) continue;
+                const value = localStore.getItem(key);
+                if (value !== null) entries[key] = value;
+            }
+        } catch (e) { /* ignore */ }
+        return entries;
+    }
+
     function callNativeStorage(payload) {
         if (!runtimeAPI || typeof runtimeAPI.sendNativeMessage !== 'function') return null;
         return new Promise((resolve, reject) => {
@@ -155,7 +186,14 @@
     }
 
     function loadAll(resolve) {
-        if (!extStorage) { resolve(); return; }
+        if (!extStorage) {
+            const localEntries = loadLocalEntries();
+            Object.keys(localEntries).forEach((k) => {
+                if (shouldManage(k) && !internal.has(k)) internal.set(k, localEntries[k]);
+            });
+            resolve();
+            return;
+        }
         try {
             // Support both callback-style and Promise-style get
             try {
@@ -165,6 +203,16 @@
                             if (shouldManage(k)) internal.set(k, items[k]);
                         });
                     } catch(e) { /* ignore */ }
+                    try {
+                        const localEntries = loadLocalEntries();
+                        const toSync = {};
+                        Object.keys(localEntries).forEach((k) => {
+                            if (!shouldManage(k) || internal.has(k)) return;
+                            internal.set(k, localEntries[k]);
+                            toSync[k] = localEntries[k];
+                        });
+                        if (Object.keys(toSync).length) extStorage.set(toSync);
+                    } catch (e) { /* ignore */ }
                     resolve();
                 });
                 if (maybePromise && typeof maybePromise.then === 'function') {
@@ -174,6 +222,16 @@
                                 if (shouldManage(k)) internal.set(k, items[k]);
                             });
                         } catch(e) { /* ignore */ }
+                        try {
+                            const localEntries = loadLocalEntries();
+                            const toSync = {};
+                            Object.keys(localEntries).forEach((k) => {
+                                if (!shouldManage(k) || internal.has(k)) return;
+                                internal.set(k, localEntries[k]);
+                                toSync[k] = localEntries[k];
+                            });
+                            if (Object.keys(toSync).length) extStorage.set(toSync);
+                        } catch (e) { /* ignore */ }
                         resolve();
                     }).catch(() => resolve());
                 }
@@ -188,6 +246,16 @@
                                     if (shouldManage(k)) internal.set(k, items[k]);
                                 });
                             } catch(e) { /* ignore */ }
+                            try {
+                                const localEntries = loadLocalEntries();
+                                const toSync = {};
+                                Object.keys(localEntries).forEach((k) => {
+                                    if (!shouldManage(k) || internal.has(k)) return;
+                                    internal.set(k, localEntries[k]);
+                                    toSync[k] = localEntries[k];
+                                });
+                                if (Object.keys(toSync).length) extStorage.set(toSync);
+                            } catch (e) { /* ignore */ }
                             resolve();
                         }).catch(() => resolve());
                     } else {
@@ -228,6 +296,12 @@
             pendingWrites.set(key, value);
             debugStore('setItem queued', key);
             scheduleFlush();
+            try {
+                if (localStore && shouldBackupKey(key)) {
+                    const serialized = serializeForLocal(value);
+                    if (serialized !== null) localStore.setItem(key, serialized);
+                }
+            } catch (e) { /* ignore */ }
             // Dispatch a lightweight in-page event so UI can react immediately to important keys
             try {
                 if (typeof document !== 'undefined') {
@@ -239,6 +313,9 @@
         removeItem(key) {
             internal.delete(key);
             debugStore('removeItem', key);
+            try {
+                if (localStore && shouldBackupKey(key)) localStore.removeItem(key);
+            } catch (e) { /* ignore */ }
             if (extStorage) {
                 try {
                     try {

@@ -6,10 +6,13 @@
 
     // Read persisted settings early so runtime flags (like BackToBackAutoRun) are available
     let __goboSettings = {};
-    try {
-        const raw = (typeof goboStorageGet === 'function') ? goboStorageGet('goboSettings') : null;
-        __goboSettings = raw ? JSON.parse(raw || '{}') || {} : {};
-    } catch(e) { __goboSettings = {}; }
+    const readGoboSettings = () => {
+        try {
+            const raw = (typeof goboStorageGet === 'function') ? goboStorageGet('goboSettings') : null;
+            return raw ? JSON.parse(raw || '{}') || {} : {};
+        } catch(e) { return {}; }
+    };
+    __goboSettings = readGoboSettings();
 
     // Global App object to coordinate modules (merge instead of overwrite to keep advanced-only utilities)
     window.App = {
@@ -98,6 +101,14 @@
         // runtime flag to control expensive B2B computations; default true for backwards compatibility
         BackToBackAutoRun: (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true,
         ProfileCache: _prev.ProfileCache || [],
+        refreshSettingsFromStorage() {
+            try {
+                const latest = readGoboSettings();
+                __goboSettings = latest || {};
+                App.BackToBackAutoRun = (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true;
+            } catch(e) { /* ignore */ }
+            try { App.applyTheme(); } catch(e) { /* ignore */ }
+        },
         applyTheme() {
             try {
                 const enabled = (App && App.SettingsStore && typeof App.SettingsStore.getDarkMode === 'function') ? App.SettingsStore.getDarkMode() : false;
@@ -116,6 +127,11 @@
                     App.applyTheme();
                 }
             } catch(e) { /* ignore */ }
+            try {
+                if (typeof document !== 'undefined') {
+                    document.addEventListener('goboStorageReady', () => App.refreshSettingsFromStorage());
+                }
+            } catch(e) { /* ignore */ }
         }
     };
 
@@ -128,10 +144,7 @@
                     if (!key) return;
                     if (key === 'goboSettings') {
                         try {
-                            const v = (typeof goboStorageGet === 'function') ? goboStorageGet('goboSettings') : null;
-                            const parsed = v ? JSON.parse(v) : {};
-                            App.BackToBackAutoRun = (typeof parsed.autoRunB2B !== 'undefined') ? !!parsed.autoRunB2B : true;
-                            try { App.applyTheme(); } catch(e) { /* ignore */ }
+                            App.refreshSettingsFromStorage();
                         } catch(e) { /* ignore */ }
                     }
                 } catch(e) { /* ignore */ }

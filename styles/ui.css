@@ -686,9 +686,9 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
 .gobo-legend-label-newest { color:#14532d; }
 
 body.gobo-dark .gobo-legend-box { border-color: rgba(148,163,184,0.6); }
-body.gobo-dark .gobo-legend-box-expiring { background:#946875; }
+body.gobo-dark .gobo-legend-box-expiring { background:#231015; }
 body.gobo-dark .gobo-legend-box-newest { background:#064e3b; }
-body.gobo-dark .gobo-legend-label-expiring { color:#fee2e2; }
+body.gobo-dark .gobo-legend-label-expiring { color:#e9c1c8; }
 body.gobo-dark .gobo-legend-label-newest { color:#ecfdf5; }
 
 body.gobo-dark .newest-offer-row {
@@ -697,8 +697,8 @@ body.gobo-dark .newest-offer-row {
 }
 body.gobo-dark .newest-offer-row a { color:inherit; }
 body.gobo-dark .expiring-soon-row {
-    background:#946875 !important;
-    color:#fee2e2;
+    background:#231015 !important;
+    color:#e9c1c8;
 }
 body.gobo-dark .expiring-soon-row a { color:inherit; }
 
