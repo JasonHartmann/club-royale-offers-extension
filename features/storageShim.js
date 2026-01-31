@@ -5,9 +5,106 @@
 (function() {
     const DEBUG_STORAGE = false; // set true to trace shim behavior during development
     function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
+    function resolveRuntimeAPI() {
+        if (typeof browser !== 'undefined' && browser.runtime) return browser.runtime;
+        if (typeof chrome !== 'undefined' && chrome.runtime) return chrome.runtime;
+        return null;
+    }
+
+    const runtimeAPI = resolveRuntimeAPI();
+    const nativeHostName = 'com.percex.club_royale_and_blue_chip_offers';
+
+    function callNativeStorage(payload) {
+        if (!runtimeAPI || typeof runtimeAPI.sendNativeMessage !== 'function') return null;
+        return new Promise((resolve, reject) => {
+            const message = Object.assign({ channel: 'gobo-storage' }, payload);
+            let completed = false;
+            const finish = (result, error) => {
+                if (completed) return;
+                completed = true;
+                if (error) reject(error); else resolve(result || {});
+            };
+            try {
+                const sendNative = runtimeAPI.sendNativeMessage.bind(runtimeAPI);
+                const expectsCallback = sendNative.length === 3;
+                const completionHandler = (response) => {
+                    try {
+                        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+                            finish(null, chrome.runtime.lastError);
+                            return;
+                        }
+                    } catch (_) {}
+                    finish(response, null);
+                };
+
+                const maybePromise = expectsCallback
+                    ? sendNative(nativeHostName, message, completionHandler)
+                    : sendNative(nativeHostName, message);
+
+                if (!expectsCallback) {
+                    // Promise-based implementation (Safari/Firefox style)
+                    if (maybePromise && typeof maybePromise.then === 'function') {
+                        maybePromise.then((resp) => finish(resp, null)).catch((err) => finish(null, err));
+                    } else {
+                        // No promise returned; resolve immediately
+                        finish(maybePromise, null);
+                    }
+                } else if (maybePromise && typeof maybePromise.then === 'function') {
+                    // Chrome-style also supports promises in MV3
+                    maybePromise.then((resp) => finish(resp, null)).catch((err) => finish(null, err));
+                }
+            } catch (err) {
+                finish(null, err);
+            }
+        });
+    }
+
+    function createNativeStorageProxy() {
+        if (!runtimeAPI || typeof runtimeAPI.sendNativeMessage !== 'function') return null;
+
+        const withCallback = (promise, callback, fallbackValue) => {
+            if (typeof callback === 'function') {
+                promise.then((value) => callback(value)).catch(() => callback(fallbackValue));
+                return undefined;
+            }
+            return promise;
+        };
+
+        const normalizeKeys = (input) => {
+            if (input == null) return null;
+            if (Array.isArray(input)) return input;
+            if (typeof input === 'string') return [input];
+            if (typeof input === 'object') return Object.keys(input);
+            return null;
+        };
+
+        return {
+            get(keys, callback) {
+                const promise = callNativeStorage({ op: 'get', keys: normalizeKeys(keys) }).then((resp) => resp.result || {});
+                return withCallback(promise, callback, {});
+            },
+            set(items, callback) {
+                const payload = (items && typeof items === 'object') ? items : {};
+                const promise = callNativeStorage({ op: 'set', entries: payload }).then((resp) => resp.result || {});
+                return withCallback(promise, callback, null);
+            },
+            remove(keys, callback) {
+                const list = normalizeKeys(keys) || [];
+                const promise = callNativeStorage({ op: 'remove', keys: list }).then((resp) => resp.result || {});
+                return withCallback(promise, callback, null);
+            },
+            clear(callback) {
+                const promise = callNativeStorage({ op: 'clear' }).then((resp) => resp.result || {});
+                return withCallback(promise, callback, null);
+            }
+        };
+    }
+
     const extStorage = (function() {
         if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) return browser.storage.local;
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) return chrome.storage.local;
+        const nativeProxy = createNativeStorageProxy();
+        if (nativeProxy) return nativeProxy;
         return null;
     })();
     const internal = new Map();

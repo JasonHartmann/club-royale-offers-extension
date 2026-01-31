@@ -10,7 +10,10 @@
       "strict_min_version": "102.0"
     }
   },
-  "permissions": ["storage"],
+  "permissions": [
+    "storage",
+    "nativeMessaging"
+  ],
   "icons": {
     "48": "images/percex-48.png",
     "128": "images/percex-128.png",
