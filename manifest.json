@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Comp Royale Offers Viewer",
-  "short_name": "Comp Royale Offers Viewer",
+  "name": "Cruise Comp Offers Viewer",
+  "short_name": "Cruise Comp Offers",
   "version": "2.1",
-  "description": "View Royal Caribbean Club Royale & Celebrity Blue Chip comp offers in a sortable, groupable table and accordion.",
+  "description": "View cruise comp offers in a sortable, groupable table and accordion.",
   "browser_specific_settings": {
     "gecko": {
       "id": "club-royale-offers@percex.local",

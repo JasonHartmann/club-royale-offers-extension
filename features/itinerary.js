@@ -840,10 +840,20 @@
                                 youPayTitle = `You Pay = Base Price (${currentPriceNum.toFixed(2)} ${currency}) because awarded and lower categories are sold out.`;
                             } else if(isOneGuestOffer && singleGuestOfferValue!=null){
                                 let calc = currentPriceNum - singleGuestOfferValue;
-                                if(!isFinite(calc) || calc < Number(taxesForCalc)) calc = Number(taxesForCalc);
+                                if (includeTaxesFlag) {
+                                    if(!isFinite(calc) || calc < Number(taxesForCalc)) calc = Number(taxesForCalc);
+                                } else {
+                                    calc = calc - Number(taxesNumber);
+                                    if(!isFinite(calc) || calc < 0) calc = 0;
+                                }
                                 estimatedNum = calc;
-                                const taxesNote = includeTaxesFlag ? `+ Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})` : '+ Taxes & Fees (Excluded)';
-                                youPayTitle = `You Pay = max(Base Price (${currentPriceNum.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency}), Taxes & Fees) = ${Number(estimatedNum).toFixed(2)} ${currency} ${taxesNote}`;
+                                if (includeTaxesFlag) {
+                                    const taxesNote = `Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})`;
+                                    youPayTitle = `You Pay = max(Base Price (${currentPriceNum.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency}), ${taxesNote}) = ${Number(estimatedNum).toFixed(2)} ${currency}`;
+                                } else {
+                                    const taxesNote = `Taxes & Fees Excluded (${taxesNumber.toFixed(2)} ${currency})`;
+                                    youPayTitle = `You Pay = Base Price (${currentPriceNum.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency}) − ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}`;
+                                }
                             } else if(effectiveOfferPriceNum!=null){
                                 const currentMatchesAward = (thisCat && awardedInfo && thisCat===awardedInfo.category);
                                 if(currentMatchesAward){

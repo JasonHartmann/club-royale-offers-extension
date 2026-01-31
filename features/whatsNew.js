@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '8'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns
+    const TOUR_REVISION = '9'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -135,6 +135,12 @@
                     target:()=> document.querySelector('th[data-key="oceanViewUpgrade"], td[data-col="oceanViewUpgrade"]') || document.querySelector('th[data-key="balconyUpgrade"], td[data-col="balconyUpgrade"]') || document.querySelector('th[data-key="suiteUpgrade"], td[data-col="suiteUpgrade"]') || null,
                     title:'OV / Balcony / Suite',
                     body:'New OV, Balcony, and Suite columns show estimated You Pay pricing for each category.',
+                },
+                {
+                    id:'pricingTooltips',
+                    target:()=> document.querySelector('th[data-key="destination"], td[data-col="destination"]') || null,
+                    title:'Pricing Tooltips',
+                    body:'Click a Destination entry to open the itinerary popup, then tap a “You Pay” value to see the new pricing tooltip breakdown.',
                 },
                 {
                     id:'supportCoffee',

@@ -121,6 +121,8 @@ body.gobo-dark .adv-date-range-wrapper { background:#0b1220; border:1px solid rg
 body.gobo-dark .adv-date-range-controls button { background:#111827; border:1px solid rgba(148,163,184,0.2); color:#e2e8f0; }
 body.gobo-dark .adv-cal-grid th { color:#cbd5f5; }
 body.gobo-dark .adv-date-range-summary { color:#e2e8f0; }
+body.gobo-dark .adv-date-range-footer button { background:#1f2937; border:1px solid rgba(148,163,184,0.35); color:#e2e8f0; }
+body.gobo-dark .adv-date-range-footer button:hover { background:#273449; }
 body.gobo-dark .adv-search-empty-inline,
 body.gobo-dark .adv-search-disabled-msg {
 	color:#cbd5f5;
