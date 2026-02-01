@@ -60,10 +60,20 @@ jobs:
           path: ClubRoyaleSafari
           token: ${{ secrets.SAFARI_XCODE_TOKEN }}
 
+      - name: Resolve Xcode project path (if missing)
+        if: ${{ vars.SAFARI_XCODE_PROJECT_PATH == '' }}
+        run: |
+          PROJECT_PATH=$(find "$GITHUB_WORKSPACE/ClubRoyaleSafari" -name "*.xcodeproj" -maxdepth 6 -print -quit)
+          if [ -z "$PROJECT_PATH" ]; then
+            echo "No .xcodeproj found under ClubRoyaleSafari" >&2
+            exit 1
+          fi
+          echo "XCODE_PROJECT_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
+
       - name: Build Safari bundles
         run: ./club-royale-offers-extension/scripts/build-safari-xcode.sh
         env:
-          XCODE_PROJECT_PATH: ${{ github.workspace }}/ClubRoyaleSafari/Comp Royale Offers/Comp Royale Offers.xcodeproj
+          XCODE_PROJECT_PATH: ${{ vars.SAFARI_XCODE_PROJECT_PATH || env.XCODE_PROJECT_PATH }}
 
       - name: Upload Safari artifacts
         uses: actions/upload-artifact@v4
