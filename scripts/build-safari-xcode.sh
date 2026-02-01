@@ -20,6 +20,45 @@ fi
 
 mkdir -p "$ARTIFACTS_DIR"
 
+if ! xcodebuild -project "$XCODE_PROJECT_PATH" -scheme "$SCHEME" -list >/dev/null 2>&1; then
+  SCHEME=$(/usr/bin/python3 - <<'PY'
+import json
+import subprocess
+import sys
+
+project_path = sys.argv[1]
+result = subprocess.run(
+    ["xcodebuild", "-project", project_path, "-list", "-json"],
+    check=False,
+    capture_output=True,
+    text=True,
+)
+if result.returncode != 0:
+    sys.exit(result.returncode)
+
+data = json.loads(result.stdout)
+schemes = data.get("project", {}).get("schemes", [])
+if not schemes:
+    sys.exit(1)
+
+preferred = None
+for scheme in schemes:
+    if "macos" in scheme.lower():
+        preferred = scheme
+        break
+
+print(preferred or schemes[0])
+PY
+"$XCODE_PROJECT_PATH")
+
+  if [ -z "$SCHEME" ]; then
+    echo "Error: No scheme found in project $XCODE_PROJECT_PATH" >&2
+    exit 1
+  fi
+
+  echo "Using detected scheme: $SCHEME"
+fi
+
 xcodebuild \
   -project "$XCODE_PROJECT_PATH" \
   -scheme "$SCHEME" \
