@@ -58,6 +58,7 @@ jobs:
           repository: ${{ vars.SAFARI_XCODE_REPO }}
           ref: ${{ vars.SAFARI_XCODE_REF || 'main' }}
           path: ClubRoyaleSafari
+          token: ${{ secrets.SAFARI_XCODE_TOKEN }}
 
       - name: Link extension repo for Xcode references
         run: ln -s "$GITHUB_WORKSPACE/club-royale-offers-extension" "$GITHUB_WORKSPACE/../club-royale-offers-extension"
