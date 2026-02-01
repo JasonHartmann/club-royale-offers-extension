@@ -60,11 +60,6 @@ jobs:
           path: ClubRoyaleSafari
           token: ${{ secrets.SAFARI_XCODE_TOKEN }}
 
-      - name: Link extension repo for Xcode references
-        run: |
-          rm -rf "$GITHUB_WORKSPACE/../club-royale-offers-extension"
-          ln -sfn "$GITHUB_WORKSPACE/club-royale-offers-extension" "$GITHUB_WORKSPACE/../club-royale-offers-extension"
-
       - name: Build Safari bundles
         run: ./club-royale-offers-extension/scripts/build-safari-xcode.sh
         env:
