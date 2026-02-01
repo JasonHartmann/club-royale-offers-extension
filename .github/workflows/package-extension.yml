@@ -68,6 +68,9 @@ jobs:
           fi
           echo "XCODE_PROJECT_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
 
+      - name: Install extension dependencies
+        run: npm ci
+
       - name: Build Safari bundles
         run: ./scripts/build-safari-xcode.sh
         env:
