@@ -49,8 +49,6 @@ jobs:
     steps:
       - name: Checkout extension repository
         uses: actions/checkout@v4
-        with:
-          path: club-royale-offers-extension
 
       - name: Checkout Safari Xcode repository
         uses: actions/checkout@v4
@@ -71,7 +69,7 @@ jobs:
           echo "XCODE_PROJECT_PATH=$PROJECT_PATH" >> "$GITHUB_ENV"
 
       - name: Build Safari bundles
-        run: ./club-royale-offers-extension/scripts/build-safari-xcode.sh
+        run: ./scripts/build-safari-xcode.sh
         env:
           XCODE_PROJECT_PATH: ${{ vars.SAFARI_XCODE_PROJECT_PATH || env.XCODE_PROJECT_PATH }}
 
