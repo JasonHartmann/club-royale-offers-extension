@@ -21,7 +21,7 @@ fi
 mkdir -p "$ARTIFACTS_DIR"
 
 if ! xcodebuild -project "$XCODE_PROJECT_PATH" -scheme "$SCHEME" -list >/dev/null 2>&1; then
-  SCHEME=$(/usr/bin/python3 - <<'PY'
+  SCHEME=$(/usr/bin/python3 - "$XCODE_PROJECT_PATH" <<'PY'
 import json
 import subprocess
 import sys
@@ -49,7 +49,7 @@ for scheme in schemes:
 
 print(preferred or schemes[0])
 PY
-"$XCODE_PROJECT_PATH")
+)
 
   if [ -z "$SCHEME" ]; then
     echo "Error: No scheme found in project $XCODE_PROJECT_PATH" >&2
@@ -59,6 +59,17 @@ PY
   echo "Using detected scheme: $SCHEME"
 fi
 
+FULL_PRODUCT_NAME=$(xcodebuild -project "$XCODE_PROJECT_PATH" -scheme "$SCHEME" -configuration "$CONFIGURATION" -showBuildSettings \
+  | awk -F' = ' '/FULL_PRODUCT_NAME/ {print $2; exit}')
+if [ -z "$FULL_PRODUCT_NAME" ]; then
+  FULL_PRODUCT_NAME="${APP_NAME}.app"
+fi
+
+APP_DISPLAY_NAME="${FULL_PRODUCT_NAME%.app}"
+if [ -z "${APP_NAME:-}" ]; then
+  APP_NAME="$APP_DISPLAY_NAME"
+fi
+
 xcodebuild \
   -project "$XCODE_PROJECT_PATH" \
   -scheme "$SCHEME" \
@@ -66,19 +77,19 @@ xcodebuild \
   -derivedDataPath "$DERIVED_DATA" \
   build
 
-APP_PATH="$DERIVED_DATA/Build/Products/$CONFIGURATION/$APP_NAME.app"
+APP_PATH="$DERIVED_DATA/Build/Products/$CONFIGURATION/$FULL_PRODUCT_NAME"
 if [ ! -d "$APP_PATH" ]; then
   echo "Error: build output not found at $APP_PATH" >&2
   exit 1
 fi
 
-SAFE_APP_NAME="${APP_NAME// /-}"
+SAFE_APP_NAME="${APP_DISPLAY_NAME// /-}"
 ZIP_PATH="$ARTIFACTS_DIR/${SAFE_APP_NAME}-macos.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
 
 echo "Created macOS app zip: $ZIP_PATH"
 
-EXTENSION_APPEX="$APP_PATH/Contents/PlugIns/$APP_NAME Extension.appex"
+EXTENSION_APPEX="$APP_PATH/Contents/PlugIns/$APP_DISPLAY_NAME Extension.appex"
 if [ -d "$EXTENSION_APPEX" ]; then
   APPEX_ZIP="$ARTIFACTS_DIR/${SAFE_APP_NAME}-extension.appex.zip"
   ditto -c -k --sequesterRsrc --keepParent "$EXTENSION_APPEX" "$APPEX_ZIP"
