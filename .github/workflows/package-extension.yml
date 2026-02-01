@@ -63,7 +63,7 @@ jobs:
       - name: Link extension repo for Xcode references
         run: |
           rm -rf "$GITHUB_WORKSPACE/../club-royale-offers-extension"
-          ln -s "$GITHUB_WORKSPACE/club-royale-offers-extension" "$GITHUB_WORKSPACE/../club-royale-offers-extension"
+          ln -sfn "$GITHUB_WORKSPACE/club-royale-offers-extension" "$GITHUB_WORKSPACE/../club-royale-offers-extension"
 
       - name: Build Safari bundles
         run: ./club-royale-offers-extension/scripts/build-safari-xcode.sh
