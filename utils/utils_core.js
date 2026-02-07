@@ -37,6 +37,7 @@ function _recordReason(reason, offer, sailing) {
 }
 function _logOfferValueSummary(tag='OfferValueSummary') {
     if (!_offerValueStats) return;
+    try { if (typeof window !== 'undefined' && !window.GOBO_DEBUG_LOGS) return; } catch(e){}
     const s = _offerValueStats;
     const missingPct = s.totalRows ? ((s.missing / s.totalRows) * 100).toFixed(1) : '0.0';
     const computedPct = s.totalRows ? ((s.computed / s.totalRows) * 100).toFixed(1) : '0.0';
@@ -183,32 +184,16 @@ const Utils = {
         try {
             if (!Utils._suiteWrapLogCount) Utils._suiteWrapLogCount = 0;
             Utils._suiteWrapLogCount += 1;
-            const n = Utils._suiteWrapLogCount;
-            if (n <= 8 || n % 40 === 0) {
-                const shipCode = (sailing && sailing.shipCode) ? String(sailing.shipCode).trim() : null;
-                const sailDate = (sailing && sailing.sailDate) ? String(sailing.sailDate).trim().slice(0,10) : null;
-                const hasPricingUtils = typeof PricingUtils !== 'undefined' || (typeof App !== 'undefined' && App && App.PricingUtils);
-                const hasItin = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.all === 'function');
-                console.info('[SuiteWrap]', { includeTaxes, shipCode, sailDate, hasPricingUtils, hasItin });
-            }
         } catch(eLog) { /* ignore */ }
         try {
             if (typeof App !== 'undefined' && App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') {
                 const res = App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
-                try {
-                    const n = Utils._suiteWrapLogCount || 0;
-                    if (n <= 8 || n % 40 === 0) console.info('[SuiteWrapResult]', { result: res });
-                } catch(eRes) { /* ignore */ }
                 return res;
             }
         } catch(e) { /* ignore */ }
         try {
             if (typeof PricingUtils !== 'undefined' && PricingUtils && typeof PricingUtils.computeSuiteUpgradePrice === 'function') {
                 const res = PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
-                try {
-                    const n = Utils._suiteWrapLogCount || 0;
-                    if (n <= 8 || n % 40 === 0) console.info('[SuiteWrapResult]', { result: res });
-                } catch(eRes2) { /* ignore */ }
                 return res;
             }
         } catch(e) { /* ignore */ }

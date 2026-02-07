@@ -228,7 +228,7 @@ Key files:
 Tips for fast iteration:
 - Use Chrome’s **Extensions** toolbar button → “Inspect views” to open a DevTools console scoped to the content script.
 - The `styles/` folder is read directly; editing CSS and pressing `Ctrl/Cmd+R` on the target tab reapplies styles immediately.
-- If you need persistent test data, toggle `window.GOBO_DEBUG_ENABLED = true` (see Debug Logging section) and inspect `chrome.storage.local` via DevTools → Application tab.
+- If you need persistent test data, toggle `window.GOBO_DEBUG_LOGS = true` (see Debug Logging section) and inspect `chrome.storage.local` via DevTools → Application tab.
 
 ### Project Layout Cheat Sheet
 
@@ -337,19 +337,19 @@ Found a bug or have an improvement idea? Please open an issue or submit a pull r
 
 ## Debug Logging Toggle
 
-All verbose debug output (console.debug and any console.log / console.info lines beginning with `[DEBUG]`) is now gated behind a single immutable global constant: `window.GOBO_DEBUG_ENABLED`.
+All verbose debug output (console.debug and any console.log / console.info lines beginning with `[DEBUG]`) is now gated behind a single global flag: `window.GOBO_DEBUG_LOGS`.
 
 ### How to Enable
-1. Open `safari-polyfill.js` (first script loaded per `manifest.json`).
-2. Change the value in the `Object.defineProperty(window, 'GOBO_DEBUG_ENABLED', { value: false, ... })` call from `false` to `true`.
+1. Open DevTools on the target page.
+2. Set `window.GOBO_DEBUG_LOGS = true`.
 3. Reload the extension (or the tab) to start seeing debug output.
 
 ### Behavior
-- When `GOBO_DEBUG_ENABLED` is `false` (default):
+- When `GOBO_DEBUG_LOGS` is `false` (default):
   - `console.debug(...)` produces no output.
   - `console.log('[DEBUG] ...')` and `console.info('[DEBUG] ...')` are suppressed.
   - Regular `console.log`, `console.info`, `console.warn`, and `console.error` remain visible.
-- When `GOBO_DEBUG_ENABLED` is `true`: all original logging behavior is restored.
+- When `GOBO_DEBUG_LOGS` is `true`: all original logging behavior is restored.
 
 ### Preferred Helper
 Use `dlog('message', data)` for future debug statements. It automatically respects the global toggle and maps to `console.debug` internally.

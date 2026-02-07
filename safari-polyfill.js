@@ -1,7 +1,23 @@
 // Lightweight polyfill to smooth Safari Web Extension compatibility.
 // Injects a minimal chrome namespace in Safari (which provides browser.*),
 // and a minimal browser namespace in Chromium-based browsers if needed.
+// >>> GLOBAL DEBUG TOGGLE <<<
+// Set window.GOBO_DEBUG_LOGS = true to enable verbose debug logging globally.
+(function(){
+    try {
+        if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS === 'undefined') {
+            window.GOBO_DEBUG_LOGS = false;
+        }
+    } catch(e){ /* ignore */ }
+})();
 (function () {
+    try {
+        if (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS && typeof console !== 'undefined' && console.log) {
+            console.log('[Extension] safari-polyfill loaded');
+        }
+    } catch (e) {
+        // ignore
+    }
     try {
         // Provide chrome -> browser bridge for Safari (Safari exposes browser.* APIs)
         if (typeof chrome === 'undefined' && typeof browser !== 'undefined') {
@@ -25,12 +41,12 @@
     }
 })();
 
-// Global debug logging toggle (immutable). Set to true to enable verbose debug output.
-// To enable debug logging for development, change the value below to true and reload the extension.
+// Global debug logging toggle. Set to true to enable verbose debug output.
+// To enable debug logging for development, set window.GOBO_DEBUG_LOGS = true and reload the extension.
 (function(){
     try {
-        if (typeof window !== 'undefined' && !('GOBO_DEBUG_ENABLED' in window)) {
-            Object.defineProperty(window, 'GOBO_DEBUG_ENABLED', { value: false, writable: false, configurable: false });
+        if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS === 'undefined') {
+            window.GOBO_DEBUG_LOGS = false;
         }
         // Monkey patch debug-level logging so existing calls don't need modification.
         const noop = function(){};
@@ -45,7 +61,7 @@
             ];
             console.debug = function(...args){
                 try {
-                    if (!window.GOBO_DEBUG_ENABLED) return;
+                    if (!window.GOBO_DEBUG_LOGS) return;
                     if (args && args.length && typeof args[0] === 'string') {
                         for (let i = 0; i < DEBUG_SUPPRESS_PATTERNS.length; i++) {
                             try { if (DEBUG_SUPPRESS_PATTERNS[i].test(args[0])) return; } catch(e){}
@@ -55,13 +71,13 @@
                 origDebug(...args);
             };
             // Filter only explicit [DEBUG] tagged log lines for console.log; leave other logs intact.
-            console.log = function(...args){ if (!window.GOBO_DEBUG_ENABLED && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origLog(...args); };
+            console.log = function(...args){ if (!window.GOBO_DEBUG_LOGS && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origLog(...args); };
             // Treat console.info as debug-level only if prefixed with [DEBUG] to avoid hiding informational user-facing messages.
-            console.info = function(...args){ if (!window.GOBO_DEBUG_ENABLED && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origInfo(...args); };
+            console.info = function(...args){ if (!window.GOBO_DEBUG_LOGS && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origInfo(...args); };
         }
         // Convenience helper for new debug messages (preferred): window.dlog('message', data)
         if (typeof window !== 'undefined' && !window.dlog) {
-            window.dlog = function(...args){ if (!window.GOBO_DEBUG_ENABLED) return; try { origDebug(...args); } catch(e){} };
+            window.dlog = function(...args){ if (!window.GOBO_DEBUG_LOGS) return; try { origDebug(...args); } catch(e){} };
         }
     } catch(patchErr){ /* ignore patch errors */ }
 })();

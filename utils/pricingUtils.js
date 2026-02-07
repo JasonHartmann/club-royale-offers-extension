@@ -17,7 +17,12 @@
     };
     const WIDE_CATS = ['INTERIOR','OUTSIDE','BALCONY','DELUXE'];
 
+    function debugEnabled(){
+        try { return (typeof window !== 'undefined' && !!window.GOBO_DEBUG_LOGS); } catch(e){ return false; }
+    }
+
     function dbg(){
+        if (!debugEnabled()) return;
         try { console.debug('[PricingUtils]', ...arguments); } catch(e){ /* ignore */ }
     }
 
@@ -104,7 +109,7 @@
                     if (!isFinite(parsed)) {
                         App.PricingUtils._parseNaNCount = (App.PricingUtils._parseNaNCount || 0) + 1;
                         if (App.PricingUtils._parseNaNCount <= 50) {
-                            try { console.debug('[PricingUtils] parsePriceRaw:NaN sample', { key:k, code, rawPrice, parsed }); } catch(e){}
+                            try { if (debugEnabled()) console.debug('[PricingUtils] parsePriceRaw:NaN sample', { key:k, code, rawPrice, parsed }); } catch(e){}
                         }
                     }
                 } catch{}
@@ -123,9 +128,9 @@
 
     function computeUpgradePrice(targetBroad, dbgLabel, offer, sailing, options){
         try {
-            const suiteDbg = true; // Sampling-only debug logging
+            const suiteDbg = false; // Sampling-only debug logging
             const dbgLog = (tag, payload) => {
-                if (!suiteDbg) return;
+                if (!suiteDbg || !debugEnabled()) return;
                 try {
                     App.PricingUtils._suiteDbgCount = (App.PricingUtils._suiteDbgCount || 0) + 1;
                     const n = App.PricingUtils._suiteDbgCount;
@@ -147,7 +152,7 @@
                 // Limited logging to help root-cause
                 try {
                     App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1;
-                    if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] missing prereqs for computeUpgradePrice', { targetBroad, shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined', offerCategory: offer?.category, sailingRoomType: sailing?.roomType });
+                    if (App.PricingUtils._nullReportCount <= 20 && debugEnabled()) console.debug('[PricingUtils] missing prereqs for computeUpgradePrice', { targetBroad, shipCode, sailDate, hasItineraryCache: typeof ItineraryCache !== 'undefined', offerCategory: offer?.category, sailingRoomType: sailing?.roomType });
                 } catch{}
                 return null;
             }
@@ -168,7 +173,7 @@
                             if (!found) found = candidates[0];
                             if (found) {
                                 entry = found;
-                                try { console.debug('[PricingUtils] fallback: resolved itinerary entry by sailDate+shipName', { keyTried: key, resolvedKey: entry && entry.sailDate ? `SD_${entry.shipCode}_${entry.sailDate}` : null, shipName, sailDate, candidateCount: candidates.length }); } catch{}
+                                try { if (debugEnabled()) console.debug('[PricingUtils] fallback: resolved itinerary entry by sailDate+shipName', { keyTried: key, resolvedKey: entry && entry.sailDate ? `SD_${entry.shipCode}_${entry.sailDate}` : null, shipName, sailDate, candidateCount: candidates.length }); } catch{}
                             }
                         }
                     }
@@ -179,7 +184,7 @@
                 dbg('computeUpgradePrice:noPricingEntry', { key, targetBroad, hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
                 try {
                     App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1;
-                    if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no pricing entry for key', key, { targetBroad, hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
+                    if (App.PricingUtils._nullReportCount <= 20 && debugEnabled()) console.debug('[PricingUtils] no pricing entry for key', key, { targetBroad, hasEntry: !!entry, pricingKeys: entry && Object.keys(entry.stateroomPricing || {}) });
                     // Detailed, capped diagnostics to help root-cause: show offer/sailing context and a snapshot of itinerary cache stats
                     App.PricingUtils._detailedNullCount = (App.PricingUtils._detailedNullCount || 0) + 1;
                     if (App.PricingUtils._detailedNullCount <= 50) {
@@ -194,13 +199,13 @@
                                 itineraryCacheSize: (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.all === 'function') ? Object.keys(ItineraryCache.all() || {}).length : null,
                                 entrySnapshotKeys: entry && entry.stateroomPricing ? Object.keys(entry.stateroomPricing).slice(0,10) : []
                             };
-                            console.debug('[PricingUtils][DETAILED] noPricingEntry sample', sample);
+                            if (debugEnabled()) console.debug('[PricingUtils][DETAILED] noPricingEntry sample', sample);
                             if (entry && entry.stateroomPricing) {
                                 const pricingKeys = Object.keys(entry.stateroomPricing || {}).slice(0,10);
                                 pricingKeys.forEach(pk => {
                                     try {
                                         const p = entry.stateroomPricing[pk];
-                                        console.debug('[PricingUtils][DETAILED] pricing sample', { key: pk, code: p && p.code, price: p && (p.price ?? p.amount ?? p.priceAmount), priceType: typeof (p && (p.price ?? p.amount ?? p.priceAmount)) });
+                                        if (debugEnabled()) console.debug('[PricingUtils][DETAILED] pricing sample', { key: pk, code: p && p.code, price: p && (p.price ?? p.amount ?? p.priceAmount), priceType: typeof (p && (p.price ?? p.amount ?? p.priceAmount)) });
                                     } catch{}
                                 });
                             }
@@ -235,7 +240,7 @@
             if (targetPriceNum == null) {
                 dbg('computeUpgradePrice:noTargetPricing', { key, targetBroad });
                 dbgLog(`${dbgLabel}:noTargetPricing`, { key, shipCode, sailDate, targetBroad, includeTaxes });
-                try { App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1; if (App.PricingUtils._nullReportCount <= 20) console.debug('[PricingUtils] no target pricing in entry', key, { targetBroad, pricingKeys: Object.keys(entry.stateroomPricing || {}) }); } catch{}
+                try { App.PricingUtils._nullReportCount = (App.PricingUtils._nullReportCount || 0) + 1; if (App.PricingUtils._nullReportCount <= 20 && debugEnabled()) console.debug('[PricingUtils] no target pricing in entry', key, { targetBroad, pricingKeys: Object.keys(entry.stateroomPricing || {}) }); } catch{}
                 return null;
             }
 

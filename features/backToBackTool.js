@@ -234,7 +234,7 @@
                         });
                     } catch(e) { /* fall back to original rows on error */ }
                     const afterCount = Array.isArray(filtered) ? filtered.length : 0;
-                    if (window && window.GOBO_DEBUG_ENABLED) {
+                    if (window && window.GOBO_DEBUG_LOGS) {
                         try {
                             const removed = beforeCount - afterCount;
                             const sampleRemoved = [];
@@ -312,7 +312,7 @@
         // Debugging helper: capture-phase listener to detect clicks that never reach our handlers
         _installGlobalDebugCapture() {
             try {
-                if (typeof window === 'undefined' || !window.GOBO_DEBUG_ENABLED) return;
+                if (typeof window === 'undefined' || !window.GOBO_DEBUG_LOGS) return;
                 if (this._debugCaptureInstalled) return;
                 const dbg = (ev) => {
                     try {
@@ -522,7 +522,7 @@
                         let longest = null;
                         try {
                             // Avoid heavy diagnostics for very large row sets unless debugging explicitly enabled
-                            const doHeavyDiag = (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) || (Array.isArray(rows) && rows.length <= 500);
+                            const doHeavyDiag = (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS) || (Array.isArray(rows) && rows.length <= 500);
                             // The B2B tool always computes diagnostics regardless of any table-level autorun flag.
                             const autoRunB2B = true;
                             if (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeB2BDepth === 'function') {

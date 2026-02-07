@@ -17,6 +17,7 @@ Practical Guidance
 ------------------
 - Edits: Use the repository's edit workflow. Keep changes focused and avoid unrelated reformatting.
 - Logging: Add guarded, non-sensitive diagnostics only. Avoid committing verbose logs or PII.
+- Debug Flag: All debug output must be gated by the single global flag `window.GOBO_DEBUG_LOGS` (default `false`). Toggle it in DevTools when needed; do not hardcode it to `true` in commits.
 - Tests: Run tests locally when changing core logic; add small focused unit tests when adding significant behavior.
 
 Module Load Order

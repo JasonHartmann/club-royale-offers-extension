@@ -1,4 +1,12 @@
 (function(){
+    // >>> GLOBAL DEBUG TOGGLE <<<
+    // Set window.GOBO_DEBUG_LOGS = true to enable verbose debug logging.
+    try {
+        if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS === 'undefined') {
+            window.GOBO_DEBUG_LOGS = false;
+        }
+    } catch(e){ /* ignore */ }
+
     // Preserve originals
     const _orig = {
         debug: console.debug && console.debug.bind ? console.debug.bind(console) : (...a)=>{},
@@ -45,7 +53,7 @@
     }
 
     function debugEnabled(){
-        try { return (typeof window !== 'undefined' && !!window.GOBO_DEBUG_ENABLED); } catch(e){ return false; }
+        try { return (typeof window !== 'undefined' && !!window.GOBO_DEBUG_LOGS); } catch(e){ return false; }
     }
 
     // Override console.debug to be gated by the global flag

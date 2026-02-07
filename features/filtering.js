@@ -546,7 +546,7 @@ const Filtering = {
             }
         } catch(e) { console.warn('[Filtering][AdvancedSearch] applyAdvancedSearch failed', e); }
         try { console.timeEnd('Filtering.filterOffers'); } catch(e){}
-        if (Filtering.DEBUG && Filtering._lessThanStats && Filtering._lessThanStats.total && window.GOBO_DEBUG_ENABLED) {
+    if (Filtering.DEBUG && Filtering._lessThanStats && Filtering._lessThanStats.total && window.GOBO_DEBUG_LOGS) {
             try {
                 const s = Filtering._lessThanStats;
                 Filtering._dbg('lessThan:summary', {
@@ -1058,7 +1058,7 @@ const Filtering = {
             if (!descriptors.length) return false;
             for (const desc of descriptors) {
                 if (!Filtering._matchesHiddenDescriptor(wrapper, desc)) continue;
-                if (window && window.GOBO_DEBUG_ENABLED) {
+                if (window && window.GOBO_DEBUG_LOGS) {
                     try {
                         const code = (wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.offerCode) ? String(wrapper.offer.campaignOffer.offerCode).trim() : '';
                         const name = (wrapper.offer && wrapper.offer.campaignOffer && wrapper.offer.campaignOffer.name) ? String(wrapper.offer.campaignOffer.name).trim() : '';

@@ -3,8 +3,15 @@
 // for all keys beginning with gobo- / gobohidden / goob- plus specific gobo* keys.
 // This lets existing volatile logic keep sequence without broad async refactors.
 (function() {
-    const DEBUG_STORAGE = false; // set true to trace shim behavior during development
-    function debugStore(...args){ if (DEBUG_STORAGE) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
+    const DEBUG_STORAGE = false; // deprecated; use window.GOBO_DEBUG_LOGS instead
+    function debugEnabled(){ try { return (typeof window !== 'undefined' && !!window.GOBO_DEBUG_LOGS) || DEBUG_STORAGE; } catch(e){ return !!DEBUG_STORAGE; } }
+    function debugStore(...args){ if (debugEnabled()) { try { console.debug('[GoboStore]', ...args); } catch(e){} } }
+    function infoStore(...args){ if (debugEnabled()) { try { console.log('[GoboStore]', ...args); } catch(e){} } }
+    try {
+    const debugFlag = (typeof window !== 'undefined' && 'GOBO_DEBUG_LOGS' in window) ? window.GOBO_DEBUG_LOGS : 'unset';
+    if (debugEnabled()) console.log('[GoboStore] shim loaded', { debugFlag });
+        if (typeof window !== 'undefined') window.__goboStorageShimLoaded = true;
+    } catch(e) { /* ignore */ }
     function resolveRuntimeAPI() {
         if (typeof browser !== 'undefined' && browser.runtime) return browser.runtime;
         if (typeof chrome !== 'undefined' && chrome.runtime) return chrome.runtime;
@@ -12,7 +19,7 @@
     }
 
     const runtimeAPI = resolveRuntimeAPI();
-    const nativeHostName = 'com.percex.club_royale_and_blue_chip_offers';
+    const nativeHostName = 'com.percex.Club-Royale-and-Blue-Chip-Offers';
     let extStorage = null;
 
     const isIOS = (() => {
@@ -21,14 +28,30 @@
             const ua = navigator.userAgent || '';
             const iOSDevice = /iPad|iPhone|iPod/.test(ua);
             const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-            return iOSDevice || iPadOS;
+            const iPadOSMobile = /Macintosh/.test(ua) && /Mobile/.test(ua);
+            return iOSDevice || iPadOS || iPadOSMobile;
         } catch (e) { return false; }
     })();
+
+    const isSafari = (() => {
+        try {
+            if (typeof navigator === 'undefined') return false;
+            const ua = navigator.userAgent || '';
+            const isApple = /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR/.test(ua);
+            return isApple;
+        } catch (e) { return false; }
+    })();
+
+    function shouldManage(key) {
+        if (!key || typeof key !== 'string') return false;
+        return key.startsWith('gobo') || key.startsWith('goob');
+    }
 
     function callNativeStorage(payload) {
         if (!runtimeAPI || typeof runtimeAPI.sendNativeMessage !== 'function') return null;
         return new Promise((resolve, reject) => {
             const message = Object.assign({ channel: 'gobo-storage' }, payload);
+            try { infoStore('nativeMessage', message); } catch(e){}
             let completed = false;
             const finish = (result, error) => {
                 if (completed) return;
@@ -111,55 +134,199 @@
         };
     }
 
+
+    function createIndexedDbStorage() {
+        if (typeof indexedDB === 'undefined') return null;
+        const DB_NAME = 'gobo-storage';
+        const STORE_NAME = 'kv';
+        let dbPromise = null;
+
+        const openDb = () => {
+            if (dbPromise) return dbPromise;
+            dbPromise = new Promise((resolve, reject) => {
+                try {
+                    const request = indexedDB.open(DB_NAME, 1);
+                    request.onupgradeneeded = () => {
+                        const db = request.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+                        }
+                    };
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                } catch (e) {
+                    reject(e);
+                }
+            });
+            return dbPromise;
+        };
+
+        const withStore = (mode, operation) => openDb().then((db) => new Promise((resolve, reject) => {
+            let result;
+            let finished = false;
+            const finish = (err) => {
+                if (finished) return;
+                finished = true;
+                if (err) reject(err); else resolve(result);
+            };
+            try {
+                const tx = db.transaction(STORE_NAME, mode);
+                const store = tx.objectStore(STORE_NAME);
+                operation(store, (value) => { result = value; });
+                tx.oncomplete = () => finish();
+                tx.onerror = () => finish(tx.error || new Error('IndexedDB transaction error'));
+                tx.onabort = () => finish(tx.error || new Error('IndexedDB transaction aborted'));
+            } catch (e) {
+                finish(e);
+            }
+        }));
+
+        const withCallback = (promise, callback, fallbackValue) => {
+            if (typeof callback === 'function') {
+                promise.then((value) => callback(value)).catch(() => callback(fallbackValue));
+                return undefined;
+            }
+            return promise;
+        };
+
+        return {
+            get(keys, callback) {
+                try { infoStore('idb.get', keys == null ? 'all' : keys); } catch(e){}
+                const promise = withStore('readonly', (store, setResult) => {
+                    const result = {};
+                    if (keys == null) {
+                        const req = store.getAll();
+                        req.onsuccess = () => {
+                            try {
+                                (req.result || []).forEach((entry) => {
+                                    if (entry && entry.key != null) result[entry.key] = entry.value;
+                                });
+                            } catch (e) { /* ignore */ }
+                            setResult(result);
+                        };
+                        req.onerror = () => setResult(result);
+                        return;
+                    }
+                    const keyList = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys || {}));
+                    if (!keyList.length) {
+                        setResult(result);
+                        return;
+                    }
+                    let remaining = keyList.length;
+                    keyList.forEach((key) => {
+                        const req = store.get(key);
+                        req.onsuccess = () => {
+                            try {
+                                if (req.result && Object.prototype.hasOwnProperty.call(req.result, 'value')) {
+                                    result[key] = req.result.value;
+                                }
+                            } catch (e) { /* ignore */ }
+                            remaining -= 1;
+                            if (remaining === 0) setResult(result);
+                        };
+                        req.onerror = () => {
+                            remaining -= 1;
+                            if (remaining === 0) setResult(result);
+                        };
+                    });
+                }).catch(() => ({}));
+                return withCallback(promise, callback, {});
+            },
+            set(items, callback) {
+                try { infoStore('idb.set', items ? Object.keys(items).length : 0); } catch(e){}
+                const payload = (items && typeof items === 'object') ? items : {};
+                const promise = withStore('readwrite', (store) => {
+                    Object.keys(payload).forEach((key) => {
+                        try { store.put({ key, value: payload[key] }); } catch (e) { /* ignore */ }
+                    });
+                }).catch(() => ({}));
+                return withCallback(promise, callback, null);
+            },
+            remove(keys, callback) {
+                try { infoStore('idb.remove', keys); } catch(e){}
+                const keyList = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys || {}));
+                const promise = withStore('readwrite', (store) => {
+                    keyList.forEach((key) => {
+                        try { store.delete(key); } catch (e) { /* ignore */ }
+                    });
+                }).catch(() => ({}));
+                return withCallback(promise, callback, null);
+            },
+            clear(callback) {
+                try { infoStore('idb.clear'); } catch(e){}
+                const promise = withStore('readwrite', (store) => {
+                    try { store.clear(); } catch (e) { /* ignore */ }
+                }).catch(() => ({}));
+                return withCallback(promise, callback, null);
+            }
+        };
+    }
+
     const nativeProxy = createNativeStorageProxy();
+        try {
+            infoStore('nativeMessagingAvailable', !!(runtimeAPI && typeof runtimeAPI.sendNativeMessage === 'function'));
+            infoStore('nativeHost', nativeHostName);
+            infoStore('env', { isIOS, isSafari, userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'unknown' });
+        } catch(e) { /* ignore */ }
+    const idbStorage = createIndexedDbStorage();
     extStorage = (function() {
-        if (isIOS && nativeProxy) return nativeProxy;
+        if (isSafari && idbStorage) return idbStorage;
         if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) return browser.storage.local;
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) return chrome.storage.local;
-        if (nativeProxy) return nativeProxy;
+        if (idbStorage) return idbStorage;
         return null;
     })();
+    try {
+        const backend = extStorage === idbStorage ? 'indexeddb' : (extStorage ? 'browser.storage.local' : 'none');
+        infoStore('backend', backend, { isIOS });
+        if (isIOS && backend !== 'indexeddb') infoStore('iosStorageFallback', backend);
+    } catch(e) { /* ignore */ }
     const internal = new Map();
     const pendingWrites = new Map();
     let flushScheduled = false;
 
-    function scheduleFlush() {
+    function flushNow() {
+        if (!extStorage) return;
+        if (pendingWrites.size === 0) return;
+        const batch = {};
+        pendingWrites.forEach((v, k) => { batch[k] = v; });
+        pendingWrites.clear();
+        try {
+            debugStore('flush: writing batch', Object.keys(batch));
+            try {
+                const maybePromise = extStorage.set(batch, () => {
+                    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+                        debugStore('flush: lastError', chrome.runtime.lastError);
+                    }
+                });
+                if (maybePromise && typeof maybePromise.then === 'function') {
+                    maybePromise.catch(e => debugStore('flush: promise error', e));
+                }
+            } catch(cbErr) {
+                try {
+                    const p = extStorage.set(batch);
+                    if (p && typeof p.then === 'function') p.catch(e => debugStore('flush: promise error', e));
+                } catch(pErr) {
+                    debugStore('flush: exception', pErr);
+                }
+            }
+        } catch(e) { debugStore('flush: exception', e); }
+    }
+
+    function scheduleFlush(immediate) {
         if (!extStorage) return; // Nothing to do when extension storage isn't present
         if (flushScheduled) return;
         flushScheduled = true;
+        const delay = (immediate || extStorage === idbStorage) ? 0 : 25;
         setTimeout(() => {
-            if (pendingWrites.size === 0) { flushScheduled = false; return; }
-            const batch = {};
-            pendingWrites.forEach((v, k) => { batch[k] = v; });
-            pendingWrites.clear();
-            try {
-                debugStore('flush: writing batch', Object.keys(batch));
-                // Support both callback-style (chrome) and Promise-style (browser) APIs.
-                try {
-                    const maybePromise = extStorage.set(batch, () => {
-                        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
-                            debugStore('flush: lastError', chrome.runtime.lastError);
-                        }
-                    });
-                    if (maybePromise && typeof maybePromise.then === 'function') {
-                        maybePromise.catch(e => debugStore('flush: promise error', e));
-                    }
-                } catch(cbErr) {
-                    // Some implementations (browser) may not accept a callback; try promise form
-                    try {
-                        const p = extStorage.set(batch);
-                        if (p && typeof p.then === 'function') p.catch(e => debugStore('flush: promise error', e));
-                    } catch(pErr) {
-                        debugStore('flush: exception', pErr);
-                    }
-                }
-            } catch(e) { debugStore('flush: exception', e); }
+            flushNow();
             flushScheduled = false;
-        }, 25); // small debounce to collapse bursts
+        }, delay);
     }
 
     function loadAll(resolve) {
         if (!extStorage) { resolve(); return; }
+        try { infoStore('loadAll.start'); } catch(e) {}
         try {
             // Support both callback-style and Promise-style get
             try {
@@ -169,6 +336,7 @@
                             if (shouldManage(k)) internal.set(k, items[k]);
                         });
                     } catch(e) { /* ignore */ }
+                    try { infoStore('loadAll.done', internal.size); } catch(e) {}
                     resolve();
                 });
                 if (maybePromise && typeof maybePromise.then === 'function') {
@@ -178,6 +346,7 @@
                                 if (shouldManage(k)) internal.set(k, items[k]);
                             });
                         } catch(e) { /* ignore */ }
+                        try { infoStore('loadAll.done', internal.size); } catch(e) {}
                         resolve();
                     }).catch(() => resolve());
                 }
@@ -192,6 +361,7 @@
                                     if (shouldManage(k)) internal.set(k, items[k]);
                                 });
                             } catch(e) { /* ignore */ }
+                            try { infoStore('loadAll.done', internal.size); } catch(e) {}
                             resolve();
                         }).catch(() => resolve());
                     } else {
@@ -231,7 +401,7 @@
             internal.set(key, value);
             pendingWrites.set(key, value);
             debugStore('setItem queued', key);
-            scheduleFlush();
+            scheduleFlush(true);
             // Dispatch a lightweight in-page event so UI can react immediately to important keys
             try {
                 if (typeof document !== 'undefined') {
@@ -317,6 +487,100 @@
 
     // Kick off async init
     GoboStore.init();
+    // Manual storage quota probe (call from console when needed).
+    try {
+        if (typeof window !== 'undefined' && !window.goboDiagnoseStorageQuota) {
+            window.goboDiagnoseStorageQuota = async function() {
+                const estimateQuota = async () => {
+                    try {
+                        if (typeof navigator !== 'undefined' && navigator.storage && typeof navigator.storage.estimate === 'function') {
+                            const estimate = await navigator.storage.estimate();
+                            if (estimate && (typeof estimate.quota === 'number' || typeof estimate.usage === 'number')) {
+                                infoStore('quotaProbe', {
+                                    quotaBytes: estimate.quota ?? null,
+                                    usageBytes: estimate.usage ?? null,
+                                    method: 'storage.estimate'
+                                });
+                                return estimate;
+                            }
+                        }
+                    } catch (e) {
+                        infoStore('quotaProbe', { error: String(e), method: 'storage.estimate' });
+                    }
+                    return null;
+                };
+                const storage = (typeof browser !== 'undefined' && browser.storage && browser.storage.local)
+                    ? browser.storage.local
+                    : (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local ? chrome.storage.local : null);
+                if (!storage || extStorage === idbStorage) {
+                    const estimate = await estimateQuota();
+                    if (!estimate) infoStore('quotaProbe', 'storage.local unavailable');
+                    return estimate?.quota ?? null;
+                }
+                const key = '__goboStorageQuotaProbe';
+                const supportsPromise = (() => { try { return storage.set({}).then; } catch(e) { return false; } })();
+                const setValue = (value) => new Promise((resolve, reject) => {
+                    try {
+                        const payload = { [key]: value };
+                        if (supportsPromise) {
+                            storage.set(payload).then(() => resolve()).catch(reject);
+                            return;
+                        }
+                        storage.set(payload, () => {
+                            try {
+                                if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
+                                    reject(chrome.runtime.lastError);
+                                    return;
+                                }
+                            } catch(e) {}
+                            resolve();
+                        });
+                    } catch (e) { reject(e); }
+                });
+                const removeKey = () => new Promise((resolve) => {
+                    try {
+                        if (supportsPromise) {
+                            storage.remove(key).then(() => resolve()).catch(() => resolve());
+                            return;
+                        }
+                        storage.remove(key, () => resolve());
+                    } catch(e) { resolve(); }
+                });
+
+                let low = 0;
+                let high = 1024 * 1024 * 5; // 5MB upper bound probe
+                let lastOk = 0;
+                while (low <= high) {
+                    const mid = Math.floor((low + high) / 2);
+                    const testValue = 'x'.repeat(mid);
+                    try {
+                        await setValue(testValue);
+                        lastOk = mid;
+                        low = mid + 1;
+                    } catch (e) {
+                        high = mid - 1;
+                    }
+                }
+                await removeKey();
+                infoStore('quotaProbe', { maxBytes: lastOk, method: 'storage.local' });
+                if (lastOk === 0) await estimateQuota();
+                return lastOk;
+            };
+        }
+        if (isSafari && typeof window !== 'undefined' && typeof window.goboDiagnoseStorageQuota === 'function') {
+            window.goboDiagnoseStorageQuota();
+        }
+    } catch(e) { /* ignore */ }
+    // Best-effort flush on page hide/unload to avoid losing pending writes on iOS
+    try {
+        if (typeof window !== 'undefined') {
+            window.addEventListener('pagehide', () => flushNow());
+            window.addEventListener('beforeunload', () => flushNow());
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') flushNow();
+            });
+        }
+    } catch(e) { /* ignore */ }
 })();
 
 // Listen for storage shim updates and refresh Combined Offers UI when relevant

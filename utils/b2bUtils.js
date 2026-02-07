@@ -126,7 +126,7 @@
             const allowedCount = meta.filter(m=>m.allow).length;
             const sampleAllowed = meta.filter(m=>m.allow).slice(0,6).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
             try {
-                if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && (autoRunB2B || options.force)) {
+                if (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS && (autoRunB2B || options.force)) {
                     console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
                     try {
                         if (typeof filterPredicate === 'function') {
@@ -320,7 +320,7 @@
         }
         // // Diagnostics: only run heavy sampling when debug enabled to avoid noisy logs and expensive chain computations
         // try {
-        //     if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED && (autoRunB2B || options.force)) {
+    //     if (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS && (autoRunB2B || options.force)) {
         //         let allowedSeen = 0;
         //         // sample less frequently for large sets to avoid heavy cost
         //         const sampleInterval = Math.max(100, Math.floor(meta.length / 20));

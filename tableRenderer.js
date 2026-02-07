@@ -313,7 +313,7 @@ const TableRenderer = {
         const needsDepth = rows.some(row => row && row.sailing && typeof row.sailing.__b2bDepth !== 'number');
         if (!needsDepth) return null;
         try {
-            if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+            if (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS) {
                 try {
                     const opts = options || {};
                     const hasPred = typeof opts.filterPredicate === 'function';
@@ -1246,7 +1246,7 @@ const TableRenderer = {
                 };
                 const contextRows = Array.isArray(baseRows) ? baseRows.filter(r => !rowIsHidden(r)) : baseRows;
                 try {
-                    if (typeof window !== 'undefined' && window.GOBO_DEBUG_ENABLED) {
+                    if (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS) {
                         try {
                             const sampleCode = (r) => (r && r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
                             const baseHas25 = Array.isArray(baseRows) && baseRows.some(r => sampleCode(r) === '25TIER3');

@@ -1,7 +1,7 @@
 describe('consoleShim', () => {
     let origWindow;
     beforeAll(() => {
-        // Ensure a window object exists for the shim to read GOBO_DEBUG_ENABLED
+    // Ensure a window object exists for the shim to read GOBO_DEBUG_LOGS
         origWindow = global.window;
         global.window = global.window || {};
         // Install a collector as the current console.debug so the shim captures it as _orig.debug
@@ -27,7 +27,7 @@ describe('consoleShim', () => {
 
     test('does not mutate original object when redacting', () => {
         // enable debug so console.debug emits
-        global.window.GOBO_DEBUG_ENABLED = true;
+    global.window.GOBO_DEBUG_LOGS = true;
         const obj = { token: 'secret-123', name: 'bob', nested: { password: 'p123' } };
         // call shimmed console.debug which should call our collector with redacted clone
         console.debug('log', obj);
@@ -45,8 +45,8 @@ describe('consoleShim', () => {
         expect(recordedObj.nested.password).toBe('p123');
     });
 
-    test('console.debug is no-op when GOBO_DEBUG_ENABLED is false', () => {
-        global.window.GOBO_DEBUG_ENABLED = false;
+    test('console.debug is no-op when GOBO_DEBUG_LOGS is false', () => {
+        global.window.GOBO_DEBUG_LOGS = false;
         const out = captureStdout(() => {
             console.debug('should not appear');
         });
