@@ -750,3 +750,9 @@ body.gobo-dark .gobo-setting-desc { color:#cbd5f5; }
 .support-link:focus { outline:1px solid #2563eb; outline-offset:2px; }
 .support-link-icon { width:14px; height:14px; display:block; border-radius:3px; }
 @media (prefers-reduced-motion: reduce) { .support-link { transition:none; } }
+
+/* Chain link icons (both selected and unselected) visibility in dark mode */
+body.gobo-dark img[src*="link.png"],
+body.gobo-dark img[src*="link_off.png"] {
+    filter: brightness(2.5) contrast(1.0);
+}
