@@ -616,7 +616,16 @@ const AdvancedSearch = {
                 body.className = 'adv-search-body';
                 panel.appendChild(body);
             }
-            body.innerHTML = '';
+
+            // Disable transitions to prevent flicker during replacement
+            const originalTransition = panel.style.transition;
+            panel.style.transition = 'none';
+
+            // Build new body content off-screen in a detached element
+            const newBody = document.createElement('div');
+            newBody.className = 'adv-search-body';
+            newBody.style.display = 'none'; // Keep hidden until swap
+
             const {predicates} = state.advancedSearch;
             const headerFields = (state.headers || []).filter(h => h && h.key && h.label);
             let advOnly;
@@ -639,7 +648,7 @@ const AdvancedSearch = {
                     if (!allFields.some(h => h.key === predicates[i].fieldKey)) predicates.splice(i, 1);
                 }
             } else if (predicates.length) {
-                body.setAttribute('data-deferred-prune', 'true');
+                newBody.setAttribute('data-deferred-prune', 'true');
             }
             // Update badge early (no dropdown recovery here to avoid recursion)
             try { this.updateBadge(state); } catch(eUpd) { /* ignore */ }
@@ -861,7 +870,7 @@ const AdvancedSearch = {
                         const summary = document.createElement('span'); summary.textContent = pred.operator; summary.className='adv-summary'; box.appendChild(summary); this.renderPredicateValueChips(box,pred,state);
                     }
                     const del = document.createElement('button'); del.type='button'; del.textContent='\u2716'; del.setAttribute('aria-label','Delete filter'); del.className='adv-delete-btn'; del.addEventListener('click', (e) => { e.stopPropagation(); this._removePredicate(pred, state); }); box.appendChild(del);
-                    body.appendChild(box); renderedAny = true;
+                    newBody.appendChild(box); renderedAny = true;
                 } catch(perr){ console.warn('[AdvancedSearch] predicate render error', perr); }
             });
             // hasIncomplete not used here
@@ -869,28 +878,37 @@ const AdvancedSearch = {
                 // Inject richer Add Field control (popup + hidden select for compatibility)
                 try {
                     if (window.AdvancedSearchAddField && typeof AdvancedSearchAddField.inject === 'function') {
-                        AdvancedSearchAddField.inject(body, allFields.filter(h => h.key !== 'favorite'), state);
+                        AdvancedSearchAddField.inject(newBody, allFields.filter(h => h.key !== 'favorite'), state);
                     } else if (typeof AdvancedSearch._injectAddFieldControl === 'function') {
-                        AdvancedSearch._injectAddFieldControl(body, allFields.filter(h => h.key !== 'favorite'), state);
+                        AdvancedSearch._injectAddFieldControl(newBody, allFields.filter(h => h.key !== 'favorite'), state);
                     }
                 } catch (e) { /* ignore injection errors */ }
             }
             if (!predicates.length && state.advancedSearch.enabled) {
-                const empty = document.createElement('div'); empty.className='adv-search-empty-inline'; empty.textContent = headersReady ? 'Select a field to start building a filter.' : 'Loading columns…'; body.appendChild(empty);
+                const empty = document.createElement('div'); empty.className='adv-search-empty-inline'; empty.textContent = headersReady ? 'Select a field to start building a filter.' : 'Loading columns…'; newBody.appendChild(empty);
             } else if (!predicates.length) {
-                const disabledMsg = document.createElement('div'); disabledMsg.className='adv-search-disabled-msg'; disabledMsg.textContent='Advanced Search disabled – toggle above to begin.'; body.appendChild(disabledMsg);
+                const disabledMsg = document.createElement('div'); disabledMsg.className='adv-search-disabled-msg'; disabledMsg.textContent='Advanced Search disabled – toggle above to begin.'; newBody.appendChild(disabledMsg);
             }
             // Fallback summary if committed predicates exist but nothing rendered (rare)
             if (!renderedAny) {
                 const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
-                if (committedCount) this.renderCommittedFallback(state, body);
+                if (committedCount) this.renderCommittedFallback(state, newBody);
             }
             // Final dropdown/assertion guard (non-recursive)
             try { this.ensureAddFieldDropdown(state); } catch(eDrop) { /* ignore */ }
+
+            // Atomically replace the old body with the new one
+            body.replaceWith(newBody);
+            newBody.style.display = ''; // Unhide the new body
+
+            // Restore transitions after replacement
+            panel.offsetHeight; // Force reflow
+            panel.style.transition = originalTransition;
+
             setTimeout(() => {
                 try {
-                    if (state._advFocusOperatorId) { const sel = body.querySelector(`select.adv-operator-select[data-pred-id="${state._advFocusOperatorId}"]`); if (sel) sel.focus(); delete state._advFocusOperatorId; }
-                    else if (state._advFocusPredicateId) { const box = body.querySelector(`.adv-predicate-box[data-predicate-id="${state._advFocusPredicateId}"]`); if (box) box.focus(); delete state._advFocusPredicateId; }
+                    if (state._advFocusOperatorId) { const sel = newBody.querySelector(`select.adv-operator-select[data-pred-id="${state._advFocusOperatorId}"]`); if (sel) sel.focus(); delete state._advFocusOperatorId; }
+                    else if (state._advFocusPredicateId) { const box = newBody.querySelector(`.adv-predicate-box[data-predicate-id="${state._advFocusPredicateId}"]`); if (box) box.focus(); delete state._advFocusPredicateId; }
                 } catch(focusErr){}
             },0);
         } catch (e) {
