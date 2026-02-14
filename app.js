@@ -73,6 +73,22 @@
             setAutoRunB2B(val) {
                 try { const s = this.getSettings() || {}; s.autoRunB2B = !!val; this.setSettings(s); try { window.App.BackToBackAutoRun = !!val; } catch(e) {} } catch(e) {}
             },
+            getB2BComputeByRegion() {
+                try { const s = this.getSettings(); return (typeof s.b2bComputeByRegion !== 'undefined') ? !!s.b2bComputeByRegion : false; } catch(e) { return false; }
+            },
+            setB2BComputeByRegion(val) {
+                try {
+                    const s = this.getSettings() || {};
+                    s.b2bComputeByRegion = !!val;
+                    this.setSettings(s);
+                    try { window.App.B2BComputeByRegion = !!val; } catch(e) {}
+                    try {
+                        if (window.App && App.TableRenderer && typeof App.TableRenderer.refreshB2BDepths === 'function') {
+                            App.TableRenderer.refreshB2BDepths({ showSpinner: true });
+                        }
+                    } catch(e) {}
+                } catch(e) {}
+            },
             getIncludeSideBySide() {
                 try { const s = this.getSettings(); return (typeof s.includeSideBySide !== 'undefined') ? !!s.includeSideBySide : true; } catch(e) { return true; }
             },
@@ -100,12 +116,15 @@
         },
         // runtime flag to control expensive B2B computations; default true for backwards compatibility
         BackToBackAutoRun: (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true,
+        // runtime flag to match B2B by region instead of port; default false
+        B2BComputeByRegion: (typeof __goboSettings.b2bComputeByRegion !== 'undefined') ? !!__goboSettings.b2bComputeByRegion : false,
         ProfileCache: _prev.ProfileCache || [],
         refreshSettingsFromStorage() {
             try {
                 const latest = readGoboSettings();
                 __goboSettings = latest || {};
                 App.BackToBackAutoRun = (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true;
+                App.B2BComputeByRegion = (typeof __goboSettings.b2bComputeByRegion !== 'undefined') ? !!__goboSettings.b2bComputeByRegion : false;
             } catch(e) { /* ignore */ }
             try { App.applyTheme(); } catch(e) { /* ignore */ }
         },

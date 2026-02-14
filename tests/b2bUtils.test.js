@@ -15,13 +15,17 @@
         return;
     }
 
-    function row(code, ship, departPort, departDate, nights) {
+    function row(code, ship, departPort, departDate, nights, options = {}) {
+        const departRegion = options.departRegion || '';
+        const arrivalPort = options.arrivalPort || departPort;
+        const arrivalRegion = options.arrivalRegion || departRegion;
         return {
             offer: { campaignOffer: { offerCode: code } },
             sailing: {
                 shipName: ship,
                 shipCode: ship,
-                departurePort: { name: departPort },
+                departurePort: { name: departPort, region: departRegion },
+                arrivalPort: { name: arrivalPort, region: arrivalRegion },
                 sailDate: departDate,
                 itineraryDescription: nights + ' Nights ' + departPort
             }
@@ -71,6 +75,51 @@
                 filterPredicate: (row) => row.offer.campaignOffer.offerCode !== 'B'
             },
             expectations: { 0: 1, 2: 1 }
+        },
+        {
+            label: 'Region matching links different ports in same region',
+            rows: () => [
+                row('A', 'SHIP1', 'Miami', '2025-01-01', 3, { departRegion: 'Caribbean', arrivalPort: 'Miami', arrivalRegion: 'Caribbean' }),
+                row('B', 'SHIP1', 'Key West', '2025-01-04', 3, { departRegion: 'Caribbean', arrivalPort: 'Key West', arrivalRegion: 'Caribbean' })
+            ],
+            options: { allowSideBySide: false, matchByRegion: true },
+            expectations: { 0: 2 }
+        },
+        {
+            label: 'Region matching disabled requires exact port match',
+            rows: () => [
+                row('A', 'SHIP1', 'Miami', '2025-01-01', 3, { departRegion: 'Caribbean', arrivalPort: 'Miami', arrivalRegion: 'Caribbean' }),
+                row('B', 'SHIP1', 'Key West', '2025-01-04', 3, { departRegion: 'Caribbean', arrivalPort: 'Key West', arrivalRegion: 'Caribbean' })
+            ],
+            options: { allowSideBySide: false, matchByRegion: false },
+            expectations: { 0: 1 }
+        },
+        {
+            label: 'Region matching requires region data',
+            rows: () => [
+                row('A', 'SHIP1', 'Miami', '2025-01-01', 3, { arrivalPort: 'Miami', arrivalRegion: '' }),
+                row('B', 'SHIP1', 'Miami', '2025-01-04', 3, { arrivalPort: 'Miami', arrivalRegion: '' })
+            ],
+            options: { allowSideBySide: false, matchByRegion: true },
+            expectations: { 0: 1 }
+        },
+        {
+            label: 'Region mismatch blocks chaining even if ports differ',
+            rows: () => [
+                row('A', 'SHIP1', 'Miami', '2025-01-01', 3, { departRegion: 'Caribbean', arrivalPort: 'Miami', arrivalRegion: 'Caribbean' }),
+                row('B', 'SHIP1', 'Nassau', '2025-01-04', 3, { departRegion: 'Bahamas', arrivalPort: 'Nassau', arrivalRegion: 'Bahamas' })
+            ],
+            options: { allowSideBySide: false, matchByRegion: true },
+            expectations: { 0: 1 }
+        },
+        {
+            label: 'Region match still respects side-by-side setting',
+            rows: () => [
+                row('A', 'SHIP1', 'Miami', '2025-01-01', 3, { departRegion: 'Caribbean', arrivalPort: 'Miami', arrivalRegion: 'Caribbean' }),
+                row('B', 'SHIP2', 'Key West', '2025-01-04', 3, { departRegion: 'Caribbean', arrivalPort: 'Key West', arrivalRegion: 'Caribbean' })
+            ],
+            options: { allowSideBySide: false, matchByRegion: true },
+            expectations: { 0: 1 }
         }
     ];
 
@@ -115,4 +164,5 @@
             context.window.console.log('[B2B TEST] Tests complete');
         };
     }
+
 });

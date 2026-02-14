@@ -8,18 +8,78 @@
     //   }
     // Returns: Map<rowIndex, depthNumber>
 
+    function lookupItineraryRecord(sailing) {
+        try {
+            if (!sailing) return null;
+            const shipCode = (sailing.shipCode || '').toString().trim();
+            const sailDate = (sailing.sailDate || '').toString().trim().slice(0, 10);
+            if (!shipCode || !sailDate) return null;
+            const cache = (typeof App !== 'undefined' && App && App.ItineraryCache) ? App.ItineraryCache : (typeof ItineraryCache !== 'undefined' ? ItineraryCache : null);
+            if (cache && typeof cache.getByShipDate === 'function') {
+                return cache.getByShipDate(shipCode, sailDate) || null;
+            }
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+
     function computeEndDateAndPort(row) {
         try {
             const sailing = row.sailing || {};
+            const itineraryRecord = lookupItineraryRecord(sailing);
+            const dayPorts = Array.isArray(itineraryRecord && itineraryRecord.days) ? itineraryRecord.days : [];
+            const getDayRegion = (idx) => {
+                try {
+                    const day = dayPorts[idx];
+                    const ports = day && Array.isArray(day.ports) ? day.ports : [];
+                    const firstPort = ports[0];
+                    return (firstPort && firstPort.port && firstPort.port.region) ? String(firstPort.port.region).trim() : '';
+                } catch(e) { return ''; }
+            };
+            const getFirstRegion = () => getDayRegion(0);
+            const getLastRegion = () => {
+                for (let i = dayPorts.length - 1; i >= 0; i--) {
+                    const region = getDayRegion(i);
+                    if (region) return region;
+                }
+                return '';
+            };
             const itinerary = sailing.itineraryDescription || (sailing.sailingType && sailing.sailingType.name) || '';
             const rawEnd = sailing.endDate || sailing.disembarkDate || null;
             const rawStart = sailing.sailDate || null;
-            const startPort = (sailing.departurePort && sailing.departurePort.name) || '';
+            const startPort = (sailing.departurePort && sailing.departurePort.name)
+                || (itineraryRecord && itineraryRecord.departurePortName)
+                || '';
+            const startRegion = (sailing.departurePort && sailing.departurePort.region)
+                || (itineraryRecord && itineraryRecord.departurePortRegion)
+                || getFirstRegion()
+                || sailing.region
+                || '';
+            const endRegionFallback = () => (sailing.arrivalPort && sailing.arrivalPort.region)
+                || (sailing.returnPort && sailing.returnPort.region)
+                || (itineraryRecord && (itineraryRecord.arrivalPortRegion || itineraryRecord.returnPortRegion))
+                || (sailing.departurePort && sailing.departurePort.region)
+                || (itineraryRecord && itineraryRecord.departurePortRegion)
+                || getLastRegion()
+                || sailing.region
+                || '';
+            const endPortFallback = () => (sailing.arrivalPort && sailing.arrivalPort.name)
+                || (sailing.returnPort && sailing.returnPort.name)
+                || (itineraryRecord && (itineraryRecord.arrivalPortName || itineraryRecord.returnPortName))
+                || (sailing.departurePort && sailing.departurePort.name)
+                || (itineraryRecord && itineraryRecord.departurePortName)
+                || '';
             // Prefer explicit end date if present
             if (rawEnd) {
                 const d = String(rawEnd).trim().slice(0, 10);
-                const port = (sailing.arrivalPort && sailing.arrivalPort.name) || (sailing.departurePort && sailing.departurePort.name) || '';
-                return { endISO: d, endPort: (port || '').trim(), startISO: rawStart ? String(rawStart).trim().slice(0, 10) : null, startPort: (startPort || '').trim() };
+                const port = endPortFallback();
+                return {
+                    endISO: d,
+                    endPort: (port || '').trim(),
+                    startISO: rawStart ? String(rawStart).trim().slice(0, 10) : null,
+                    startPort: (startPort || '').trim(),
+                    startRegion: (startRegion || '').trim(),
+                    endRegion: (endRegionFallback() || '').trim()
+                };
             }
             // Fallback: attempt to parse nights from itinerary
             let nights = null;
@@ -51,23 +111,43 @@
                 if (!isNaN(d.getTime())) {
                     d.setUTCDate(d.getUTCDate() + nights);
                     const endISO = d.toISOString().slice(0, 10);
-                    const port = (sailing.arrivalPort && sailing.arrivalPort.name) || (sailing.departurePort && sailing.departurePort.name) || '';
-                    return { endISO, endPort: (port || '').trim(), startISO, startPort: (startPort || '').trim() };
+                    const port = endPortFallback();
+                    return {
+                        endISO,
+                        endPort: (port || '').trim(),
+                        startISO,
+                        startPort: (startPort || '').trim(),
+                        startRegion: (startRegion || '').trim(),
+                        endRegion: (endRegionFallback() || '').trim()
+                    };
                 }
             }
             // Fallback: treat end as same day as start
             if (rawStart) {
                 const startISO = String(rawStart).trim().slice(0, 10);
-                const port = (sailing.arrivalPort && sailing.arrivalPort.name) || (sailing.departurePort && sailing.departurePort.name) || '';
-                return { endISO: startISO, endPort: (port || '').trim(), startISO, startPort: (startPort || '').trim() };
+                const port = endPortFallback();
+                return {
+                    endISO: startISO,
+                    endPort: (port || '').trim(),
+                    startISO,
+                    startPort: (startPort || '').trim(),
+                    startRegion: (startRegion || '').trim(),
+                    endRegion: (endRegionFallback() || '').trim()
+                };
             }
         } catch(e){}
-        return { endISO: null, endPort: null, startISO: null, startPort: null };
+        return { endISO: null, endPort: null, startISO: null, startPort: null, startRegion: null, endRegion: null };
     }
 
     function computeB2BDepth(rows, options) {
         options = options || {};
         const allowSideBySide = !!options.allowSideBySide;
+        let matchByRegion = !!options.matchByRegion;
+        try {
+            if (options.matchByRegion === undefined && typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
+                matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
+            }
+        } catch (e) { /* ignore */ }
         const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
         const initialUsedOfferCodes = Array.isArray(options.initialUsedOfferCodes) ? options.initialUsedOfferCodes.map(c => (c || '').toString().trim()) : [];
         if (!Array.isArray(rows) || !rows.length) return new Map();
@@ -84,7 +164,7 @@
 
         // Normalize and precompute end/start keys
         const meta = rows.map((row, idx) => {
-            const { endISO, endPort, startISO, startPort } = computeEndDateAndPort(row);
+            const { endISO, endPort, startISO, startPort, startRegion, endRegion } = computeEndDateAndPort(row);
             const sailing = row.sailing || {};
             const shipCode = (sailing.shipCode || '').toString().trim();
             const shipName = (sailing.shipName || '').toString().trim();
@@ -115,6 +195,8 @@
                 endPort,
                 startISO,
                 startPort,
+                startRegion,
+                endRegion,
                 shipCode,
                 shipName,
                 offerCode,
@@ -164,23 +246,34 @@
             } catch(e) { /* ignore debug errors */ }
         } catch(e){ /* ignore */ }
 
-        // Build index: key = `${endISO}|${port}|${shipKey}` -> array of indices sorted by start date desc
+        // Build index: key = `${day}|${key}|${shipKey}` -> array of indices sorted by start date desc
         const startIndex = new Map();
+        const getMatchKeys = (info, type) => {
+            const region = type === 'start' ? info.startRegion : info.endRegion;
+            const port = type === 'start' ? info.startPort : info.endPort;
+            if (matchByRegion) {
+                return region ? [region.toLowerCase()] : [];
+            }
+            return port ? [port.toLowerCase()] : [];
+        };
         meta.forEach(info => {
             // index by the sailing's start day and startPort so adjacency matches where next sailings embark
-            if (!info.startISO || !info.startPort || !info.allow) return;
+            if (!info.startISO || (!info.startPort && !info.startRegion) || !info.allow) return;
             const day = info.startISO;
-            const portKey = info.startPort.toLowerCase();
             const shipKey = (info.shipCode || info.shipName || '').toLowerCase();
-            if (!portKey || !shipKey) return;
-            const key = day + '|' + portKey + '|' + shipKey;
-            if (!startIndex.has(key)) startIndex.set(key, []);
-            startIndex.get(key).push(info.idx);
-            if (allowSideBySide) {
-                const sideKey = day + '|' + portKey + '|*';
-                if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
-                startIndex.get(sideKey).push(info.idx);
-            }
+            if (!shipKey) return;
+            const matchKeys = getMatchKeys(info, 'start');
+            if (!matchKeys.length) return;
+            matchKeys.forEach((portKey) => {
+                const key = day + '|' + portKey + '|' + shipKey;
+                if (!startIndex.has(key)) startIndex.set(key, []);
+                startIndex.get(key).push(info.idx);
+                if (allowSideBySide) {
+                    const sideKey = day + '|' + portKey + '|*';
+                    if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
+                    startIndex.get(sideKey).push(info.idx);
+                }
+            });
         });
 
         // Sort each adjacency bucket in descending sail date (for deterministic behavior)
@@ -219,7 +312,7 @@
             const memoKey = getMemoKey(rootIdx, usedGlobal);
             if (memo.has(memoKey)) return memo.get(memoKey);
             const rootInfo = meta[rootIdx];
-            if (!rootInfo || !rootInfo.endISO || !rootInfo.endPort) {
+            if (!rootInfo || !rootInfo.endISO || (!rootInfo.endPort && !rootInfo.endRegion)) {
                 memo.set(memoKey, 1);
                 return 1;
             }
@@ -227,16 +320,18 @@
             const day = rootInfo.endISO;
             // Only allow same-day connections here; do not consider next-day links
             const nextDay = null;
-            const portKey = rootInfo.endPort.toLowerCase();
             const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
-            if (!portKey || !shipKey) {
+            const matchKeys = getMatchKeys(rootInfo, 'end');
+            if (!matchKeys.length || !shipKey) {
                 memo.set(memoKey, 1);
                 return 1;
             }
             const keysToCheck = [];
             if (day) {
-                keysToCheck.push(day + '|' + portKey + '|' + shipKey);
-                if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
+                matchKeys.forEach((portKey) => {
+                    keysToCheck.push(day + '|' + portKey + '|' + shipKey);
+                    if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
+                });
             }
             const offerUsedHere = usedGlobal.has(rootInfo.offerCode) ? usedGlobal : new Set(usedGlobal);
             offerUsedHere.add(rootInfo.offerCode);
@@ -284,10 +379,10 @@
                 };
                 const curPath = path.concat(node);
                 if (curPath.length > best.length) best = curPath.slice();
-                if (!rootInfo.endISO || !rootInfo.endPort) return;
+                if (!rootInfo.endISO || (!rootInfo.endPort && !rootInfo.endRegion)) return;
                 const day = rootInfo.endISO;
                 const nextDay = day ? addDays(day, 1) : null;
-                const portKey = rootInfo.endPort.toLowerCase();
+                const portKey = getMatchKey(rootInfo, 'end');
                 const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
                 if (!portKey || !shipKey) return;
                 const keysToCheck = [];

@@ -85,6 +85,42 @@ const Settings = {
             autoDesc.textContent = 'When enabled, the extension will automatically compute back-to-back sailing chains for the Back-to-Back Builder. Disable this to avoid expensive calculations on large datasets.';
             autoArea.appendChild(autoLabel); autoArea.appendChild(autoDesc);
             body.appendChild(autoArea);
+
+            // --- Back-to-Back Compute by Region setting ---
+            const regionDefault = (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function')
+                ? App.SettingsStore.getB2BComputeByRegion()
+                : (settingsStore.b2bComputeByRegion !== undefined ? !!settingsStore.b2bComputeByRegion : false);
+            const regionArea = document.createElement('div');
+            regionArea.className = 'gobo-setting-area';
+            regionArea.style.cssText = 'margin-bottom:12px;';
+            const regionLabel = document.createElement('label'); regionLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
+            const regionCb = document.createElement('input'); regionCb.type = 'checkbox'; regionCb.id = 'gobo-setting-b2b-region'; regionCb.checked = regionDefault;
+            regionCb.addEventListener('change', () => {
+                try {
+                    const val = !!regionCb.checked;
+                    try {
+                        if (window.App && App.SettingsStore && typeof App.SettingsStore.setB2BComputeByRegion === 'function') {
+                            App.SettingsStore.setB2BComputeByRegion(val);
+                        } else {
+                            settingsStore.b2bComputeByRegion = val;
+                            if (typeof goboStorageSet === 'function') goboStorageSet('goboSettings', JSON.stringify(settingsStore));
+                            else localStorage.setItem('goboSettings', JSON.stringify(settingsStore));
+                            if (window.App) App.B2BComputeByRegion = val;
+                            try {
+                                if (window.App && App.TableRenderer && typeof App.TableRenderer.refreshB2BDepths === 'function') {
+                                    App.TableRenderer.refreshB2BDepths({ showSpinner: true });
+                                }
+                            } catch(e) {}
+                        }
+                    } catch(e){}
+                } catch(e){}
+            });
+            const regionTitle = document.createElement('strong'); regionTitle.textContent = 'Back-to-Back Compute by Region';
+            regionLabel.appendChild(regionCb); regionLabel.appendChild(regionTitle);
+            const regionDesc = document.createElement('div'); regionDesc.className = 'gobo-setting-desc'; regionDesc.style.cssText = 'font-size:12px; margin-left:28px;';
+            regionDesc.textContent = 'When enabled, back-to-back calculations match by itinerary region instead of the exact port. This can find more matches across nearby ports in the same region.';
+            regionArea.appendChild(regionLabel); regionArea.appendChild(regionDesc);
+            body.appendChild(regionArea);
             const sbsArea = document.createElement('div');
             sbsArea.className = 'gobo-setting-area';
             sbsArea.style.cssText = 'margin-bottom:12px;';

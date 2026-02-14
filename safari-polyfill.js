@@ -6,7 +6,10 @@
 (function(){
     try {
         if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS === 'undefined') {
-            window.GOBO_DEBUG_LOGS = false;
+            window.GOBO_DEBUG_LOGS = true;
+        }
+        if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS_FORCE_LOG === 'undefined') {
+            window.GOBO_DEBUG_LOGS_FORCE_LOG = true;
         }
     } catch(e){ /* ignore */ }
 })();
@@ -46,7 +49,7 @@
 (function(){
     try {
         if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS === 'undefined') {
-            window.GOBO_DEBUG_LOGS = false;
+            window.GOBO_DEBUG_LOGS = true;
         }
         // Monkey patch debug-level logging so existing calls don't need modification.
         const noop = function(){};
@@ -69,6 +72,9 @@
                     }
                 } catch(e) {}
                 origDebug(...args);
+                try {
+                    if (window.GOBO_DEBUG_LOGS_FORCE_LOG) origLog(...args);
+                } catch(e) {}
             };
             // Filter only explicit [DEBUG] tagged log lines for console.log; leave other logs intact.
             console.log = function(...args){ if (!window.GOBO_DEBUG_LOGS && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origLog(...args); };

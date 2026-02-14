@@ -801,11 +801,25 @@
                 (entry.sailing && entry.sailing.departurePort && entry.sailing.departurePort.name)
                 || (itineraryRecord && itineraryRecord.departurePortName)
             );
+            const departureRegion = normalizePortName(
+                (entry.sailing && entry.sailing.departurePort && entry.sailing.departurePort.region)
+                || (itineraryRecord && itineraryRecord.departurePortRegion)
+                || (entry.sailing && entry.sailing.region)
+                || (entry.sailing && entry.sailing.destination && entry.sailing.destination.name)
+            );
             const arrivalPort = normalizePortName(
                 (entry.sailing && entry.sailing.arrivalPort && entry.sailing.arrivalPort.name)
                 || (entry.sailing && entry.sailing.returnPort && entry.sailing.returnPort.name)
                 || (itineraryRecord && (itineraryRecord.arrivalPortName || itineraryRecord.returnPortName))
                 || departurePort
+            );
+            const arrivalRegion = normalizePortName(
+                (entry.sailing && entry.sailing.arrivalPort && entry.sailing.arrivalPort.region)
+                || (entry.sailing && entry.sailing.returnPort && entry.sailing.returnPort.region)
+                || (itineraryRecord && (itineraryRecord.arrivalPortRegion || itineraryRecord.returnPortRegion))
+                || (entry.sailing && entry.sailing.region)
+                || (entry.sailing && entry.sailing.destination && entry.sailing.destination.name)
+                || departureRegion
             );
             const destinationLabel = normalizePortName(
                 (entry.sailing && entry.sailing.destinationPort && entry.sailing.destinationPort.name)
@@ -826,6 +840,8 @@
                 nights,
                 embarkPort: departurePort,
                 disembarkPort: arrivalPort,
+                embarkRegion: departureRegion,
+                disembarkRegion: arrivalRegion,
                 destinationLabel,
                 itineraryName: (entry.sailing && entry.sailing.itineraryDescription) || (itineraryRecord && itineraryRecord.itineraryDescription) || '',
                 timeline,
@@ -836,6 +852,21 @@
             };
             this._metaCache.set(rowId, meta);
             return meta;
+        },
+
+        _resolveRegion(meta) {
+            if (!meta) return '';
+            const fromMeta = (meta.disembarkRegion || meta.embarkRegion || '').toString().trim();
+            if (fromMeta) return fromMeta;
+            const timeline = Array.isArray(meta.timeline) ? meta.timeline : [];
+            const timelineRegion = timeline
+                .map(item => {
+                    const label = item && item.label ? String(item.label) : '';
+                    const parts = label.split(',');
+                    return (parts[1] || '').trim();
+                })
+                .find(Boolean);
+            return timelineRegion || '';
         },
 
         _formatRoute(meta) {
@@ -981,6 +1012,14 @@
             const lastMeta = this._getMeta(lastId);
             if (!lastMeta) return [];
             const allowSideBySide = this._activeSession.allowSideBySide;
+            let matchByRegion = false;
+            try {
+                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
+                    matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
+                } else if (window.App && typeof App.B2BComputeByRegion !== 'undefined') {
+                    matchByRegion = !!App.B2BComputeByRegion;
+                }
+            } catch (e) { /* ignore */ }
             const usedOfferCodes = new Set(chain.map(id => {
                 const meta = this._getMeta(id);
                 return meta && meta.offerCode ? meta.offerCode : null;
@@ -996,11 +1035,30 @@
                     _dbg('Not linkable: isLinkable returned false', { from: lastMeta, to: candidateMeta });
                     return;
                 }
+                let isRegionMatch = false;
+                let regionLabel = '';
+                if (matchByRegion) {
+                    const currentPort = (lastMeta.disembarkPort || '').toLowerCase();
+                    const nextPort = (candidateMeta.embarkPort || candidateMeta.disembarkPort || '').toLowerCase();
+                    const currentRegionRaw = this._resolveRegion(lastMeta);
+                    const nextRegionRaw = this._resolveRegion(candidateMeta);
+                    const currentRegion = currentRegionRaw.toLowerCase();
+                    const nextRegion = nextRegionRaw.toLowerCase();
+                    const portMismatch = currentPort && nextPort && currentPort !== nextPort;
+                    if (currentRegion && nextRegion && currentRegion === nextRegion && portMismatch) {
+                        isRegionMatch = true;
+                    }
+                    if (isRegionMatch) {
+                        regionLabel = nextRegionRaw || currentRegionRaw;
+                    }
+                }
                 const lag = diffDays(candidateMeta.startISO, lastMeta.endISO) || 0;
                 options.push({
                     rowId,
                     meta: candidateMeta,
                     isSideBySide: lastMeta.shipKey && candidateMeta.shipKey && lastMeta.shipKey !== candidateMeta.shipKey,
+                    isRegionMatch,
+                    regionLabel,
                     lag
                 });
             });
@@ -1152,9 +1210,33 @@
                 _dbg('Not linkable: not same-day', { lag, currentMeta, nextMeta });
                 return false;
             }
+            let matchByRegion = false;
+            try {
+                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
+                    matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
+                } else if (window.App && typeof App.B2BComputeByRegion !== 'undefined') {
+                    matchByRegion = !!App.B2BComputeByRegion;
+                }
+            } catch (e) { /* ignore */ }
+
             const currentPort = (currentMeta.disembarkPort || '').toLowerCase();
             const nextPort = (nextMeta.embarkPort || nextMeta.disembarkPort || '').toLowerCase();
-            if (currentPort && nextPort && currentPort !== nextPort) {
+            const currentRegionRaw = this._resolveRegion(currentMeta);
+            const nextRegionRaw = this._resolveRegion(nextMeta);
+            const currentRegion = currentRegionRaw.toLowerCase();
+            const nextRegion = nextRegionRaw.toLowerCase();
+
+            if (matchByRegion) {
+                if (currentRegion && nextRegion) {
+                    if (currentRegion !== nextRegion) {
+                        _dbg('Not linkable: region mismatch', { currentRegion, nextRegion, currentMeta, nextMeta });
+                        return false;
+                    }
+                } else if (currentPort && nextPort && currentPort !== nextPort) {
+                    _dbg('Not linkable: port mismatch (region unknown)', { currentPort, nextPort, currentMeta, nextMeta });
+                    return false;
+                }
+            } else if (currentPort && nextPort && currentPort !== nextPort) {
                 _dbg('Not linkable: port mismatch', { currentPort, nextPort, currentMeta, nextMeta });
                 return false;
             }
@@ -1232,7 +1314,15 @@
                             const candidateOffer = optMeta.offerCode || null;
                             const initialUsedOfferCodes = sessionUsedOfferCodes.slice();
                             if (candidateOffer) initialUsedOfferCodes.push(candidateOffer);
-                            const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes };
+                            let matchByRegion = false;
+                            try {
+                                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
+                                    matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
+                                } else if (window.App && typeof App.B2BComputeByRegion !== 'undefined') {
+                                    matchByRegion = !!App.B2BComputeByRegion;
+                                }
+                            } catch (e) { /* ignore */ }
+                            const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes, matchByRegion };
                             // Tool always computes depths for options; ensure compute is forced
                             b2bOpts.force = true;
                             const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
@@ -1255,7 +1345,9 @@
 
             options.forEach(opt => {
                 const card = document.createElement('div');
-                card.className = 'b2b-option-card' + (opt.isSideBySide ? ' b2b-side-by-side' : '');
+                card.className = 'b2b-option-card'
+                    + (opt.isSideBySide ? ' b2b-side-by-side' : '')
+                    + (opt.isRegionMatch ? ' b2b-region-link' : '');
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-option-meta';
                 // Build header with ship name and badge on same line
@@ -1263,11 +1355,26 @@
                 headerDiv.className = 'b2b-option-card-header';
                 const shipTitle = document.createElement('strong');
                 shipTitle.textContent = opt.meta.shipName || opt.meta.shipCode || 'Ship';
+                const badges = document.createElement('div');
+                badges.className = 'b2b-option-badges';
                 const badge = document.createElement('div');
                 badge.className = 'badge';
-                badge.textContent = opt.isSideBySide ? 'Side-by-side' : 'Same ship';
+                if (opt.isRegionMatch) {
+                    badge.textContent = 'Different Port';
+                } else if (opt.isSideBySide) {
+                    badge.textContent = 'Side-by-side';
+                } else {
+                    badge.textContent = 'Same ship';
+                }
+                badges.appendChild(badge);
+                if (opt.isRegionMatch && opt.regionLabel) {
+                    const regionBadge = document.createElement('div');
+                    regionBadge.className = 'badge badge-region';
+                    regionBadge.textContent = opt.regionLabel;
+                    badges.appendChild(regionBadge);
+                }
                 headerDiv.appendChild(shipTitle);
-                headerDiv.appendChild(badge);
+                headerDiv.appendChild(badges);
 
                 // Compute route including intermediate regions from timeline
                 let routeLabel = '';
