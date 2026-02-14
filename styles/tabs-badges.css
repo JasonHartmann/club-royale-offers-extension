@@ -186,6 +186,6 @@ body.gobo-dark .profile-link-icon.link-icon--off {
 	border-color:rgba(148,163,184,0.75);
 }
 body.gobo-dark .profile-link-icon-img {
-	filter:brightness(1.35) saturate(1.2);
+	filter:brightness(2.5) contrast(1.0) saturate(1.1);
 }
 

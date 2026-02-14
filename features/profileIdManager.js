@@ -730,8 +730,17 @@ function updateCombinedOffersCache() {
 }
 
 function getAssetUrl(path) {
+    if (!path) return path;
+    if (/^(safari-extension|moz-extension|chrome-extension):/i.test(path)) return path;
     if (typeof browser !== 'undefined' && browser.runtime?.getURL) return browser.runtime.getURL(path);
     if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) return chrome.runtime.getURL(path);
+    try {
+        if (typeof safari !== 'undefined' && safari.extension?.baseURI) {
+            const base = safari.extension.baseURI.replace(/\/$/, '');
+            const cleaned = String(path).replace(/^\//, '');
+            return `${base}/${cleaned}`;
+        }
+    } catch(e) { /* ignore */ }
     return path;
 }
 

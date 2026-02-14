@@ -368,6 +368,13 @@ const Breadcrumbs = {
                         btn.innerHTML = '';
                         btn.appendChild(labelContainer);
                         if (!p.isCombined && storageKey !== 'goob-favorites') {
+                            const LINK_ICON_PNG = `iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA0klEQVR4AexQQQ4BUQxtRySW3OCbE1g6BpJxDnaWrCw5hxEcw9IJxr8BS4lQfU3+z7fETmbS/tf2vbxOmtGPX21AFG/gBtLOC5E0w33TGWrVusBFg6xJF2JaVyVzyCAKPZCE5qo9B84M3Ej6GFQbngLR66Z9mpiBq7a8ALpCekAzoAbd0HyUD2pBbwa+5BMa3bgE+h0f9XeHaWIGLh/LChh6M8Dgeaeu4kxN4iG1t3ibCU1U2zFCn2jgD+x1YzwgauUtUKep2qsR+kQDrb+KPzB4AQAA//+Xy/JSAAAABklEQVQDAPM7dCENtXT6AAAAAElFTkSuQmCC`;
+                            const LINK_ICON_OFF_PNG = `iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABB0lEQVR4AaySMRLBUBCGyQno6CInUDqGHEOpQkUnOl2u4RhKJ8iko9TpwvfvyE6GmEmQ2bVv9/37vX1vBJ0fv/8BoihafDOMTRDy0ZwAWRNbmQFyvqIoRnRu2kIMQKPsoh/8DQL0XnUGHqAzc0AQBDcq+7pJsizrlo4mQXsmmhkAYqgM0Zzb5EBicp+E01M0E2odNCtF8rGiAVj08KrpOgcKBqFpxrrWDMCpJ+1y0laR/EhTzCT+sKppD02qSG49BlDhKV4i8AdDpOs4RDp8irZPNHOAxJzqj6W1FKrT4BDqQ2pX7ckdoOST01A3ickbAaR8gfjfvjGgCuEaO+XyVgA1aBLF0h8AAAD//9QC3BkAAAAGSURBVAMA8X+dIV+T0cgAAAAASUVORK5CYII=`;
+                            const resolveLinkIconSrc = (preferred, fallbackBase64) => {
+                                const trimmed = String(preferred || '').trim();
+                                if (/^(safari-extension|moz-extension|chrome-extension|data):/i.test(trimmed)) return trimmed;
+                                return `data:image/png;base64,${fallbackBase64}`;
+                            };
                             const iconContainer = document.createElement('div');
                             iconContainer.style.display = 'flex';
                             iconContainer.style.flexDirection = 'column';
@@ -377,9 +384,11 @@ const Breadcrumbs = {
                             const linkIcon = document.createElement('span');
                             const isLinked = getLinkedAccounts().some(acc => acc.key === storageKey);
                             linkIcon.className = `profile-link-icon ${isLinked ? 'link-icon--on' : 'link-icon--off'}`;
+                            const linkOnSrc = resolveLinkIconSrc(getAssetUrl('images/link.png'), LINK_ICON_PNG);
+                            const linkOffSrc = resolveLinkIconSrc(getAssetUrl('images/link_off.png'), LINK_ICON_OFF_PNG);
                             linkIcon.innerHTML = isLinked
-                                ? `<img class="profile-link-icon-img" src="${getAssetUrl('images/link.png')}" width="16" height="16" alt="Linked" style="vertical-align:middle;" />`
-                                : `<img class="profile-link-icon-img" src="${getAssetUrl('images/link_off.png')}" width="16" height="16" alt="Unlinked" style="vertical-align:middle;" />`;
+                                ? `<img class="profile-link-icon-img" src="${linkOnSrc}" width="16" height="16" alt="Linked" style="vertical-align:middle;" />`
+                                : `<img class="profile-link-icon-img" src="${linkOffSrc}" width="16" height="16" alt="Unlinked" style="vertical-align:middle;" />`;
                             linkIcon.style.cursor = 'pointer';
                             linkIcon.title = isLinked ? 'Unlink account' : 'Link account';
                             linkIcon.style.marginBottom = '2px';

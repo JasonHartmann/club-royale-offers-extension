@@ -807,7 +807,6 @@ body.gobo-dark .gobo-setting-desc { color:#cbd5f5; }
 @media (prefers-reduced-motion: reduce) { .support-link { transition:none; } }
 
 /* Chain link icons (both selected and unselected) visibility in dark mode */
-body.gobo-dark img[src*="link.png"],
-body.gobo-dark img[src*="link_off.png"] {
-    filter: brightness(2.5) contrast(1.0);
+body.gobo-dark .profile-link-icon-img {
+    filter: brightness(1.8) contrast(1.2) saturate(1.1);
 }
