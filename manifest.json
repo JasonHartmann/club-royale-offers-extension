@@ -11,8 +11,7 @@
     }
   },
   "permissions": [
-    "storage",
-    "nativeMessaging"
+    "storage"
   ],
   "icons": {
     "48": "images/percex-48.png",

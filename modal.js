@@ -117,7 +117,7 @@ const Modal = {
         donateButton.type = 'button';
         // Default the donate button to collapsed; the panel opens only on user click
         donateButton.setAttribute('aria-expanded', 'false');
-        donateButton.textContent = 'Tip';
+    donateButton.textContent = 'Tip (optional)';
         donateButton.style.position = 'relative';
 
         const donatePanel = document.createElement('div');
@@ -160,6 +160,11 @@ const Modal = {
         panelVenmo.appendChild(panelVenmoLabel);
         panelList.appendChild(panelVenmo);
         donatePanel.appendChild(panelList);
+    const tipNote = document.createElement('div');
+    tipNote.className = 'donate-panel-note';
+    tipNote.style.cssText = 'margin-top:8px; font-size:11px; color:#6b7280; line-height:1.3;';
+    tipNote.textContent = 'Tips are optional and not transactional. They do not unlock features or content.';
+    donatePanel.appendChild(tipNote);
         // Append panel to modal container (not inside the footer) so footer-scoped CSS doesn't hide or alter panel children
         container.appendChild(donatePanel);
 
@@ -321,6 +326,12 @@ const Modal = {
         legendCopyrightWrapper.appendChild(legend);
         legendCopyrightWrapper.appendChild(rightMeta);
         container.appendChild(legendCopyrightWrapper);
+
+    const affiliationNote = document.createElement('div');
+    affiliationNote.className = 'gobo-affiliation-note';
+    affiliationNote.style.cssText = 'width:100%; text-align:center; font-size:10px; color:#9ca3af; margin-top:4px;';
+    affiliationNote.textContent = 'Comp Royale is not affiliated with Royal Caribbean International or Celebrity Cruises.';
+    container.appendChild(affiliationNote);
 
         document.body.appendChild(backdrop);
         document.body.appendChild(container);

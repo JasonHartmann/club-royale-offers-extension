@@ -149,3 +149,43 @@ body.gobo-dark .profile-tabs-scroll:after {
 	background:linear-gradient(270deg, rgba(15,23,42,1) 30%, rgba(15,23,42,0));
 }
 
+/* Combined link icon visibility */
+.profile-link-icon {
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	width:22px;
+	height:22px;
+	border-radius:6px;
+	background:rgba(148,163,184,0.15);
+	border:1px solid rgba(148,163,184,0.35);
+	box-shadow:0 1px 2px rgba(2,6,23,0.08);
+	transition:background .15s, border-color .15s, box-shadow .15s, filter .15s;
+}
+.profile-link-icon-img { display:block; width:16px; height:16px; }
+.profile-link-icon.link-icon--on {
+	background:rgba(59,130,246,0.18);
+	border-color:rgba(59,130,246,0.45);
+}
+.profile-link-icon.link-icon--off {
+	background:rgba(148,163,184,0.18);
+	border-color:rgba(148,163,184,0.4);
+}
+body.gobo-dark .profile-link-icon {
+	background:rgba(15,23,42,0.6);
+	border-color:rgba(148,163,184,0.55);
+	box-shadow:0 2px 6px rgba(0,0,0,0.35);
+}
+body.gobo-dark .profile-link-icon.link-icon--on {
+	background:rgba(37,99,235,0.35);
+	border-color:rgba(147,197,253,0.8);
+	box-shadow:0 0 0 1px rgba(147,197,253,0.35), 0 4px 12px rgba(59,130,246,0.35);
+}
+body.gobo-dark .profile-link-icon.link-icon--off {
+	background:rgba(100,116,139,0.25);
+	border-color:rgba(148,163,184,0.75);
+}
+body.gobo-dark .profile-link-icon-img {
+	filter:brightness(1.35) saturate(1.2);
+}
+

@@ -376,7 +376,10 @@ const Breadcrumbs = {
                             iconContainer.style.marginLeft = '4px';
                             const linkIcon = document.createElement('span');
                             const isLinked = getLinkedAccounts().some(acc => acc.key === storageKey);
-                            linkIcon.innerHTML = isLinked ? `<img src="${getAssetUrl('images/link.png')}" width="16" height="16" alt="Linked" style="vertical-align:middle;" />` : `<img src="${getAssetUrl('images/link_off.png')}" width="16" height="16" alt="Unlinked" style="vertical-align:middle;" />`;
+                            linkIcon.className = `profile-link-icon ${isLinked ? 'link-icon--on' : 'link-icon--off'}`;
+                            linkIcon.innerHTML = isLinked
+                                ? `<img class="profile-link-icon-img" src="${getAssetUrl('images/link.png')}" width="16" height="16" alt="Linked" style="vertical-align:middle;" />`
+                                : `<img class="profile-link-icon-img" src="${getAssetUrl('images/link_off.png')}" width="16" height="16" alt="Unlinked" style="vertical-align:middle;" />`;
                             linkIcon.style.cursor = 'pointer';
                             linkIcon.title = isLinked ? 'Unlink account' : 'Link account';
                             linkIcon.style.marginBottom = '2px';
