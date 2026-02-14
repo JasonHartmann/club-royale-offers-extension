@@ -142,12 +142,14 @@
     function computeB2BDepth(rows, options) {
         options = options || {};
         const allowSideBySide = !!options.allowSideBySide;
-        let matchByRegion = !!options.matchByRegion;
+        let drivingRangeHours = (options.drivingRangeHours !== undefined) ? parseInt(options.drivingRangeHours, 10) || 0 : null;
         try {
-            if (options.matchByRegion === undefined && typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
-                matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
+            if (drivingRangeHours == null && typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getB2BDrivingRangeHours === 'function') {
+                drivingRangeHours = App.SettingsStore.getB2BDrivingRangeHours();
             }
         } catch (e) { /* ignore */ }
+        if (drivingRangeHours == null) drivingRangeHours = 0;
+        drivingRangeHours = Math.max(0, Math.min(5, parseInt(drivingRangeHours, 10) || 0));
         const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
         const initialUsedOfferCodes = Array.isArray(options.initialUsedOfferCodes) ? options.initialUsedOfferCodes.map(c => (c || '').toString().trim()) : [];
         if (!Array.isArray(rows) || !rows.length) return new Map();
@@ -249,16 +251,38 @@
         // Build index: key = `${day}|${key}|${shipKey}` -> array of indices sorted by start date desc
         const startIndex = new Map();
         const getMatchKeys = (info, type) => {
-            const region = type === 'start' ? info.startRegion : info.endRegion;
             const port = type === 'start' ? info.startPort : info.endPort;
-            if (matchByRegion) {
-                return region ? [region.toLowerCase()] : [];
+            if (!port) return [];
+            
+            if (drivingRangeHours === 0) {
+                // Exact port match only - normalize the port first
+                try {
+                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.normalizePort === 'function') {
+                        return [PortsTravelTimes.normalizePort(port).toLowerCase()];
+                    }
+                } catch(e) { /* ignore */ }
+                return [port.toLowerCase()];
+            } else {
+                // Use driving range to find nearby ports
+                try {
+                    const limitMinutes = drivingRangeHours * 60; // Convert hours to minutes
+                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.getNearbyPorts === 'function') {
+                        const nearbyPorts = PortsTravelTimes.getNearbyPorts(port, limitMinutes);
+                        return nearbyPorts.map(p => p.toLowerCase());
+                    }
+                } catch(e) { /* ignore errors and fall back to exact match */ }
+                // Fallback to exact port match if PortsTravelTimes fails - normalize first
+                try {
+                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.normalizePort === 'function') {
+                        return [PortsTravelTimes.normalizePort(port).toLowerCase()];
+                    }
+                } catch(e) { /* ignore */ }
+                return [port.toLowerCase()];
             }
-            return port ? [port.toLowerCase()] : [];
         };
         meta.forEach(info => {
             // index by the sailing's start day and startPort so adjacency matches where next sailings embark
-            if (!info.startISO || (!info.startPort && !info.startRegion) || !info.allow) return;
+            if (!info.startISO || !info.startPort || !info.allow) return;
             const day = info.startISO;
             const shipKey = (info.shipCode || info.shipName || '').toLowerCase();
             if (!shipKey) return;
@@ -312,7 +336,7 @@
             const memoKey = getMemoKey(rootIdx, usedGlobal);
             if (memo.has(memoKey)) return memo.get(memoKey);
             const rootInfo = meta[rootIdx];
-            if (!rootInfo || !rootInfo.endISO || (!rootInfo.endPort && !rootInfo.endRegion)) {
+            if (!rootInfo || !rootInfo.endISO || !rootInfo.endPort) {
                 memo.set(memoKey, 1);
                 return 1;
             }

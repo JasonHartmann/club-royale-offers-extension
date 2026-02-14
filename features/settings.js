@@ -86,26 +86,59 @@ const Settings = {
             autoArea.appendChild(autoLabel); autoArea.appendChild(autoDesc);
             body.appendChild(autoArea);
 
-            // --- Back-to-Back Compute by Region setting ---
-            const regionDefault = (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function')
-                ? App.SettingsStore.getB2BComputeByRegion()
-                : (settingsStore.b2bComputeByRegion !== undefined ? !!settingsStore.b2bComputeByRegion : false);
-            const regionArea = document.createElement('div');
-            regionArea.className = 'gobo-setting-area';
-            regionArea.style.cssText = 'margin-bottom:12px;';
-            const regionLabel = document.createElement('label'); regionLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
-            const regionCb = document.createElement('input'); regionCb.type = 'checkbox'; regionCb.id = 'gobo-setting-b2b-region'; regionCb.checked = regionDefault;
-            regionCb.addEventListener('change', () => {
+            const sbsArea = document.createElement('div');
+            sbsArea.className = 'gobo-setting-area';
+            sbsArea.style.cssText = 'margin-bottom:12px;';
+            const sbsLabel = document.createElement('label'); sbsLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
+            const sbsCb = document.createElement('input'); sbsCb.type = 'checkbox'; sbsCb.id = 'gobo-setting-sbs';
+            try { sbsCb.checked = (App && App.SettingsStore && typeof App.SettingsStore.getIncludeSideBySide === 'function') ? App.SettingsStore.getIncludeSideBySide() : ((App && App.TableRenderer && typeof App.TableRenderer.getSideBySidePreference === 'function') ? App.TableRenderer.getSideBySidePreference() : true); } catch(e){ sbsCb.checked = true; }
+            const sbsTitle = document.createElement('strong'); sbsTitle.textContent = 'Include Side-by-Sides';
+            sbsLabel.appendChild(sbsCb); sbsLabel.appendChild(sbsTitle);
+            const sbsDesc = document.createElement('div'); sbsDesc.className = 'gobo-setting-desc'; sbsDesc.style.cssText = 'font-size:12px; margin-left:28px;';
+            sbsDesc.textContent = 'When enabled, side-by-side offers (combined or comparison rows) are included in Back-to-Back Builder calculations. Disable to hide those rows from view.';
+            sbsArea.appendChild(sbsLabel); sbsArea.appendChild(sbsDesc);
+            
+            // --- Include Other Ports Within X Hours Driving Range sub-option (under Side-by-Sides) ---
+            const drivingRangeDefault = (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BDrivingRangeHours === 'function')
+                ? App.SettingsStore.getB2BDrivingRangeHours()
+                : (settingsStore.b2bDrivingRangeHours !== undefined ? settingsStore.b2bDrivingRangeHours : 0);
+            const drivingControlArea = document.createElement('div');
+            drivingControlArea.style.cssText = 'display:flex; align-items:center; gap:12px; margin-top:8px; margin-left:28px; opacity:1; transition: opacity 0.2s;';
+            drivingControlArea.id = 'gobo-driving-range-sub-option';
+            const drivingLabel = document.createElement('span');
+            drivingLabel.style.cssText = 'font-size:13px; white-space:nowrap;';
+            drivingLabel.textContent = 'Include ports within:';
+            const drivingSlider = document.createElement('input');
+            drivingSlider.type = 'range';
+            drivingSlider.id = 'gobo-setting-b2b-driving-range';
+            drivingSlider.min = '0';
+            drivingSlider.max = '5';
+            drivingSlider.step = '1';
+            drivingSlider.value = drivingRangeDefault;
+            drivingSlider.style.cssText = 'flex:1; cursor:pointer;';
+            const drivingValueDisplay = document.createElement('span');
+            drivingValueDisplay.style.cssText = 'font-weight:bold; min-width:80px; text-align:right; font-size:13px;';
+            const updateValueDisplay = () => {
+                const val = parseInt(drivingSlider.value, 10);
+                if (val === 0) {
+                    drivingValueDisplay.textContent = 'Disabled';
+                } else {
+                    drivingValueDisplay.textContent = val + ' hour' + (val === 1 ? '' : 's');
+                }
+            };
+            updateValueDisplay();
+            drivingSlider.addEventListener('change', () => {
+                updateValueDisplay();
                 try {
-                    const val = !!regionCb.checked;
+                    const val = parseInt(drivingSlider.value, 10);
                     try {
-                        if (window.App && App.SettingsStore && typeof App.SettingsStore.setB2BComputeByRegion === 'function') {
-                            App.SettingsStore.setB2BComputeByRegion(val);
+                        if (window.App && App.SettingsStore && typeof App.SettingsStore.setB2BDrivingRangeHours === 'function') {
+                            App.SettingsStore.setB2BDrivingRangeHours(val);
                         } else {
-                            settingsStore.b2bComputeByRegion = val;
+                            settingsStore.b2bDrivingRangeHours = val;
                             if (typeof goboStorageSet === 'function') goboStorageSet('goboSettings', JSON.stringify(settingsStore));
                             else localStorage.setItem('goboSettings', JSON.stringify(settingsStore));
-                            if (window.App) App.B2BComputeByRegion = val;
+                            if (window.App) App.B2BDrivingRangeHours = val;
                             try {
                                 if (window.App && App.TableRenderer && typeof App.TableRenderer.refreshB2BDepths === 'function') {
                                     App.TableRenderer.refreshB2BDepths({ showSpinner: true });
@@ -115,30 +148,28 @@ const Settings = {
                     } catch(e){}
                 } catch(e){}
             });
-            const regionTitle = document.createElement('strong'); regionTitle.textContent = 'Back-to-Back Compute by Region';
-            regionLabel.appendChild(regionCb); regionLabel.appendChild(regionTitle);
-            const regionDesc = document.createElement('div'); regionDesc.className = 'gobo-setting-desc'; regionDesc.style.cssText = 'font-size:12px; margin-left:28px;';
-            regionDesc.textContent = 'When enabled, back-to-back calculations match by itinerary region instead of the exact port. This can find more matches across nearby ports in the same region.';
-            regionArea.appendChild(regionLabel); regionArea.appendChild(regionDesc);
-            body.appendChild(regionArea);
-            const sbsArea = document.createElement('div');
-            sbsArea.className = 'gobo-setting-area';
-            sbsArea.style.cssText = 'margin-bottom:12px;';
-            const sbsLabel = document.createElement('label'); sbsLabel.style.cssText = 'display:flex; align-items:center; gap:8px;';
-            const sbsCb = document.createElement('input'); sbsCb.type = 'checkbox'; sbsCb.id = 'gobo-setting-sbs';
-            try { sbsCb.checked = (App && App.SettingsStore && typeof App.SettingsStore.getIncludeSideBySide === 'function') ? App.SettingsStore.getIncludeSideBySide() : ((App && App.TableRenderer && typeof App.TableRenderer.getSideBySidePreference === 'function') ? App.TableRenderer.getSideBySidePreference() : true); } catch(e){ sbsCb.checked = true; }
+            drivingSlider.addEventListener('input', updateValueDisplay);
+            drivingControlArea.appendChild(drivingLabel);
+            drivingControlArea.appendChild(drivingSlider);
+            drivingControlArea.appendChild(drivingValueDisplay);
+            sbsArea.appendChild(drivingControlArea);
+            
+            // Update driving range control visibility and disabled state when SBS checkbox changes
+            const updateDrivingRangeState = () => {
+                const isEnabled = sbsCb.checked;
+                drivingControlArea.style.opacity = isEnabled ? '1' : '0.5';
+                drivingSlider.disabled = !isEnabled;
+                drivingControlArea.style.pointerEvents = isEnabled ? 'auto' : 'none';
+            };
+            updateDrivingRangeState();
             sbsCb.addEventListener('change', () => {
                 try {
                     const v = !!sbsCb.checked;
                     if (App && App.SettingsStore && typeof App.SettingsStore.setIncludeSideBySide === 'function') App.SettingsStore.setIncludeSideBySide(v);
                     else if (App && App.TableRenderer && typeof App.TableRenderer.setSideBySidePreference === 'function') App.TableRenderer.setSideBySidePreference(v);
+                    updateDrivingRangeState();
                 } catch(e){}
             });
-            const sbsTitle = document.createElement('strong'); sbsTitle.textContent = 'Include Side-by-Sides';
-            sbsLabel.appendChild(sbsCb); sbsLabel.appendChild(sbsTitle);
-            const sbsDesc = document.createElement('div'); sbsDesc.className = 'gobo-setting-desc'; sbsDesc.style.cssText = 'font-size:12px; margin-left:28px;';
-            sbsDesc.textContent = 'When enabled, side-by-side offers (combined or comparison rows) are included in Back-to-Back Builder calculations. Disable to hide those rows from view.';
-            sbsArea.appendChild(sbsLabel); sbsArea.appendChild(sbsDesc);
             body.appendChild(sbsArea);
 
             // Include Taxes & Fees in Price Filters setting

@@ -73,15 +73,15 @@
             setAutoRunB2B(val) {
                 try { const s = this.getSettings() || {}; s.autoRunB2B = !!val; this.setSettings(s); try { window.App.BackToBackAutoRun = !!val; } catch(e) {} } catch(e) {}
             },
-            getB2BComputeByRegion() {
-                try { const s = this.getSettings(); return (typeof s.b2bComputeByRegion !== 'undefined') ? !!s.b2bComputeByRegion : false; } catch(e) { return false; }
+            getB2BDrivingRangeHours() {
+                try { const s = this.getSettings(); return (typeof s.b2bDrivingRangeHours !== 'undefined') ? parseInt(s.b2bDrivingRangeHours, 10) || 0 : 0; } catch(e) { return 0; }
             },
-            setB2BComputeByRegion(val) {
+            setB2BDrivingRangeHours(val) {
                 try {
                     const s = this.getSettings() || {};
-                    s.b2bComputeByRegion = !!val;
+                    s.b2bDrivingRangeHours = Math.max(0, Math.min(5, parseInt(val, 10) || 0));
                     this.setSettings(s);
-                    try { window.App.B2BComputeByRegion = !!val; } catch(e) {}
+                    try { window.App.B2BDrivingRangeHours = s.b2bDrivingRangeHours; } catch(e) {}
                     try {
                         if (window.App && App.TableRenderer && typeof App.TableRenderer.refreshB2BDepths === 'function') {
                             App.TableRenderer.refreshB2BDepths({ showSpinner: true });
@@ -116,15 +116,15 @@
         },
         // runtime flag to control expensive B2B computations; default true for backwards compatibility
         BackToBackAutoRun: (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true,
-        // runtime flag to match B2B by region instead of port; default false
-        B2BComputeByRegion: (typeof __goboSettings.b2bComputeByRegion !== 'undefined') ? !!__goboSettings.b2bComputeByRegion : false,
+        // runtime value: driving range in hours (0-5) for B2B port matching; default 0 (exact port match only)
+        B2BDrivingRangeHours: (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0,
         ProfileCache: _prev.ProfileCache || [],
         refreshSettingsFromStorage() {
             try {
                 const latest = readGoboSettings();
                 __goboSettings = latest || {};
                 App.BackToBackAutoRun = (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true;
-                App.B2BComputeByRegion = (typeof __goboSettings.b2bComputeByRegion !== 'undefined') ? !!__goboSettings.b2bComputeByRegion : false;
+                App.B2BDrivingRangeHours = (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0;
             } catch(e) { /* ignore */ }
             try { App.applyTheme(); } catch(e) { /* ignore */ }
         },

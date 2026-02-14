@@ -52,6 +52,7 @@
         "utils/domUtils.js",
         "utils/errorHandler.js",
         "utils/sortUtils.js",
+        "features/portsTravelTimes.js",
         "utils/b2bUtils.js",
         "utils/utils_filter.js",
         "utils/apiClient.js",

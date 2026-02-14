@@ -96,6 +96,36 @@
         return null;
     }
 
+    function extractDisembarkPortFromItinerary(itineraryRecord) {
+        if (!itineraryRecord || !Array.isArray(itineraryRecord.days) || itineraryRecord.days.length === 0) {
+            return '';
+        }
+        
+        // First, try to find a port with activity "DEBARK" (one-way sailings end with disembark)
+        for (let i = itineraryRecord.days.length - 1; i >= 0; i--) {
+            const day = itineraryRecord.days[i];
+            if (day && Array.isArray(day.ports) && day.ports.length > 0) {
+                const port = day.ports[0];
+                if (port && port.port && port.activity === 'DEBARK') {
+                    return normalizePortName(port.port.name || port.port.code || '');
+                }
+            }
+        }
+        
+        // If no DEBARK found, get the last actual port (not cruising, not embark)
+        for (let i = itineraryRecord.days.length - 1; i >= 0; i--) {
+            const day = itineraryRecord.days[i];
+            if (day && day.type !== 'CRUISING' && Array.isArray(day.ports) && day.ports.length > 0) {
+                const port = day.ports[0];
+                if (port && port.port && port.port.name && port.port.name.toLowerCase() !== 'cruising') {
+                    return normalizePortName(port.port.name || port.port.code || '');
+                }
+            }
+        }
+        
+        return '';
+    }
+
     function parseNights(entry, itineraryRecord) {
         const sailing = entry && entry.sailing ? entry.sailing : {};
         const sources = [sailing.totalNights, sailing.sailingNights, sailing.lengthOfStay, itineraryRecord && itineraryRecord.totalNights];
@@ -811,6 +841,8 @@
                 (entry.sailing && entry.sailing.arrivalPort && entry.sailing.arrivalPort.name)
                 || (entry.sailing && entry.sailing.returnPort && entry.sailing.returnPort.name)
                 || (itineraryRecord && (itineraryRecord.arrivalPortName || itineraryRecord.returnPortName))
+                // For one-way sailings without explicit arrival/return ports, extract from itinerary days
+                || (itineraryRecord && extractDisembarkPortFromItinerary(itineraryRecord))
                 || departurePort
             );
             const arrivalRegion = normalizePortName(
@@ -1012,12 +1044,12 @@
             const lastMeta = this._getMeta(lastId);
             if (!lastMeta) return [];
             const allowSideBySide = this._activeSession.allowSideBySide;
-            let matchByRegion = false;
+            let drivingRangeHours = 0;
             try {
-                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
-                    matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
-                } else if (window.App && typeof App.B2BComputeByRegion !== 'undefined') {
-                    matchByRegion = !!App.B2BComputeByRegion;
+                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BDrivingRangeHours === 'function') {
+                    drivingRangeHours = App.SettingsStore.getB2BDrivingRangeHours();
+                } else if (window.App && typeof App.B2BDrivingRangeHours !== 'undefined') {
+                    drivingRangeHours = App.B2BDrivingRangeHours;
                 }
             } catch (e) { /* ignore */ }
             const usedOfferCodes = new Set(chain.map(id => {
@@ -1035,30 +1067,38 @@
                     _dbg('Not linkable: isLinkable returned false', { from: lastMeta, to: candidateMeta });
                     return;
                 }
-                let isRegionMatch = false;
-                let regionLabel = '';
-                if (matchByRegion) {
+                let isNearbyPort = false;
+                let nearbyLabel = '';
+                if (drivingRangeHours > 0) {
                     const currentPort = (lastMeta.disembarkPort || '').toLowerCase();
                     const nextPort = (candidateMeta.embarkPort || candidateMeta.disembarkPort || '').toLowerCase();
-                    const currentRegionRaw = this._resolveRegion(lastMeta);
-                    const nextRegionRaw = this._resolveRegion(candidateMeta);
-                    const currentRegion = currentRegionRaw.toLowerCase();
-                    const nextRegion = nextRegionRaw.toLowerCase();
-                    const portMismatch = currentPort && nextPort && currentPort !== nextPort;
-                    if (currentRegion && nextRegion && currentRegion === nextRegion && portMismatch) {
-                        isRegionMatch = true;
-                    }
-                    if (isRegionMatch) {
-                        regionLabel = nextRegionRaw || currentRegionRaw;
+                    if (currentPort && nextPort && currentPort !== nextPort) {
+                        // Check if nextPort is within driving range of currentPort
+                        try {
+                            if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.getNearbyPorts === 'function') {
+                                const limitMinutes = drivingRangeHours * 60;
+                                const nearbyPorts = PortsTravelTimes.getNearbyPorts(currentPort, limitMinutes);
+                                const nextPortNormalized = PortsTravelTimes.normalizePort(nextPort);
+                                if (nearbyPorts.some(p => p.toLowerCase() === nextPortNormalized.toLowerCase())) {
+                                    isNearbyPort = true;
+                                    nearbyLabel = nextPort;
+                                }
+                            }
+                        } catch(e) { /* ignore and skip */ }
                     }
                 }
                 const lag = diffDays(candidateMeta.startISO, lastMeta.endISO) || 0;
+                const isSideBySide = lastMeta.shipKey && candidateMeta.shipKey && lastMeta.shipKey !== candidateMeta.shipKey;
+                // Mark as region match if it's a side-by-side with a nearby port
+                const isRegionMatch = isSideBySide && isNearbyPort;
                 options.push({
                     rowId,
                     meta: candidateMeta,
-                    isSideBySide: lastMeta.shipKey && candidateMeta.shipKey && lastMeta.shipKey !== candidateMeta.shipKey,
+                    isSideBySide,
+                    isNearbyPort,
+                    nearbyLabel,
                     isRegionMatch,
-                    regionLabel,
+                    regionLabel: isRegionMatch ? nearbyLabel : null,
                     lag
                 });
             });
@@ -1210,35 +1250,44 @@
                 _dbg('Not linkable: not same-day', { lag, currentMeta, nextMeta });
                 return false;
             }
-            let matchByRegion = false;
+            let drivingRangeHours = 0;
             try {
-                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
-                    matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
-                } else if (window.App && typeof App.B2BComputeByRegion !== 'undefined') {
-                    matchByRegion = !!App.B2BComputeByRegion;
+                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BDrivingRangeHours === 'function') {
+                    drivingRangeHours = App.SettingsStore.getB2BDrivingRangeHours();
+                } else if (window.App && typeof App.B2BDrivingRangeHours !== 'undefined') {
+                    drivingRangeHours = App.B2BDrivingRangeHours;
                 }
             } catch (e) { /* ignore */ }
 
             const currentPort = (currentMeta.disembarkPort || '').toLowerCase();
             const nextPort = (nextMeta.embarkPort || nextMeta.disembarkPort || '').toLowerCase();
-            const currentRegionRaw = this._resolveRegion(currentMeta);
-            const nextRegionRaw = this._resolveRegion(nextMeta);
-            const currentRegion = currentRegionRaw.toLowerCase();
-            const nextRegion = nextRegionRaw.toLowerCase();
 
-            if (matchByRegion) {
-                if (currentRegion && nextRegion) {
-                    if (currentRegion !== nextRegion) {
-                        _dbg('Not linkable: region mismatch', { currentRegion, nextRegion, currentMeta, nextMeta });
+            if (drivingRangeHours > 0) {
+                // Check if ports are within driving range
+                if (currentPort && nextPort && currentPort !== nextPort) {
+                    // Check if nextPort is within driving range of currentPort
+                    try {
+                        if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.getNearbyPorts === 'function') {
+                            const limitMinutes = drivingRangeHours * 60;
+                            const nearbyPorts = PortsTravelTimes.getNearbyPorts(currentPort, limitMinutes);
+                            const nextPortNormalized = PortsTravelTimes.normalizePort(nextPort);
+                            const isNearby = nearbyPorts.some(p => p.toLowerCase() === nextPortNormalized.toLowerCase());
+                            if (!isNearby) {
+                                _dbg('Not linkable: port not within driving range', { currentPort, nextPort, drivingRangeHours, nearbyPorts });
+                                return false;
+                            }
+                        }
+                    } catch(e) {
+                        _dbg('Not linkable: driving range check failed', { currentPort, nextPort, error: e });
                         return false;
                     }
-                } else if (currentPort && nextPort && currentPort !== nextPort) {
-                    _dbg('Not linkable: port mismatch (region unknown)', { currentPort, nextPort, currentMeta, nextMeta });
+                }
+            } else {
+                // Exact port match only
+                if (currentPort && nextPort && currentPort !== nextPort) {
+                    _dbg('Not linkable: exact port mismatch', { currentPort, nextPort, currentMeta, nextMeta });
                     return false;
                 }
-            } else if (currentPort && nextPort && currentPort !== nextPort) {
-                _dbg('Not linkable: port mismatch', { currentPort, nextPort, currentMeta, nextMeta });
-                return false;
             }
             if (!allowSideBySide) {
                 if (currentMeta.shipKey && nextMeta.shipKey && currentMeta.shipKey !== nextMeta.shipKey) {
@@ -1276,6 +1325,15 @@
             let rows = null;
             let filterPredicate = null;
             let sessionUsedOfferCodes = null;
+            let drivingRangeHours = 0;
+            // Retrieve driving range hours setting
+            try {
+                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BDrivingRangeHours === 'function') {
+                    drivingRangeHours = App.SettingsStore.getB2BDrivingRangeHours();
+                } else if (window.App && typeof App.B2BDrivingRangeHours !== 'undefined') {
+                    drivingRangeHours = App.B2BDrivingRangeHours;
+                }
+            } catch (e) { /* ignore */ }
             try {
                 if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
                     // Use the authoritative rowMap values so indices align with rowIds
@@ -1322,7 +1380,7 @@
                                     matchByRegion = !!App.B2BComputeByRegion;
                                 }
                             } catch (e) { /* ignore */ }
-                            const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes, matchByRegion };
+                            const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes, drivingRangeHours };
                             // Tool always computes depths for options; ensure compute is forced
                             b2bOpts.force = true;
                             const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
