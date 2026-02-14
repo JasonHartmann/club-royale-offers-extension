@@ -255,6 +255,19 @@
             let offerValueNum = getOfferValue(offer, sailing);
 
             if (offerValueNum != null && isFinite(offerValueNum)) {
+                if (sailing && sailing.isGOBO) {
+                    const modifierMap = { INTERIOR:125, OUTSIDE:150, BALCONY:200, DELUXE:300 };
+                    const modTarget = modifierMap[targetBroad] ?? 150;
+                    const baseTarget = (Number(targetPriceNum) - Number(taxesNumber) + modTarget) / 1.4;
+                    const baseOffer = Math.max(0, Number(offerValueNum));
+                    let upgradeFare = Math.max(0, baseTarget - baseOffer) + (0.4 * baseTarget);
+                    if (!isFinite(upgradeFare)) upgradeFare = 0;
+                    let upgrade = includeTaxes ? (upgradeFare + Number(taxesNumber)) : upgradeFare;
+                    if (!isFinite(upgrade)) upgrade = includeTaxes ? Number(taxesNumber) : 0;
+                    dbg('computeUpgradePrice:computedGOBO', { targetPriceNum, offerValueNum, baseTarget, baseOffer, taxesNumber, upgradeFare, upgrade, includeTaxes, isGOBO:true, targetBroad });
+                    dbgLog(`${dbgLabel}:computedGOBO`, { key, shipCode, sailDate, offerBroad, targetBroad, targetPriceNum, offerValueNum, baseTarget, baseOffer, taxesNumber, includeTaxes, upgradeFare, upgrade, isGOBO:true });
+                    return Number(upgrade);
+                }
                 // OfferValue is base price minus taxes; upgrade with taxes = max(taxes, target - offerValue)
                 let upgradeWithTaxes = Math.max(Number(taxesNumber), Number(targetPriceNum) - Number(offerValueNum));
                 if (!isFinite(upgradeWithTaxes)) upgradeWithTaxes = null;
@@ -343,17 +356,17 @@
             if (sailing && sailing.isGOBO) {
                 const modifierMap = { INTERIOR:125, OUTSIDE:150, BALCONY:200, DELUXE:300 };
                 const mod = modifierMap[offerBroad] ?? 150;
+                const modTarget = modifierMap[targetBroad] ?? 150;
                 // Solve for base fare of first guest from awarded category price (dual-style number)
                 const baseFareOneGuest = (Number(offerCategoryPrice) + mod - Number(taxesNumber)) / 1.4;
                 const singleGuestOfferValue = baseFareOneGuest - mod;
-                let upgrade = Math.max(0, Number(targetPriceNum) - Math.max(0, Number(singleGuestOfferValue)));
-                if (includeTaxes) {
-                    if (upgrade < Number(taxesNumber)) upgrade = Number(taxesNumber);
-                } else {
-                    upgrade = Math.max(0, upgrade - Number(taxesNumber));
-                }
-                dbg('computeUpgradePrice:computedGOBO', { targetPriceNum, offerCategoryPrice, singleGuestOfferValue, taxesNumber, upgrade, includeTaxes, isGOBO:true, targetBroad });
-                dbgLog(`${dbgLabel}:computedGOBO`, { key, shipCode, sailDate, offerBroad, targetBroad, targetPriceNum, offerCategoryPrice, singleGuestOfferValue, taxesNumber, includeTaxes, upgrade, isGOBO:true });
+                const baseTarget = (Number(targetPriceNum) - Number(taxesNumber) + modTarget) / 1.4;
+                let upgradeFare = Math.max(0, baseTarget - Math.max(0, Number(singleGuestOfferValue))) + (0.4 * baseTarget);
+                if (!isFinite(upgradeFare)) upgradeFare = 0;
+                let upgrade = includeTaxes ? (upgradeFare + Number(taxesNumber)) : upgradeFare;
+                if (!isFinite(upgrade)) upgrade = includeTaxes ? Number(taxesNumber) : 0;
+                dbg('computeUpgradePrice:computedGOBO', { targetPriceNum, offerCategoryPrice, singleGuestOfferValue, baseTarget, taxesNumber, upgradeFare, upgrade, includeTaxes, isGOBO:true, targetBroad });
+                dbgLog(`${dbgLabel}:computedGOBO`, { key, shipCode, sailDate, offerBroad, targetBroad, targetPriceNum, offerCategoryPrice, singleGuestOfferValue, baseTarget, taxesNumber, includeTaxes, upgradeFare, upgrade, isGOBO:true });
                 return Number(upgrade);
             }
 

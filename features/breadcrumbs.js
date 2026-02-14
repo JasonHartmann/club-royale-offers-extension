@@ -740,6 +740,7 @@ const Breadcrumbs = {
             } catch (e) { refreshBtn = null; }
 
             const hiddenGroupsLabel = document.createElement('span');
+            hiddenGroupsLabel.className = 'hidden-groups-label';
             hiddenGroupsLabel.textContent = 'Hidden Groups:';
             hiddenGroupsLabel.style.marginLeft = '16px';
             const hiddenGroupsDisplay = document.createElement('div');

@@ -839,20 +839,20 @@
                                 estimatedNum = currentPriceNum;
                                 youPayTitle = `You Pay = Base Price (${currentPriceNum.toFixed(2)} ${currency}) because awarded and lower categories are sold out.`;
                             } else if(isOneGuestOffer && singleGuestOfferValue!=null){
-                                let calc = currentPriceNum - singleGuestOfferValue;
-                                if (includeTaxesFlag) {
-                                    if(!isFinite(calc) || calc < Number(taxesForCalc)) calc = Number(taxesForCalc);
-                                } else {
-                                    calc = calc - Number(taxesNumber);
-                                    if(!isFinite(calc) || calc < 0) calc = 0;
-                                }
+                                const modifierMap = { INTERIOR:125, OUTSIDE:150, BALCONY:200, DELUXE:300 };
+                                const modTarget = modifierMap[thisCat] ?? 150;
+                                const baseTarget = (currentPriceNum - Number(taxesNumber) + modTarget) / 1.4;
+                                let upgradeFare = Math.max(0, baseTarget - Math.max(0, Number(singleGuestOfferValue))) + (0.4 * baseTarget);
+                                if (!isFinite(upgradeFare)) upgradeFare = 0;
+                                let calc = includeTaxesFlag ? (upgradeFare + Number(taxesNumber)) : upgradeFare;
+                                if (!isFinite(calc)) calc = includeTaxesFlag ? Number(taxesNumber) : 0;
                                 estimatedNum = calc;
                                 if (includeTaxesFlag) {
                                     const taxesNote = `Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})`;
-                                    youPayTitle = `You Pay = max(Base Price (${currentPriceNum.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency}), ${taxesNote}) = ${Number(estimatedNum).toFixed(2)} ${currency}`;
+                                    youPayTitle = `You Pay = (max(0, Base Fare (${baseTarget.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency})) + 40% of Base Fare) + ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}`;
                                 } else {
                                     const taxesNote = `Taxes & Fees Excluded (${taxesNumber.toFixed(2)} ${currency})`;
-                                    youPayTitle = `You Pay = Base Price (${currentPriceNum.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency}) − ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}`;
+                                    youPayTitle = `You Pay = max(0, Base Fare (${baseTarget.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency})) + 40% of Base Fare − ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}`;
                                 }
                             } else if(effectiveOfferPriceNum!=null){
                                 const currentMatchesAward = (thisCat && awardedInfo && thisCat===awardedInfo.category);

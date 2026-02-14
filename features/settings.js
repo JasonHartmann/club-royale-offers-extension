@@ -27,7 +27,7 @@ const Settings = {
             const backdrop = Modal.createBackdrop();
             // Build modal using the B2B modal classes so the header spans full width
             const modal = document.createElement('div');
-            modal.className = 'b2b-visualizer-modal';
+            modal.className = 'b2b-visualizer-modal gobo-settings-modal';
 
             // Header: match the Back-to-Back Builder title bar styling for consistency
             const header = document.createElement('div');

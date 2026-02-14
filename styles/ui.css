@@ -727,6 +727,54 @@ body.gobo-dark #hidden-groups-display {
     color:#cbd5f5;
 }
 
+/* Search/settings controls: base styling */
+.adv-search-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(15,23,42,0.08);
+    color: #0f172a;
+    font-weight: 600;
+    cursor: pointer;
+}
+body.gobo-dark .adv-search-button {
+    background: rgba(148,163,184,0.2);
+    color: #e2e8f0;
+}
+
+/* Streamline controls on narrow screens */
+@media (max-width: 600px) {
+    .breadcrumb-controls-row { justify-content: flex-start !important; }
+    .tier-filter-toggle {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px 8px;
+    }
+    .adv-search-button {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+    .hidden-groups-label { margin-left: 0 !important; font-size: 11px; }
+    #hidden-groups-display { flex: 1 1 100%; min-width: 0; }
+    .gobo-settings-gear,
+    .gobo-itinerary-refresh-inline {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        margin-left: 0 !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .hidden-groups-label { display: none; }
+}
+
 /* Settings modal descriptions */
 .gobo-setting-desc { color:#4b5563; }
 body.gobo-dark .gobo-setting-desc { color:#cbd5f5; }
@@ -735,6 +783,13 @@ body.gobo-dark .gobo-setting-desc { color:#cbd5f5; }
     flex-direction: column;
     gap: 12px;
     grid-template-columns: 1fr !important;
+}
+
+/* Settings modal: avoid oversized min-height on small screens (iOS) */
+.b2b-visualizer-modal.gobo-settings-modal {
+    min-height: auto;
+    height: auto;
+    max-height: calc(100vh - 32px);
 }
 
 /* Settings: Visible Columns grid */

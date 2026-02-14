@@ -68,7 +68,7 @@ describe('PricingUtils upgrade calculations', () => {
         const sailing = { shipCode: 'OA', sailDate: '2026-06-01', roomType: 'INT', isGOBO: true };
         const res = PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: true });
         // Manual calc documented in code comments; assert within a tight band
-        expect(res).toBeCloseTo(1321.43, 2);
+        expect(res).toBeCloseTo(1621.43, 2);
     });
 
     test('balcony upgrade mirrors suite logic', () => {
