@@ -293,11 +293,17 @@ body.gobo-dark .b2b-empty-state strong { color:#e2e8f0; }
 body.gobo-dark .b2b-option-meta { color:#e2e8f0; }
 body.gobo-dark .b2b-option-card strong { color:#e2e8f0; }
 body.gobo-dark .b2b-option-card .badge { color:#bae6fd; background:rgba(59,130,246,0.18); padding:2px 8px; border-radius:999px; }
-body.gobo-dark .b2b-option-card.b2b-side-by-side { border-color:rgba(245,158,11,0.55); box-shadow:0 10px 24px rgba(245,158,11,0.18); }
-body.gobo-dark .b2b-option-card.b2b-region-link { border-color:rgba(167,139,250,0.7); box-shadow:0 10px 24px rgba(167,139,250,0.25); }
-body.gobo-dark .b2b-option-card.b2b-same-ship { border-color:rgba(34,197,94,0.65); box-shadow:0 10px 24px rgba(34,197,94,0.22); }
+body.gobo-dark .b2b-option-card.b2b-side-by-side { border-color:rgba(245,158,11,0.55); border-width:2px; box-shadow:0 10px 24px rgba(245,158,11,0.18); }
+body.gobo-dark .b2b-option-card.b2b-region-link { border-color:rgba(167,139,250,0.7); border-width:2px; box-shadow:0 10px 24px rgba(167,139,250,0.25); }
+body.gobo-dark .b2b-option-card.b2b-same-ship { border-color:rgba(34,197,94,0.65); border-width:2px; box-shadow:0 10px 24px rgba(34,197,94,0.22); }
 body.gobo-dark .b2b-option-card .badge.badge-region { color:#e9d5ff; background:rgba(139,92,246,0.22); }
 body.gobo-dark .b2b-option-select { background:#16a34a; }
+body.gobo-dark .b2b-price-chip { border-color:rgba(148,163,184,0.3); background:rgba(15,23,42,0.6); color:#e2e8f0; }
+body.gobo-dark .b2b-price-chip:hover { border-color:rgba(96,165,250,0.6); box-shadow:0 8px 18px rgba(59,130,246,0.25); background:rgba(30,41,59,0.85); }
+body.gobo-dark .b2b-price-chip.selected { border-color:rgba(34,197,94,0.8); border-width:2px; box-shadow:0 8px 18px rgba(34,197,94,0.25); background:rgba(34,197,94,0.12); }
+body.gobo-dark .b2b-price-label { color:#94a3b8; }
+body.gobo-dark .b2b-price-value { color:#e2e8f0; }
+body.gobo-dark .b2b-tax-line { color:#cbd5f5; }
 body.gobo-dark .b2b-option-select:hover { background:#15803d; }
 body.gobo-dark .b2b-option-select .b2b-depth-pill { background:rgba(15,23,42,0.6); color:#e2e8f0; }
 body.gobo-dark .b2b-depth-pill-empty { background:rgba(148,163,184,0.25); color:#94a3b8; }
@@ -355,9 +361,17 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
 .b2b-option-card .b2b-option-badges { display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
 .b2b-option-card .badge { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; color:#0369a1; }
 .b2b-option-card .badge.badge-region { color:#6d28d9; background:rgba(139,92,246,0.14); padding:2px 8px; border-radius:999px; }
-.b2b-option-card.b2b-side-by-side { border-color:rgba(217,119,6,0.5); box-shadow:0 10px 24px rgba(217,119,6,0.15); }
-.b2b-option-card.b2b-region-link { border-color:rgba(139,92,246,0.6); box-shadow:0 10px 24px rgba(139,92,246,0.22); }
-.b2b-option-card.b2b-same-ship { border-color:rgba(34,197,94,0.5); box-shadow:0 10px 24px rgba(34,197,94,0.18); }
+.b2b-option-card.b2b-side-by-side { border-color:rgba(217,119,6,0.5); border-width:2px; box-shadow:0 10px 24px rgba(217,119,6,0.15); }
+.b2b-option-card.b2b-region-link { border-color:rgba(139,92,246,0.6); border-width:2px; box-shadow:0 10px 24px rgba(139,92,246,0.22); }
+.b2b-option-card.b2b-same-ship { border-color:rgba(34,197,94,0.5); border-width:2px; box-shadow:0 10px 24px rgba(34,197,94,0.18); }
+.b2b-pricing { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.b2b-pricing-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+.b2b-price-chip { display:flex; flex-direction:column; gap:2px; padding:8px 10px; border-radius:10px; border:1px solid rgba(15,23,42,0.12); background:rgba(248,250,252,0.9); color:#0f172a; font-size:11px; font-weight:600; text-align:left; }
+.b2b-price-chip:hover { border-color:rgba(59,130,246,0.45); box-shadow:0 6px 16px rgba(59,130,246,0.18); background:rgba(226,232,240,0.95); }
+.b2b-price-chip.selected { border-color:rgba(16,185,129,0.8); border-width:2px; box-shadow:0 6px 16px rgba(16,185,129,0.25); background:rgba(16,185,129,0.08); }
+.b2b-price-label { font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; }
+.b2b-price-value { font-size:13px; font-weight:700; color:#0f172a; }
+.b2b-tax-line { font-size:11px; color:#475569; }
 .b2b-option-meta { font-size:13px; color:#0f172a; display:flex; flex-direction:column; gap:4px; }
 .b2b-option-select { margin-top:auto; border:none; border-radius:12px; padding:10px 12px; font-weight:600; font-size:13px; cursor:pointer; background:#0f9d58; color:#fff; transition:background .15s, transform .1s; }
 

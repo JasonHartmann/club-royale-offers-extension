@@ -589,7 +589,8 @@
                 allowSideBySide: !!this._context.allowSideBySide,
                 bannerTimeout: null,
                 ui: null,
-                keyHandler: null
+                keyHandler: null,
+                priceSelections: {}
             };
             this._renderOverlay();
         },
@@ -901,6 +902,174 @@
             return timelineRegion || '';
         },
 
+        _getDefaultPriceCategory(meta) {
+            const label = meta && meta.roomLabel ? String(meta.roomLabel).trim() : '';
+            let category = '';
+            try {
+                if (typeof RoomCategoryUtils !== 'undefined' && RoomCategoryUtils && typeof RoomCategoryUtils.classifyBroad === 'function') {
+                    category = RoomCategoryUtils.classifyBroad(label) || '';
+                } else if (typeof window !== 'undefined' && window.RoomCategoryUtils && typeof window.RoomCategoryUtils.classifyBroad === 'function') {
+                    category = window.RoomCategoryUtils.classifyBroad(label) || '';
+                }
+            } catch (e) { category = ''; }
+            switch ((category || '').toUpperCase()) {
+                case 'SUITE':
+                    return 'suiteUpgrade';
+                case 'BALCONY':
+                    return 'balconyUpgrade';
+                case 'OUTSIDE':
+                    return 'oceanViewUpgrade';
+                default:
+                    return 'interior';
+            }
+        },
+
+        _getSelectedPriceCategory(rowId, meta) {
+            if (!this._activeSession) return 'interior';
+            if (!this._activeSession.priceSelections) this._activeSession.priceSelections = {};
+            if (!this._activeSession.priceSelections[rowId]) {
+                this._activeSession.priceSelections[rowId] = this._getDefaultPriceCategory(meta);
+            }
+            return this._activeSession.priceSelections[rowId];
+        },
+
+        _setSelectedPriceCategory(rowId, key) {
+            if (!this._activeSession) return;
+            if (!this._activeSession.priceSelections) this._activeSession.priceSelections = {};
+            this._activeSession.priceSelections[rowId] = key;
+        },
+
+        _getPricingData(meta) {
+            const entry = meta && meta.entry ? meta.entry : null;
+            const offer = entry && entry.offer ? entry.offer : null;
+            const sailing = entry && entry.sailing ? entry.sailing : null;
+            const state = (typeof App !== 'undefined' && App && App.TableRenderer) ? App.TableRenderer.lastState : null;
+            const includeTaxes = (typeof App !== 'undefined' && App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function')
+                ? App.Utils.getIncludeTaxesAndFeesPreference(state)
+                : true;
+            const utils = (typeof App !== 'undefined' && App && App.Utils) ? App.Utils : (typeof Utils !== 'undefined' ? Utils : null);
+            const valueRaw = utils && typeof utils.computeOfferValue === 'function' ? utils.computeOfferValue(offer, sailing) : null;
+            const valueFmt = utils && typeof utils.formatOfferValue === 'function' ? utils.formatOfferValue(valueRaw) : '-';
+            const formatUpgrade = (columnKey) => {
+                if (!utils || typeof utils.formatUpgradePriceForColumn !== 'function') return '-';
+                return utils.formatUpgradePriceForColumn(columnKey, offer, sailing, { includeTaxes, state });
+            };
+            const rawUpgrade = (columnKey) => {
+                if (!utils || typeof utils.computeUpgradePriceForColumn !== 'function') return null;
+                return utils.computeUpgradePriceForColumn(columnKey, offer, sailing, { includeTaxes, state });
+            };
+            let taxesValue = null;
+            let taxesIncluded = null;
+            try {
+                if (sailing) {
+                    const shipCode = (sailing.shipCode || '').toString().trim();
+                    const sailDate = (sailing.sailDate || '').toString().trim().slice(0, 10);
+                    const key = shipCode && sailDate ? `SD_${shipCode}_${sailDate}` : null;
+                    const cache = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.get === 'function')
+                        ? ItineraryCache
+                        : (typeof App !== 'undefined' && App && App.ItineraryCache ? App.ItineraryCache : null);
+                    const entryCache = key && cache && typeof cache.get === 'function' ? cache.get(key) : null;
+                    let rawTaxes = entryCache && entryCache.taxesAndFees != null ? entryCache.taxesAndFees : (sailing.taxesAndFees != null ? sailing.taxesAndFees : null);
+                    if (rawTaxes && typeof rawTaxes === 'object' && typeof rawTaxes.value === 'number') rawTaxes = rawTaxes.value;
+                    if (typeof rawTaxes === 'string') {
+                        const cleaned = rawTaxes.replace(/[^0-9.\-]/g, '');
+                        rawTaxes = cleaned ? Number(cleaned) : null;
+                    }
+                    if (typeof rawTaxes === 'number' && isFinite(rawTaxes)) {
+                        const multiplier = sailing.isGOBO ? 1 : 2;
+                        taxesValue = rawTaxes * multiplier;
+                    }
+                    taxesIncluded = entryCache && typeof entryCache.taxesAndFeesIncluded === 'boolean'
+                        ? entryCache.taxesAndFeesIncluded
+                        : (typeof sailing.taxesAndFeesIncluded === 'boolean' ? sailing.taxesAndFeesIncluded : null);
+                }
+            } catch (e) { /* ignore */ }
+            const taxesLabel = (taxesIncluded === true) ? 'Included' : (taxesIncluded === false ? 'Additional' : '');
+            const taxesText = taxesValue != null && utils && typeof utils.formatOfferValue === 'function'
+                ? `Taxes & Fees: ${utils.formatOfferValue(taxesValue)}${taxesLabel ? ` (${taxesLabel})` : ''}`
+                : `Taxes & Fees: --${taxesLabel ? ` (${taxesLabel})` : ''}`;
+            return {
+                valuesRaw: {
+                    interior: valueRaw,
+                    oceanViewUpgrade: rawUpgrade('oceanViewUpgrade'),
+                    balconyUpgrade: rawUpgrade('balconyUpgrade'),
+                    suiteUpgrade: rawUpgrade('suiteUpgrade')
+                },
+                valuesFmt: {
+                    interior: valueFmt,
+                    oceanViewUpgrade: formatUpgrade('oceanViewUpgrade'),
+                    balconyUpgrade: formatUpgrade('balconyUpgrade'),
+                    suiteUpgrade: formatUpgrade('suiteUpgrade')
+                },
+                taxesText
+            };
+        },
+
+        _computeChainTotal() {
+            if (!this._activeSession) return { total: null, hasAny: false };
+            let total = 0;
+            let hasAny = false;
+            this._activeSession.chain.forEach(rowId => {
+                const meta = this._getMeta(rowId);
+                if (!meta) return;
+                const pricing = this._getPricingData(meta);
+                const key = this._getSelectedPriceCategory(rowId, meta);
+                const raw = pricing && pricing.valuesRaw ? pricing.valuesRaw[key] : null;
+                if (typeof raw === 'number' && isFinite(raw)) {
+                    total += raw;
+                    hasAny = true;
+                }
+            });
+            return { total, hasAny };
+        },
+
+        _buildPricingSection(meta, rowId, options) {
+            const opts = options || {};
+            const pricing = this._getPricingData(meta);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'b2b-pricing';
+            const grid = document.createElement('div');
+            grid.className = 'b2b-pricing-grid';
+            const items = [
+                { key: 'interior', label: 'Interior' },
+                { key: 'oceanViewUpgrade', label: 'Oceanview' },
+                { key: 'balconyUpgrade', label: 'Balcony' },
+                { key: 'suiteUpgrade', label: 'Suite' }
+            ];
+            const selectedKey = opts.selectable ? this._getSelectedPriceCategory(rowId, meta) : null;
+            items.forEach(item => {
+                const chip = document.createElement(opts.selectable ? 'button' : 'div');
+                chip.className = 'b2b-price-chip' + (selectedKey === item.key ? ' selected' : '');
+                if (opts.selectable) {
+                    chip.type = 'button';
+                    chip.addEventListener('click', (ev) => {
+                        ev.preventDefault();
+                        this._setSelectedPriceCategory(rowId, item.key);
+                        if (typeof opts.onSelectCategory === 'function') {
+                            opts.onSelectCategory(item.key);
+                        } else {
+                            this._renderChain();
+                        }
+                    });
+                }
+                const label = document.createElement('span');
+                label.className = 'b2b-price-label';
+                label.textContent = item.label;
+                const value = document.createElement('span');
+                value.className = 'b2b-price-value';
+                value.textContent = (pricing && pricing.valuesFmt && pricing.valuesFmt[item.key]) ? pricing.valuesFmt[item.key] : '-';
+                chip.appendChild(label);
+                chip.appendChild(value);
+                grid.appendChild(chip);
+            });
+            wrapper.appendChild(grid);
+            const taxes = document.createElement('div');
+            taxes.className = 'b2b-tax-line';
+            taxes.textContent = pricing && pricing.taxesText ? pricing.taxesText : 'Taxes & Fees: --';
+            wrapper.appendChild(taxes);
+            return wrapper;
+        },
+
         _formatRoute(meta) {
             if (!meta) return 'Route TBA';
             const origin = normalizePortName(meta.embarkPort) || 'Embark TBA';
@@ -941,6 +1110,11 @@
                     ${perksHtml}
                 `;
                 card.appendChild(metaBlock);
+
+                try {
+                    const pricing = this._buildPricingSection(meta, rowId, { selectable: true });
+                    card.appendChild(pricing);
+                } catch(e) { /* ignore pricing build errors */ }
 
                 if (meta.timeline && meta.timeline.length) {
                     const table = document.createElement('table');
@@ -1016,7 +1190,18 @@
         _setStatusText() {
             if (!this._activeSession || !this._activeSession.ui) return;
             const depth = this._activeSession.chain.length;
-            const status = `Depth: ${depth} sailing${depth === 1 ? '' : 's'} - Side-by-side ${this._activeSession.allowSideBySide ? 'Allowed' : 'Disabled'}`;
+            let totalText = '';
+            try {
+                const totalRes = this._computeChainTotal();
+                if (totalRes && totalRes.hasAny && typeof App !== 'undefined' && App && App.Utils && typeof App.Utils.formatOfferValue === 'function') {
+                    totalText = ` • Total: ${App.Utils.formatOfferValue(totalRes.total)}`;
+                } else if (totalRes && totalRes.hasAny) {
+                    totalText = ` • Total: $${Math.round(totalRes.total).toLocaleString()}`;
+                } else {
+                    totalText = ' • Total: --';
+                }
+            } catch(e) { totalText = ''; }
+            const status = `Depth: ${depth} sailing${depth === 1 ? '' : 's'} - Side-by-side ${this._activeSession.allowSideBySide ? 'Allowed' : 'Disabled'}${totalText}`;
             this._activeSession.ui.statusSpan.textContent = status;
         },
 
@@ -1529,6 +1714,15 @@
                     <span>${routeLabel}</span>
                     <span>${offerInfo}</span>
                 `;
+                try {
+                    const pricing = this._buildPricingSection(opt.meta, opt.rowId, {
+                        selectable: true,
+                        onSelectCategory: () => {
+                            try { this._selectOption(opt.rowId); } catch(e) { /* ignore */ }
+                        }
+                    });
+                    card.appendChild(pricing);
+                } catch(e) { /* ignore pricing build errors */ }
                 const selectBtn = document.createElement('button');
                 selectBtn.className = 'b2b-option-select';
                 selectBtn.type = 'button';
