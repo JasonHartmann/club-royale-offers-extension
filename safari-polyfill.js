@@ -6,10 +6,10 @@
 (function(){
     try {
         if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS === 'undefined') {
-            window.GOBO_DEBUG_LOGS = true;
+            window.GOBO_DEBUG_LOGS = false;
         }
         if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS_FORCE_LOG === 'undefined') {
-            window.GOBO_DEBUG_LOGS_FORCE_LOG = true;
+            window.GOBO_DEBUG_LOGS_FORCE_LOG = false;
         }
     } catch(e){ /* ignore */ }
 })();
@@ -49,7 +49,7 @@
 (function(){
     try {
         if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS === 'undefined') {
-            window.GOBO_DEBUG_LOGS = true;
+            window.GOBO_DEBUG_LOGS = false;
         }
         // Monkey patch debug-level logging so existing calls don't need modification.
         const noop = function(){};

@@ -1347,7 +1347,8 @@
                 const card = document.createElement('div');
                 card.className = 'b2b-option-card'
                     + (opt.isSideBySide ? ' b2b-side-by-side' : '')
-                    + (opt.isRegionMatch ? ' b2b-region-link' : '');
+                    + (opt.isRegionMatch ? ' b2b-region-link' : '')
+                    + (!opt.isSideBySide && !opt.isRegionMatch ? ' b2b-same-ship' : '');
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-option-meta';
                 // Build header with ship name and badge on same line

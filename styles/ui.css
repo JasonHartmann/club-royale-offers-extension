@@ -295,6 +295,7 @@ body.gobo-dark .b2b-option-card strong { color:#e2e8f0; }
 body.gobo-dark .b2b-option-card .badge { color:#bae6fd; background:rgba(59,130,246,0.18); padding:2px 8px; border-radius:999px; }
 body.gobo-dark .b2b-option-card.b2b-side-by-side { border-color:rgba(245,158,11,0.55); box-shadow:0 10px 24px rgba(245,158,11,0.18); }
 body.gobo-dark .b2b-option-card.b2b-region-link { border-color:rgba(167,139,250,0.7); box-shadow:0 10px 24px rgba(167,139,250,0.25); }
+body.gobo-dark .b2b-option-card.b2b-same-ship { border-color:rgba(34,197,94,0.65); box-shadow:0 10px 24px rgba(34,197,94,0.22); }
 body.gobo-dark .b2b-option-card .badge.badge-region { color:#e9d5ff; background:rgba(139,92,246,0.22); }
 body.gobo-dark .b2b-option-select { background:#16a34a; }
 body.gobo-dark .b2b-option-select:hover { background:#15803d; }
@@ -356,6 +357,7 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
 .b2b-option-card .badge.badge-region { color:#6d28d9; background:rgba(139,92,246,0.14); padding:2px 8px; border-radius:999px; }
 .b2b-option-card.b2b-side-by-side { border-color:rgba(217,119,6,0.5); box-shadow:0 10px 24px rgba(217,119,6,0.15); }
 .b2b-option-card.b2b-region-link { border-color:rgba(139,92,246,0.6); box-shadow:0 10px 24px rgba(139,92,246,0.22); }
+.b2b-option-card.b2b-same-ship { border-color:rgba(34,197,94,0.5); box-shadow:0 10px 24px rgba(34,197,94,0.18); }
 .b2b-option-meta { font-size:13px; color:#0f172a; display:flex; flex-direction:column; gap:4px; }
 .b2b-option-select { margin-top:auto; border:none; border-radius:12px; padding:10px 12px; font-weight:600; font-size:13px; cursor:pointer; background:#0f9d58; color:#fff; transition:background .15s, transform .1s; }
 

@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '9'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips
+    const TOUR_REVISION = '10'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -129,6 +129,12 @@
                     target:()=> document.querySelector('#gobo-setting-solo') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
                     title:'Solo Booking',
                     body:'Enable Solo Booking in Settings to use single-guest taxes & fees when calculating prices.',
+                },
+                {
+                    id:'b2bRegionSetting',
+                    target:()=> document.querySelector('#gobo-setting-b2b-region') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
+                    title:'Back-to-Back by Region',
+                    body:'Enable Back-to-Back Compute by Region in Settings to match region-to-region (not just exact ports).',
                 },
                 {
                     id:'ovBalconySuiteColumns',
