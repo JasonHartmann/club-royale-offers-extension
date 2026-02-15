@@ -1127,7 +1127,22 @@
                 const meta = this._getMeta(rowId);
                 if (!meta) return;
                 const card = document.createElement('div');
-                card.className = 'b2b-chain-card' + (idx === 0 ? ' is-root' : '');
+                let cardClass = 'b2b-chain-card';
+                if (idx === 0) {
+                    cardClass += ' is-root';
+                } else {
+                    // Apply card type styling based on stored type
+                    const chainTypes = this._activeSession.chainTypes || {};
+                    const cardType = chainTypes[rowId];
+                    if (cardType === 'region-link') {
+                        cardClass += ' b2b-chain-region-link';
+                    } else if (cardType === 'side-by-side') {
+                        cardClass += ' b2b-chain-side-by-side';
+                    } else if (cardType === 'same-ship') {
+                        cardClass += ' b2b-chain-same-ship';
+                    }
+                }
+                card.className = cardClass;
                 card.dataset.rowId = rowId;
                 const head = document.createElement('div');
                 head.className = 'b2b-chain-step-head';
@@ -1545,6 +1560,17 @@
             const list = this._activeSession.ui.optionList;
             list.innerHTML = '';
             const options = this._computeNextOptions();
+            // Store option types for later retrieval when selecting
+            if (!this._activeSession.optionTypes) this._activeSession.optionTypes = {};
+            options.forEach(opt => {
+                if (opt.isRegionMatch) {
+                    this._activeSession.optionTypes[opt.rowId] = 'region-link';
+                } else if (opt.isSideBySide) {
+                    this._activeSession.optionTypes[opt.rowId] = 'side-by-side';
+                } else {
+                    this._activeSession.optionTypes[opt.rowId] = 'same-ship';
+                }
+            });
             if (!options.length) {
                 const empty = document.createElement('div');
                 empty.className = 'b2b-empty-state';
@@ -1768,15 +1794,16 @@
                     <span>${routeLabel}</span>
                     <span>${offerInfo}</span>
                 `;
+                // Build pricing section (will be added to card later, just before select button)
+                let pricingElement = null;
                 try {
-                    const pricing = this._buildPricingSection(opt.meta, opt.rowId, {
+                    pricingElement = this._buildPricingSection(opt.meta, opt.rowId, {
                         selectable: true,
                         useButton: false,
                         onSelectCategory: () => {
                             try { this._selectOption(opt.rowId); } catch(e) { /* ignore */ }
                         }
                     });
-                    card.appendChild(pricing);
                 } catch(e) { /* ignore pricing build errors */ }
                 const selectBtn = document.createElement('div');
                 selectBtn.className = 'b2b-option-select';
@@ -1908,6 +1935,9 @@
                     } catch(e) { /* ignore */ }
                 } catch (e) { /* ignore depth badge errors */ }
                 card.appendChild(metaBlock);
+                if (pricingElement) {
+                    card.appendChild(pricingElement);
+                }
                 card.appendChild(selectBtn);
                 list.appendChild(card);
             });
@@ -1936,6 +1966,12 @@
             this._scheduleWithSpinner(() => {
                 try { this._logLayoutState && this._logLayoutState(); } catch(e){}
                 this._activeSession.chain.push(rowId);
+                // Store the card type for styling selected chain cards
+                if (!this._activeSession.chainTypes) this._activeSession.chainTypes = {};
+                const optionTypes = this._activeSession.optionTypes || {};
+                if (optionTypes[rowId]) {
+                    this._activeSession.chainTypes[rowId] = optionTypes[rowId];
+                }
                 this._renderChain();
                 try { this._scrollChainToBottom(); } catch(e) {}
                 this._renderOptions();

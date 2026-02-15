@@ -67,3 +67,36 @@ body.gobo-dark .accordion-table td {
 }
 body.gobo-dark .table-auto tbody tr:nth-child(odd) { background:#0b1220; }
 body.gobo-dark .table-auto tbody tr:nth-child(even) { background:#0f172a; }
+
+/* Responsive: Maximize modal space on narrow screens */
+@media (max-width: 960px) {
+	#gobo-offers-table {
+		max-width: 96vw;
+		max-height: 96vh;
+		border-radius: 0.75rem;
+	}
+	.table-scroll-container {
+		max-height: calc(96vh - 60px);
+		padding: 6px;
+	}
+	.table-footer-container {
+		padding: 8px;
+	}
+}
+
+@media (max-width: 640px) {
+	#gobo-offers-table {
+		max-width: 100vw !important;
+		max-height: 100vh !important;
+		border-radius: 0 !important;
+		border: none !important;
+		box-sizing: border-box !important;
+	}
+	.table-scroll-container {
+		max-height: calc(100vh - 52px) !important;
+		padding: 4px !important;
+	}
+	.table-footer-container {
+		padding: 6px 4px !important;
+	}
+}
