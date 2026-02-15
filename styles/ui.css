@@ -367,20 +367,29 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
 .b2b-pricing { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
 .b2b-pricing-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
 .b2b-price-chip { display:flex; flex-direction:column; gap:2px; padding:8px 10px; border-radius:10px; border:1px solid rgba(15,23,42,0.12); background:rgba(248,250,252,0.9); color:#0f172a; font-size:11px; font-weight:600; text-align:left; }
+.b2b-price-chip.is-clickable { cursor:pointer; }
 .b2b-price-chip:hover { border-color:rgba(59,130,246,0.45); box-shadow:0 6px 16px rgba(59,130,246,0.18); background:rgba(226,232,240,0.95); }
+.b2b-price-chip:focus-visible { outline:2px solid rgba(59,130,246,0.7); outline-offset:2px; }
 .b2b-price-chip.selected { border-color:rgba(16,185,129,0.8); border-width:2px; box-shadow:0 6px 16px rgba(16,185,129,0.25); background:rgba(16,185,129,0.08); }
+.b2b-price-chip.is-sold-out { background: rgba(226,232,240,0.5); border-color: rgba(148,163,184,0.5); color: #64748b; cursor: not-allowed; }
+.b2b-price-chip.is-sold-out .b2b-price-value { color: #94a3b8; font-weight:600; }
 .b2b-price-label { font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; }
 .b2b-price-value { font-size:13px; font-weight:700; color:#0f172a; }
 .b2b-tax-line { font-size:11px; color:#475569; }
 .b2b-option-meta { font-size:13px; color:#0f172a; display:flex; flex-direction:column; gap:4px; }
-.b2b-option-select { margin-top:auto; border:none; border-radius:12px; padding:10px 12px; font-weight:600; font-size:13px; cursor:pointer; background:#0f9d58; color:#fff; transition:background .15s, transform .1s; }
+.b2b-option-select { margin-top:auto; border:none; border-radius:12px; padding:10px 12px; font-weight:600; font-size:13px; cursor:pointer; background:#0f9d58; color:#fff; transition:background .15s, transform .1s; user-select:none; -webkit-appearance:none; appearance:none; }
 
 .b2b-option-list .b2b-option-card { align-self: start; }
 .b2b-option-select:hover { background:#0a7a43; transform:translateY(-1px); }
+.b2b-option-select:focus-visible { outline:2px solid rgba(56,189,248,0.8); outline-offset:2px; }
 .b2b-option-select { display:inline-flex; align-items:center; justify-content:center; gap:10px; position:relative; padding-right:36px; }
 .b2b-option-select .b2b-depth-pill { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.12); color:#fff; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; min-width:24px; }
 .b2b-option-select .b2b-depth-pill svg { height:14px; width:auto; }
 .b2b-depth-pill-empty { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); font-weight:600; }
+
+@keyframes gobo-spin {
+    to { transform: rotate(360deg); }
+}
 
 /* When there are zero additional connections, visually de-emphasize the pill
    and remove the chevrons marker. Table cells expose child-count via
@@ -437,9 +446,9 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
     border: 1px solid rgba(0,0,0,0.08) !important;
 }
 .b2b-center-hint { font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; }
-.b2b-banner { border-radius:12px; padding:10px 14px; background:#e2e8f0; color:#0f172a; font-size:12px; display:flex; align-items:center; gap:10px; }
-.b2b-banner-status { font-weight:600; }
-.b2b-banner-message { font-weight:500; }
+.b2b-banner { border-radius:12px; padding:10px 14px; background:#e2e8f0; color:#0f172a; font-size:12px; display:flex; align-items:center; gap:10px; flex-wrap: wrap; }
+.b2b-banner-status { font-weight:600; flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+.b2b-banner-message { font-weight:500; flex: 1 1 auto; min-width: 0; }
 .b2b-side-note { font-size:12px; color:#1e3a8a; }
 .b2b-actions { display:flex; justify-content:space-between; gap:12px; padding:16px 28px 24px; border-top:1px solid rgba(15,23,42,0.08); background:#fff; }
 .b2b-action-btn { flex:1; border:none; border-radius:999px; padding:12px 16px; font-weight:600; font-size:14px; cursor:pointer; transition:background .15s, transform .1s; }
@@ -468,6 +477,9 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
     .b2b-chain-card, .b2b-option-card { margin-left: 0 !important; margin-right: 0 !important; border-radius: 12px; }
     /* Prevent horizontal scrollbar inside selected sailings on narrow screens */
     .b2b-chain-cards { overflow-x: hidden !important; }
+    /* Keep banner total visible by stacking status/message and allowing wrap */
+    .b2b-banner { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .b2b-banner-status, .b2b-banner-message { width: 100%; }
 }
 
 /* Extra-tight: completely remove outer gaps on very narrow screens */
@@ -496,16 +508,19 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
 }
 
 /* Landscape phones with very short viewport height: conserve vertical space
-   Hide non-essential header subtitle and the bottom depth banner; keep action
-   buttons side-by-side to avoid stacking and save vertical room. */
+    Hide non-essential header subtitle, keep action buttons side-by-side, and
+    tighten the banner so the total remains visible. */
 @media (orientation: landscape) and (max-height: 730px) {
     .b2b-visualizer-header { padding:8px 12px; }
     .b2b-visualizer-title { font-size:16px; }
     /* Hide the ship/dates/side-by-side subtitle to save vertical space */
     .b2b-visualizer-subtitle { display: none !important; }
 
-    /* Hide the depth/status banner that appears above the actions */
-    .b2b-banner { display: none !important; }
+     /* Keep the depth/status banner visible but compact */
+     .b2b-banner { padding:6px 10px; font-size:11px; gap:6px; }
+     .b2b-banner-status { line-height: 1.25; }
+     .b2b-banner-message { line-height: 1.25; }
+     .b2b-banner { flex-wrap: wrap; }
 
     /* Make action buttons horizontal, share space, and reduce padding */
     .b2b-actions { flex-direction: row !important; gap:8px !important; padding:10px 12px !important; }
@@ -515,7 +530,7 @@ body.gobo-dark .b2b-chain-card .b2b-timeline::-webkit-scrollbar-thumb { backgrou
     /* Slightly reduce modal vertical chrome so more space for content */
     .b2b-visualizer-modal { max-height: 96vh !important; }
     /* Force two-column layout: Selected Sailings on left, Next Connections on right */
-    .b2b-visualizer-body { grid-template-columns: 300px 1fr !important; padding:10px 12px !important; gap:12px !important; }
+    .b2b-visualizer-body { grid-template-columns: 300px 1fr !important; padding:10px 12px !important; gap:12px !important; max-height: calc(100vh - 140px) !important; }
     /* Left column sizing adjustments */
     .b2b-chain-column { min-width: 300px; max-width: 320px; }
      /* Make chain column a column flex container and ensure its cards area can scroll
@@ -804,6 +819,9 @@ body.gobo-dark .gobo-setting-desc { color:#cbd5f5; }
     flex-direction: column;
     gap: 12px;
     grid-template-columns: 1fr !important;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
 }
 
 /* Settings modal: avoid oversized min-height on small screens (iOS) */

@@ -217,15 +217,24 @@
                 task();
                 return;
             }
+            const minVisibleMs = 140;
+            const now = () => (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now();
+            const start = now();
             try { spinner.showSpinner(); } catch (e) {}
+            const hide = () => {
+                try { spinner.hideSpinner(); } catch (e) {}
+            };
             const run = () => {
                 try {
                     task();
                 } finally {
-                    try { spinner.hideSpinner(); } catch (e) {}
+                    const elapsed = now() - start;
+                    const remaining = Math.max(0, minVisibleMs - elapsed);
+                    setTimeout(hide, remaining);
                 }
             };
-            setTimeout(run, 0);
+            // Let the browser paint the spinner before running the task.
+            requestAnimationFrame(() => setTimeout(run, 0));
         },
 
         registerEnvironment(opts) {
@@ -948,7 +957,11 @@
                 ? App.Utils.getIncludeTaxesAndFeesPreference(state)
                 : true;
             const utils = (typeof App !== 'undefined' && App && App.Utils) ? App.Utils : (typeof Utils !== 'undefined' ? Utils : null);
-            const valueRaw = utils && typeof utils.computeOfferValue === 'function' ? utils.computeOfferValue(offer, sailing) : null;
+            const interiorRaw = utils && typeof utils.computeInteriorYouPayPrice === 'function'
+                ? utils.computeInteriorYouPayPrice(offer, sailing, { includeTaxes, state, entry })
+                : null;
+            const fallbackRaw = utils && typeof utils.computeOfferValue === 'function' ? utils.computeOfferValue(offer, sailing) : null;
+            const valueRaw = (interiorRaw != null && isFinite(interiorRaw)) ? interiorRaw : fallbackRaw;
             const valueFmt = utils && typeof utils.formatOfferValue === 'function' ? utils.formatOfferValue(valueRaw) : '-';
             const formatUpgrade = (columnKey) => {
                 if (!utils || typeof utils.formatUpgradePriceForColumn !== 'function') return '-';
@@ -1037,18 +1050,37 @@
                 { key: 'suiteUpgrade', label: 'Suite' }
             ];
             const selectedKey = opts.selectable ? this._getSelectedPriceCategory(rowId, meta) : null;
+            const useButton = opts.selectable && opts.useButton !== false;
             items.forEach(item => {
-                const chip = document.createElement(opts.selectable ? 'button' : 'div');
+                const chip = document.createElement(useButton ? 'button' : 'div');
                 chip.className = 'b2b-price-chip' + (selectedKey === item.key ? ' selected' : '');
                 if (opts.selectable) {
-                    chip.type = 'button';
-                    chip.addEventListener('click', (ev) => {
+                    chip.classList.add('is-clickable');
+                    if (useButton) {
+                        chip.type = 'button';
+                    } else {
+                        chip.setAttribute('role', 'button');
+                        chip.setAttribute('tabindex', '0');
+                    }
+                    const handleSelect = (ev) => {
                         ev.preventDefault();
                         this._setSelectedPriceCategory(rowId, item.key);
                         if (typeof opts.onSelectCategory === 'function') {
                             opts.onSelectCategory(item.key);
                         } else {
                             this._renderChain();
+                        }
+                    };
+                    chip.addEventListener('click', handleSelect);
+                    if (!useButton) {
+                        chip.addEventListener('mousedown', (ev) => {
+                            // Prevent focus-induced scroll jumps on some browsers
+                            ev.preventDefault();
+                        });
+                    }
+                    chip.addEventListener('keydown', (ev) => {
+                        if (ev.key === 'Enter' || ev.key === ' ') {
+                            handleSelect(ev);
                         }
                     });
                 }
@@ -1057,7 +1089,13 @@
                 label.textContent = item.label;
                 const value = document.createElement('span');
                 value.className = 'b2b-price-value';
-                value.textContent = (pricing && pricing.valuesFmt && pricing.valuesFmt[item.key]) ? pricing.valuesFmt[item.key] : '-';
+                const rawVal = pricing && pricing.valuesRaw ? pricing.valuesRaw[item.key] : null;
+                if (rawVal == null || !isFinite(rawVal)) {
+                    value.textContent = 'Sold Out';
+                    chip.classList.add('is-sold-out');
+                } else {
+                    value.textContent = (pricing && pricing.valuesFmt && pricing.valuesFmt[item.key]) ? pricing.valuesFmt[item.key] : '-';
+                }
                 chip.appendChild(label);
                 chip.appendChild(value);
                 grid.appendChild(chip);
@@ -1082,6 +1120,8 @@
         _renderChain() {
             if (!this._activeSession || !this._activeSession.ui) return;
             const container = this._activeSession.ui.chainCards;
+            const previousScrollTop = container ? container.scrollTop : 0;
+            const previousScrollHeight = container ? container.scrollHeight : 0;
             container.innerHTML = '';
             this._activeSession.chain.forEach((rowId, idx) => {
                 const meta = this._getMeta(rowId);
@@ -1112,7 +1152,7 @@
                 card.appendChild(metaBlock);
 
                 try {
-                    const pricing = this._buildPricingSection(meta, rowId, { selectable: true });
+                    const pricing = this._buildPricingSection(meta, rowId, { selectable: true, useButton: false });
                     card.appendChild(pricing);
                 } catch(e) { /* ignore pricing build errors */ }
 
@@ -1158,8 +1198,22 @@
             this._activeSession.ui.saveBtn.disabled = !canSave;
             this._activeSession.ui.resetBtn.disabled = this._activeSession.chain.length <= 1;
             this._setStatusText();
-            // Ensure the selected sailings viewport scrolls to show the most recently added sailing
-            try { this._scrollChainToBottom(); } catch (e) { /* ignore scroll errors */ }
+            const lastChainSize = this._activeSession._lastChainSize || 0;
+            const chainSize = this._activeSession.chain.length;
+            this._activeSession._lastChainSize = chainSize;
+            const didAutoScroll = chainSize > lastChainSize;
+            if (didAutoScroll) {
+                try { this._scrollChainToBottom(); } catch (e) { /* ignore scroll errors */ }
+            }
+            // Preserve scroll position when only updating pricing selections
+            try {
+                if (container && !didAutoScroll) {
+                    const newScrollHeight = container.scrollHeight || 0;
+                    const delta = newScrollHeight - previousScrollHeight;
+                    const nextScrollTop = previousScrollTop + (delta > 0 ? 0 : 0);
+                    container.scrollTop = Math.max(0, nextScrollTop);
+                }
+            } catch (e) { /* ignore scroll errors */ }
             try {
                 if (this._activeSession && this._activeSession.ui && typeof this._activeSession.ui._runScrollbarDetection === 'function') {
                     this._activeSession.ui._runScrollbarDetection();
@@ -1717,15 +1771,17 @@
                 try {
                     const pricing = this._buildPricingSection(opt.meta, opt.rowId, {
                         selectable: true,
+                        useButton: false,
                         onSelectCategory: () => {
                             try { this._selectOption(opt.rowId); } catch(e) { /* ignore */ }
                         }
                     });
                     card.appendChild(pricing);
                 } catch(e) { /* ignore pricing build errors */ }
-                const selectBtn = document.createElement('button');
+                const selectBtn = document.createElement('div');
                 selectBtn.className = 'b2b-option-select';
-                selectBtn.type = 'button';
+                selectBtn.setAttribute('role', 'button');
+                selectBtn.setAttribute('tabindex', '0');
                 selectBtn.textContent = 'Add to chain';
                 // Depth pill (render inside the Add button on the right)
                 try {
@@ -1839,6 +1895,16 @@
                     // Attach direct handler; tool precomputes depths so no on-demand logic required here
                     try {
                         selectBtn.addEventListener('click', () => this._selectOption(opt.rowId), false);
+                        selectBtn.addEventListener('keydown', (ev) => {
+                            if (ev.key === 'Enter' || ev.key === ' ') {
+                                ev.preventDefault();
+                                this._selectOption(opt.rowId);
+                            }
+                        }, false);
+                        selectBtn.addEventListener('mousedown', (ev) => {
+                            // Prevent focus-induced scroll jumps on some browsers
+                            ev.preventDefault();
+                        }, false);
                     } catch(e) { /* ignore */ }
                 } catch (e) { /* ignore depth badge errors */ }
                 card.appendChild(metaBlock);

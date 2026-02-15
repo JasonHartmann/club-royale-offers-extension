@@ -227,6 +227,21 @@ const Utils = {
         } catch(e) { /* ignore */ }
         return null;
     },
+    computeInteriorYouPayPrice(offer, sailing, options) {
+        const includeTaxes = Utils._resolveIncludeTaxes(options);
+        const payload = Object.assign({}, options || {}, { includeTaxes });
+        try {
+            if (typeof App !== 'undefined' && App && App.PricingUtils && typeof App.PricingUtils.computeInteriorYouPayPrice === 'function') {
+                return App.PricingUtils.computeInteriorYouPayPrice(offer, sailing, payload);
+            }
+        } catch(e) { /* ignore */ }
+        try {
+            if (typeof PricingUtils !== 'undefined' && PricingUtils && typeof PricingUtils.computeInteriorYouPayPrice === 'function') {
+                return PricingUtils.computeInteriorYouPayPrice(offer, sailing, payload);
+            }
+        } catch(e) { /* ignore */ }
+        return null;
+    },
     computeUpgradePriceForColumn(columnKey, offer, sailing, options) {
         switch (columnKey) {
             case 'suiteUpgrade':

@@ -398,4 +398,9 @@
         return computeUpgradePrice('OUTSIDE', 'OceanView', offer, sailing, options);
     };
 
+    // Compute interior "You Pay" estimate for the given sailing/offer pair.
+    App.PricingUtils.computeInteriorYouPayPrice = function(offer, sailing, options){
+        return computeUpgradePrice('INTERIOR', 'Interior', offer, sailing, options);
+    };
+
 })();

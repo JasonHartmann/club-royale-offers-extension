@@ -57,6 +57,8 @@ const Settings = {
             body.style.padding = '20px 28px';
             body.style.maxHeight = '70vh';
             body.style.overflow = 'auto';
+            body.style.overflowY = 'scroll';
+            body.style.overflowX = 'hidden';
 
             // Include 
             // `Side-by-Sides setting
