@@ -24,10 +24,10 @@ function getCanonicalHeaders() {
     const src = readFile('tableRenderer.js');
     // Match the first full headers array definition (lines ~707-726)
     const keys = [];
-    const re = /\{\s*key:\s*'([^']+)'\s*,\s*label:\s*'[^']*'\s*\}/g;
+    const re = /\{\s*key:\s*'([^']+)'\s*,\s*label:\s*'[^']*'\s*}/g;
     // Find the first block that defines the full header array (contains sailDate, perks, etc.)
     // We look for the block starting around "const headers" or the array literal
-    const blockMatch = src.match(/(?:const\s+headers\s*=\s*\[|headers\s*(?:=|:)\s*\[)([\s\S]*?)\];/);
+    const blockMatch = src.match(/(?:const\s+headers\s*=\s*\[|headers\s*[\=:]\s*\[)([\s\S]*?)];/);
     if (blockMatch) {
         let m;
         while ((m = re.exec(blockMatch[1])) !== null) {
@@ -37,7 +37,7 @@ function getCanonicalHeaders() {
     if (keys.length === 0) {
         // Fallback: grab all unique key values from header-like objects in the file
         const allKeys = new Set();
-        const globalRe = /\{\s*key:\s*'([^']+)'\s*,\s*label:\s*'[^']*'\s*\}/g;
+        const globalRe = /\{\s*key:\s*'([^']+)'\s*,\s*label:\s*'[^']*'\s*}/g;
         let gm;
         while ((gm = globalRe.exec(src)) !== null) allKeys.add(gm[1]);
         return Array.from(allKeys);
@@ -65,12 +65,6 @@ function getCSVHandledKeys() {
     const startIdx = src.indexOf('exportToCSV(state)');
     const exportBody = startIdx !== -1 ? src.slice(startIdx) : '';
     const mentionedKeys = new Set();
-    const keyChecks = [
-        'b2bDepth', 'offerCode', 'offerDate', 'expiration', 'tradeInValue',
-        'offerValue', 'oceanViewUpgrade', 'balconyUpgrade', 'suiteUpgrade',
-        'offerName', 'shipClass', 'ship', 'sailDate', 'departurePort',
-        'nights', 'destination', 'category', 'guests', 'perks'
-    ];
     // Check for identifiers or string patterns that indicate each column is handled
     const csvIndicators = {
         b2bDepth: /b2bDepth|__b2bDepth|__b2bChainId/,
@@ -79,6 +73,7 @@ function getCSVHandledKeys() {
         expiration: /reserveByDate/,
         tradeInValue: /tradeInValue/,
         offerValue: /computeOfferValue|offerValue/,
+        interior: /interiorPrice|computeInteriorYouPayPrice|interior/,
         oceanViewUpgrade: /oceanViewUpgrade|computeOceanViewUpgradePrice/,
         balconyUpgrade: /balconyUpgrade|computeBalconyUpgradePrice/,
         suiteUpgrade: /suiteUpgrade|computeSuiteUpgradePrice/,
@@ -104,7 +99,7 @@ function getGroupingKeys() {
     const src = readFile('features/accordionBuilder.js');
     const keys = new Set();
     // Only look at the createGroupedData switch block
-    const fnMatch = src.match(/createGroupedData\s*\([^)]*\)\s*\{([\s\S]*?)\n\s{4}\},?/);
+    const fnMatch = src.match(/createGroupedData\s*\([^)]*\)\s*\{([\s\S]*?)\n\s{4}},?/);
     const block = fnMatch ? fnMatch[1] : src;
     const re = /case\s+'([^']+)'/g;
     let m;
@@ -122,12 +117,23 @@ function getCSSKeys() {
     return keys;
 }
 
+// --- Extract settings show/hide column keys from settings.js ---
+function getSettingsKeys() {
+    const src = readFile('features/settings.js');
+    const keys = new Set();
+    // Match the defaultHeaders array entries
+    const re = /\{\s*key:\s*'([^']+)'\s*,\s*label:\s*'[^']*'\s*}/g;
+    let m;
+    while ((m = re.exec(src)) !== null) keys.add(m[1]);
+    return keys;
+}
+
 // --- Extract advanced search / filtering keys from filtering.js ---
 function getFilteringKeys() {
     const src = readFile('features/filtering.js');
     const keys = new Set();
     // Look at getOfferColumnValue switch cases
-    const fnMatch = src.match(/getOfferColumnValue\s*\(offer,\s*sailing,\s*key\)\s*\{([\s\S]*?)\n\s{4}\},?/);
+    const fnMatch = src.match(/getOfferColumnValue\s*\(offer,\s*sailing,\s*key\)\s*\{([\s\S]*?)\n\s{4}},?/);
     const block = fnMatch ? fnMatch[1] : src;
     const re = /case\s+'([^']+)'/g;
     let m;
@@ -199,6 +205,14 @@ describe('Column coverage across systems', () => {
         expect(missing).toEqual([]);
     });
 
+    test('every column appears in settings show/hide defaultHeaders', () => {
+        const settingsKeys = getSettingsKeys();
+        const missing = canonicalHeaders.filter(
+            k => !settingsKeys.has(k)
+        );
+        expect(missing).toEqual([]);
+    });
+
     test('no system has stale column keys not in canonical headers', () => {
         const headerSet = new Set(canonicalHeaders);
         const sortKeys = getSortKeys();
@@ -217,11 +231,14 @@ describe('Column coverage across systems', () => {
         const staleSortKeys = [...sortKeys].filter(k => !headerSet.has(k) && !sortOnlyKeys.has(k));
         const staleGroupKeys = [...groupKeys].filter(k => !headerSet.has(k));
         const staleCSSKeys = [...cssKeys].filter(k => !headerSet.has(k));
+        const settingsKeys = getSettingsKeys();
         const staleFilterKeys = [...filterKeys].filter(k => !headerSet.has(k) && !advancedOnlyKeys.has(k));
+        const staleSettingsKeys = [...settingsKeys].filter(k => !headerSet.has(k));
 
         expect(staleSortKeys).toEqual([]);
         expect(staleGroupKeys).toEqual([]);
         expect(staleCSSKeys).toEqual([]);
         expect(staleFilterKeys).toEqual([]);
+        expect(staleSettingsKeys).toEqual([]);
     });
 });

@@ -70,16 +70,23 @@
         const rawTrade = offer.campaignOffer?.tradeInValue;
         const tradeDisplay = (typeof App !== 'undefined' && App.Utils && App.Utils.formatTradeValue) ? App.Utils.formatTradeValue(rawTrade) : (function(rt){ if (rt===undefined||rt===null||rt==='') return '-'; const cleaned=String(rt).replace(/[^0-9.\-]/g,''); const parsed = cleaned===''?NaN:parseFloat(cleaned); if(!isNaN(parsed)) return Number.isInteger(parsed)?`$${parsed.toLocaleString()}`:`$${parsed.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}`; return String(rt); })(rawTrade);
         // New Value column (Offer Value)
-        let valueDisplay = '-';
+        let valueDisplay;
         try {
             const rawVal = (App && App.Utils && typeof App.Utils.computeOfferValue === 'function') ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null);
             valueDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawVal) : (Utils.formatOfferValue ? Utils.formatOfferValue(rawVal) : (rawVal!=null?`$${Number(rawVal).toFixed(2)}`:'-'));
-        } catch(e){ valueDisplay='-'; }
+        } catch(e){ valueDisplay = undefined; }
         const includeTaxesAndFees = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
         const upgradeOptions = { includeTaxes: includeTaxesAndFees, state: App && App.TableRenderer ? App.TableRenderer.lastState : null };
-        let oceanViewUpgradeDisplay = '-';
-        let balconyUpgradeDisplay = '-';
-        let suiteUpgradeDisplay = '-';
+        let interiorDisplay;
+        let oceanViewUpgradeDisplay;
+        let balconyUpgradeDisplay;
+        let suiteUpgradeDisplay;
+        try {
+            const interiorRaw = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
+                ? App.Utils.computeInteriorYouPayPrice(offer, sailing, upgradeOptions)
+                : null;
+            interiorDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(interiorRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(interiorRaw) : (interiorRaw!=null?`$${Number(interiorRaw).toFixed(2)}`:'-'));
+        } catch(e){ interiorDisplay = undefined; }
         try {
             if (App && App.Utils && typeof App.Utils.formatUpgradePriceForColumn === 'function') {
                 oceanViewUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('oceanViewUpgrade', offer, sailing, upgradeOptions);
@@ -99,7 +106,7 @@
                 balconyUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(balconyRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(balconyRaw) : (balconyRaw!=null?`$${Number(balconyRaw).toFixed(2)}`:'-'));
                 suiteUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(suiteRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(suiteRaw) : (suiteRaw!=null?`$${Number(suiteRaw).toFixed(2)}`:'-'));
             }
-        } catch(e){ oceanViewUpgradeDisplay='-'; balconyUpgradeDisplay='-'; suiteUpgradeDisplay='-'; }
+        } catch(e){ oceanViewUpgradeDisplay='-'; balconyUpgradeDisplay='-'; suiteUpgradeDisplay='-'; interiorDisplay=interiorDisplay||'-'; }
         // Favorite / ID column setup
         const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
         let favCellHtml;
@@ -159,6 +166,7 @@
             <td class="${tdClass('expiration','border p-2')}" data-col="expiration">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
             <td class="${tdClass('tradeInValue','border p-2')}" data-col="tradeInValue">${tradeDisplay}</td>
             <td class="${tdClass('offerValue','border p-2')}" data-col="offerValue">${valueDisplay}</td>
+            <td class="${tdClass('interior','border p-2')}" data-col="interior">${interiorDisplay}</td>
             <td class="${tdClass('oceanViewUpgrade','border p-2')}" data-col="oceanViewUpgrade">${oceanViewUpgradeDisplay}</td>
             <td class="${tdClass('balconyUpgrade','border p-2')}" data-col="balconyUpgrade">${balconyUpgradeDisplay}</td>
             <td class="${tdClass('suiteUpgrade','border p-2')}" data-col="suiteUpgrade">${suiteUpgradeDisplay}</td>
@@ -194,7 +202,7 @@
                     // If the TableRenderer has already computed depths, render the pill immediately
                     try {
                         if (App && App.TableRenderer && App.TableRenderer.lastState && typeof App.TableRenderer.updateB2BDepthCell === 'function') {
-                            let idx = null;
+                            let idx;
                             try { idx = row.dataset && row.dataset.offerIndex !== undefined ? parseInt(row.dataset.offerIndex, 10) : null; } catch(e) { idx = null; }
                             if ((idx === null || isNaN(idx)) && row.dataset && row.dataset.b2bRowId) {
                                 const rid = row.dataset.b2bRowId;
@@ -216,8 +224,8 @@
                     if (!b2bCell.dataset.b2bCellBound) {
                         const handler = (ev) => {
                             try { console.debug('[B2B] cell clicked', { rowId, evType: ev.type }); } catch(e){}
-                            if (!window.BackToBackTool) { try { console.debug('[B2B] BackToBackTool missing'); } catch(e){}; return; }
-                            if (typeof BackToBackTool.openByRowId !== 'function') { try { console.debug('[B2B] BackToBackTool.openByRowId missing'); } catch(e){}; return; }
+                            if (!window.BackToBackTool) { try { console.debug('[B2B] BackToBackTool missing'); } catch(e){} return; }
+                            if (typeof BackToBackTool.openByRowId !== 'function') { try { console.debug('[B2B] BackToBackTool.openByRowId missing'); } catch(e){} return; }
                             // If the pill wasn't rendered for this cell (possible during incremental render),
                             // attempt to render it on-demand using the model's computed depth.
                             try {
@@ -259,9 +267,7 @@
                                         const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
                                         const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
                                         const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                                        if (hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) return false;
-                                        if (globalHidden && globalHidden.has(key)) return false;
-                                        return true;
+                                        return !(hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) && !(globalHidden && globalHidden.has(key));
                                     } catch (e) { return true; }
                                 };
                                 // Run compute with force so B2BUtils doesn't early-return

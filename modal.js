@@ -503,6 +503,14 @@ const Modal = {
                     return (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawBalcony) : (rawBalcony!=null?`$${Number(rawBalcony).toFixed(2)}`:'-');
                 } catch(e){ return '-'; }
             })();
+            const interiorPrice = (function(){
+                try {
+                    const rawInterior = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
+                        ? App.Utils.computeInteriorYouPayPrice(offer, sailing, { includeTaxes: includeTaxesFlag, state })
+                        : null;
+                    return (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawInterior) : (rawInterior!=null?`$${Number(rawInterior).toFixed(2)}`:'-');
+                } catch(e){ return '-'; }
+            })();
             const oceanViewUpgrade = (function(){
                 try {
                     const rawOV = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
@@ -527,6 +535,7 @@ const Modal = {
                 offer.campaignOffer?.reserveByDate ? App.Utils.formatDate(offer.campaignOffer.reserveByDate) : '-',
                 (function(){ const t = offer.campaignOffer?.tradeInValue; if (t === null || t === undefined || t === '') return '-'; if (typeof t === 'number') return Number.isInteger(t) ? `$${t.toLocaleString()}` : `$${t.toFixed(2)}`; const cleaned = String(t).replace(/[^0-9.\-]/g, ''); const parsed = cleaned === '' ? NaN : parseFloat(cleaned); if (!isNaN(parsed)) return Number.isInteger(parsed) ? `$${parsed.toLocaleString()}` : `$${parsed.toFixed(2)}`; return String(t); })(),
                 (function(){ try { const raw = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null); return (App && App.Utils && App.Utils.formatOfferValue) ? App.Utils.formatOfferValue(raw) : (raw!=null?`$${Number(raw).toFixed(2)}`:'-'); } catch(e){ return '-'; } })(),
+                interiorPrice,
                 oceanViewUpgrade,
                 balconyUpgrade,
                 suiteUpgrade,

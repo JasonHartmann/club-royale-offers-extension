@@ -119,6 +119,25 @@ const SortUtils = {
                     } catch(e){ aValue = -Infinity; bValue = -Infinity; }
                     break;
                 }
+                case 'interior': {
+                    const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                    try {
+                        const aNum = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
+                            ? App.Utils.computeInteriorYouPayPrice(a.offer, a.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : null;
+                        const bNum = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
+                            ? App.Utils.computeInteriorYouPayPrice(b.offer, b.sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : null;
+                        const aMissing = (aNum === null || aNum === undefined || !isFinite(aNum));
+                        const bMissing = (bNum === null || bNum === undefined || !isFinite(bNum));
+                        if (aMissing && !bMissing) return 1;
+                        if (!aMissing && bMissing) return -1;
+                        if (aMissing && bMissing) { aValue = 0; bValue = 0; break; }
+                        aValue = aNum;
+                        bValue = bNum;
+                    } catch(e){ aValue = -Infinity; bValue = -Infinity; }
+                    break;
+                }
                 case 'suiteUpgrade': {
                     const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
                     try {

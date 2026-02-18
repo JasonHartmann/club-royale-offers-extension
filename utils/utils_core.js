@@ -187,14 +187,12 @@ const Utils = {
         } catch(eLog) { /* ignore */ }
         try {
             if (typeof App !== 'undefined' && App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') {
-                const res = App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
-                return res;
+                return App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
             }
         } catch(e) { /* ignore */ }
         try {
             if (typeof PricingUtils !== 'undefined' && PricingUtils && typeof PricingUtils.computeSuiteUpgradePrice === 'function') {
-                const res = PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
-                return res;
+                return PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes });
             }
         } catch(e) { /* ignore */ }
         return null;
@@ -430,12 +428,13 @@ const Utils = {
             rows.forEach(r => {
                 try {
                     const cells = r.querySelectorAll('td');
-                    // Expecting at least Value + OV $ + Balcony $ + Suite $ after Trade. Abort if too short.
-                    if (cells.length < 10) return;
+                    // Expecting at least Value + Interior + OV $ + Balcony $ + Suite $ after Trade. Abort if too short.
+                    if (cells.length < 11) return;
                     const valCell = cells[6];
-                    const oceanViewCell = cells[7];
-                    const balconyCell = cells[8];
-                    const suiteCell = cells[9];
+                    const interiorCell = cells[7];
+                    const oceanViewCell = cells[8];
+                    const balconyCell = cells[9];
+                    const suiteCell = cells[10];
                     if (!valCell) return;
                     const code = (r.dataset.offerCode || '').trim();
                     const sailISO = (r.dataset.sailDate || '').trim();
@@ -479,6 +478,20 @@ const Utils = {
                         }
                     } else {
                         _offerValueStats.computed++;
+                    }
+
+                    // Refresh Interior column after itinerary/pricing hydration
+                    if (interiorCell) {
+                        try {
+                            const rawInterior = (typeof Utils.computeInteriorYouPayPrice === 'function')
+                                ? Utils.computeInteriorYouPayPrice(matchObj.offer, matchObj.sailing, { includeTaxes: includeTF, state })
+                                : null;
+                            const formattedInterior = Utils.formatOfferValue(rawInterior);
+                            const existingInterior = (interiorCell.textContent || '').trim();
+                            if (existingInterior !== formattedInterior) interiorCell.textContent = formattedInterior;
+                        } catch(eInterior) {
+                            try { console.debug('[Interior] refresh error', eInterior); } catch(ignore) {}
+                        }
                     }
 
                     // Refresh OV $ column after itinerary/pricing hydration

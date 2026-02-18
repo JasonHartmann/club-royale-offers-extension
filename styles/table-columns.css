@@ -20,6 +20,8 @@
 .table-auto th[data-key="tradeInValue"], .accordion-table th[data-key="tradeInValue"], .table-auto td[data-col="tradeInValue"], .accordion-table td[data-col="tradeInValue"] { width:75px; min-width:75px; max-width:75px; white-space:nowrap; }
 /* Offer Value -> column index 7 */
 .table-auto th[data-key="offerValue"], .accordion-table th[data-key="offerValue"], .table-auto td[data-col="offerValue"], .accordion-table td[data-col="offerValue"] { width:80px; min-width:80px; max-width:90px; white-space:nowrap; }
+/* Interior -> between Value and OV */
+.table-auto th[data-key="interior"], .accordion-table th[data-key="interior"], .table-auto td[data-col="interior"], .accordion-table td[data-col="interior"] { width:80px; min-width:80px; max-width:90px; white-space:nowrap; }
 /* OV -> column index 8 */
 .table-auto th[data-key="oceanViewUpgrade"], .accordion-table th[data-key="oceanViewUpgrade"], .table-auto td[data-col="oceanViewUpgrade"], .accordion-table td[data-col="oceanViewUpgrade"] { width:80px; min-width:80px; max-width:90px; white-space:nowrap; }
 /* Balcony -> column index 9 */

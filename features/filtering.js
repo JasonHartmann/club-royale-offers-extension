@@ -488,8 +488,7 @@ const Filtering = {
         if (!descriptor || !descriptor.key) return false;
         try {
             const val = Filtering.getOfferColumnValue(wrapper?.offer, wrapper?.sailing, descriptor.key);
-            const matched = Filtering._matchesHiddenValue(val, descriptor.value);
-            return matched;
+            return Filtering._matchesHiddenValue(val, descriptor.value);
         } catch (e) {
             return false;
         }
@@ -693,10 +692,9 @@ const Filtering = {
                         try {
                             const pArr = Array.isArray(d.ports) ? d.ports : [];
                             pArr.forEach(pObj => {
-                                const reg = pObj?.port?.region; const name = pObj?.port?.name;
+                                const reg = pObj?.port?.region;
                                 if (reg) {
                                     const regNorm = Filtering.normalizePredicateValue(reg,'visits');
-                                    const nameNorm = name ? Filtering.normalizePredicateValue(name,'visits') : null;
                                     if (regNorm && !ports.some(x => Filtering.normalizePredicateValue(x,'visits') === regNorm)) ports.push(reg.trim());
                                 }
                             });
@@ -786,7 +784,7 @@ const Filtering = {
             return true;
         } catch(e) { return true; }
     },
-    normalizePredicateValue(raw, fieldKey) {
+    normalizePredicateValue(raw) {
         try { return (''+raw).trim().toUpperCase(); } catch(e){ return ''; }
     },
     getOfferColumnValue(offer, sailing, key) {
@@ -871,9 +869,7 @@ const Filtering = {
                             const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
                             const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
                             const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                            if (hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) return false;
-                            if (globalHidden && globalHidden.has(key)) return false;
-                            return true;
+                            return !(hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) && !(globalHidden && globalHidden.has(key));
                         } catch (e) { return true; }
                     };
 
@@ -926,6 +922,15 @@ const Filtering = {
             case 'offerValue': {
                 try {
                     const raw = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null);
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(e){ return '-'; }
+            }
+            case 'interior': {
+                const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
+                        ? App.Utils.computeInteriorYouPayPrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                        : null;
                     return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
                 } catch(e){ return '-'; }
             }
@@ -1008,8 +1013,16 @@ const Filtering = {
     getOfferColumnValueForFiltering(offer, sailing, key, state) {
         try {
             const includeTF = state && state.advancedSearch && (state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false);
-            const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','oceanViewUpgrade','balconyUpgrade','suiteUpgrade']);
+            const pricingKeys = new Set(['minInteriorPrice','minOutsidePrice','minBalconyPrice','minSuitePrice','interior','oceanViewUpgrade','balconyUpgrade','suiteUpgrade']);
             if (includeTF || !pricingKeys.has(key)) return Filtering.getOfferColumnValue(offer, sailing, key);
+            if (key === 'interior') {
+                try {
+                    const raw = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
+                        ? App.Utils.computeInteriorYouPayPrice(offer, sailing, { includeTaxes: false, state })
+                        : null;
+                    return raw != null && isFinite(raw) ? Number(raw.toFixed(2)) : '-';
+                } catch(eInterior){ return '-'; }
+            }
             if (key === 'suiteUpgrade') {
                 try {
                     const raw = (App && App.Utils && typeof App.Utils.computeUpgradePriceForColumn === 'function')
@@ -1269,7 +1282,7 @@ const Filtering = {
                     const key = `SD_${shipCode}_${sailDate}`;
                     const entry = (typeof ItineraryCache !== 'undefined' && ItineraryCache && typeof ItineraryCache.get === 'function') ? ItineraryCache.get(key) : null;
                     const entryExists = !!entry && entry.stateroomPricing && Object.keys(entry.stateroomPricing || {}).length > 0;
-                    let computed = null;
+                    let computed;
                     try { computed = App && App.PricingUtils ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing) : null; } catch(e) { computed = `ERR:${e && e.message}`; }
                     return {
                         idx, offerCode: offer?.campaignOffer?.offerCode || null,

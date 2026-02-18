@@ -207,7 +207,7 @@ const TableRenderer = {
         resetDepths(state.fullOriginalOffers);
         if (state._globalSortedCache) state._globalSortedCache = {};
         const runRecalc = () => {
-            let waitPromise = Promise.resolve();
+            let waitPromise;
             try {
                 state._switchToken = this.currentSwitchToken || state._switchToken;
                 this.updateView(state);
@@ -294,8 +294,7 @@ const TableRenderer = {
             const depthsMap = B2BUtils.computeB2BDepth(rows, opts);
             rows.forEach((row, idx) => {
                 if (!row || !row.sailing) return;
-                const depth = (depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
-                row.sailing.__b2bDepth = depth;
+                row.sailing.__b2bDepth = (depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
             });
             try {
                 if (stateToken && this._metaCache) this._metaCache.set('b2bDepth:' + stateToken, depthsMap);
@@ -711,6 +710,7 @@ const TableRenderer = {
                 { key: 'expiration', label: 'Expires' },
                 { key: 'tradeInValue', label: 'Trade' },
                 { key: 'offerValue', label: 'Value' },
+                { key: 'interior', label: 'Interior' },
                 { key: 'oceanViewUpgrade', label: 'OV' },
                 { key: 'balconyUpgrade', label: 'Balcony' },
                 { key: 'suiteUpgrade', label: 'Suite' },
@@ -971,6 +971,7 @@ const TableRenderer = {
                     { key: 'expiration', label: 'Expires' },
                     { key: 'tradeInValue', label: 'Trade' },
                     { key: 'offerValue', label: 'Value' },
+                    { key: 'interior', label: 'Interior' },
                     { key: 'oceanViewUpgrade', label: 'OV' },
                     { key: 'balconyUpgrade', label: 'Balcony' },
                     { key: 'suiteUpgrade', label: 'Suite' },
@@ -1082,6 +1083,7 @@ const TableRenderer = {
                 }
             }
             const upgradeCols = [
+                { key: 'interior', label: 'Interior' },
                 { key: 'oceanViewUpgrade', label: 'OV' },
                 { key: 'balconyUpgrade', label: 'Balcony' },
                 { key: 'suiteUpgrade', label: 'Suite' }
@@ -1204,7 +1206,6 @@ const TableRenderer = {
     const base = state.fullOriginalOffers;
     const filtered = Filtering.filterOffers(state, base);
         state.originalOffers = filtered;
-        const filteredSet = new Set(Array.isArray(filtered) ? filtered : []);
         // For B2B depth computations we only want to exclude rows that are
         // explicitly hidden by Hidden Groups. Do NOT apply Advanced Search or
         // accordion filtering here — those filters control which rows are
@@ -1565,4 +1566,4 @@ if (typeof TableRenderer.updateBreadcrumb !== 'function') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = TableRenderer;
 }
-try { if (typeof global !== 'undefined' && !global.TableRenderer) global.TableRenderer = TableRenderer; } catch(e) {}
+try { if (typeof global !== 'undefined' && !global.TableRenderer) { global['TableRenderer'] = TableRenderer; } } catch(e) {}

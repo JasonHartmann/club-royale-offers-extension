@@ -60,6 +60,16 @@ const AccordionBuilder = {
                     } catch(e){ groupKey='-'; }
                     break;
                 }
+                case 'interior': {
+                    try {
+                        const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
+                        const raw = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
+                            ? App.Utils.computeInteriorYouPayPrice(offer, sailing, { includeTaxes: includeTF, state: App && App.TableRenderer ? App.TableRenderer.lastState : null })
+                            : null;
+                        groupKey = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(raw) : (raw!=null?`$${Number(raw).toFixed(2)}`:'-');
+                    } catch(e){ groupKey='-'; }
+                    break;
+                }
                 case 'oceanViewUpgrade': {
                     try {
                         const includeTF = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;

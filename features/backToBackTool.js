@@ -187,7 +187,7 @@
                 dateLabel = getShortDate(baseISO, i);
                 dow = getDOW(baseISO, i);
             }
-            let label = '';
+            let label;
             try {
                 const primaryPort = Array.isArray(day.ports) && day.ports.length ? day.ports[0] : null;
                 if (primaryPort && primaryPort.port) {
@@ -267,10 +267,9 @@
                                 const ship = (r.sailing && (r.sailing.shipCode || r.sailing.shipName)) ? String(r.sailing.shipCode || r.sailing.shipName).trim().toUpperCase() : '';
                                 const sail = (r.sailing && r.sailing.sailDate) ? String(r.sailing.sailDate).trim().slice(0,10) : '';
                                 const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                                if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) return false;
-                                return true;
-                            } catch(e) { return true; }
-                        });
+                                return !((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)));
+                                } catch(e) { return true; }
+                            });
                     } catch(e) { /* fall back to original rows on error */ }
                     const afterCount = Array.isArray(filtered) ? filtered.length : 0;
                     if (window && window.GOBO_DEBUG_LOGS) {
@@ -467,7 +466,7 @@
                             try { console.debug('[B2B] DOM element not found for rowId', rowId); } catch(e){}
                             return;
                         }
-                    } catch(e) { try { console.debug('[B2B] DOM reconstruction error', e); } catch(e){}; return; }
+                    } catch(e) { try { console.debug('[B2B] DOM reconstruction error', e); } catch(e2){} return; }
                 }
                 try {
                     // Apply persistent highlight to the corresponding table row so the
@@ -552,8 +551,7 @@
                                     const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
                                     const globalHidden = (typeof Filtering !== 'undefined' && Filtering._globalHiddenRowKeys instanceof Set) ? Filtering._globalHiddenRowKeys : null;
                                     const stateHidden = (ctxState && ctxState._hiddenGroupRowKeys instanceof Set) ? ctxState._hiddenGroupRowKeys : null;
-                                    if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) return false;
-                                    return true;
+                                    return !((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)));
                                 } catch(e) { return true; }
                             };
                         } catch(e) {}
@@ -563,7 +561,6 @@
                             // Avoid heavy diagnostics for very large row sets unless debugging explicitly enabled
                             const doHeavyDiag = (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS) || (Array.isArray(rows) && rows.length <= 500);
                             // The B2B tool always computes diagnostics regardless of any table-level autorun flag.
-                            const autoRunB2B = true;
                             if (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeB2BDepth === 'function') {
                                 depthMap = window.B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
                             }
@@ -634,6 +631,28 @@
             header.appendChild(headText);
             header.appendChild(closeBtn);
             modal.appendChild(header);
+
+            // Color legend
+            const legend = document.createElement('div');
+            legend.className = 'b2b-color-legend';
+            const legendItems = [
+                { cls: 'is-root', label: 'Root Sailing' },
+                { cls: 'b2b-chain-same-ship', label: 'Same Ship' },
+                { cls: 'b2b-chain-side-by-side', label: 'Side-by-Side' },
+                { cls: 'b2b-chain-region-link', label: 'Different Port' }
+            ];
+            legendItems.forEach(item => {
+                const swatch = document.createElement('span');
+                swatch.className = 'b2b-legend-item';
+                const dot = document.createElement('span');
+                dot.className = 'b2b-legend-dot ' + item.cls;
+                const text = document.createElement('span');
+                text.textContent = item.label;
+                swatch.appendChild(dot);
+                swatch.appendChild(text);
+                legend.appendChild(swatch);
+            });
+            modal.appendChild(legend);
 
             const body = document.createElement('div');
             body.className = 'b2b-visualizer-body';
@@ -960,9 +979,6 @@
             const interiorRaw = utils && typeof utils.computeInteriorYouPayPrice === 'function'
                 ? utils.computeInteriorYouPayPrice(offer, sailing, { includeTaxes, state, entry })
                 : null;
-            const fallbackRaw = utils && typeof utils.computeOfferValue === 'function' ? utils.computeOfferValue(offer, sailing) : null;
-            const valueRaw = (interiorRaw != null && isFinite(interiorRaw)) ? interiorRaw : fallbackRaw;
-            const valueFmt = utils && typeof utils.formatOfferValue === 'function' ? utils.formatOfferValue(valueRaw) : '-';
             const formatUpgrade = (columnKey) => {
                 if (!utils || typeof utils.formatUpgradePriceForColumn !== 'function') return '-';
                 return utils.formatUpgradePriceForColumn(columnKey, offer, sailing, { includeTaxes, state });
@@ -1001,15 +1017,21 @@
             const taxesText = taxesValue != null && utils && typeof utils.formatOfferValue === 'function'
                 ? `Taxes & Fees: ${utils.formatOfferValue(taxesValue)}${taxesLabel ? ` (${taxesLabel})` : ''}`
                 : `Taxes & Fees: --${taxesLabel ? ` (${taxesLabel})` : ''}`;
+            // Use interiorRaw directly for the interior slot. Do NOT fall back to
+            // computeOfferValue (which returns 0 for sold-out categories) because
+            // that causes the B2B tool to display "$0" instead of "Sold Out".
+            const interiorFmt = (interiorRaw != null && isFinite(interiorRaw) && interiorRaw > 0)
+                ? (utils && typeof utils.formatOfferValue === 'function' ? utils.formatOfferValue(interiorRaw) : '-')
+                : '-';
             return {
                 valuesRaw: {
-                    interior: valueRaw,
+                    interior: (interiorRaw != null && isFinite(interiorRaw) && interiorRaw > 0) ? interiorRaw : null,
                     oceanViewUpgrade: rawUpgrade('oceanViewUpgrade'),
                     balconyUpgrade: rawUpgrade('balconyUpgrade'),
                     suiteUpgrade: rawUpgrade('suiteUpgrade')
                 },
                 valuesFmt: {
-                    interior: valueFmt,
+                    interior: interiorFmt,
                     oceanViewUpgrade: formatUpgrade('oceanViewUpgrade'),
                     balconyUpgrade: formatUpgrade('balconyUpgrade'),
                     suiteUpgrade: formatUpgrade('suiteUpgrade')
@@ -1090,7 +1112,7 @@
                 const value = document.createElement('span');
                 value.className = 'b2b-price-value';
                 const rawVal = pricing && pricing.valuesRaw ? pricing.valuesRaw[item.key] : null;
-                if (rawVal == null || !isFinite(rawVal)) {
+                if (rawVal == null || !isFinite(rawVal) || rawVal <= 0) {
                     value.textContent = 'Sold Out';
                     chip.classList.add('is-sold-out');
                 } else {
@@ -1121,7 +1143,6 @@
             if (!this._activeSession || !this._activeSession.ui) return;
             const container = this._activeSession.ui.chainCards;
             const previousScrollTop = container ? container.scrollTop : 0;
-            const previousScrollHeight = container ? container.scrollHeight : 0;
             container.innerHTML = '';
             this._activeSession.chain.forEach((rowId, idx) => {
                 const meta = this._getMeta(rowId);
@@ -1223,10 +1244,7 @@
             // Preserve scroll position when only updating pricing selections
             try {
                 if (container && !didAutoScroll) {
-                    const newScrollHeight = container.scrollHeight || 0;
-                    const delta = newScrollHeight - previousScrollHeight;
-                    const nextScrollTop = previousScrollTop;
-                    container.scrollTop = Math.max(0, nextScrollTop);
+                    container.scrollTop = Math.max(0, previousScrollTop);
                 }
             } catch (e) { /* ignore scroll errors */ }
             try {
@@ -1270,8 +1288,7 @@
                     totalText = ' • Total: --';
                 }
             } catch(e) { totalText = ''; }
-            const status = `Depth: ${depth} sailing${depth === 1 ? '' : 's'} - Side-by-side ${this._activeSession.allowSideBySide ? 'Allowed' : 'Disabled'}${totalText}`;
-            this._activeSession.ui.statusSpan.textContent = status;
+            this._activeSession.ui.statusSpan.textContent = `Depth: ${depth} sailing${depth === 1 ? '' : 's'} - Side-by-side ${this._activeSession.allowSideBySide ? 'Allowed' : 'Disabled'}${totalText}`;
         },
 
         _flashMessage(text, tone) {
@@ -1583,8 +1600,6 @@
             }
             // Compute B2B depths deterministically per candidate option using the same utility that the main table uses.
             // The builder tool ignores the table-level autorun preference and always computes per-option depths.
-            const autoRunB2B = true;
-            let precomputed = null;
             let rowIndexById = null;
             let visibilityCache = null;
             let rows = null;
@@ -1637,12 +1652,10 @@
                             const candidateOffer = optMeta.offerCode || null;
                             const initialUsedOfferCodes = sessionUsedOfferCodes.slice();
                             if (candidateOffer) initialUsedOfferCodes.push(candidateOffer);
-                            let matchByRegion = false;
                             try {
+                                // matchByRegion preference checked but not currently used in depth computation
                                 if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BComputeByRegion === 'function') {
-                                    matchByRegion = !!App.SettingsStore.getB2BComputeByRegion();
-                                } else if (window.App && typeof App.B2BComputeByRegion !== 'undefined') {
-                                    matchByRegion = !!App.B2BComputeByRegion;
+                                    App.SettingsStore.getB2BComputeByRegion();
                                 }
                             } catch (e) { /* ignore */ }
                             const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes, drivingRangeHours };
@@ -1701,7 +1714,7 @@
                 headerDiv.appendChild(badges);
 
                 // Compute route including intermediate regions from timeline
-                let routeLabel = '';
+                let routeLabel;
                 try {
                     const timeline = Array.isArray(opt.meta.timeline) ? opt.meta.timeline : [];
                     // Build stops with port and region parsed from label (label format: "Port, Region")

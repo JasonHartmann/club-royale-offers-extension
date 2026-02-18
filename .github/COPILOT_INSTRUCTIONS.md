@@ -49,12 +49,13 @@ Assistant Checklist (before making changes)
 
 Column Coverage
 ---------------
-When adding or removing a table column (i.e. changing the `headers` array in `tableRenderer.js`), you **must** also handle the new column in all five systems:
+When adding or removing a table column (i.e. changing the `headers` array in `tableRenderer.js`), you **must** also handle the new column in all six systems:
 1. **Sorting** — add a `case` in `utils/sortUtils.js`
 2. **CSV export** — include the column value in the return array in `modal.js` `exportToCSV`
 3. **Grouping** — add a `case` in `features/accordionBuilder.js` `createGroupedData`
 4. **CSS widths** — add width rules in `styles/table-columns.css`
 5. **Advanced search / filtering** — add a `case` in `features/filtering.js` `getOfferColumnValue`
+6. **Settings show/hide** — add the column to the `defaultHeaders` array in `features/settings.js`
 
 Run `npx jest tests/columnCoverage.test.js` after any column change to verify coverage. This test will fail if any system is missing the new column.
 

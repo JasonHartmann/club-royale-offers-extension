@@ -11,7 +11,7 @@ const Settings = {
         btn.className = 'gobo-settings-gear';
         btn.textContent = '⚙️';
         btn.style.cssText = 'font-size:16px; padding:6px 8px; margin-left:8px; border-radius:6px;';
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', () => {
             try {
                 Settings.openSettingsModal();
             } catch (err) { console.warn('Settings open failed', err); }
@@ -280,6 +280,7 @@ const Settings = {
                 { key: 'expiration', label: 'Expires' },
                 { key: 'tradeInValue', label: 'Trade' },
                 { key: 'offerValue', label: 'Value' },
+                { key: 'interior', label: 'Interior' },
                 { key: 'oceanViewUpgrade', label: 'OV' },
                 { key: 'balconyUpgrade', label: 'Balcony' },
                 { key: 'suiteUpgrade', label: 'Suite' },

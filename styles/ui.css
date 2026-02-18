@@ -170,6 +170,9 @@ body.gobo-dark .donate-panel a.venmo-link:hover {
 .b2b-visualizer-overlay {
     /* Prefer modern API to reserve space for overlay scrollbars */
     scrollbar-gutter: auto;
+    /* Declare custom property so static analysis tools can resolve it;
+       the actual value is set by JS (_applyScrollbarFallback). */
+    --b2b-scrollbar-gap: 0px;
 }
 
 /* Fallback: when scrollbar-gutter isn't supported (older Safari), the JS will
@@ -271,7 +274,22 @@ body.gobo-dark .donate-panel a.venmo-link:hover {
     width: 100%;
 }
 
+/* Color legend */
+.b2b-color-legend { display:flex; flex-wrap:wrap; gap:10px 16px; padding:6px 16px 8px; font-size:12px; color:#475569; border-bottom:1px solid rgba(15,23,42,0.08); }
+.b2b-legend-item { display:inline-flex; align-items:center; gap:5px; }
+.b2b-legend-dot { width:12px; height:12px; border-radius:4px; flex-shrink:0; }
+.b2b-legend-dot.is-root { background:linear-gradient(135deg,#dbeafe,#93c5fd); border:1px solid rgba(59,130,246,0.4); }
+.b2b-legend-dot.b2b-chain-same-ship { background:linear-gradient(135deg,#dcfce7,#86efac); border:1px solid rgba(34,197,94,0.5); }
+.b2b-legend-dot.b2b-chain-side-by-side { background:linear-gradient(135deg,#fef3c7,#fcd34d); border:1px solid rgba(217,119,6,0.5); }
+.b2b-legend-dot.b2b-chain-region-link { background:linear-gradient(135deg,#f3e8ff,#c4b5fd); border:1px solid rgba(139,92,246,0.5); }
+
 /* Dark mode overrides */
+body.gobo-dark .b2b-color-legend { color:#94a3b8; border-bottom-color:rgba(148,163,184,0.15); }
+body.gobo-dark .b2b-legend-dot.is-root { background:linear-gradient(135deg,#1e3a8a,#2563eb); border-color:rgba(96,165,250,0.5); }
+body.gobo-dark .b2b-legend-dot.b2b-chain-same-ship { background:linear-gradient(135deg,#064e3b,#059669); border-color:rgba(34,197,94,0.5); }
+body.gobo-dark .b2b-legend-dot.b2b-chain-side-by-side { background:linear-gradient(135deg,#78350f,#d97706); border-color:rgba(245,158,11,0.5); }
+body.gobo-dark .b2b-legend-dot.b2b-chain-region-link { background:linear-gradient(135deg,#581c87,#8b5cf6); border-color:rgba(167,139,250,0.5); }
+
 body.gobo-dark .b2b-visualizer-modal {
     background:#0f172a;
     color:#e2e8f0;
