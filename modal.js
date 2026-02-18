@@ -335,6 +335,7 @@ const Modal = {
 
         document.body.appendChild(backdrop);
         document.body.appendChild(container);
+        document.body.style.overflow = 'hidden';
 
         // --- Session disappearance watcher ---
         // Poll every 2 seconds for session presence

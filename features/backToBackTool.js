@@ -997,7 +997,7 @@
                         : (typeof sailing.taxesAndFeesIncluded === 'boolean' ? sailing.taxesAndFeesIncluded : null);
                 }
             } catch (e) { /* ignore */ }
-            const taxesLabel = (taxesIncluded === true) ? 'Included' : (taxesIncluded === false ? 'Additional' : '');
+            const taxesLabel = includeTaxes ? 'Included' : 'Excluded';
             const taxesText = taxesValue != null && utils && typeof utils.formatOfferValue === 'function'
                 ? `Taxes & Fees: ${utils.formatOfferValue(taxesValue)}${taxesLabel ? ` (${taxesLabel})` : ''}`
                 : `Taxes & Fees: --${taxesLabel ? ` (${taxesLabel})` : ''}`;
@@ -1815,7 +1815,7 @@
                     // Prefer immediate next-candidate count so we show 'No more' when there are none,
                     // even if further descendants exist.
                     const immediateCount = this._computeImmediateCount(opt.rowId, opt.rowId);
-                    const descendantDepth = (typeof opt.depth === 'number') ? opt.depth : (opt.meta && opt.meta.sailing && typeof opt.meta.sailing.__b2bDepth === 'number' ? opt.meta.sailing.__b2bDepth : 1);
+                    let descendantDepth = (typeof opt.depth === 'number') ? opt.depth : (opt.meta && opt.meta.sailing && typeof opt.meta.sailing.__b2bDepth === 'number' ? opt.meta.sailing.__b2bDepth : 1);
                     try {
                         const ocode = opt.meta && opt.meta.offerCode ? opt.meta.offerCode : safeOfferCode(opt.entry || {});
                         try {

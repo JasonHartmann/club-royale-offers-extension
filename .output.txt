@@ -1,0 +1,217 @@
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ PASS  tests/modal.test.js
+ PASS  tests/portsTravelTimes.test.js
+ PASS  tests/backToBackTool.test.js
+ PASS  tests/roomCategory.test.js
+ PASS  tests/syntax.test.js
+ PASS  tests/consoleShim.test.js
+ PASS  tests/b2bRoute.test.js
+ PASS  tests/b2bFilterAlignment.test.js
+ PASS  tests/b2bUtils.sameDayUtc.test.js
+ PASS  tests/pricingUtils.test.js
+ PASS  tests/storageShim.test.js
+ PASS  tests/b2bHiddenFilter.test.js
+ PASS  tests/endDateFilter.test.js
+  ● Console
+    console.log
+      REQ filtering export type: object keys: [
+        'DEBUG',
+        '_dbg',
+        '_globalHiddenRowKeys',
+        '_resetHiddenRowStore',
+        '_getHiddenRowStore',
+        '_rowKey',
+        '_rememberHiddenRow',
+        'wasRowHidden',
+        '_parseHiddenGroupPath',
+        '_resolveHiddenGroupKey',
+        '_buildHiddenGroupDescriptors',
+        '_matchesHiddenDescriptor',
+        '_matchesHiddenValue',
+        'filterOffers',
+        'excludeHidden',
+        'applyAdvancedSearch',
+        'matchesAdvancedPredicates',
+        'evaluatePredicate',
+        'normalizePredicateValue',
+        'getOfferColumnValue',
+        'getOfferColumnValueForFiltering',
+        'isRowHidden',
+        'loadHiddenGroups',
+        'addHiddenGroup',
+        'deleteHiddenGroup',
+        'updateHiddenGroupsList',
+        'printSuitePricingDiagnostics'
+      ]
+      at Object.log (tests/endDateFilter.test.js:2:9)
+    console.log
+      globalThis.Filtering type: object
+      at Object.log (tests/endDateFilter.test.js:3:9)
+ PASS  tests/b2bUtils.test.js
+ PASS  tests/profileIdManager.test.js
+  ● Console
+    console.debug
+      [ProfileIdManager] init starting
+      at Object.debug [as init] (features/profileIdManager.js:27:27)
+    console.debug
+      [ProfileIdManager] init completed { ready: true, next: 1, mapKeys: [] }
+      at Object.debug [as init] (features/profileIdManager.js:30:27)
+    console.debug
+      [ProfileIdManager] ensureIds called {
+        keys: [ 'gobo-X-alpha', 'gobo-X-beta' ],
+        reentrant: false,
+        next: 1,
+        free: [],
+        mapSnapshot: {}
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:197:27)
+    console.debug
+      [ProfileIdManager] computed assignable { assignable: [ 'gobo-X-alpha', 'gobo-X-beta' ] }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:206:27)
+    console.debug
+      [ProfileIdManager] assigned ids {
+        assignedKeys: [ 'gobo-X-alpha', 'gobo-X-beta' ],
+        mapSnapshot: { 'gobo-X-alpha': 1, 'gobo-X-beta': 2 }
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:237:31)
+    console.debug
+      [ProfileIdManager] _persist writing via localStorage { mapSize: 2, free: [], next: 3 }
+      at Object.debug [as _persist] (features/profileIdManager.js:171:35)
+    console.log
+      [ProfileIdManager][PERSIST] { ts: 1771393519831, mapSize: 2, free: [], next: 3 }
+      at Object.log [as _persist] (features/profileIdManager.js:189:35)
+    console.debug
+      [ProfileIdManager] init starting
+      at Object.debug [as init] (features/profileIdManager.js:27:27)
+    console.debug
+      [ProfileIdManager] init completed { ready: true, next: 1, mapKeys: [] }
+      at Object.debug [as init] (features/profileIdManager.js:30:27)
+    console.debug
+      [ProfileIdManager] ensureIds called {
+        keys: [ 'gobo-X-alpha', 'gobo-X-beta' ],
+        reentrant: false,
+        next: 1,
+        free: [],
+        mapSnapshot: {}
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:197:27)
+    console.debug
+      [ProfileIdManager] computed assignable { assignable: [ 'gobo-X-alpha', 'gobo-X-beta' ] }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:206:27)
+    console.debug
+      [ProfileIdManager] assigned ids {
+        assignedKeys: [ 'gobo-X-alpha', 'gobo-X-beta' ],
+        mapSnapshot: { 'gobo-X-alpha': 1, 'gobo-X-beta': 2 }
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:237:31)
+    console.debug
+      [ProfileIdManager] _persist writing via localStorage { mapSize: 2, free: [], next: 3 }
+      at Object.debug [as _persist] (features/profileIdManager.js:171:35)
+    console.log
+      [ProfileIdManager][PERSIST] { ts: 1771393519837, mapSize: 2, free: [], next: 3 }
+      at Object.log [as _persist] (features/profileIdManager.js:189:35)
+    console.debug
+      [ProfileIdManager] _persist writing via localStorage { mapSize: 1, free: [ 1 ], next: 3 }
+      at Object.debug [as _persist] (features/profileIdManager.js:171:35)
+    console.log
+      [ProfileIdManager][PERSIST] { ts: 1771393519838, mapSize: 1, free: [ 1 ], next: 3 }
+      at Object.log [as _persist] (features/profileIdManager.js:189:35)
+    console.debug
+      [ProfileIdManager] ensureIds called {
+        keys: [ 'gobo-X-gamma' ],
+        reentrant: false,
+        next: 3,
+        free: [ 1 ],
+        mapSnapshot: { 'gobo-X-beta': 2 }
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:197:27)
+    console.debug
+      [ProfileIdManager] computed assignable { assignable: [ 'gobo-X-gamma' ] }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:206:27)
+    console.debug
+      [ProfileIdManager] assigned ids {
+        assignedKeys: [ 'gobo-X-gamma' ],
+        mapSnapshot: { 'gobo-X-gamma': 1 }
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:237:31)
+    console.debug
+      [ProfileIdManager] _persist writing via localStorage { mapSize: 2, free: [], next: 3 }
+      at Object.debug [as _persist] (features/profileIdManager.js:171:35)
+    console.log
+      [ProfileIdManager][PERSIST] { ts: 1771393519840, mapSize: 2, free: [], next: 3 }
+      at Object.log [as _persist] (features/profileIdManager.js:189:35)
+    console.debug
+      [ProfileIdManager] init starting
+      at Object.debug [as init] (features/profileIdManager.js:27:27)
+    console.debug
+      [ProfileIdManager] init completed { ready: true, next: 1, mapKeys: [] }
+      at Object.debug [as init] (features/profileIdManager.js:30:27)
+ PASS  tests/departureMonth.test.js
+ PASS  tests/profileMigration.test.js
+  ● Console
+    console.debug
+      [ProfileIdManager] init starting
+      at Object.debug [as init] (features/profileIdManager.js:27:27)
+    console.debug
+      [ProfileIdManager] init completed { ready: true, next: 1, mapKeys: [] }
+      at Object.debug [as init] (features/profileIdManager.js:30:27)
+    console.debug
+      [ProfileIdManager] ensureIds called {
+        keys: [ 'gobo-john_doe' ],
+        reentrant: false,
+        next: 1,
+        free: [],
+        mapSnapshot: {}
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:197:27)
+    console.debug
+      [ProfileIdManager] computed assignable { assignable: [ 'gobo-john_doe' ] }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:206:27)
+    console.debug
+      [ProfileIdManager] assigned ids {
+        assignedKeys: [ 'gobo-john_doe' ],
+        mapSnapshot: { 'gobo-john_doe': 1 }
+      }
+      at Object.debug [as ensureIds] (features/profileIdManager.js:237:31)
+    console.debug
+      [ProfileIdManager] _persist writing via goboStorageSet { mapSize: 1, free: [], next: 2 }
+      at Object.debug [as _persist] (features/profileIdManager.js:171:35)
+    console.log
+      [ProfileIdManager][PERSIST] { ts: 1771393520045, mapSize: 1, free: [], next: 2 }
+      at Object.log [as _persist] (features/profileIdManager.js:189:35)
+    console.log
+      [ProfileIdManager] transferId moved { from: 'gobo-john_doe', to: 'gobo-R-john_doe', id: 1 }
+      at Object.log [as transferId] (features/profileIdManager.js:303:31)
+    console.debug
+      [ProfileIdManager] _persist writing via goboStorageSet { mapSize: 1, free: [], next: 2 }
+      at Object.debug [as _persist] (features/profileIdManager.js:171:35)
+    console.log
+      [ProfileIdManager][PERSIST] { ts: 1771393520082, mapSize: 1, free: [], next: 2 }
+      at Object.log [as _persist] (features/profileIdManager.js:189:35)
+    console.debug
+      [ProfileIdManager] init starting
+      at Object.debug [as init] (features/profileIdManager.js:27:27)
+    console.debug
+      [ProfileIdManager] init completed { ready: true, next: 2, mapKeys: [ 'gobo-R-john_doe' ] }
+      at Object.debug [as init] (features/profileIdManager.js:30:27)
+Test Suites: 17 passed, 17 total
+Tests:       54 passed, 54 total
+Snapshots:   0 total
+Time:        2.544 s
+Ran all test suites.

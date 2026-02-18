@@ -1,0 +1,15 @@
+# This is an example configuration file
+# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
+
+name: Local
+version: 1.0.0
+schema: v1
+
+# Define which models can be used - openai compatible on llama.cpp
+# http://localhost:8080/
+models:
+  - name: "Local Llama.cpp"
+    provider: "llama.cpp"
+    model: "your-model-name"
+    apiBase: "http://localhost:8080"
+
