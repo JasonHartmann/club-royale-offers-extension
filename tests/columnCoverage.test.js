@@ -27,7 +27,7 @@ function getCanonicalHeaders() {
     const re = /\{\s*key:\s*'([^']+)'\s*,\s*label:\s*'[^']*'\s*}/g;
     // Find the first block that defines the full header array (contains sailDate, perks, etc.)
     // We look for the block starting around "const headers" or the array literal
-    const blockMatch = src.match(/(?:const\s+headers\s*=\s*\[|headers\s*[\=:]\s*\[)([\s\S]*?)];/);
+    const blockMatch = src.match(/(?:const\s+headers\s*=\s*\[|headers\s*[=:]\s*\[)([\s\S]*?)];/);
     if (blockMatch) {
         let m;
         while ((m = re.exec(blockMatch[1])) !== null) {
