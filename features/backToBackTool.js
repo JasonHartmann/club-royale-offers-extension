@@ -1680,6 +1680,17 @@
             });
 
             options.forEach(opt => {
+                try {
+                    const pricingData = this._getPricingData(opt.meta);
+                    const raw = pricingData.valuesRaw;
+                    const isSoldOut = (v) => v == null || !isFinite(v) || v <= 0;
+                    if (isSoldOut(raw.interior) && isSoldOut(raw.oceanViewUpgrade) &&
+                        isSoldOut(raw.balconyUpgrade) && isSoldOut(raw.suiteUpgrade)) {
+                        return;
+                    }
+                } catch (e) {
+                    /* Skip card if pricing computation fails */
+                }
                 const card = document.createElement('div');
                 card.className = 'b2b-option-card'
                     + (opt.isSideBySide ? ' b2b-side-by-side' : '')

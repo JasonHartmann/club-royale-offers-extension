@@ -79,4 +79,6 @@ describe('B2B Pricing Sold-Out Interior', () => {
         // Should contain the rawVal <= 0 check
         expect(body).toMatch(/rawVal\s*<=\s*0/);
     });
+
+    // Note: Card hiding tests moved to b2bHideSoldOutCards.test.js
 });
