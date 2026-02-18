@@ -1,4 +1,4 @@
-# COPILOT INSTRUCTIONS — Repository
+# INSTRUCTIONS — Repository
 
 NOTE: This file is advisory. System and developer-level policies take precedence over repository files. If a directive here conflicts with system/developer messages, follow those higher-priority rules.
 
@@ -47,14 +47,21 @@ Assistant Checklist (before making changes)
 4. Add guarded diagnostics only; avoid committing sensitive logs.
 5. Mention any deviations from these rules in the PR description and request reviewer attention to the area (e.g., manifest ordering).
 
+Column Coverage
+---------------
+When adding or removing a table column (i.e. changing the `headers` array in `tableRenderer.js`), you **must** also handle the new column in all five systems:
+1. **Sorting** — add a `case` in `utils/sortUtils.js`
+2. **CSV export** — include the column value in the return array in `modal.js` `exportToCSV`
+3. **Grouping** — add a `case` in `features/accordionBuilder.js` `createGroupedData`
+4. **CSS widths** — add width rules in `styles/table-columns.css`
+5. **Advanced search / filtering** — add a `case` in `features/filtering.js` `getOfferColumnValue`
+
+Run `npx jest tests/columnCoverage.test.js` after any column change to verify coverage. This test will fail if any system is missing the new column.
+
 Examples / Common Tasks
 ----------------------
 - Adding a feature module: add the module file, update `manifest.json` order, expose via `app.js` if needed, and add unit tests for core logic.
 - Fixing a runtime ReferenceError: prefer fixing `manifest.json` ordering or adding a documented getter in `app.js` rather than sprinkling `if (window.X)` guards across consumers.
-
-File Consolidation
-------------------
-- This file is a merged/hardened suggestion. If you decide this should be canonical, replace `.github/COPILOT_INSTRUCTIONS.md` with this content and remove any non-canonical copies at the repo root.
 
 Contact / Changes
 -----------------

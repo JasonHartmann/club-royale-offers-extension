@@ -34,7 +34,7 @@ const AccordionBuilder = {
                     // Use the same formatting as table rows so group labels match displayed values
                     groupKey = App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue);
                     // New: if grouping by offerValue use formatted value
-                    if (colKey === 'offerValue') {
+                    if (currentGroupColumn === 'offerValue') {
                         try { const raw = (App && App.Utils && App.Utils.computeOfferValue) ? App.Utils.computeOfferValue(offer, sailing) : null; groupKey = (App && App.Utils && App.Utils.formatOfferValue) ? App.Utils.formatOfferValue(raw) : (raw!=null?`$${Number(raw).toFixed(2)}`:'-'); } catch(e){ groupKey='-'; }
                     }
                     // Debug: show mapping from raw value to group key for troubleshooting

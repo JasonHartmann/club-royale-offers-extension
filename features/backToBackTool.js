@@ -1225,7 +1225,7 @@
                 if (container && !didAutoScroll) {
                     const newScrollHeight = container.scrollHeight || 0;
                     const delta = newScrollHeight - previousScrollHeight;
-                    const nextScrollTop = previousScrollTop + (delta > 0 ? 0 : 0);
+                    const nextScrollTop = previousScrollTop;
                     container.scrollTop = Math.max(0, nextScrollTop);
                 }
             } catch (e) { /* ignore scroll errors */ }
