@@ -732,7 +732,19 @@ const Breadcrumbs = {
                 refreshBtn.title = 'Refresh all itineraries and recalc prices';
                 refreshBtn.style.marginLeft = '8px';
                 refreshBtn.addEventListener('click', async () => {
+                    const cooldownMs = 30000;
+                    const now = Date.now();
+                    let lastRefresh = 0;
+                    try {
+                        if (window.App && App._lastItineraryRefreshAt) lastRefresh = App._lastItineraryRefreshAt;
+                    } catch (e) { /* ignore */ }
+                    if (!lastRefresh && refreshBtn.dataset && refreshBtn.dataset.lastRefreshAt) {
+                        lastRefresh = parseInt(refreshBtn.dataset.lastRefreshAt, 10) || 0;
+                    }
+                    if (lastRefresh && now - lastRefresh < cooldownMs) return;
                     if (refreshBtn.classList.contains('loading')) return;
+                    try { if (window.App) App._lastItineraryRefreshAt = now; } catch (e) { /* ignore */ }
+                    if (refreshBtn.dataset) refreshBtn.dataset.lastRefreshAt = String(now);
                     refreshBtn.classList.add('loading');
                     try {
                         if (typeof Spinner !== 'undefined' && Spinner.showSpinner) Spinner.showSpinner();

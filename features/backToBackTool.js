@@ -708,6 +708,7 @@
             overlay.appendChild(modal);
             // Hide overlay until initial content is rendered to avoid showing stale/incorrect data briefly
             overlay.style.visibility = 'hidden';
+            this._lockBodyScroll();
             document.body.appendChild(overlay);
 
             // Detect platforms (like Safari on macOS) where scrollbars overlay content instead of
@@ -1340,7 +1341,7 @@
                 }
                 let isNearbyPort = false;
                 let nearbyLabel = '';
-                if (drivingRangeHours > 0) {
+                if (allowSideBySide && drivingRangeHours > 0) {
                     const currentPort = (lastMeta.disembarkPort || '').toLowerCase();
                     const nextPort = (candidateMeta.embarkPort || candidateMeta.disembarkPort || '').toLowerCase();
                     if (currentPort && nextPort && currentPort !== nextPort) {
@@ -1533,7 +1534,15 @@
             const currentPort = (currentMeta.disembarkPort || '').toLowerCase();
             const nextPort = (nextMeta.embarkPort || nextMeta.disembarkPort || '').toLowerCase();
 
-            if (drivingRangeHours > 0) {
+            if (!allowSideBySide) {
+                // When side-by-side is disabled, require exact port match regardless of driving range.
+                if (currentPort && nextPort && currentPort !== nextPort) {
+                    _dbg('Not linkable: side-by-side disabled and port mismatch', { currentPort, nextPort, currentMeta, nextMeta });
+                    return false;
+                }
+            }
+
+            if (allowSideBySide && drivingRangeHours > 0) {
                 // Check if ports are within driving range
                 if (currentPort && nextPort && currentPort !== nextPort) {
                     // Check if nextPort is within driving range of currentPort
@@ -2194,6 +2203,13 @@
             try {
                 if (!this._activeSession || !this._activeSession.ui || !this._activeSession.ui.optionList) return;
                 const list = this._activeSession.ui.optionList;
+                // Avoid normalization on short landscape viewports where it can clip content
+                try {
+                    if (typeof window !== 'undefined' && window.matchMedia) {
+                        const shortLandscape = window.matchMedia('(orientation: landscape) and (max-height: 730px)');
+                        if (shortLandscape && shortLandscape.matches) return;
+                    }
+                } catch (e) { /* ignore media query errors */ }
                 const cards = Array.from(list.querySelectorAll('.b2b-option-card'));
                 if (!cards.length) return;
                 // Reset heights so natural measurement is possible
@@ -2239,6 +2255,53 @@
             return null;
         },
 
+        _lockBodyScroll() {
+            try {
+                if (this._scrollLock) return;
+                const docEl = document.documentElement;
+                const body = document.body;
+                const scrollY = window.scrollY || docEl.scrollTop || body.scrollTop || 0;
+                const scrollX = window.scrollX || docEl.scrollLeft || body.scrollLeft || 0;
+                this._scrollLock = {
+                    scrollY,
+                    scrollX,
+                    bodyOverflow: body.style.overflow,
+                    bodyPosition: body.style.position,
+                    bodyTop: body.style.top,
+                    bodyLeft: body.style.left,
+                    bodyWidth: body.style.width,
+                    docOverflow: docEl.style.overflow
+                };
+                body.style.overflow = 'hidden';
+                docEl.style.overflow = 'hidden';
+                body.style.position = 'fixed';
+                body.style.top = `-${scrollY}px`;
+                body.style.left = `-${scrollX}px`;
+                body.style.width = '100%';
+            } catch (e) {
+                /* best-effort */
+            }
+        },
+
+        _unlockBodyScroll() {
+            try {
+                if (!this._scrollLock) return;
+                const docEl = document.documentElement;
+                const body = document.body;
+                const { scrollY, scrollX, bodyOverflow, bodyPosition, bodyTop, bodyLeft, bodyWidth, docOverflow } = this._scrollLock;
+                body.style.overflow = bodyOverflow || '';
+                body.style.position = bodyPosition || '';
+                body.style.top = bodyTop || '';
+                body.style.left = bodyLeft || '';
+                body.style.width = bodyWidth || '';
+                docEl.style.overflow = docOverflow || '';
+                this._scrollLock = null;
+                window.scrollTo(scrollX || 0, scrollY || 0);
+            } catch (e) {
+                this._scrollLock = null;
+            }
+        },
+
         _closeOverlay() {
             if (!this._activeSession) return;
             if (this._activeSession.bannerTimeout) {
@@ -2257,6 +2320,7 @@
                     if (this._activeSession.ui.overlay) this._activeSession.ui.overlay.remove();
                 }
             } catch(e) { try { if (this._activeSession.ui && this._activeSession.ui.overlay) this._activeSession.ui.overlay.remove(); } catch(ee){} }
+            this._unlockBodyScroll();
             this._activeSession = null;
         }
     };

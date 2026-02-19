@@ -595,7 +595,7 @@
                         if (!youPayTooltipEl) return;
                         const target = ev && ev.target;
                         if (target && (target === youPayTooltipEl || youPayTooltipEl.contains(target))) return;
-                        if (target && target.closest && target.closest('.gobo-itinerary-youpay')) return;
+                        if (target && target.closest && (target.closest('.gobo-itinerary-youpay') || target.closest('.gobo-itinerary-offervalue'))) return;
                         hideYouPayTooltip();
                     } catch(e) {}
                 };
@@ -786,11 +786,38 @@
                         try {
                             const offerValueEl = document.createElement('span');
                             offerValueEl.className = 'gobo-itinerary-offervalue';
-                            offerValueEl.style.cssText = 'float:right;font-weight:normal;font-size:0.85em;';
+                            offerValueEl.style.cssText = 'float:right;font-weight:normal;font-size:0.85em;cursor:help;';
                             const valNum = isOneGuestOffer ? singleGuestOfferValue : dualGuestOfferValue;
                             const label = isOneGuestOffer ? 'Offer Value (est.)' : 'Offer Value';
                             offerValueEl.textContent = `${label}: ${valNum.toFixed(2)} ${currencyFallback}`;
-                            offerValueEl.title = isOneGuestOffer ? 'Estimated single-guest offer value derived from base price, assumed $200 discount, and taxes.' : 'Difference between base category price (dual occupancy) and estimated You Pay.';
+                            const offerValueTitle = isOneGuestOffer
+                                ? 'Estimated single-guest offer value derived from base price, assumed $200 discount, and taxes.'
+                                : 'Difference between base category price (dual occupancy) and estimated You Pay.';
+                            offerValueEl.title = offerValueTitle;
+                            offerValueEl.setAttribute('tabindex', '0');
+                            offerValueEl.setAttribute('role', 'button');
+                            offerValueEl.addEventListener('click', (ev) => {
+                                try {
+                                    ev.preventDefault();
+                                    ev.stopPropagation();
+                                    showYouPayTooltip(offerValueEl, offerValueTitle);
+                                } catch (e) {}
+                            });
+                            offerValueEl.addEventListener('touchstart', (ev) => {
+                                try {
+                                    ev.preventDefault();
+                                    ev.stopPropagation();
+                                    showYouPayTooltip(offerValueEl, offerValueTitle);
+                                } catch (e) {}
+                            }, { passive: false });
+                            offerValueEl.addEventListener('keydown', (ev) => {
+                                try {
+                                    if (ev.key === 'Enter' || ev.key === ' ') {
+                                        ev.preventDefault();
+                                        showYouPayTooltip(offerValueEl, offerValueTitle);
+                                    }
+                                } catch (e) {}
+                            });
                             priceTitle.appendChild(offerValueEl);
                         } catch(e) { dbg('OfferValue span inject error', e); }
                     }
@@ -851,8 +878,8 @@
                                     const taxesNote = `Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})`;
                                     youPayTitle = `You Pay = (max(0, Base Fare (${baseTarget.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency})) + 40% of Base Fare) + ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}`;
                                 } else {
-                                    const taxesNote = `Taxes & Fees Excluded (${taxesNumber.toFixed(2)} ${currency})`;
-                                    youPayTitle = `You Pay = max(0, Base Fare (${baseTarget.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency})) + 40% of Base Fare − ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}`;
+                                    const taxesNote = `Taxes & Fees excluded (${taxesNumber.toFixed(2)} ${currency})`;
+                                    youPayTitle = `You Pay = max(0, Base Fare (${baseTarget.toFixed(2)} ${currency}) − Offer Value (${Number(singleGuestOfferValue).toFixed(2)} ${currency})) + 40% of Base Fare (${taxesNote}) = ${Number(estimatedNum).toFixed(2)} ${currency}`;
                                 }
                             } else if(effectiveOfferPriceNum!=null){
                                 const currentMatchesAward = (thisCat && awardedInfo && thisCat===awardedInfo.category);
@@ -863,7 +890,9 @@
                                         : 'You Pay = 0 (Taxes & Fees excluded).';
                                 } else {
                                     let diff=currentPriceNum - effectiveOfferPriceNum; if(isNaN(diff)||diff<0) diff=0; estimatedNum=diff + taxesForCalc;
-                                    const taxesNote = includeTaxesFlag ? `+ Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})` : '+ Taxes & Fees (Excluded)';
+                                    const taxesNote = includeTaxesFlag
+                                        ? `+ Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})`
+                                        : 'Taxes & Fees excluded';
                                     const offerValueNote = (offerValueForTooltip != null && isFinite(Number(offerValueForTooltip)))
                                         ? ` • Offer Value: ${Number(offerValueForTooltip).toFixed(2)} ${currency}`
                                         : '';

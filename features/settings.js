@@ -97,7 +97,7 @@ const Settings = {
             const sbsTitle = document.createElement('strong'); sbsTitle.textContent = 'Include Side-by-Sides';
             sbsLabel.appendChild(sbsCb); sbsLabel.appendChild(sbsTitle);
             const sbsDesc = document.createElement('div'); sbsDesc.className = 'gobo-setting-desc'; sbsDesc.style.cssText = 'font-size:12px; margin-left:28px;';
-            sbsDesc.textContent = 'When enabled, side-by-side offers (combined or comparison rows) are included in Back-to-Back Builder calculations. Disable to hide those rows from view.';
+            sbsDesc.textContent = 'When enabled, side-by-side offers are included in Back-to-Back Builder calculations. Disable to hide those results from calculations.';
             sbsArea.appendChild(sbsLabel); sbsArea.appendChild(sbsDesc);
             
             // --- Include Other Ports Within X Hours Driving Range sub-option (under Side-by-Sides) ---
@@ -123,9 +123,9 @@ const Settings = {
             const updateValueDisplay = () => {
                 const val = parseInt(drivingSlider.value, 10);
                 if (val === 0) {
-                    drivingValueDisplay.textContent = 'Disabled';
+                    drivingValueDisplay.textContent = 'Same port only';
                 } else {
-                    drivingValueDisplay.textContent = val + ' hour' + (val === 1 ? '' : 's');
+                    drivingValueDisplay.textContent = val + ' hour' + (val === 1 ? '' : 's') + ' driving range';
                 }
             };
             updateValueDisplay();

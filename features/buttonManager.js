@@ -25,12 +25,16 @@ const ButtonManager = {
                 setTimeout(() => this.addButton(maxAttempts, attempt + 1), 500);
                 return;
             }
+            const narrowViewport = window.matchMedia && window.matchMedia('(max-width: 350px)').matches;
             if (!banner) {
                 console.debug('Banner div not found after max attempts, using centered fixed position');
                 button.className = 'fixed top-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
                 // Center horizontally
                 button.style.left = '50%';
                 button.style.transform = 'translateX(-50%)';
+                if (narrowViewport) {
+                    button.style.top = '72px';
+                }
                 document.body.appendChild(button);
             } else {
                 console.debug('Banner div found, adding button');
@@ -41,23 +45,35 @@ const ButtonManager = {
                     centerContainer.id = 'gobo-offers-center-container';
                     // Position container at center top of banner and center content via flex
                     centerContainer.style.position = 'absolute';
-                    centerContainer.style.top = '0';
+                    centerContainer.style.top = narrowViewport ? '100%' : '0';
                     centerContainer.style.left = '50%';
-                    centerContainer.style.transform = 'translateX(-50%)';
-                    centerContainer.style.height = '100%';
+                    centerContainer.style.transform = narrowViewport
+                        ? 'translateX(-50%) translateY(12px)'
+                        : 'translateX(-50%)';
+                    centerContainer.style.height = narrowViewport ? 'auto' : '100%';
+                    centerContainer.style.paddingTop = narrowViewport ? '8px' : '0';
+                    centerContainer.style.zIndex = narrowViewport ? '15' : 'auto';
                     centerContainer.style.display = 'flex';
                     centerContainer.style.justifyContent = 'center';
                     centerContainer.style.alignItems = 'center';
                     centerContainer.style.pointerEvents = 'none';
                     banner.style.position = 'relative'; // ensure banner is positioned
                     banner.appendChild(centerContainer);
+                } else {
+                    centerContainer.style.top = narrowViewport ? '100%' : '0';
+                    centerContainer.style.transform = narrowViewport
+                        ? 'translateX(-50%) translateY(12px)'
+                        : 'translateX(-50%)';
+                    centerContainer.style.height = narrowViewport ? 'auto' : '100%';
+                    centerContainer.style.paddingTop = narrowViewport ? '8px' : '0';
+                    centerContainer.style.zIndex = narrowViewport ? '15' : 'auto';
                 }
                 button.style.pointerEvents = 'auto'; // allow button to be clickable
                 centerContainer.innerHTML = '';
                 centerContainer.appendChild(button);
                 button.style.margin = '0 auto';
                 button.style.position = 'relative';
-                button.style.zIndex = '10';
+                button.style.zIndex = narrowViewport ? '20' : '10';
                 // No automatic scrolling: leave layout and viewport unchanged.
                 console.debug('Button centered in banner div');
             }

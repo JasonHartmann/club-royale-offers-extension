@@ -127,7 +127,7 @@ body.gobo-dark .donate-panel a.venmo-link:hover {
 .b2b-depth-cell-action[data-b2b-cell-bound="true"] .b2b-chevrons:hover,
 .b2b-depth-cell-action[data-b2b-cell-bound="true"] > .b2b-chevrons:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(9,45,92,0.28); }
 
-.b2b-visualizer-overlay { position:fixed; inset:0; background:rgba(5,13,32,0.65); z-index:2147483651; display:flex; align-items:flex-start; justify-content:center; padding:24px; overflow-y:auto; -webkit-overflow-scrolling:touch; backdrop-filter:blur(2px); }
+.b2b-visualizer-overlay { position:fixed; inset:0; background:rgba(5,13,32,0.65); z-index:2147483651; display:flex; align-items:flex-start; justify-content:center; padding:24px; overflow-y:auto; -webkit-overflow-scrolling:touch; backdrop-filter:blur(2px); overscroll-behavior:contain; touch-action:pan-y; }
 .b2b-visualizer-modal {
     width: min(1100px, 95vw);
     /* Cap the modal to the viewport minus a small chrome margin so it never grows past the screen */
@@ -215,6 +215,8 @@ body.gobo-dark .donate-panel a.venmo-link:hover {
     /* let scrollbars reserve their own space without clipping card edges */
     padding-right: 0;
     scrollbar-gutter: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 
 .b2b-section-title { font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px; margin:0; }
