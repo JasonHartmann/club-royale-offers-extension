@@ -10,7 +10,10 @@ const ButtonManager = {
             }
 
             const existingButton = document.getElementById('gobo-offers-button');
-            if (existingButton) existingButton.remove();
+            if (existingButton) {
+                // Button already in DOM – keep it to avoid MutationObserver remove/re-add loop
+                return;
+            }
             const button = document.createElement('button');
             button.id = 'gobo-offers-button';
             button.className = 'bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg hover:bg-blue-700 ml-2';
@@ -22,7 +25,7 @@ const ButtonManager = {
 
             const banner = document.querySelector('div[class*="flex"][class*="items-center"][class*="justify-between"]');
             if (!banner && attempt <= maxAttempts) {
-                setTimeout(() => this.addButton(maxAttempts, attempt + 1), 500);
+                setTimeout(() => this.addButton(maxAttempts, attempt + 1), 100);
                 return;
             }
             const narrowViewport = window.matchMedia && window.matchMedia('(max-width: 350px)').matches;

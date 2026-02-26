@@ -24,13 +24,17 @@
     "https://www.royalcaribbean.com/*",
     "https://www.celebritycruises.com/*",
     "https://royalcaribbean.com/*",
-    "https://celebritycruises.com/*"
+    "https://celebritycruises.com/*",
+    "https://comproyale.com/*",
+    "https://www.comproyale.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
         "https://*.royalcaribbean.com/club-royale/*",
-        "https://*.celebritycruises.com/blue-chip-club/*"
+        "https://*.celebritycruises.com/blue-chip-club/*",
+        "https://*.comproyale.com/sim/*",
+        "https://comproyale.com/sim/*"
       ],
       "css": [
         "styles/tailwind.min.css",

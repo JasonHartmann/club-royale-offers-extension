@@ -1,39 +1,44 @@
 /**
- * B2B Hide Sold-Out Cards Test
+ * B2B Sold-Out Cards Test
  *
- * Verifies that "Next Connections" cards are hidden when all 4 price categories
- * (interior, oceanView, balcony, suite) are sold out. Chain cards should always
- * be shown regardless of pricing.
+ * Verifies that "Next Connections" cards are visually marked (grayed out) when
+ * all 4 price categories (interior, oceanView, balcony, suite) are sold out.
+ * Chain cards should always be shown regardless of pricing.
  */
 const fs = require('fs');
 const path = require('path');
 
 const b2bSrc = fs.readFileSync(path.join(__dirname, '../features/backToBackTool.js'), 'utf8');
 
-describe('B2B Next Connections card hiding for all-sold-out', () => {
-    test('_renderOptions contains skip logic for all-sold-out cards', () => {
-        // Verify the source code contains the skip logic in _renderOptions
+describe('B2B Next Connections card sold-out handling', () => {
+    test('sold-out detection uses isSoldOutValue helper on all 4 categories', () => {
+        // Verify the source code contains the sold-out detection logic
         expect(b2bSrc).toMatch(/this\._getPricingData\s*\(opt\.meta/);
         expect(b2bSrc).toMatch(/pricingData\.valuesRaw/);
-        expect(b2bSrc).toMatch(/const\s+isSoldOut\s*=\s*\(v\)/);
-        expect(b2bSrc).toMatch(/isSoldOut\(raw\.interior\)/);
-        expect(b2bSrc).toMatch(/isSoldOut\(raw\.oceanViewUpgrade\)/);
-        expect(b2bSrc).toMatch(/isSoldOut\(raw\.balconyUpgrade\)/);
-        expect(b2bSrc).toMatch(/isSoldOut\(raw\.suiteUpgrade\)/);
+        expect(b2bSrc).toMatch(/const\s+isSoldOutValue\s*=\s*\(v\)/);
+        expect(b2bSrc).toMatch(/isSoldOutValue\(raw\.interior\)/);
+        expect(b2bSrc).toMatch(/isSoldOutValue\(raw\.oceanViewUpgrade\)/);
+        expect(b2bSrc).toMatch(/isSoldOutValue\(raw\.balconyUpgrade\)/);
+        expect(b2bSrc).toMatch(/isSoldOutValue\(raw\.suiteUpgrade\)/);
     });
 
-    test('skip logic returns early when all prices sold out', () => {
-        // Verify that the code has the pattern: if all sold out, return
-        // The condition spans multiple lines, so use [\s\S] to match across lines
-        expect(b2bSrc).toMatch(/if\s*\(isSoldOut[\s\S]*?&&[\s\S]*?isSoldOut[\s\S]*?&&[\s\S]*?isSoldOut[\s\S]*?&&[\s\S]*?isSoldOut[\s\S]*?\)\s*\{[\s\S]*?return/);
+    test('sold-out flag is set on opt when all prices sold out', () => {
+        // Verify that the code sets opt.isSoldOut when all categories are sold out
+        expect(b2bSrc).toMatch(/opt\.isSoldOut\s*=\s*isSoldOutValue[\s\S]*?&&[\s\S]*?isSoldOutValue[\s\S]*?&&[\s\S]*?isSoldOutValue[\s\S]*?&&[\s\S]*?isSoldOutValue/);
     });
 
-    test('skip logic is wrapped in try-catch for resilience', () => {
-        // Find the _renderOptions function and verify try-catch around pricing check
-        const renderOptionsMatch = b2bSrc.match(/_renderOptions\s*\(\s*\)\s*\{[\s\S]*?options\.forEach\s*\(\s*opt\s*=>\s*\{[\s\S]{0,500}/);
-        expect(renderOptionsMatch).toBeTruthy();
-        const block = renderOptionsMatch[0];
+    test('sold-out detection is wrapped in try-catch for resilience', () => {
+        // Find the sold-out marking block and verify try-catch
+        const markBlock = b2bSrc.match(/isSoldOutValue\s*=[\s\S]{0,200}options\.forEach\s*\(\s*opt\s*=>\s*\{[\s\S]{0,300}/);
+        expect(markBlock).toBeTruthy();
+        const block = markBlock[0];
         expect(block).toMatch(/try\s*\{/);
+    });
+
+    test('sold-out cards get b2b-sold-out CSS class', () => {
+        // Verify cards are styled with sold-out class rather than hidden
+        expect(b2bSrc).toMatch(/b2b-sold-out/);
+        expect(b2bSrc).toMatch(/opt\.isSoldOut\s*\?\s*'[\s]*b2b-sold-out/);
     });
 
     test('_renderChain does not skip cards based on pricing', () => {
@@ -42,7 +47,7 @@ describe('B2B Next Connections card hiding for all-sold-out', () => {
         expect(renderChainMatch).toBeTruthy();
         const chainBlock = renderChainMatch[0];
         // Should NOT contain isSoldOut skip logic
-        expect(chainBlock).not.toMatch(/const\s+isSoldOut\s*=/);
-        expect(chainBlock).not.toMatch(/isSoldOut\(raw\./);
+        expect(chainBlock).not.toMatch(/const\s+isSoldOutValue\s*=/);
+        expect(chainBlock).not.toMatch(/isSoldOutValue\(raw\./);
     });
 });

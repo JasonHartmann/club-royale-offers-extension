@@ -1679,8 +1679,23 @@
                 }
             } catch (e) { /* ignore depth compute errors */ }
 
-            // Sort options by descendant count (depth-1) descending, then by start date (asc)
+            // Mark sold-out options before sorting
+            const isSoldOutValue = (v) => v == null || !isFinite(v) || v <= 0;
+            options.forEach(opt => {
+                try {
+                    const pricingData = this._getPricingData(opt.meta);
+                    const raw = pricingData.valuesRaw;
+                    opt.isSoldOut = isSoldOutValue(raw.interior) && isSoldOutValue(raw.oceanViewUpgrade) &&
+                        isSoldOutValue(raw.balconyUpgrade) && isSoldOutValue(raw.suiteUpgrade);
+                } catch (e) {
+                    opt.isSoldOut = true;
+                }
+            });
+
+            // Sort options by: sold-out last, then descendant count (depth-1) descending, then by start date (asc)
             options.sort((a, b) => {
+                // Sold-out cards go to the bottom
+                if (a.isSoldOut !== b.isSoldOut) return a.isSoldOut ? 1 : -1;
                 const da = (typeof a.depth === 'number') ? Math.max(0, a.depth - 1) : 0;
                 const db = (typeof b.depth === 'number') ? Math.max(0, b.depth - 1) : 0;
                 if (db !== da) return db - da; // larger descendant counts first
@@ -1689,22 +1704,12 @@
             });
 
             options.forEach(opt => {
-                try {
-                    const pricingData = this._getPricingData(opt.meta);
-                    const raw = pricingData.valuesRaw;
-                    const isSoldOut = (v) => v == null || !isFinite(v) || v <= 0;
-                    if (isSoldOut(raw.interior) && isSoldOut(raw.oceanViewUpgrade) &&
-                        isSoldOut(raw.balconyUpgrade) && isSoldOut(raw.suiteUpgrade)) {
-                        return;
-                    }
-                } catch (e) {
-                    /* Skip card if pricing computation fails */
-                }
                 const card = document.createElement('div');
                 card.className = 'b2b-option-card'
                     + (opt.isSideBySide ? ' b2b-side-by-side' : '')
                     + (opt.isRegionMatch ? ' b2b-region-link' : '')
-                    + (!opt.isSideBySide && !opt.isRegionMatch ? ' b2b-same-ship' : '');
+                    + (!opt.isSideBySide && !opt.isRegionMatch ? ' b2b-same-ship' : '')
+                    + (opt.isSoldOut ? ' b2b-sold-out' : '');
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-option-meta';
                 // Build header with ship name and badge on same line
@@ -1952,20 +1957,28 @@
                     } catch(e) {}
                     // place pill inside the select button to the right
                     selectBtn.appendChild(depthDiv);
-                    // Attach direct handler; tool precomputes depths so no on-demand logic required here
-                    try {
-                        selectBtn.addEventListener('click', () => this._selectOption(opt.rowId), false);
-                        selectBtn.addEventListener('keydown', (ev) => {
-                            if (ev.key === 'Enter' || ev.key === ' ') {
+                    // Disable button for sold-out cards
+                    if (opt.isSoldOut) {
+                        selectBtn.textContent = 'Sold Out';
+                        selectBtn.classList.add('b2b-option-select-disabled');
+                        selectBtn.removeAttribute('tabindex');
+                        selectBtn.removeAttribute('role');
+                    } else {
+                        // Attach direct handler; tool precomputes depths so no on-demand logic required here
+                        try {
+                            selectBtn.addEventListener('click', () => this._selectOption(opt.rowId), false);
+                            selectBtn.addEventListener('keydown', (ev) => {
+                                if (ev.key === 'Enter' || ev.key === ' ') {
+                                    ev.preventDefault();
+                                    this._selectOption(opt.rowId);
+                                }
+                            }, false);
+                            selectBtn.addEventListener('mousedown', (ev) => {
+                                // Prevent focus-induced scroll jumps on some browsers
                                 ev.preventDefault();
-                                this._selectOption(opt.rowId);
-                            }
-                        }, false);
-                        selectBtn.addEventListener('mousedown', (ev) => {
-                            // Prevent focus-induced scroll jumps on some browsers
-                            ev.preventDefault();
-                        }, false);
-                    } catch(e) { /* ignore */ }
+                            }, false);
+                        } catch(e) { /* ignore */ }
+                    }
                 } catch (e) { /* ignore depth badge errors */ }
                 card.appendChild(metaBlock);
                 if (pricingElement) {

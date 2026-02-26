@@ -55,7 +55,6 @@ const Settings = {
             body.className = 'b2b-visualizer-body gobo-settings-body';
             body.style.gridTemplateColumns = '1fr';
             body.style.padding = '20px 28px';
-            body.style.maxHeight = '70vh';
             body.style.overflow = 'auto';
             body.style.overflowY = 'scroll';
             body.style.overflowX = 'hidden';
@@ -105,7 +104,7 @@ const Settings = {
                 ? App.SettingsStore.getB2BDrivingRangeHours()
                 : (settingsStore.b2bDrivingRangeHours !== undefined ? settingsStore.b2bDrivingRangeHours : 0);
             const drivingControlArea = document.createElement('div');
-            drivingControlArea.style.cssText = 'display:flex; align-items:center; gap:12px; margin-top:8px; margin-left:28px; opacity:1; transition: opacity 0.2s;';
+            drivingControlArea.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:8px; margin-left:28px; opacity:1; transition: opacity 0.2s; flex-wrap:wrap; overflow:hidden;';
             drivingControlArea.id = 'gobo-driving-range-sub-option';
             const drivingLabel = document.createElement('span');
             drivingLabel.style.cssText = 'font-size:13px; white-space:nowrap;';
@@ -117,9 +116,9 @@ const Settings = {
             drivingSlider.max = '5';
             drivingSlider.step = '1';
             drivingSlider.value = drivingRangeDefault;
-            drivingSlider.style.cssText = 'flex:1; cursor:pointer;';
+            drivingSlider.style.cssText = 'flex:1 1 60px; min-width:60px; cursor:pointer;';
             const drivingValueDisplay = document.createElement('span');
-            drivingValueDisplay.style.cssText = 'font-weight:bold; min-width:80px; text-align:right; font-size:13px;';
+            drivingValueDisplay.style.cssText = 'font-weight:bold; min-width:80px; text-align:right; font-size:13px; white-space:nowrap; flex-shrink:0;';
             const updateValueDisplay = () => {
                 const val = parseInt(drivingSlider.value, 10);
                 if (val === 0) {

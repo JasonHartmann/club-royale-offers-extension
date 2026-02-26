@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comp Royale - My Offers</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b0e1a;color:#1a1a2e;min-height:100vh}
+#sim-content,#sim-spinner{color:#fff}
+.header{background:#111328;padding:12px 40px;display:flex;align-items:center;justify-content:space-between;position:relative}
+.header .logo{font-size:18px;font-weight:700;color:#c9a84c}
+.header .user{font-size:14px;color:#ccc}
+.hero{background:linear-gradient(135deg,#1a1040 0%,#2d1b69 50%,#1a1040 100%);padding:70px 24px 40px;text-align:center}
+.hero h2{font-size:13px;letter-spacing:2px;color:#b8a0d8;margin-bottom:4px}
+.hero h1{font-size:32px;font-weight:700;color:#fff;margin-bottom:16px}
+.tier-bar{display:flex;justify-content:center;gap:0;margin:16px auto;max-width:400px}
+.tier-bar .seg{flex:1;height:8px;border-radius:4px;margin:0 2px}
+.seg.filled{background:linear-gradient(90deg,#7c3aed,#a855f7)}
+.seg.empty{background:#333}
+.tier-labels{display:flex;justify-content:center;gap:40px;font-size:11px;letter-spacing:1px;color:#999;margin-top:6px}
+.stats{display:flex;justify-content:center;gap:48px;margin-top:16px}
+.stats .stat{text-align:center}
+.stats .stat .label{font-size:11px;letter-spacing:1px;color:#b8a0d8}
+.stats .stat .value{font-size:24px;font-weight:700;color:#fff}
+.tabs{display:flex;border-bottom:2px solid #222;padding:0 24px;background:#111328}
+.tabs button{background:none;border:none;color:#888;padding:12px 24px;font-size:14px;cursor:pointer}
+.tabs button.active{color:#fff;border-bottom:2px solid #7c3aed}
+.content{max-width:1000px;margin:0 auto;padding:24px}
+.section-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.section-sub{font-size:13px;color:#999;margin-bottom:24px}
+.featured{display:flex;gap:20px;background:#1a1d2e;border-radius:12px;overflow:hidden;margin-bottom:32px}
+.featured img{width:320px;height:220px;object-fit:cover;flex-shrink:0}
+.featured .info{padding:20px;flex:1;display:flex;flex-direction:column;justify-content:center}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-bottom:8px}
+.badge.wildcard{background:#7c3aed;color:#fff}
+.badge.perks{background:#f59e0b;color:#000}
+.badge.closein{background:#10b981;color:#fff}
+.badge.monthly{background:#3b82f6;color:#fff}
+.badge.jackpot{background:#ef4444;color:#fff}
+.badge.variety{background:#8b5cf6;color:#fff}
+.badge.tier{background:#c9a84c;color:#000}
+.badge.default{background:#6b7280;color:#fff}
+.offer-code{font-size:11px;color:#999;float:right}
+.offer-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.offer-desc{font-size:13px;color:#bbb;margin-bottom:12px}
+.offer-actions{display:flex;gap:10px;margin-top:auto}
+.btn{padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none}
+.btn-outline{background:transparent;border:1px solid #7c3aed;color:#7c3aed}
+.btn-primary{background:#7c3aed;color:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.card{background:#1a1d2e;border-radius:12px;overflow:hidden}
+.card img{width:100%;height:160px;object-fit:cover}
+.card .body{padding:16px}
+.card .meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.card .title{font-size:15px;font-weight:700;margin-bottom:4px}
+.card .desc{font-size:12px;color:#999}
+.all-title{font-size:16px;font-weight:700;margin-bottom:16px;color:#b8a0d8}
+#sim-spinner{position:fixed;inset:0;background:#0b0e1a;display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+#sim-spinner .dot{width:12px;height:12px;border-radius:50%;background:#7c3aed;margin:0 6px;animation:bounce .6s infinite alternate}
+#sim-spinner .dot:nth-child(2){animation-delay:.2s}
+#sim-spinner .dot:nth-child(3){animation-delay:.4s}
+@keyframes bounce{to{opacity:.2;transform:translateY(-12px)}}
+#sim-content{opacity:0;transition:opacity .4s}
+</style>
+</head>
+<body>
+<div id="sim-spinner"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+<div id="sim-content" style="opacity:0">
+<div class="header flex items-center justify-between">
+  <div class="logo">&#9830; Comp Royale</div>
+  <div class="user">Hi, JASON &nbsp;|&nbsp; Sign out</div>
+</div>
+<div class="hero">
+  <h2>CURRENT CLUB TIER</h2>
+  <h1>PRIME</h1>
+  <div class="stats">
+    <div class="stat"><div class="label">TIER CREDITS</div><div class="value">8,876</div></div>
+    <div class="stat"><div class="label">MEMBER #</div><div class="value">390780962</div></div>
+  </div>
+  <div class="tier-bar"><div class="seg filled"></div><div class="seg filled"></div><div class="seg empty"></div><div class="seg empty"></div></div>
+  <div class="tier-labels"><span>CHOICE</span><span>PRIME</span><span>SIGNATURE</span><span>MASTERS</span></div>
+</div>
+<div class="tabs">
+  <button class="active">My Offers</button>
+  <button>Benefits</button>
+  <button>More</button>
+</div>
+<div class="content">
+  <h3 class="section-title">My Offers</h3>
+  <p class="section-sub">Offers are limited to one time use. If offer has a trade-in value, you can also select to redeem that value towards a future trip.</p>
+
+  <h4 style="color:#7c3aed;font-size:14px;margin-bottom:12px">Featured Offer</h4>
+  <div class="featured">
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='220'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%231a3a5c'/%3E%3Cstop offset='100%25' stop-color='%230d7377'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='320' height='220'/%3E%3Ctext x='160' y='100' text-anchor='middle' fill='%23fff' font-size='40' font-family='sans-serif'%3E%F0%9F%8C%8A%3C/text%3E%3Ctext x='160' y='140' text-anchor='middle' fill='%23ccc' font-size='14' font-family='sans-serif'%3ECruise Getaway%3C/text%3E%3C/svg%3E" alt="Featured offer">
+    <div class="info">
+      <div><span class="badge wildcard">Wildcard Selection</span><span class="offer-code">26EMV105</span></div>
+      <div class="offer-title">Oceanview or Interior Room For Two</div>
+      <div class="offer-desc">Redeem by Feb 26, 2036 &nbsp;&bull;&nbsp; Terms &amp; Conditions</div>
+      <div class="offer-actions">
+        <button class="btn btn-outline">View Sailings</button>
+        <button class="btn btn-primary">Redeem</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="all-title">All Offers (14)</div>
+  <div class="cards" id="offer-cards"></div>
+</div>
+
+<script>
+// Offer card data (from canned responses, no brand references)
+const offers = [
+  { code:'26RBC106', name:'Paradise Perks', desc:'Exclusive Stateroom Offer', date:'Feb 28, 2036', badge:'perks', icon:'🏝️' },
+  { code:'26CLS205', name:'Close-in Sailings', desc:'Ocean View or Interior Room for Two', date:'Feb 28, 2036', badge:'closein', icon:'⛵' },
+  { code:'26RCL206', name:'February Monthly Mix', desc:'Oceanview or Interior Room for Two', date:'Mar 01, 2036', badge:'monthly', icon:'🎶' },
+  { code:'26JKP405', name:'Jackpot Deals', desc:'Interior Room for Two', date:'Mar 15, 2036', badge:'jackpot', icon:'🎰' },
+  { code:'26VAR105', name:'Variety Spread', desc:'Oceanview or Interior Room For Two', date:'Mar 20, 2036', badge:'variety', icon:'🎲' },
+  { code:'26SUM105', name:'Summer Shuffle', desc:'Ocean View or Interior Room for Two', date:'Apr 01, 2036', badge:'default', icon:'☀️' },
+  { code:'26APR105', name:'April Action', desc:'Oceanview or Interior Room for Two', date:'Apr 15, 2036', badge:'default', icon:'🌴' },
+  { code:'26NER106', name:'Northeast Bets', desc:'Exclusive Stateroom Offer', date:'Apr 30, 2036', badge:'perks', icon:'🗽' },
+  { code:'26GRD205', name:'Hot Streak', desc:'Oceanview or Interior Room for Two', date:'May 15, 2036', badge:'jackpot', icon:'🔥' },
+  { code:'26JJA106', name:'Tropic Hopper', desc:'Ocean View or Interior Room for Two', date:'Jun 01, 2036', badge:'closein', icon:'🌺' },
+  { code:'26UTS105', name:'Utopia Escapes', desc:'Cruise Fare for One + Discounted Guest', date:'Jun 15, 2036', badge:'variety', icon:'✨' },
+  { code:'26MIX105', name:'Spin and Win', desc:'Oceanview or Interior Room for Two', date:'Jul 01, 2036', badge:'monthly', icon:'🎡' },
+  { code:'25TIER3', name:'Tier Benefit', desc:'Interior Room for Two', date:'Apr 01, 2036', badge:'tier', icon:'💎' },
+];
+const colors = {
+  '🏝️':['#0d7377','#1a5c3a'], '⛵':['#1a3a5c','#2d6b9e'], '🎶':['#4a1a6b','#7c3aed'],
+  '🎰':['#8b1a1a','#c0392b'], '🎲':['#4c1d95','#7c3aed'], '☀️':['#b45309','#f59e0b'],
+  '🌴':['#065f46','#10b981'], '🗽':['#1e3a5f','#3b82f6'], '🔥':['#7f1d1d','#ef4444'],
+  '🌺':['#831843','#ec4899'], '✨':['#312e81','#6366f1'], '🎡':['#1e40af','#3b82f6'],
+  '💎':['#78350f','#c9a84c']
+};
+const container = document.getElementById('offer-cards');
+offers.forEach(o => {
+  const c = colors[o.icon] || ['#333','#555'];
+  container.innerHTML += `<div class="card">
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='${encodeURIComponent(c[0])}'/%3E%3Cstop offset='100%25' stop-color='${encodeURIComponent(c[1])}'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='400' height='200'/%3E%3Ctext x='200' y='90' text-anchor='middle' font-size='48'%3E${o.icon}%3C/text%3E%3Ctext x='200' y='130' text-anchor='middle' fill='%23fff' font-size='14' font-family='sans-serif'%3E${o.name}%3C/text%3E%3C/svg%3E" alt="${o.name}">
+    <div class="body">
+      <div class="meta"><span class="badge ${o.badge}">${o.name}</span><span class="offer-code">${o.code}</span></div>
+      <div class="title">${o.desc}</div>
+      <div class="desc">Redeem by ${o.date} &bull; Terms &amp; Conditions</div>
+    </div>
+  </div>`;
+});
+
+// Seed localStorage with fake session so the extension can parse it
+(function seedSession() {
+  const futureExp = Math.floor((Date.now() + 86400000) / 1000); // 24h from now
+  const session = {
+    token: JSON.stringify('sim-token-for-testing'),
+    tokenExpiration: String(futureExp),
+    user: JSON.stringify({
+      accountId: 'SIM-ACCT-001',
+      cruiseLoyaltyId: '390780962',
+      username: 'jason1@percex.com',
+      email: 'jason1@percex.com',
+      name: 'Jason'
+    })
+  };
+  localStorage.setItem('persist:session', JSON.stringify(session));
+})();
+
+</script>
+</div>
+<script>
+setTimeout(function(){
+  var sp=document.getElementById('sim-spinner');
+  var ct=document.getElementById('sim-content');
+  if(sp){sp.style.opacity='0';setTimeout(function(){sp.remove()},400)}
+  if(ct)ct.style.opacity='1';
+},1500);
+</script>
+</body>
+</html>

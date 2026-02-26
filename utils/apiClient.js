@@ -109,7 +109,8 @@ const ApiClient = {
             const host = (location && location.hostname) ? location.hostname : '';
             const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : (host.includes('celebritycruises.com') ? 'C' : 'R');
             const relativePath = '/api/casino/casino-offers/v1';
-            const onSupportedDomain = host.includes('royalcaribbean.com') || host.includes('celebritycruises.com');
+            const onSupportedDomain = host.includes('royalcaribbean.com') || host.includes('celebritycruises.com') || host.includes('comproyale.com');
+            const isSimDomain = host.includes('comproyale.com');
             const defaultDomain = brandCode === 'C' ? 'https://www.celebritycruises.com' : 'https://www.royalcaribbean.com';
             const endpoint = onSupportedDomain ? relativePath : `${defaultDomain}${relativePath}`;
             console.debug('[apiClient] Endpoint resolved:', endpoint, 'brand:', brandCode);
@@ -160,8 +161,18 @@ const ApiClient = {
                 const after = offer?.campaignOffer?.sailings?.length || 0;
                 if (before !== after) console.debug(`[apiClient] Trimmed ${before - after} long (>7) night sailing(s) from TIER offer ${code}`);
             };
+            // Sim-domain helper: serve canned JSON from static files instead of real API
+            const simFetch = isSimDomain ? async (body) => {
+                const hasCode = body.offerCode && body.offerCode.trim();
+                const path = hasCode ? '/canned/v1-one-campaign.json' : '/canned/v1-all-campaigns.json';
+                const r = await fetch(path);
+                if (!r.ok) throw new Error(`Sim fetch failed: ${r.status}`);
+                const json = await r.json();
+                if (hasCode && json.offers) json.offers = json.offers.filter(o => o?.campaignOffer?.offerCode === body.offerCode.trim());
+                return new Response(JSON.stringify(json), { status: 200, headers: { 'content-type': 'application/json' } });
+            } : null;
             console.debug('[apiClient] Sending fetch request to offers API');
-            const response = await fetch(endpoint, {
+            const response = simFetch ? await simFetch(baseRequestBody) : await fetch(endpoint, {
                 method: 'POST',
                 headers: headers,
                 credentials: 'omit',
@@ -224,12 +235,12 @@ const ApiClient = {
                 const uniqueCodes = Array.from(new Set(offersToRefetch));
                 const refetchPromises = uniqueCodes.map(code => {
                     const body = { ...baseRequestBody, offerCode: code };
-                    return fetch(endpoint, {
+                    return (simFetch ? simFetch(body) : fetch(endpoint, {
                         method: 'POST',
                         headers,
                         credentials: 'omit',
                         body: JSON.stringify(body)
-                    })
+                    }))
                         .then(r => {
                             if (!r.ok) throw new Error(`Refetch ${code} failed: ${r.status}`);
                             return r.json();

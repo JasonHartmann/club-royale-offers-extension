@@ -1,11 +1,17 @@
 const DOMUtils = {
+    _onDomReady() {
+        console.debug('DOM is ready');
+        App.Styles.injectStylesheet();
+        App.ButtonManager.addButton();
+        if (App.OfferCodeLookup && typeof App.OfferCodeLookup.init === 'function') App.OfferCodeLookup.init();
+        this.observeDomChanges();
+    },
     waitForDom(maxAttempts = 10, attempt = 1) {
         if (document.head && document.body) {
-            console.debug('DOM is ready');
-            App.Styles.injectStylesheet();
-            App.ButtonManager.addButton();
-            if (App.OfferCodeLookup && typeof App.OfferCodeLookup.init === 'function') App.OfferCodeLookup.init();
-            this.observeDomChanges();
+            this._onDomReady();
+        } else if (document.readyState === 'loading') {
+            // Use event listener instead of polling when DOM is still loading
+            document.addEventListener('DOMContentLoaded', () => this._onDomReady(), { once: true });
         } else if (attempt <= maxAttempts) {
             console.debug(`DOM not ready, retrying (${attempt}/${maxAttempts})`);
             setTimeout(() => this.waitForDom(maxAttempts, attempt + 1), 500);

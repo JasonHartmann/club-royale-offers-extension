@@ -1,0 +1,860 @@
+{
+  "firstName": "Jason",
+  "lastName": "Hartmann",
+  "loyaltyId": "390780962",
+  "email": "jason1@percex.com",
+  "offers": [
+    {
+      "campaignCode": "26EMV1",
+      "campaignName": "2026 Wildcard Selection (26EMV1)",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "209696f7-0fb5-4b04-a4b3-100d81d99bc0",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26EMV105",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Wildcard Selection",
+        "description": "Oceanview or Interior Room For Two",
+        "startDate": "2026-01-28T14:00:00.000Z",
+        "reserveByDate": "2036-02-26T04:55:00.000Z",
+        "sailByDate": "2036-07-31",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "26EMV1 Hub Image.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/9e53e68c-0b9f-42f2-831e-640eadc8d6d0/62ad9222-9c48-4a26-a569-843f0a187d4b.jpg",
+            "description": "Guest Portal HUB",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ],
+        "offerFiles": [
+          {
+            "fileName": "26EMV1 - Royal Reps 2.4.26.pdf",
+            "fileType": "application/pdf",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/9e53e68c-0b9f-42f2-831e-640eadc8d6d0/e14034f9-0562-4dfb-be2d-c7da047779cd.pdf",
+            "description": "26EMV1 Royal Reps Updated 2.4.2026",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ]
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26RBC1",
+      "campaignName": "2026 Paradise Perks",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "149f7af0-ef9c-42e1-b47f-8f53a8c8ccd7",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26RBC106",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Paradise Perks",
+        "description": "Exclusive Stateroom Offer",
+        "startDate": "2026-01-29T14:00:00.000Z",
+        "reserveByDate": "2036-02-28T04:59:00.000Z",
+        "sailByDate": "2036-07-31",
+        "currency": null,
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "image-20260121-210650.png",
+            "fileType": "image/png",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/a119ecf2-a8a6-415b-9e63-b24229c2cf4b/691a06b5-63a4-43c5-8a31-1da8fbf5e2da.png",
+            "description": "Guest Portal Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": []
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26CLS2",
+      "campaignName": "2026 Close-in Sailings",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "dfc931c4-85a4-49d6-bda7-d92974df1892",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26CLS205",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Close-in Sailings",
+        "description": "Ocean View or Interior Room for Two",
+        "startDate": "2026-02-04T14:00:00.000Z",
+        "reserveByDate": "2036-02-28T04:59:00.000Z",
+        "sailByDate": "2036-06-30",
+        "currency": null,
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [],
+        "offerFiles": []
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26RCL2",
+      "campaignName": "2026 February Monthly Mix",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "649187d3-ac0a-4590-a562-d1edfbf62d87",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26RCL206",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "February Monthly Mix",
+        "description": "Oceanview or Interior Room for Two",
+        "startDate": "2026-02-02T14:00:00.000Z",
+        "reserveByDate": "2036-03-01T04:59:00.000Z",
+        "sailByDate": "2036-09-30",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 0,
+        "perkCodes": [
+          {
+            "perkCode": "TBB9",
+            "perkName": "Bonus FP $50",
+            "type": "FreePlay option",
+            "comments": null,
+            "perkTypeTag": [],
+            "perkTypeIndex": 3
+          }
+        ],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "Feb Monthly Mix-My Offers Hero Image.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/f9e9aba1-2614-462a-8956-4b564b228e96/2df176a7-e422-4ae7-9488-ff258486f0af.jpg",
+            "description": "Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": [
+          {
+            "fileName": "26RCL2 - Royal Reps.pdf",
+            "fileType": "application/pdf",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/f9e9aba1-2614-462a-8956-4b564b228e96/e9547afd-a73b-4b15-9b66-8bcd23264a30.pdf",
+            "description": "Royal Reps",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ]
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26JKP4",
+      "campaignName": "2026 Jackpot Deals #4",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "767a1ee4-931b-4f7b-9190-fdbb1ef36574",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26JKP405",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Jackpot Deals",
+        "description": "Interior Room for Two",
+        "startDate": "2026-02-25T14:00:00.000Z",
+        "reserveByDate": "2036-03-05T04:59:00.000Z",
+        "sailByDate": "2036-05-31",
+        "currency": null,
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "Jackpot Deals.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/cb91ebf0-1399-4326-ba05-bf134487d7c7/1334a3fe-3bb5-49d7-a146-d63d2e20b526.jpg",
+            "description": "Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ],
+        "offerFiles": []
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26VAR1",
+      "campaignName": "2026 Variety Spread (26VAR1)",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "9fa75712-7918-4bec-b778-65390c23755f",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26VAR105",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Variety Spread",
+        "description": "Oceanview or Interior Room For Two ",
+        "startDate": "2026-02-05T14:00:00.000Z",
+        "reserveByDate": "2036-03-07T04:55:00.000Z",
+        "sailByDate": "2036-09-30",
+        "currency": null,
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "26VAR1 HUB Image.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/a35ac192-a245-45d2-8eaa-89809685d458/4e33259c-a0d1-4271-a1ed-a44926ddc9a7.jpg",
+            "description": "Guest Portal Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ],
+        "offerFiles": [
+          {
+            "fileName": "25VAR1 - Royal Reps.pdf",
+            "fileType": "application/pdf",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/a35ac192-a245-45d2-8eaa-89809685d458/240b5b24-0ff6-4ef8-9b53-8110df48ca23.pdf",
+            "description": "Royal Reps",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ]
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26SUM1",
+      "campaignName": "2026 Summer Shuffle",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "ac0666f0-9408-43a5-abad-71925414af67",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26SUM105",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Summer Shuffle",
+        "description": "Ocean View or Interior Room for Two",
+        "startDate": "2026-02-09T14:00:00.000Z",
+        "reserveByDate": "2036-03-11T03:59:00.000Z",
+        "sailByDate": "2036-09-30",
+        "currency": null,
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "My Offers Hero Image_Summer Shuffle.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/1af6198e-4f80-4fae-bf38-402d968db3b8/8034bc55-fe97-4a66-a51d-bbe66274082b.jpg",
+            "description": "Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ],
+        "offerFiles": [
+          {
+            "fileName": "26SUM1 - Royal Reps.pdf",
+            "fileType": "application/pdf",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/1af6198e-4f80-4fae-bf38-402d968db3b8/b6abf3e9-9fb8-4925-abcc-0ec6403e40b9.pdf",
+            "description": "Rep Factsheet",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ]
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26APR1",
+      "campaignName": "2026 April Action",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "2a7d0361-71d5-400a-809a-7fce881b20a4",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26APR105",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "April Action",
+        "description": "Oceanview or Interior Room for Two",
+        "startDate": "2026-02-12T14:00:00.000Z",
+        "reserveByDate": "2036-03-14T03:59:00.000Z",
+        "sailByDate": "2036-04-30",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "image-20260205-160843.png",
+            "fileType": "image/png",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/9171261d-d745-4ca1-9295-a08b875337cc/8199e808-5df5-413e-bde4-c553e021d201.png",
+            "description": "Guest Portal Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": []
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26NER1",
+      "campaignName": "2026 Northeast Bets - Close to Home #1",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "06c24ed9-ce7b-4c68-9de3-e1edab1ca3fa",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26NER106",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Northeast Bets",
+        "description": "Exclusive Stateroom Offer",
+        "startDate": "2026-02-16T14:00:00.000Z",
+        "reserveByDate": "2036-03-18T03:59:00.000Z",
+        "sailByDate": "2036-09-30",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "North East -My Offer Hero Image.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/d58febe9-b83d-48e7-a9d4-b4edc52c540a/cef32677-3390-4fb1-8376-c9448b0bfc93.jpg",
+            "description": "image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": [
+          {
+            "fileName": "26NER1 - Royal Reps.pdf",
+            "fileType": "application/pdf",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/d58febe9-b83d-48e7-a9d4-b4edc52c540a/19c8eddb-af37-4a50-b8ce-393438c66888.pdf",
+            "description": "Rep Factsheet",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ]
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26GRD2",
+      "campaignName": "2026 Hot Streak",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "0c923ab7-f3b4-4892-a342-e970e3090d21",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26GRD205",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Hot Streak",
+        "description": "Oceanview or Interior Room for Two",
+        "startDate": "2026-02-18T14:00:00.000Z",
+        "reserveByDate": "2036-03-19T03:59:00.000Z",
+        "sailByDate": "2036-09-30",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "Hot Streak My Offers Image.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/5a9b9a2d-68ce-4d47-8f61-4f6be21f9ad1/381a2c6c-57a0-4816-b2b3-dc2db2721a25.jpg",
+            "description": "Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": [
+          {
+            "fileName": "26GRD2 - Royal Reps.pdf",
+            "fileType": "application/pdf",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/5a9b9a2d-68ce-4d47-8f61-4f6be21f9ad1/b2a74081-4f01-4894-9a9d-55fc7a978d81.pdf",
+            "description": "Royal Reps",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ]
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26JJA1",
+      "campaignName": "2026 Tropic Hopper",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "bb9d143b-1e0f-4db4-9042-f50492d0b605",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26JJA106",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Tropic Hopper",
+        "description": "Ocean View or Interior Room for Two",
+        "startDate": "2026-02-19T14:00:00.000Z",
+        "reserveByDate": "2036-03-21T03:59:00.000Z",
+        "sailByDate": "2036-09-01",
+        "currency": null,
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "Tropic Hopper_My Offers Hero-20260218-163008.png",
+            "fileType": "image/png",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/b70ed8ac-5641-4c7b-8e31-b5f883c05fa2/fa7db984-9b5d-4c88-abca-1cd1006c0c1a.png",
+            "description": "Guest Portal Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": []
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26UTS1",
+      "campaignName": "2026 Utopia Escapes",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "e7e32a5b-3930-4343-be1c-344a7886fc1c",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26UTS105",
+        "offerType": {
+          "code": "GOBO",
+          "name": "Get One, Buy One"
+        },
+        "name": "Utopia Escapes",
+        "description": "Cruise Fare for One + a Discounted Cruise Fare for Your Guest",
+        "startDate": "2026-02-06T14:00:00.000Z",
+        "reserveByDate": "2036-03-21T03:59:00.000Z",
+        "sailByDate": "2036-06-30",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "Utopia Escapes My Offer Hero Image.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/8b36770f-3c8e-4523-836d-385d76470979/e535ed60-6596-4d34-8f1c-63253702105e.jpg",
+            "description": "Guest Portal Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": []
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "26MIX1",
+      "campaignName": "2026 Spin and Win",
+      "campaignType": "Stateroom Offer",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "98d4d084-a89c-4df3-bbc3-8e2aed8cfd27",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "26MIX105",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Spin and Win",
+        "description": "Oceanview or Interior Room for Two",
+        "startDate": "2026-02-23T14:00:00.000Z",
+        "reserveByDate": "2036-03-25T03:59:00.000Z",
+        "sailByDate": "2036-08-31",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 0,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "included",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "Spin-And-Win_My Offers Hero Image.jpg",
+            "fileType": "image/jpeg",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/5917a2fb-f1a2-46c0-b05e-1d2c96254292/7ddc9cb4-8ed8-4b52-b429-0ab9cf2b4c09.jpg",
+            "description": "Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": [
+          {
+            "fileName": "26MIX1 - Royal Reps.pdf",
+            "fileType": "application/pdf",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/5917a2fb-f1a2-46c0-b05e-1d2c96254292/5a51b06a-83a9-433b-ad7d-7acf0d4a7abe.pdf",
+            "description": "Royal Reps",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "DEFAULT"
+          }
+        ]
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    },
+    {
+      "campaignCode": "25TIER",
+      "campaignName": "Club Royale Tier Benefit",
+      "campaignType": "Annual Tier Benefit",
+      "campaignDescriptionList": [],
+      "campaignExclusionList": [],
+      "certificateNumber": null,
+      "redeemInfo": null,
+      "status": "active",
+      "playerOfferId": "55a8d691-3dc7-49a6-ae09-3b842f53d4b9",
+      "bookingRequest": [],
+      "campaignOffer": {
+        "offerCode": "25TIER3",
+        "offerType": {
+          "code": "COMP",
+          "name": "Complimentary"
+        },
+        "name": "Club Royale Tier Benefit",
+        "description": "Interior Room for Two",
+        "startDate": "2025-04-22T15:00:00.000Z",
+        "reserveByDate": "2036-04-01T03:59:00.000Z",
+        "sailByDate": "2036-03-31",
+        "currency": {
+          "name": "US Dollar",
+          "symbol": "$",
+          "code": "USD"
+        },
+        "tradeInValue": 500,
+        "perkCodes": [],
+        "allowedNumberOfPerks": 1,
+        "sailingInclusionMode": "excluded",
+        "sailings": [],
+        "descriptionList": [],
+        "exclusionList": [],
+        "tags": [],
+        "status": "Active",
+        "digitalRedemptionOnly": false,
+        "roomCount": 1,
+        "excludedSailings": [],
+        "offerImages": [
+          {
+            "fileName": "Annual Club Royale Benefit (Generic).png",
+            "fileType": "image/png",
+            "fileUrl": "https://rcg-casino-operations-hub-prod-public-documents.s3.us-east-1.amazonaws.com/campaign/b0fe1473-f46f-4dc8-8b76-b03fe69226dd/1f31501c-2edd-471a-b320-096a5758ffc4.png",
+            "description": "Guest Image",
+            "scopes": [
+              "Campaign"
+            ],
+            "category": "HERO_REGULAR_CARD"
+          }
+        ],
+        "offerFiles": []
+      },
+      "playerOfferAgencyId": "109638",
+      "brmsCouponCode": null,
+      "useSmartForm": true
+    }
+  ],
+  "totalOffers": 14,
+  "totalPages": 1,
+  "pageNumber": 1
+}

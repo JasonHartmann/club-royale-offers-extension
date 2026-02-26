@@ -266,25 +266,32 @@
                 if (!shipGroups.length) { dbg('No ship groups to hydrate'); return; }
                 let brandHost = 'www.royalcaribbean.com';
                 try { if (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') brandHost = App.Utils.detectBrand() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com'; } catch (e) {}
-                const endpoint = `https://${brandHost}/graph`;
+                const currentHost = (location && location.hostname) ? location.hostname : '';
+                const isSimDomain = currentHost.includes('comproyale.com');
+                const endpoint = isSimDomain ? '/canned/graph-one-ship.json' : `https://${brandHost}/graph`;
                 const query = 'query cruiseSearch_Cruises($filters:String,$qualifiers:String,$sort:CruiseSearchSort,$pagination:CruiseSearchPagination,$nlSearch:String){cruiseSearch(filters:$filters,qualifiers:$qualifiers,sort:$sort,pagination:$pagination,nlSearch:$nlSearch){results{cruises{id productViewLink masterSailing{itinerary{name code days{number type ports{activity arrivalTime departureTime port{code name region}}}departurePort{code name region}destination{code name}portSequence sailingNights ship{code name}totalNights type}}sailings{bookingLink id itinerary{code}sailDate startDate endDate taxesAndFees{value}taxesAndFeesIncluded stateroomClassPricing{price{value currency{code}}stateroomClass{id content{code}}}}}cruiseRecommendationId total}}}';
                 let anyUpdated = false;
                 const self = this;
                 async function postFilters(filtersValue, paginationCount) {
                     let respJson = null;
                     try {
-                        const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: paginationCount, skip: 0 } } });
-                        const resp = await fetch(endpoint, {
-                            method: 'POST',
-                            headers: {
-                                'content-type': 'application/json',
-                                'accept': 'application/json',
-                                'apollographql-client-name': 'rci-NextGen-Cruise-Search',
-                                'apollographql-query-name': 'cruiseSearch_Cruises',
-                                'skip_authentication': 'true'
-                            },
-                            body
-                        });
+                        let resp;
+                        if (isSimDomain) {
+                            resp = await fetch(endpoint);
+                        } else {
+                            const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: paginationCount, skip: 0 } } });
+                            resp = await fetch(endpoint, {
+                                method: 'POST',
+                                headers: {
+                                    'content-type': 'application/json',
+                                    'accept': 'application/json',
+                                    'apollographql-client-name': 'rci-NextGen-Cruise-Search',
+                                    'apollographql-query-name': 'cruiseSearch_Cruises',
+                                    'skip_authentication': 'true'
+                                },
+                                body
+                            });
+                        }
                         if (!resp.ok) return null;
                         respJson = await resp.json();
                         self._fetchCount++;

@@ -30,6 +30,7 @@ body.gobo-dark .gobo-itinerary-link:focus { color:#bfdbfe !important; }
 /* Panel */
 .gobo-itinerary-panel {
   background: #ffffff;
+  color: #1f2937;
   border-radius: 8px;
   max-width: 720px;
   width: 100%;

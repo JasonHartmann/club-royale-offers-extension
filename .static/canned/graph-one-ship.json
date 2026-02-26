@@ -1,0 +1,211 @@
+{
+  "data": {
+    "cruiseSearch": {
+      "results": {
+        "cruises": [
+          {
+            "id": "MA05GAL-2956042404",
+            "productViewLink": "itinerary/5-night-western-caribbean-cruise-from-galveston-on-mariner-MA05W679?sailDate=2026-05-02&packageCode=MA05W679&groupId=MA05GAL-2956042404&country=USA",
+            "masterSailing": {
+              "itinerary": {
+                "name": "Western Caribbean Cruise",
+                "code": "MA05W679",
+                "days": [
+                  {
+                    "number": 1,
+                    "type": "PORT",
+                    "ports": [
+                      {
+                        "activity": "EMBARK",
+                        "arrivalTime": null,
+                        "departureTime": "15:00:00",
+                        "port": {
+                          "code": "GAL",
+                          "name": "Galveston",
+                          "region": "Texas"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "number": 2,
+                    "type": "CRUISING",
+                    "ports": [
+                      {
+                        "activity": "CRUISING",
+                        "arrivalTime": null,
+                        "departureTime": null,
+                        "port": {
+                          "code": "CRU",
+                          "name": "Cruising",
+                          "region": null
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "number": 3,
+                    "type": "PORT",
+                    "ports": [
+                      {
+                        "activity": "DOCKED",
+                        "arrivalTime": "11:59:00",
+                        "departureTime": "19:00:00",
+                        "port": {
+                          "code": "CMM",
+                          "name": "Puerto Costa Maya",
+                          "region": "Mexico"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "number": 4,
+                    "type": "PORT",
+                    "ports": [
+                      {
+                        "activity": "DOCKED",
+                        "arrivalTime": "07:00:00",
+                        "departureTime": "17:00:00",
+                        "port": {
+                          "code": "CZM",
+                          "name": "Cozumel",
+                          "region": "Mexico"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "number": 5,
+                    "type": "CRUISING",
+                    "ports": [
+                      {
+                        "activity": "CRUISING",
+                        "arrivalTime": null,
+                        "departureTime": null,
+                        "port": {
+                          "code": "CRU",
+                          "name": "Cruising",
+                          "region": null
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "number": 6,
+                    "type": "PORT",
+                    "ports": [
+                      {
+                        "activity": "DEBARK",
+                        "arrivalTime": "07:00:00",
+                        "departureTime": null,
+                        "port": {
+                          "code": "GAL",
+                          "name": "Galveston",
+                          "region": "Texas"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "departurePort": {
+                  "code": "GAL",
+                  "name": "Galveston",
+                  "region": "Texas"
+                },
+                "destination": {
+                  "code": "CARIB",
+                  "name": "Caribbean"
+                },
+                "portSequence": "GAL_CMM_CZM_GAL",
+                "sailingNights": 5,
+                "ship": {
+                  "code": "MA",
+                  "name": "Mariner of the Seas"
+                },
+                "totalNights": 5,
+                "type": "CRUISE"
+              }
+            },
+            "sailings": [
+              {
+                "bookingLink": "/booking/landing?groupId=MA05GAL-2956042404&sailDate=2026-05-02&shipCode=MA&packageCode=MA05W679&destinationCode=CARIB&selectedCurrencyCode=USD&country=USA",
+                "id": "MA05W679_2026-05-02",
+                "itinerary": {
+                  "code": "MA05W679"
+                },
+                "sailDate": "2026-05-02",
+                "startDate": "2026-05-02",
+                "endDate": "2026-05-07",
+                "taxesAndFees": {
+                  "value": 130.18
+                },
+                "taxesAndFeesIncluded": true,
+                "stateroomClassPricing": [
+                  {
+                    "price": {
+                      "value": 566.18,
+                      "currency": {
+                        "code": "USD"
+                      }
+                    },
+                    "stateroomClass": {
+                      "id": "INTERIOR",
+                      "content": {
+                        "code": "I"
+                      }
+                    }
+                  },
+                  {
+                    "price": {
+                      "value": 673.68,
+                      "currency": {
+                        "code": "USD"
+                      }
+                    },
+                    "stateroomClass": {
+                      "id": "OUTSIDE",
+                      "content": {
+                        "code": "O"
+                      }
+                    }
+                  },
+                  {
+                    "price": {
+                      "value": 755.18,
+                      "currency": {
+                        "code": "USD"
+                      }
+                    },
+                    "stateroomClass": {
+                      "id": "BALCONY",
+                      "content": {
+                        "code": "B"
+                      }
+                    }
+                  },
+                  {
+                    "price": {
+                      "value": 1223.68,
+                      "currency": {
+                        "code": "USD"
+                      }
+                    },
+                    "stateroomClass": {
+                      "id": "DELUXE",
+                      "content": {
+                        "code": "D"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "cruiseRecommendationId": null,
+        "total": 1
+      }
+    }
+  }
+}

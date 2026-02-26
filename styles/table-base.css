@@ -1,7 +1,7 @@
 /* Base table layout & general UI styles (extracted from original table.css) */
 /* Includes layout container, scrolling, spinner, headers, zebra stripes, font sizing & weight */
 
-#gobo-offers-table { max-width: 90vw; max-height: 90vh; background-color: #fff; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display:flex; flex-direction:column; }
+#gobo-offers-table { max-width: 90vw; max-height: 90vh; background-color: #fff; color: #1f2937; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display:flex; flex-direction:column; }
 .table-scroll-container { flex:1 1 auto; overflow-y:auto; overflow-x:auto; max-height:calc(90vh - 60px); padding:8px; }
 .table-scroll-container::-webkit-scrollbar { width:12px; }
 .table-scroll-container::-webkit-scrollbar-track { background:#f1f1f1; border-radius:10px; }
