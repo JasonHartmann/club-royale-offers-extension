@@ -669,7 +669,6 @@
                     const baseCategoryMap = { I:'INTERIOR', IN:'INTERIOR', INT:'INTERIOR', INSIDE:'INTERIOR', INTERIOR:'INTERIOR', O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', 'OCEAN VIEW':'OUTSIDE', OUTSIDE:'OUTSIDE', B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY', D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE', JUNIOR:'DELUXE', 'JR':'DELUXE', 'JR.':'DELUXE', 'JR-SUITE':'DELUXE', 'JR SUITE':'DELUXE', 'JUNIOR SUITE':'DELUXE', 'JRSUITE':'DELUXE', 'JR SUITES':'DELUXE', 'JUNIOR SUITES':'DELUXE' };
                     function resolveDisplay(raw){ raw=(raw||'').trim(); return codeMap[raw.toUpperCase()]||raw; }
                     function resolveCategory(raw){ raw=(raw||'').trim(); const up=raw.toUpperCase(); const upCompact = up.replace(/\s+/g,''); if (baseCategoryMap[up]) return baseCategoryMap[up]; if (baseCategoryMap[upCompact]) return baseCategoryMap[upCompact]; if (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)) return up; return null; }
-                    const sortOrder = {INTERIOR:0, OUTSIDE:1, BALCONY:2, DELUXE:3};
 
                     // Robust taxes parsing (assume value is per-person; convert to booking total)
                     let taxesPerPerson = null;
@@ -861,11 +860,11 @@
                         const priceVal=hasPrice?Number(entry.priceNum).toFixed(2):'Sold Out';
                         const currency=hasPrice?(entry.currency||currencyFallback||''):(currencyFallback||'');
                         const thisCat = resolveCategory(rawCode);
-                        let youPayDisplay='';
+                        let youPayDisplay;
                         let youPayTitle='';
                         if(!hasPrice) { youPayDisplay='Sold Out'; }
                         else {
-                            const currentPriceNum=Number(entry.priceNum); let estimatedNum=0;
+                            const currentPriceNum=Number(entry.priceNum); let estimatedNum;
                             const awardIdx = originalAwardCategoryResolved ? orderCats.indexOf(originalAwardCategoryResolved) : -1;
                             const thisIdx = thisCat ? orderCats.indexOf(thisCat) : -1;
                             if (scenarioAllLowerSoldOut && awardIdx >= 0 && thisIdx > awardIdx) {

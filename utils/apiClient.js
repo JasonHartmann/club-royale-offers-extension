@@ -96,7 +96,6 @@ const ApiClient = {
             console.debug('[apiClient] Spinner shown');
             const rawAuth = authToken && authToken.toString ? authToken.toString() : '';
             const networkAuth = rawAuth ? (rawAuth.startsWith('Bearer ') ? rawAuth : `Bearer ${rawAuth}`) : '';
-            const safeAuth = rawAuth.startsWith('Bearer ') ? 'Bearer <REDACTED>' : (rawAuth ? '<REDACTED>' : '');
             const headers = {
                 'accept': 'application/json',
                 'accept-language': 'en-US,en;q=0.9',
@@ -150,7 +149,7 @@ const ApiClient = {
                     const filtered = co.sailings.filter(s => {
                         const text = (s.itineraryDescription || s.sailingType?.name || '').trim();
                         if (!text) return true; // keep if we cannot parse
-                        const m = text.match(/^\t*(\d+)\s+(?:N(?:IGHT|T)?S?)\b/i);
+                        const m = text.match(/^\t*(\d+)\s+N(?:IGHT|T)?S?\b/i);
                         if (!m) return true; // keep if nights not parseable
                         const nights = parseInt(m[1], 10);
                         if (isNaN(nights)) return true;
@@ -194,8 +193,11 @@ const ApiClient = {
             }
             if (!response.ok) {
                 const errorText = await response.text();
-                console.debug('[apiClient] Non-OK response, throwing error:', errorText);
-                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+                const status = response.status;
+                console.debug('[apiClient] Non-OK response:', status, errorText);
+                App.ErrorHandler.showError(`Failed to load offers: HTTP ${status}. Please try again later.`);
+                App.ErrorHandler.closeModalIfOpen();
+                return;
             }
             // Deep clone JSON to strip potential Xray wrappers (Firefox) so we can safely add/replace properties
             const rawData = await response.json();

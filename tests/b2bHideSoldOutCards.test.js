@@ -43,7 +43,7 @@ describe('B2B Next Connections card sold-out handling', () => {
 
     test('_renderChain does not skip cards based on pricing', () => {
         // Extract the _renderChain method body
-        const renderChainMatch = b2bSrc.match(/_renderChain\s*\(\s*\)\s*\{[\s\S]*?\n\s{8}\},/);
+        const renderChainMatch = b2bSrc.match(/_renderChain\s*\(\s*\)\s*\{[\s\S]*?\n\s{8}},/);
         expect(renderChainMatch).toBeTruthy();
         const chainBlock = renderChainMatch[0];
         // Should NOT contain isSoldOut skip logic
