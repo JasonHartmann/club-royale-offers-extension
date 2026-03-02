@@ -1,15 +1,18 @@
-# This is an example configuration file
-# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
-
-name: Local
+name: Local Assistant
 version: 1.0.0
 schema: v1
 
-# Define which models can be used - openai compatible on llama.cpp
-# http://localhost:8080/
 models:
-  - name: "Local Llama.cpp"
-    provider: "llama.cpp"
-    model: "your-model-name"
-    apiBase: "http://localhost:8080"
-
+  - name: SmolLM3-3B Local (vLLM)
+    provider: openai
+    model: HuggingFaceTB/SmolLM3-3B
+    apiBase: http://172.24.75.207:8000/v1
+    apiKey: EMPTY
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      contextLength: 32768
+      maxTokens: 2048
+      temperature: 0.0

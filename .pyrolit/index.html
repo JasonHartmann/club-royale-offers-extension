@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Percex Technologies — Intelligent Tools for Smarter Decisions</title>
+  <meta name="description" content="Percex Technologies builds precision software tools that turn complex data into clear, actionable insights. Explore our flagship product, CompRoyale." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Favicon (inline SVG data URI) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' width='100' height='100' fill='%230f172a'/><text x='50' y='68' font-size='52' font-family='system-ui' font-weight='700' text-anchor='middle' fill='%2338bdf8'>P</text></svg>" />
+</head>
+<body>
+
+  <!-- ───────────────────────── NAV ───────────────────────── -->
+  <nav class="nav" id="nav">
+    <div class="nav__inner container">
+      <a href="#" class="nav__logo" aria-label="Percex home">
+        <span class="nav__logo-icon">◈</span>
+        <span class="nav__logo-text">Percex</span>
+      </a>
+      <ul class="nav__links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#products">Products</a></li>
+        <li><a href="#approach">Approach</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ───────────────────────── HERO ───────────────────────── -->
+  <header class="hero" id="hero">
+    <div class="hero__bg-grid" aria-hidden="true"></div>
+    <div class="hero__content container">
+      <p class="hero__eyebrow">Percex Technologies, LLC</p>
+      <h1 class="hero__title">
+        Precision tools for<br />
+        <span class="hero__title--accent">smarter decisions.</span>
+      </h1>
+      <p class="hero__subtitle">
+        We build focused, high-quality software that transforms complex data
+        into clear, actionable insight — so you can stop guessing and start knowing.
+      </p>
+      <div class="hero__actions">
+        <a href="#products" class="btn btn--primary">Explore Products</a>
+        <a href="#contact" class="btn btn--outline">Get in Touch</a>
+      </div>
+    </div>
+    <div class="hero__scroll-hint" aria-hidden="true">
+      <span class="hero__scroll-arrow">↓</span>
+    </div>
+  </header>
+
+  <!-- ───────────────────────── ABOUT ───────────────────────── -->
+  <section class="section about" id="about">
+    <div class="container">
+      <div class="section__header">
+        <p class="section__eyebrow">Who We Are</p>
+        <h2 class="section__title">Built on deep expertise.</h2>
+      </div>
+      <div class="about__grid">
+        <div class="about__text">
+          <p>
+            <strong>Percex Technologies</strong> is a software studio founded by
+            <a href="https://www.linkedin.com/in/jason-hartmann-11020810/" target="_blank" rel="noopener">Jason Hartmann</a>
+            — a seasoned technologist with years of hands-on experience across
+            enterprise architecture, full-stack development, data engineering,
+            and product strategy.
+          </p>
+          <p>
+            We believe the best tools are the ones you barely notice — they
+            surface exactly the right information at exactly the right time,
+            then get out of your way. Every product we ship reflects that
+            philosophy: <em>minimal friction, maximum clarity.</em>
+          </p>
+        </div>
+        <div class="about__values">
+          <div class="value-card">
+            <span class="value-card__icon">⚡</span>
+            <h3>Speed</h3>
+            <p>Ship fast, iterate faster. Real users drive real improvements.</p>
+          </div>
+          <div class="value-card">
+            <span class="value-card__icon">🎯</span>
+            <h3>Precision</h3>
+            <p>Every feature earns its place. No bloat, no guesswork.</p>
+          </div>
+          <div class="value-card">
+            <span class="value-card__icon">🔒</span>
+            <h3>Trust</h3>
+            <p>Your data stays yours. Privacy and transparency by default.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── PRODUCTS ───────────────────────── -->
+  <section class="section products" id="products">
+    <div class="container">
+      <div class="section__header">
+        <p class="section__eyebrow">Our Products</p>
+        <h2 class="section__title">Tools that work as hard as you do.</h2>
+      </div>
+
+      <!-- CompRoyale — flagship -->
+      <div class="product-card product-card--featured">
+        <div class="product-card__badge">Flagship</div>
+        <div class="product-card__body">
+          <div class="product-card__info">
+            <h3 class="product-card__name">CompRoyale</h3>
+            <p class="product-card__tagline">
+              The smartest way to analyze your Royal Caribbean comp cruise offers.
+            </p>
+            <p class="product-card__desc">
+              CompRoyale is a browser extension that transforms the Club Royale
+              Offers page into a powerful, sortable, filterable dashboard.
+              Compare offers across ships, dates, and categories — spot the best
+              deals instantly with advanced search, date-range filtering,
+              back-to-back sailing detection, and one-click CSV export.
+            </p>
+            <ul class="product-card__features">
+              <li>Sortable &amp; groupable offer tables</li>
+              <li>Advanced multi-field search with date-range picker</li>
+              <li>Back-to-Back sailing builder &amp; chain detection</li>
+              <li>Favorites, linked profiles &amp; combined offer views</li>
+              <li>CSV export for offline analysis</li>
+              <li>Cross-browser: Chrome, Edge, Firefox &amp; Safari</li>
+            </ul>
+            <div class="product-card__actions">
+              <a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener" class="btn btn--primary btn--sm">
+                View on GitHub
+              </a>
+            </div>
+          </div>
+          <div class="product-card__visual">
+            <div class="product-card__mockup">
+              <div class="mockup-browser">
+                <div class="mockup-browser__bar">
+                  <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                  <span class="mockup-browser__url">clubroyale.com/offers</span>
+                </div>
+                <div class="mockup-browser__body">
+                  <div class="mockup-table">
+                    <div class="mockup-row mockup-row--header">
+                      <span>Ship</span><span>Sail Date</span><span>Nights</span><span>Value</span>
+                    </div>
+                    <div class="mockup-row mockup-row--green">
+                      <span>Wonder</span><span>06/14/26</span><span>7</span><span>$1,842</span>
+                    </div>
+                    <div class="mockup-row">
+                      <span>Icon</span><span>07/02/26</span><span>5</span><span>$1,290</span>
+                    </div>
+                    <div class="mockup-row mockup-row--pink">
+                      <span>Oasis</span><span>08/19/26</span><span>7</span><span>$2,105</span>
+                    </div>
+                    <div class="mockup-row">
+                      <span>Harmony</span><span>09/03/26</span><span>4</span><span>$980</span>
+                    </div>
+                    <div class="mockup-row">
+                      <span>Utopia</span><span>10/11/26</span><span>6</span><span>$1,560</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coming Soon -->
+      <div class="products__upcoming">
+        <h3 class="products__upcoming-title">More on the horizon</h3>
+        <p class="products__upcoming-desc">
+          We're always exploring new problem spaces. Have an idea or a pain
+          point you'd love us to tackle?
+          <a href="#contact">Let us know.</a>
+        </p>
+        <div class="products__upcoming-grid">
+          <div class="upcoming-card">
+            <span class="upcoming-card__icon">🗺️</span>
+            <h4>Itinerary Explorer</h4>
+            <p>Port-by-port sailing breakdowns with excursion links — coming to CompRoyale.</p>
+          </div>
+          <div class="upcoming-card">
+            <span class="upcoming-card__icon">🔗</span>
+            <h4>B2B Chain Optimizer</h4>
+            <p>Automated back-to-back chain scoring and upgrade path recommendations.</p>
+          </div>
+          <div class="upcoming-card">
+            <span class="upcoming-card__icon">🧩</span>
+            <h4>New Products</h4>
+            <p>Precision tools for new domains. Stay tuned — or reach out to shape what's next.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── APPROACH ───────────────────────── -->
+  <section class="section approach" id="approach">
+    <div class="container">
+      <div class="section__header">
+        <p class="section__eyebrow">Our Approach</p>
+        <h2 class="section__title">How we build.</h2>
+      </div>
+      <div class="approach__steps">
+        <div class="step-card">
+          <div class="step-card__number">01</div>
+          <h3>Identify the friction</h3>
+          <p>We start with a real problem — something that wastes your time or hides information you need.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number">02</div>
+          <h3>Design for clarity</h3>
+          <p>Every interface decision is tested against one question: <em>does this make the answer more obvious?</em></p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number">03</div>
+          <h3>Ship &amp; iterate</h3>
+          <p>We release early, gather feedback, and refine relentlessly. Perfection is a direction, not a destination.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-card__number">04</div>
+          <h3>Respect the user</h3>
+          <p>No dark patterns, no data harvesting, no unnecessary complexity. Tools should empower, not exploit.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── CONTACT ───────────────────────── -->
+  <section class="section contact" id="contact">
+    <div class="container">
+      <div class="section__header">
+        <p class="section__eyebrow">Get in Touch</p>
+        <h2 class="section__title">Let's build something great.</h2>
+      </div>
+      <div class="contact__body">
+        <p class="contact__text">
+          Whether you have a feature request, a partnership idea, or just want
+          to say hello — we'd love to hear from you.
+        </p>
+        <div class="contact__links">
+          <a href="https://www.linkedin.com/in/jason-hartmann-11020810/" target="_blank" rel="noopener" class="contact-link">
+            <span class="contact-link__icon">in</span>
+            <span>LinkedIn</span>
+          </a>
+          <a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener" class="contact-link">
+            <span class="contact-link__icon">⌘</span>
+            <span>GitHub</span>
+          </a>
+          <a href="mailto:hello@percex.com" class="contact-link">
+            <span class="contact-link__icon">✉</span>
+            <span>hello@percex.com</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── FOOTER ───────────────────────── -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <p class="footer__brand">
+        <span class="nav__logo-icon">◈</span> Percex Technologies, LLC
+      </p>
+      <p class="footer__copy">© 2026 Percex Technologies, LLC. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
