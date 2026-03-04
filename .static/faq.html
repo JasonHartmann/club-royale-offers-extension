@@ -3,105 +3,212 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FAQ — Royal Caribbean and Celebrity Cruises Offers Viewer</title>
-  <meta name="description" content="Answers to common Cruise Offers Viewer questions: profile linking, B2B depth, upgrade price filters, and performance tuning." />
+  <title>FAQ — Comp Royale Cruise Offers Viewer</title>
+  <meta name="description" content="Answers to common Comp Royale questions: profile linking, B2B depth, upgrade price filters, dark mode, solo booking, and performance tuning." />
+  <meta name="theme-color" content="#050f20" />
+  <link rel="icon" type="image/png" href="images/macbook-03-base.png" />
   <link rel="stylesheet" href="static-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 </head>
 <body>
-  <header class="gradient-hero" style="padding:2.5rem 1rem;">
-    <div class="hero-inner">
-      <div>
-        <h1>Frequently Asked Questions</h1>
-        <p class="lead">Need help pairing profiles, decoding B2B depths, or speeding up the table? Start here.</p>
-        <div class="cta-row">
-          <a class="btn" href="index.html">Back to Home</a>
-          <a class="btn alt" href="mailto:admin@comproyale.com">Contact Support</a>
-        </div>
+
+<!-- ══ STICKY NAV ══ -->
+<nav class="site-nav" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="logo-gem">♦</span> Comp Royale
+    </a>
+    <div class="nav-links" role="list">
+      <a href="index.html#whatsnew" role="listitem">What's New</a>
+      <a href="index.html#features" role="listitem">Features</a>
+      <a href="index.html#screens" role="listitem">Screenshots</a>
+      <a href="index.html#install" role="listitem">Install</a>
+      <a href="faq.html" role="listitem" aria-current="page">FAQ</a>
+      <a href="privacy.html" role="listitem">Privacy</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-primary btn-sm" href="https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">
+        Install for Chrome
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ PAGE HEADER ══ -->
+<header class="hero" style="padding:3.5rem 1.5rem 2.5rem;">
+  <div class="hero-inner" style="grid-template-columns:1fr;gap:1rem;max-width:760px;">
+    <div>
+      <span class="section-kicker">Help</span>
+      <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);margin-bottom:.75rem;">Frequently Asked Questions</h1>
+      <p class="hero-sub" style="margin-bottom:1.5rem;">
+        Need help pairing profiles, decoding B2B depths, or speeding up the table? Start here.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-secondary" href="index.html">← Back to Home</a>
+        <a class="btn btn-primary" href="mailto:admin@comproyale.com">Contact Support</a>
       </div>
     </div>
-  </header>
+  </div>
+</header>
 
-  <main>
-    <section class="wrapper" style="padding-top:2rem;">
-      <article class="faq-card">
+<!-- ══ FAQ ARTICLES ══ -->
+<main>
+  <section class="section">
+    <div class="wrapper" style="max-width:800px;">
+
+      <div class="faq-article">
         <h2>How do I add a second profile and link them?</h2>
         <ol>
           <li>Open the offers page while signed into the first loyalty account and click <strong>Show All Offers</strong>. The extension saves that account as a profile tab automatically.</li>
-          <li>Log out of the cruise site completely, sign into the second loyalty account, navigate to the offers page, and click <strong>Show All Offers</strong> again. A second profile tab appears.</li>
-          <li>Click the <span class="material-symbols-outlined" aria-hidden="true">link</span> chain icon on both profile tabs to link them.</li>
-          <li>The <strong>Combined Offers</strong> tab becomes enabled and shows the merged view of the two linked profiles.</li>
+          <li>Log out of the cruise site, sign into the second loyalty account, navigate to the offers page, and click <strong>Show All Offers</strong> again. A second profile tab appears.</li>
+          <li>Click the chain icon on both profile tabs to link them.</li>
+          <li>The <strong>Combined Offers</strong> tab activates and shows the merged view of both linked profiles.</li>
         </ol>
-        <p class="note">Tip: To refresh a profile’s data later, redo the sign-out/sign-in flow for that account and click <strong>Show All Offers</strong> again.</p>
-      </article>
+        <div class="note">Tip: To refresh a profile's data later, redo the sign-out/sign-in flow for that account and click <strong>Show All Offers</strong> again.</div>
+      </div>
 
-      <article class="faq-card">
+      <div class="faq-article">
         <h2>What is Offer Value and how is it used?</h2>
-        <p><strong>Offer Value</strong> estimates the base cruise fare for the awarded category (dual occupancy) after subtracting taxes and fees. The Balcony and Suite upgrade columns use this value to estimate how much you would pay to move up to a higher category.</p>
-      </article>
+        <p><strong>Offer Value</strong> estimates the base cruise fare for the awarded category (dual occupancy) after subtracting taxes and fees. The Interior, OV, Balcony, and Suite upgrade columns use this value as a baseline to estimate what you would pay to move up to a higher category.</p>
+      </div>
 
-      <article class="faq-card">
-        <h2>How do the Balcony and Suite upgrade columns work?</h2>
-        <p>Upgrade estimates are calculated using itinerary pricing and your offer’s base value. When taxes/fees are included, the upgrade shows the minimum total “You Pay” for the target category.</p>
-      </article>
+      <div class="faq-article">
+        <h2>How do the Interior, OV, Balcony, and Suite upgrade columns work?</h2>
+        <p>Upgrade estimates are calculated using itinerary pricing and your offer's base value. When taxes and fees are included, the upgrade columns show the minimum total "You Pay" for the target stateroom category. Enable <strong>Solo Booking</strong> in Settings to use single-guest taxes and fees instead.</p>
+      </div>
 
-      <article class="faq-card">
+      <div class="faq-article">
+        <h2>What is Solo Booking mode?</h2>
+        <p>Solo Booking mode, found in the Settings gear, switches all pricing calculations (upgrade columns and Advanced Search price filters) to use single-guest taxes and fees rather than the dual-occupancy default. Enable it if you are booking as a solo traveler so upgrade estimates reflect your actual cost.</p>
+      </div>
+
+      <div class="faq-article">
         <h2>Can I include or exclude taxes in price filters?</h2>
-        <p>Yes. Open the <strong>Settings</strong> gear and toggle <strong>Include Taxes & Fees in Price Filters</strong>. This affects Advanced Search price fields and upgrade columns.</p>
-      </article>
+        <p>Yes. Open the <strong>Settings</strong> gear and toggle <strong>Include Taxes &amp; Fees in Price Filters</strong>. This affects the Advanced Search price fields (Interior Price, OV Price, Balcony Price, Suite Price) and all upgrade columns.</p>
+      </div>
 
-      <article class="faq-card">
-        <h2>How does the Back-to-Back (B2B) tool work and what do depths mean?</h2>
-        <p>The B2B Builder reads the sailings that are already in your table, and labels each row with a <strong>depth</strong> number. That number is the longest uninterrupted chain of cruises you can sail starting with that offer using what you currently have.</p>
-        <p>Side-by-side behavior is controlled by the <strong>Include Side-by-Sides</strong> setting (Settings gear). When enabled, the builder allows same-day connections across ships in the same port. When disabled, it prefers same-ship connections only.</p>
-        <p>Click the depth pill to open the Back-to-Back Builder. Use <strong>Add to chain</strong> to build a sequence, then click <strong>Save Chain to Favorites</strong>. Saved chains show a chain ID badge in the Favorites tab.</p>
-      </article>
+      <div class="faq-article">
+        <h2>How does the Back-to-Back (B2B) Builder work and what do depths mean?</h2>
+        <p>The B2B Builder reads the sailings already in your table and labels each row with a <strong>depth</strong> number — the longest uninterrupted chain of cruises you can sail starting with that offer using what you currently have loaded.</p>
+        <p style="margin-top:.6rem;">The <strong>Side-by-Side Driving Range</strong> setting (Settings gear) allows same-day connections between nearby ports based on average drive times, not just exact port matches. Driving range is applied symmetrically.</p>
+        <p style="margin-top:.6rem;">Click the depth pill to open the Back-to-Back Builder. Use <strong>Add to chain</strong> to build a sequence, then click <strong>Save Chain to Favorites</strong>. Saved chains show a chain ID badge in the Favorites tab.</p>
+      </div>
 
-      <article class="faq-card">
+      <div class="faq-article">
         <h2>How do I search by upgrade price?</h2>
         <ol>
           <li>Open the <strong>Advanced Search</strong> drawer by clicking the button.</li>
-          <li>Select one of the custom search criteria from "Interior Price", "Ocean View Price", "Balcony Price", or "Suite Price" in the "Add Field" drawer.</li>
-          <li>Set the <strong>less than</strong> operator on the new filter.</li>
-          <li>Type the max price you are willing to pay for the upgrade (e.g., <code>250</code> for $250).</li>
-          <li>The filter applies instantly to the selected profile and respects whatever group or sort state you already have.</li>
+          <li>Select a price field from "Add Field" — choose from <em>Interior Price</em>, <em>Ocean View Price</em>, <em>Balcony Price</em>, or <em>Suite Price</em>.</li>
+          <li>Set the operator to <strong>less than</strong>.</li>
+          <li>Type the maximum price you are willing to pay (e.g., <code>250</code> for $250).</li>
+          <li>The filter applies instantly and respects whatever group or sort state you already have.</li>
         </ol>
-      </article>
+      </div>
 
-      <article class="faq-card">
+      <div class="faq-article">
         <h2>What are itinerary links and what do they show?</h2>
-        <p>Click a destination link to open the itinerary popup. It includes stateroom pricing, estimated “You Pay” amounts, and a day‑by‑day route summary.</p>
-      </article>
+        <p>Click a Destination cell to open the itinerary popup. It includes day-by-day route details, stateroom pricing, and estimated "You Pay" amounts per category. Click any "You Pay" value to open a <strong>Pricing Tooltip</strong> that breaks down the full cost calculation.</p>
+      </div>
 
-      <article class="faq-card">
+      <div class="faq-article">
+        <h2>How do I use the Itinerary Refresh icon?</h2>
+        <p>The refresh icon (next to the Settings gear) reloads itinerary data and recalculates all pricing columns without you having to close and reopen the panel. Use it after any page updates or if pricing looks stale.</p>
+      </div>
+
+      <div class="faq-article">
         <h2>How do Favorites work?</h2>
-        <p>Click the star icon on any row to save a sailing. Favorites appear in a dedicated tab and are stored locally in your browser.</p>
-      </article>
+        <p>Click the star icon on any row to save a sailing. Favorites appear in a dedicated <strong>Favorites</strong> tab with color-coded badges per profile, and they persist across sessions in your browser's local storage. You can also save entire B2B chains directly to Favorites from the B2B Builder.</p>
+      </div>
 
-      <article class="faq-card">
+      <div class="faq-article">
+        <h2>How do I use Dark Mode?</h2>
+        <p>Open the <strong>Settings</strong> gear icon in the offers panel and toggle <strong>Dark Mode</strong>. Dark mode applies to the offers table, modals, and all panel elements. Your preference is saved locally and restored on your next visit.</p>
+      </div>
+
+      <div class="faq-article">
+        <h2>How do I hide or show columns?</h2>
+        <p>Open the <strong>Settings</strong> gear and use <strong>Visible Columns</strong> to toggle individual columns on or off. This keeps the table focused on what matters to you without losing data — CSV export always includes every column regardless of visibility settings.</p>
+      </div>
+
+      <div class="faq-article">
         <h2>What does the B2B chain ID mean?</h2>
-        <p>When you save a Back‑to‑Back chain, the Favorites tab shows a chain ID badge in the B2B column so you can identify the saved sequence.</p>
-      </article>
+        <p>When you save a Back-to-Back chain from the B2B Builder, the Favorites tab shows a chain ID badge in the B2B column so you can identify which sailings belong to the same saved sequence.</p>
+      </div>
 
-      <article class="faq-card">
-        <h2>Can I hide groups I don’t care about?</h2>
-        <p>Yes. Use the group menu in the table headers to hide entire groups. Hidden groups are removed from view until you unhide them.</p>
-      </article>
+      <div class="faq-article">
+        <h2>Can I hide groups I don't care about?</h2>
+        <p>Yes. Click the yellow group-picker icon in any column header to open the group menu, then click the trash icon next to a group to hide it. Hidden groups are removed from view until you unhide them via the same menu.</p>
+      </div>
 
-      <article class="faq-card">
+      <div class="faq-article">
         <h2>Why is the table slow and how can I speed it up?</h2>
         <ul>
-          <li>Use the Hidden Groups feature to hide large sections of the table. To do this, open the group picker via the Yellow Folder icon in each column header and use the "Trashcan" icon to hide those groups. For the best results, hide groups with many rows that you know you can't use, such as "Code: 25TIER3".</li>
-          <li>Open <strong>Settings</strong> and toggle <strong>Auto-run Back-to-Back Builder Calculations</strong> to limit depth calculations for the B2B tool.</li>
+          <li>Hide large groups using the trash icon in the group picker — especially rows you know you can't use, such as <code>Code: 25TIER3</code>.</li>
+          <li>Open <strong>Settings</strong> and turn off <strong>Auto-run Back-to-Back Builder Calculations</strong> to skip depth calculations until you need them.</li>
+          <li>Use <strong>Accordion</strong> or <strong>Visible Columns</strong> mode to reduce the amount of data rendered at once.</li>
         </ul>
-        <p>If performance stays rough, send your browser/OS combo to <a href="mailto:admin@comproyale.com">admin@comproyale.com</a> so we can look into it.</p>
-      </article>
-    </section>
-  </main>
+        <div class="note">If performance stays rough, send your browser/OS combo to <a href="mailto:admin@comproyale.com">admin@comproyale.com</a> so we can investigate.</div>
+      </div>
 
-  <footer style="text-align:center;padding:2rem 1rem;font-size:.85rem;color:#666;">
-    <p>Need more help? Email <a href="mailto:admin@comproyale.com">admin@comproyale.com</a> or open an issue on <a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener">GitHub</a>.</p>
-    <p style="font-size:.7rem;margin-top:.5rem;">© 2026 Percex Technologies, LLC.</p>
-  </footer>
+      <div class="faq-article">
+        <h2>The button is missing or offers are incomplete — what do I do?</h2>
+        <ul>
+          <li><strong>Button missing:</strong> Refresh the page and confirm the extension is enabled in your browser's extension manager.</li>
+          <li><strong>Incomplete offers:</strong> Refresh the page, reopen the panel, and rerun <strong>Show All Offers</strong>.</li>
+          <li><strong>Layout drift:</strong> Check for an updated version of the extension and reload after clearing cached assets.</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<!-- ══ FOOTER ══ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand footer-col">
+      <div class="footer-logo">
+        <span style="color:var(--gold)">♦</span> Comp Royale
+      </div>
+      <p>Unofficial power-user enhancement for Royal Caribbean Club Royale and Celebrity Blue Chip Club offers. Not affiliated with Royal Caribbean International or Celebrity Cruises.</p>
+      <div class="cta-row mt-3">
+        <a class="btn btn-tip btn-sm" href="https://venmo.com/percex" target="_blank" rel="noopener">☕ Buy me a coffee</a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h5>Product</h5>
+      <ul>
+        <li><a href="index.html#whatsnew">What's New</a></li>
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="index.html#screens">Screenshots</a></li>
+        <li><a href="index.html#releases">Release Notes</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Install</h5>
+      <ul>
+        <li><a href="https://chromewebstore.google.com/detail/club-royale-and-blue-chip/aggjibokgkckjppkalkgnegheoldlimd" target="_blank" rel="noopener">Chrome Web Store</a></li>
+        <li><a href="https://addons.mozilla.org/en-US/firefox/addon/rcl-club-offers/" target="_blank" rel="noopener">Firefox Add-ons</a></li>
+        <li><a href="https://apps.apple.com/us/app/comp-royale-offers-viewer/id6755802995" target="_blank" rel="noopener">Mac &amp; iOS App Store</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Support</h5>
+      <ul>
+        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="mailto:admin@comproyale.com">Email Support</a></li>
+        <li><a href="https://github.com/JasonHartmann/club-royale-offers-extension" target="_blank" rel="noopener">GitHub / Issues</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p class="footer-legal">
+      © 2026 Percex Technologies, LLC. All rights reserved.<br>
+      Not affiliated with Royal Caribbean International, Celebrity Cruises, or their loyalty programs.
+    </p>
+    <a class="btn btn-secondary btn-sm" href="mailto:admin@comproyale.com">Contact Support</a>
+  </div>
+</footer>
+
 </body>
 </html>

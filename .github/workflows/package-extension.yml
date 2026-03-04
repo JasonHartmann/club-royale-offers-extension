@@ -31,7 +31,7 @@ jobs:
           name: club-royale-offers-extension
           path: |
             **/*.js
-            **/*.png
+            images/**
             **/*.ico
             **/*.svg
             **/*.css
