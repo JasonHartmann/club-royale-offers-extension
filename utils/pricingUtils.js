@@ -27,7 +27,12 @@
     }
 
     function resolveCategory(raw){
-        try { if (window.RoomCategoryUtils && typeof window.RoomCategoryUtils.resolveCategory === 'function') return window.RoomCategoryUtils.resolveCategory(raw); } catch(e){}
+        try {
+            if (window.RoomCategoryUtils && typeof window.RoomCategoryUtils.resolveCategory === 'function') {
+                const result = window.RoomCategoryUtils.resolveCategory(raw);
+                if (result) return result;
+            }
+        } catch(e){}
         if (!raw) { dbg('resolveCategory:none', raw); return null; }
         const up = (''+raw).trim().toUpperCase();
         const upCompact = up.replace(/\s+/g, '');
@@ -39,7 +44,7 @@
             const cleaned = up.replace(/\bGTY\b/g, '').replace(/[^A-Z]/g, '');
             if (/SUITE|JRSUITE|JR\s?SUITE|JS|DLX|DELUXE/.test(cleaned)) resolved = 'DELUXE';
             else if (/BALCONY|BALC|BK/.test(cleaned)) resolved = 'BALCONY';
-            else if (/OCEANVIEW|OCEANVIEW|OUTSIDE|OV/.test(cleaned)) resolved = 'OUTSIDE';
+            else if (/OCEAN VIEW|OCEANVIEW|OUTSIDE|OV/.test(cleaned)) resolved = 'OUTSIDE';
             else if (/INTERIOR|INSIDE|INT/.test(cleaned)) resolved = 'INTERIOR';
         }
         dbg('resolveCategory', { raw, up, resolved });
@@ -216,7 +221,7 @@
             }
 
             // taxesAndFees in the entry may be a string; parse robustly
-            let taxesNumber = 0;
+            let taxesNumber;
             try {
                 const rawTaxes = entry.taxesAndFees;
                 const guestMultiplier = getGuestMultiplier();

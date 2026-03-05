@@ -82,8 +82,9 @@
                                     }
                                 } catch (innerPrice) { /* ignore single pricing row errors */ }
                             });
-                            // Any previously present codes not returned this time => Sold Out (remove stale price)
-                            prevCodes.forEach(c => { if (!newPricing[c]) newPricing[c] = { code: c }; });
+                            // Retain previous pricing for codes not in current response (different API
+                            // groupings may return different subsets of stateroom codes for the same sailing)
+                            prevCodes.forEach(c => { if (!newPricing[c]) newPricing[c] = prevPricing[c]; });
                             entry.stateroomPricing = newPricing;
                         } else {
                             // Empty pricing array => all previously priced categories now Sold Out
@@ -428,7 +429,15 @@
                     O:'OUTSIDE', OV:'OUTSIDE', OB:'OUTSIDE', E:'OUTSIDE', OCEAN:'OUTSIDE', OCEANVIEW:'OUTSIDE', 'OCEAN VIEW':'OUTSIDE', OUTSIDE:'OUTSIDE',
                     B:'BALCONY', BAL:'BALCONY', BK:'BALCONY', BALCONY:'BALCONY',
                     D:'DELUXE', DLX:'DELUXE', DELUXE:'DELUXE', JS:'DELUXE', SU:'DELUXE', SUITE:'DELUXE' };
-                function resolveCat(raw){ if(!raw) return null; const up = String(raw).trim().toUpperCase(); const upCompact = up.replace(/\s+/g,''); return baseCategoryMap[up] || baseCategoryMap[upCompact] || (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null); }
+                function resolveCat(raw){
+                    if(!raw) return null;
+                    const up = String(raw).trim().toUpperCase();
+                    const upCompact = up.replace(/\s+/g,'');
+                    const mapped = baseCategoryMap[up] || baseCategoryMap[upCompact] || (['INTERIOR','OUTSIDE','BALCONY','DELUXE'].includes(up)?up:null);
+                    if (mapped) return mapped;
+                    try { if (typeof window !== 'undefined' && window.RoomCategoryUtils && typeof window.RoomCategoryUtils.classifyBroad === 'function') return window.RoomCategoryUtils.classifyBroad(up); } catch(e){}
+                    return null;
+                }
                 const catMin = { INTERIOR:null, OUTSIDE:null, BALCONY:null, DELUXE:null };
                 const currencyCounts = {};
                 keys.forEach(k => {

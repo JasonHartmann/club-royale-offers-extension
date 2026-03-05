@@ -1018,15 +1018,13 @@
             const taxesText = taxesValue != null && utils && typeof utils.formatOfferValue === 'function'
                 ? `Taxes & Fees: ${utils.formatOfferValue(taxesValue)}${taxesLabel ? ` (${taxesLabel})` : ''}`
                 : `Taxes & Fees: --${taxesLabel ? ` (${taxesLabel})` : ''}`;
-            // Use interiorRaw directly for the interior slot. Do NOT fall back to
-            // computeOfferValue (which returns 0 for sold-out categories) because
-            // that causes the B2B tool to display "$0" instead of "Sold Out".
-            const interiorFmt = (interiorRaw != null && isFinite(interiorRaw) && interiorRaw > 0)
+            // Use interiorRaw directly for the interior slot.
+            const interiorFmt = (interiorRaw != null && isFinite(interiorRaw) && interiorRaw >= 0)
                 ? (utils && typeof utils.formatOfferValue === 'function' ? utils.formatOfferValue(interiorRaw) : '-')
                 : '-';
             return {
                 valuesRaw: {
-                    interior: (interiorRaw != null && isFinite(interiorRaw) && interiorRaw > 0) ? interiorRaw : null,
+                    interior: (interiorRaw != null && isFinite(interiorRaw) && interiorRaw >= 0) ? interiorRaw : null,
                     oceanViewUpgrade: rawUpgrade('oceanViewUpgrade'),
                     balconyUpgrade: rawUpgrade('balconyUpgrade'),
                     suiteUpgrade: rawUpgrade('suiteUpgrade')
@@ -1113,7 +1111,7 @@
                 const value = document.createElement('span');
                 value.className = 'b2b-price-value';
                 const rawVal = pricing && pricing.valuesRaw ? pricing.valuesRaw[item.key] : null;
-                if (rawVal == null || !isFinite(rawVal) || rawVal <= 0) {
+                if (rawVal == null || !isFinite(rawVal) || rawVal < 0) {
                     value.textContent = 'Sold Out';
                     chip.classList.add('is-sold-out');
                 } else {
@@ -1680,7 +1678,7 @@
             } catch (e) { /* ignore depth compute errors */ }
 
             // Mark sold-out options before sorting
-            const isSoldOutValue = (v) => v == null || !isFinite(v) || v <= 0;
+            const isSoldOutValue = (v) => v == null || !isFinite(v) || v < 0;
             options.forEach(opt => {
                 try {
                     const pricingData = this._getPricingData(opt.meta);
