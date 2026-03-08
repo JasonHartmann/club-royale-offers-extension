@@ -1,6 +1,21 @@
 const Styles = {
     injectStylesheet() {
         try {
+            const isSafari = (() => {
+                try {
+                    if (typeof navigator === 'undefined') return false;
+                    const ua = navigator.userAgent || '';
+                    return /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR/.test(ua);
+                } catch (e) {
+                    return false;
+                }
+            })();
+            if (isSafari) {
+                // Safari loads the manifest-declared content_script CSS reliably; avoid dynamic <link> injection.
+                this.ensureInlineOverridesTag();
+                console.debug('[OffersExt] Safari detected; skipping dynamic stylesheet injection');
+                return;
+            }
             this.ensureLocalTailwind();
             this.injectSegmentedStyles();
             this.ensureInlineOverridesTag();

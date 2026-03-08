@@ -33,8 +33,7 @@
       "matches": [
         "https://*.royalcaribbean.com/club-royale/*",
         "https://*.celebritycruises.com/blue-chip-club/*",
-        "https://*.comproyale.com/sim/*",
-        "https://comproyale.com/sim/*"
+        "https://*.comproyale.com/sim/*"
       ],
       "css": [
         "styles/tailwind.min.css",

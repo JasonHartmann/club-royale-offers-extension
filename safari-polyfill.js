@@ -11,6 +11,15 @@
         if (typeof window !== 'undefined' && typeof window.GOBO_DEBUG_LOGS_FORCE_LOG === 'undefined') {
             window.GOBO_DEBUG_LOGS_FORCE_LOG = false;
         }
+        if (typeof window !== 'undefined' && typeof location !== 'undefined') {
+            const host = (location.hostname || '').toLowerCase();
+            if (host.endsWith('comproyale.com')) {
+                window.GOBO_DEBUG_LOGS = true;
+                if (typeof console !== 'undefined' && console.log) {
+                    console.log('[SIM] GOBO debug logging enabled via safari-polyfill for comproyale.');
+                }
+            }
+        }
     } catch(e){ /* ignore */ }
 })();
 (function () {
@@ -72,9 +81,6 @@
                     }
                 } catch(e) {}
                 origDebug(...args);
-                try {
-                    if (window.GOBO_DEBUG_LOGS_FORCE_LOG) origLog(...args);
-                } catch(e) {}
             };
             // Filter only explicit [DEBUG] tagged log lines for console.log; leave other logs intact.
             console.log = function(...args){ if (!window.GOBO_DEBUG_LOGS && typeof args[0] === 'string' && /^\[DEBUG]/.test(args[0])) return; origLog(...args); };

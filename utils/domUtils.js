@@ -1,10 +1,13 @@
 const DOMUtils = {
+    _observer: null,
+    _observerTarget: null,
     _onDomReady() {
         console.debug('DOM is ready');
         App.Styles.injectStylesheet();
         App.ButtonManager.addButton();
         if (App.OfferCodeLookup && typeof App.OfferCodeLookup.init === 'function') App.OfferCodeLookup.init();
         this.observeDomChanges();
+        this._scheduleLateInjection();
     },
     waitForDom(maxAttempts = 10, attempt = 1) {
         if (document.head && document.body) {
@@ -21,12 +24,37 @@ const DOMUtils = {
         }
     },
     observeDomChanges() {
+        if (!document.body) return;
+        if (this._observer && this._observerTarget === document.body) return;
+        if (this._observer) {
+            try { this._observer.disconnect(); } catch (e) { /* ignore */ }
+        }
         const observer = new MutationObserver(() => {
             if (!document.getElementById('gobo-offers-button')) {
                 App.ButtonManager.addButton();
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
+        this._observer = observer;
+        this._observerTarget = document.body;
         console.debug('DOM observer started for button re-injection');
+    },
+    _scheduleLateInjection() {
+        const lateAttempt = () => {
+            if (!document.getElementById('gobo-offers-button')) {
+                App.ButtonManager.addButton(30);
+            }
+            this.observeDomChanges();
+        };
+        setTimeout(lateAttempt, 1500);
+        setTimeout(lateAttempt, 4000);
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', lateAttempt, { once: true });
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                lateAttempt();
+            }
+        });
     }
 };

@@ -28,7 +28,7 @@ const ButtonManager = {
                 setTimeout(() => this.addButton(maxAttempts, attempt + 1), 100);
                 return;
             }
-            const narrowViewport = window.matchMedia && window.matchMedia('(max-width: 350px)').matches;
+            const narrowViewport = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
             if (!banner) {
                 console.debug('Banner div not found after max attempts, using centered fixed position');
                 button.className = 'fixed top-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
