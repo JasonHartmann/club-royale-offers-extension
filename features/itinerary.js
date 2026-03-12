@@ -82,9 +82,20 @@
                                     }
                                 } catch (innerPrice) { /* ignore single pricing row errors */ }
                             });
-                            // Retain previous pricing for codes not in current response (different API
-                            // groupings may return different subsets of stateroom codes for the same sailing)
-                            prevCodes.forEach(c => { if (!newPricing[c]) newPricing[c] = prevPricing[c]; });
+                            // Retain previous pricing for codes not in current response, and keep
+                            // the cheaper price when the same code appears in both (multiple cruise
+                            // groupings for the same ship+date may carry different price tiers)
+                            prevCodes.forEach(c => {
+                                if (!newPricing[c]) {
+                                    newPricing[c] = prevPricing[c];
+                                } else if (
+                                    prevPricing[c] && typeof prevPricing[c].price === 'number' &&
+                                    typeof newPricing[c].price === 'number' &&
+                                    prevPricing[c].price < newPricing[c].price
+                                ) {
+                                    newPricing[c] = prevPricing[c];
+                                }
+                            });
                             entry.stateroomPricing = newPricing;
                         } else {
                             // Empty pricing array => all previously priced categories now Sold Out

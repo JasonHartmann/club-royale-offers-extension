@@ -468,14 +468,15 @@ const Utils = {
                         _offerValueStats.missing++;
                         return;
                     }
-                    if (!hasValueAlready) {
-                        const rawVal = Utils.computeOfferValue(matchObj.offer, matchObj.sailing);
-                        if (rawVal != null && isFinite(rawVal)) {
-                            valCell.textContent = App.Utils.formatOfferValue(rawVal);
-                            _offerValueStats.computed++;
-                        } else {
-                            _offerValueStats.missing++;
-                        }
+                    // Always recompute the Value column so refreshed itinerary pricing is reflected
+                    const rawVal = Utils.computeOfferValue(matchObj.offer, matchObj.sailing);
+                    if (rawVal != null && isFinite(rawVal)) {
+                        const formattedVal = App.Utils.formatOfferValue(rawVal);
+                        const existingVal = (valCell.textContent || '').trim();
+                        if (existingVal !== formattedVal) valCell.textContent = formattedVal;
+                        _offerValueStats.computed++;
+                    } else if (!hasValueAlready) {
+                        _offerValueStats.missing++;
                     } else {
                         _offerValueStats.computed++;
                     }
