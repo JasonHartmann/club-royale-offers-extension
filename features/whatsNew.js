@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '12'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon
+    const TOUR_REVISION = '13'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -99,60 +99,12 @@
             } catch(e){}
         },
         _initSteps(){
-            // Helper to find first link icon img inside a regular gobo-* profile tab (not favorites or combined)
-            function findLinkIcon(){
-                const tabs = document.querySelectorAll('.profile-tab');
-                for (const t of tabs) {
-                    const sk = t.getAttribute('data-storage-key') || '';
-                    if (sk.startsWith('gobo-')) {
-                        const img = t.querySelector('img[src*="link"]'); // matches link.png or link_off.png
-                        if (img) return img;
-                    }
-                }
-                return null;
-            }
             this._steps = [
                 {
-                    id:'darkModeSetting',
-                    target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
-                    title:'Dark Mode',
-                    body:'Open the Settings gear to toggle Dark Mode for the offers table, modals, and panels.',
-                },
-                {
-                    id:'visibleColumnsSetting',
-                    target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
-                    title:'Visible Columns',
-                    body:'Open the Settings gear to hide or show columns in the offers table. CSV export still includes every column.',
-                },
-                {
-                    id:'itineraryRefresh',
-                    target:()=> document.querySelector('#gobo-refresh-itins') || document.querySelector('.gobo-itinerary-refresh-inline') || null,
-                    title:'Itinerary Refresh',
-                    body:'Use the refresh icon next to Settings to reload itineraries and recalculate pricing after any updates.',
-                },
-                {
-                    id:'soloBookingSetting',
-                    target:()=> document.querySelector('#gobo-setting-solo') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
-                    title:'Solo Booking',
-                    body:'Enable Solo Booking in Settings to use single-guest taxes & fees when calculating prices.',
-                },
-                {
-                    id:'b2bRegionSetting',
-                    target:()=> document.querySelector('#gobo-setting-b2b-region') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
-                    title:'Side-by-Side Driving Range',
-                    body:'Use the Side-by-Side driving range setting to allow same-day connections between nearby ports (instead of exact matches only). Driving range is based on average drive times, not straight-line distance, and is applied symmetrically (e.g. 2-hour range allows A→B and B→A if within 2 hours).',
-                },
-                {
-                    id:'ovBalconySuiteColumns',
-                    target:()=> document.querySelector('th[data-key="oceanViewUpgrade"], td[data-col="oceanViewUpgrade"]') || document.querySelector('th[data-key="balconyUpgrade"], td[data-col="balconyUpgrade"]') || document.querySelector('th[data-key="suiteUpgrade"], td[data-col="suiteUpgrade"]') || null,
-                    title:'Interior / OV / Balcony / Suite',
-                    body:'New Interior, OV, Balcony, and Suite columns show estimated You Pay pricing for each category. Taxes & Fees and Solo Booking settings are respected.',
-                },
-                {
-                    id:'pricingTooltips',
-                    target:()=> document.querySelector('th[data-key="destination"], td[data-col="destination"]') || null,
-                    title:'Pricing Tooltips',
-                    body:'Click a Destination entry to open the itinerary popup, then tap a “You Pay” value to see the new pricing tooltip breakdown.',
+                    id:'pricingBugfix',
+                    target:()=> document.querySelector('th[data-key="offerValue"], td[data-col="offerValue"]') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
+                    title:'Minor Pricing Bugfix',
+                    body:'Fixed a minor pricing issue to keep displayed values accurate after refresh and recalculation.',
                 },
                 {
                     id:'supportCoffee',
@@ -366,7 +318,7 @@
             await this._fadeInTooltip();
             this._animating = false;
         },
-        finish(skipped){
+        finish(){
             this.markDone();
             this._cleanup();
         },

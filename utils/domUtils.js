@@ -5,7 +5,6 @@ const DOMUtils = {
         console.debug('DOM is ready');
         App.Styles.injectStylesheet();
         App.ButtonManager.addButton();
-        if (App.OfferCodeLookup && typeof App.OfferCodeLookup.init === 'function') App.OfferCodeLookup.init();
         this.observeDomChanges();
         this._scheduleLateInjection();
     },

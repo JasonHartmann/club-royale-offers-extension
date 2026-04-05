@@ -1,6 +1,6 @@
 {
   "name": "club-royale-offers-extension",
-  "version": "2.1",
+  "version": "2.2",
   "private": true,
   "description": "Developer tooling for the Club Royale Offers browser extension",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "jest-environment-jsdom": "^30.2.0",
+    "jest-environment-jsdom": "^30.3.0",
     "sharp": "^0.32.0"
   }
 }

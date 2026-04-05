@@ -6,7 +6,6 @@ describe('DOMUtils', () => {
     let DOMUtils;
     let addButton;
     let injectStylesheet;
-    let offerCodeInit;
 
     beforeEach(() => {
         jest.useFakeTimers();
@@ -15,12 +14,10 @@ describe('DOMUtils', () => {
 
         addButton = jest.fn();
         injectStylesheet = jest.fn();
-        offerCodeInit = jest.fn();
 
         global.App = {
             ButtonManager: { addButton },
             Styles: { injectStylesheet },
-            OfferCodeLookup: { init: offerCodeInit }
         };
 
         const src = fs.readFileSync(path.resolve(__dirname, '..', 'utils', 'domUtils.js'), 'utf8');
@@ -39,8 +36,6 @@ describe('DOMUtils', () => {
 
         expect(injectStylesheet).toHaveBeenCalledTimes(1);
         expect(addButton).toHaveBeenCalledTimes(1);
-        expect(offerCodeInit).toHaveBeenCalledTimes(1);
-
         jest.advanceTimersByTime(1500);
         expect(addButton).toHaveBeenCalledTimes(2);
 

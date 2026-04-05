@@ -51,9 +51,9 @@ describe('Utils.refreshOfferValues recomputes Value column on refresh', () => {
         ['DOMUtils', 'Styles', 'ButtonManager', 'ErrorHandler', 'Spinner', 'ApiClient',
          'Modal', 'TableBuilder', 'AccordionBuilder', 'SortUtils', 'TableRenderer',
          'AdvancedItinerarySearch', 'Breadcrumbs', 'AdvancedSearch', 'AdvancedSearchAddField',
-         'OfferCodeLookup', 'Filtering', 'B2BUtils', 'BackToBackTool', 'Favorites',
+         'Filtering', 'B2BUtils', 'BackToBackTool', 'Favorites',
          'Settings', 'ItineraryCache'].forEach(name => { if (!global[name]) global[name] = {}; });
-        global.DOMUtils = { waitForDom: () => {} };
+        global.DOMUtils.waitForDom = () => {};
         global.ItineraryCache = { get: () => null, all: () => ({}) };
 
         // Load the module (sets window.Utils via the IIFE)

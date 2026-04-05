@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cruise Comp Offers Viewer",
   "short_name": "Cruise Comp Offers",
-  "version": "2.1",
+  "version": "2.2",
   "description": "View cruise comp offers in a sortable, groupable table and accordion.",
   "browser_specific_settings": {
     "gecko": {
@@ -67,7 +67,6 @@
         "features/spinner.js",
         "features/accordionBuilder.js",
         "features/favorites.js",
-        "features/offerCodeLookup.js",
         "features/filtering.js",
         "features/whatsNew.js",
         "features/settings.js",

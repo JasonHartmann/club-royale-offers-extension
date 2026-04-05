@@ -54,17 +54,7 @@
             itineraryKey = (shipCode && sailDate) ? `SD_${shipCode}_${sailDate}` : (sailDate ? `SD_UNKNOWN_${sailDate}` : 'SD_UNKNOWN');
         } catch(e) { itineraryKey = 'SD_UNKNOWN'; }
         const perksStr = Utils.computePerks(offer, sailing);
-        const rawCode = offer.campaignOffer?.offerCode || '-';
-        // Generate separate links/buttons for each code if rawCode contains '/'
-        let codeCell = '-';
-        if (rawCode !== '-') {
-            let split = String(rawCode).split('/');
-            const codes = split.map(c => c.trim()).filter(Boolean);
-            const links = codes.map(code => `
-                <a href="javascript:void(0)" class="offer-code-link text-blue-600 underline" data-offer-code="${code}" title="Lookup ${code}">${code}</a>
-            `).join(' / ');
-            codeCell = `${links}`; // Redeem button currently disabled
-        }
+        const codeCell = offer.campaignOffer?.offerCode || '-';
         const shipClass = Utils.getShipClass(sailing.shipName);
         // Trade-in value extraction & formatting (inserted between Expiration and Name columns)
         const rawTrade = offer.campaignOffer?.tradeInValue;

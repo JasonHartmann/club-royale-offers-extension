@@ -34,7 +34,6 @@
         AdvancedSearch,
         AdvancedSearchAddField,
         Utils,
-        OfferCodeLookup,
         Filtering,
         B2BUtils,
         BackToBackTool,

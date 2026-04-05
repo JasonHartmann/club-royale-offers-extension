@@ -1,5 +1,4 @@
 const path = require('path');
-const fs = require('fs');
 
 describe('ItineraryCache._enrichEntryFromSailing pricing merge', () => {
     let ItineraryCache;
@@ -25,9 +24,9 @@ describe('ItineraryCache._enrichEntryFromSailing pricing merge', () => {
         ['DOMUtils', 'Styles', 'ButtonManager', 'ErrorHandler', 'Spinner', 'ApiClient',
          'Modal', 'TableBuilder', 'AccordionBuilder', 'SortUtils', 'TableRenderer',
          'AdvancedItinerarySearch', 'Breadcrumbs', 'AdvancedSearch', 'AdvancedSearchAddField',
-         'Utils', 'OfferCodeLookup', 'Filtering', 'B2BUtils', 'BackToBackTool', 'Favorites',
+         'Utils', 'Filtering', 'B2BUtils', 'BackToBackTool', 'Favorites',
          'Settings'].forEach(name => { if (!global[name]) global[name] = noop; });
-        global.DOMUtils = { waitForDom: () => {} };
+        global.DOMUtils.waitForDom = () => {};
 
         // Load itinerary module (sets window.ItineraryCache)
         require(path.resolve(__dirname, '../features/itinerary.js'));
