@@ -56,8 +56,9 @@ const ApiClient = {
         let authToken, accountId, loyaltyId, user;
         try {
             console.debug('[apiClient] Resolving auth token and session data');
-            authToken = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.getCookie === 'function')
-                ? App.Utils.getCookie('accessToken') : null;
+            authToken = App.Utils.getCookie('accessToken');
+            accountId = App.Utils.getCookie('VDS_ID');
+            loyaltyId = App.Utils.getCookie('loyalty_ID');
             console.debug('[apiClient] Cookie accessToken present:', !!authToken, authToken ? '(length=' + authToken.length + ')' : '');
             const sessionData = localStorage.getItem('persist:session');
             console.debug('[apiClient] persist:session present:', !!sessionData, sessionData ? '(length=' + sessionData.length + ')' : '');
@@ -78,8 +79,12 @@ const ApiClient = {
                 ? (typeof parsedData.user === 'string' ? JSON.parse(parsedData.user) : parsedData.user)
                 : (parsedData.accountId ? parsedData : null);
             console.debug('[apiClient] user resolved:', !!user, user ? 'accountId=' + (user.accountId || 'MISSING') + ' cruiseLoyaltyId=' + (user.cruiseLoyaltyId || 'MISSING') + ' exp=' + (user.exp || 'MISSING') : '');
-            accountId = user && user.accountId ? user.accountId : null;
-            loyaltyId = user && user.cruiseLoyaltyId ? user.cruiseLoyaltyId : null;
+            if (!accountId) {
+                accountId = user && user.accountId ? user.accountId : null;
+            }
+            if (!loyaltyId) {
+                loyaltyId = user && user.cruiseLoyaltyId ? user.cruiseLoyaltyId : null;
+            }
             // Expiration: new format uses `exp` (seconds); legacy uses `tokenExpiration` (seconds)
             const rawExp = user && user.exp ? user.exp : (parsedData.tokenExpiration ? parseInt(parsedData.tokenExpiration) : null);
             const tokenExpiration = rawExp ? rawExp * 1000 : null;
