@@ -2,14 +2,15 @@ const Modal = {
     createModalContainer() {
         const container = document.createElement('div');
         container.id = 'gobo-offers-table';
-        container.className = 'fixed inset-0 m-auto z-[2147483647]';
+        container.className = 'fixed inset-0 m-auto z-[10000000]';
+        container.style.setProperty('z-index', '10000000', 'important');
         return container;
     },
     createBackdrop() {
         const backdrop = document.createElement('div');
         backdrop.id = 'gobo-backdrop';
-        backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-[2147483646]';
-        backdrop.style.cssText = 'pointer-events: auto !important;';
+        backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-[9999999]';
+        backdrop.style.cssText = 'pointer-events: auto !important; z-index: 9999999 !important;';
         return backdrop;
     },
     setupModal(state, overlappingElements) {
@@ -338,17 +339,20 @@ const Modal = {
         document.body.style.overflow = 'hidden';
 
         // --- Session disappearance watcher ---
-        // Poll every 2 seconds for session presence
+        // Poll every 2 seconds for session presence (check both localStorage and cookie)
         const sessionCheckInterval = setInterval(() => {
             try {
-                // If session is missing or empty, close the modal
                 const sessionRaw = localStorage.getItem('persist:session');
-                if (!sessionRaw) {
+                const cookieToken = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.getCookie === 'function')
+                    ? App.Utils.getCookie('accessToken') : null;
+                console.debug('[modal] Session watcher tick — persist:session:', !!sessionRaw, 'accessToken cookie:', !!cookieToken);
+                if (!sessionRaw && !cookieToken) {
+                    console.debug('[modal] Session disappeared, closing modal');
                     this.closeModal(container, backdrop, overlappingElements);
                     clearInterval(sessionCheckInterval);
                 }
             } catch (e) {
-                // On error, also close modal for safety
+                console.debug('[modal] Session watcher error, closing modal:', e.message);
                 this.closeModal(container, backdrop, overlappingElements);
                 clearInterval(sessionCheckInterval);
             }

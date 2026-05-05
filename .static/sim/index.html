@@ -144,21 +144,21 @@ offers.forEach(o => {
   </div>`;
 });
 
-// Seed localStorage with fake session so the extension can parse it
+// Seed localStorage + cookie with fake session so the extension can parse it
 (function seedSession() {
   const futureExp = Math.floor((Date.now() + 86400000) / 1000); // 24h from now
   const session = {
-    token: JSON.stringify('sim-token-for-testing'),
-    tokenExpiration: String(futureExp),
-    user: JSON.stringify({
-      accountId: 'SIM-ACCT-001',
-      cruiseLoyaltyId: '390780962',
-      username: 'jason1@percex.com',
-      email: 'jason1@percex.com',
-      name: 'Jason'
-    })
+    name: 'Jason',
+    email: 'jason1@percex.com',
+    firstname: 'Jason',
+    lastname: 'Hartmann',
+    exp: futureExp,
+    accountId: 'SIM-ACCT-001',
+    cruiseLoyaltyId: '390780962',
+    username: 'jason1@percex.com'
   };
   localStorage.setItem('persist:session', JSON.stringify(session));
+  document.cookie = 'accessToken=sim-token-for-testing; path=/; max-age=86400';
 })();
 
 </script>

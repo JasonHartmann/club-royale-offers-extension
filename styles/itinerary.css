@@ -20,7 +20,7 @@ body.gobo-dark .gobo-itinerary-link:focus { color:#bfdbfe !important; }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.55);
-  z-index: 999999;
+  z-index: 2147483647 !important;
   display: flex;
   align-items: center;
   justify-content: center;

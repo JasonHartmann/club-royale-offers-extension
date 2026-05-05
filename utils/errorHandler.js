@@ -6,6 +6,7 @@ const ErrorHandler = {
             const errorDiv = document.createElement('div');
             errorDiv.id = 'gobo-error';
             errorDiv.className = 'fixed top-16 right-4 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg z-[2147483647]';
+            errorDiv.style.setProperty('z-index', '2147483647', 'important');
             errorDiv.textContent = message;
             document.body.appendChild(errorDiv);
             setTimeout(() => errorDiv.remove(), 4000);
@@ -20,6 +21,7 @@ const ErrorHandler = {
             const warnDiv = document.createElement('div');
             warnDiv.id = 'gobo-warning';
             warnDiv.className = 'fixed top-16 right-4 text-white font-semibold py-2 px-4 rounded-lg shadow-lg z-[2147483647]';
+            warnDiv.style.setProperty('z-index', '2147483647', 'important');
             // Ensure background color is explicitly set inline to avoid cases where global CSS
             // or missing utility classes render the element transparent.
             try { warnDiv.style.backgroundColor = '#f97316'; /* Tailwind orange-500 */ } catch(e){}

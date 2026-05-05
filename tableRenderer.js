@@ -874,16 +874,24 @@ const TableRenderer = {
             let currentKey = null;
             try {
                 const sessionRaw = localStorage.getItem('persist:session');
+                console.debug('[tableRenderer] persist:session present:', !!sessionRaw);
                 if (sessionRaw) {
                     const parsed = JSON.parse(sessionRaw);
-                    const user = parsed.user ? JSON.parse(parsed.user) : null;
+                    console.debug('[tableRenderer] parsed keys:', Object.keys(parsed).join(', '));
+                    const user = parsed.user
+                        ? (typeof parsed.user === 'string' ? JSON.parse(parsed.user) : parsed.user)
+                        : (parsed.accountId ? parsed : null);
+                    console.debug('[tableRenderer] user resolved:', !!user, user ? 'accountId=' + (user.accountId || 'MISSING') : '');
                     if (user) {
                         const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
                         const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
                         currentKey = `gobo-${usernameKey}`;
+                        console.debug('[tableRenderer] currentKey:', currentKey);
                     }
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+                console.debug('[tableRenderer] session parse error:', e.message);
+            }
 
             // Defensive: sanitize selectedProfileKey so we never store an object into state.selectedProfileKey
             try {
@@ -1202,9 +1210,25 @@ const TableRenderer = {
         } catch(e) { /* ignore */ }
         // Ensure master copy exists
         if (!state.fullOriginalOffers) state.fullOriginalOffers = [...state.originalOffers];
-        // Apply filter
+        // Apply filter with memoization — skip re-filter if predicates/hiddenGroups haven't changed
     const base = state.fullOriginalOffers;
-    const filtered = Filtering.filterOffers(state, base);
+    let filtered;
+    try {
+        // Build a filter signature from committed predicates + hidden groups + dataset length
+        const hg = Array.isArray(Filtering?.loadHiddenGroups?.()) ? Filtering.loadHiddenGroups() : [];
+        const hgSig = hg.length ? hg.slice().sort().join('|') : 'NONE';
+        const preds = (state.advancedSearch?.enabled && state.advancedSearch?.predicates) ? state.advancedSearch.predicates.filter(p => p && p.complete).map(p => `${p.fieldKey}:${p.operator}:${(p.values||[]).join(',')}`).join('::') : 'NONE';
+        const filterSig = `${base.length}|HG:${hgSig}|AS:${preds}`;
+        if (state._filterCache && state._filterCache.sig === filterSig) {
+            filtered = state._filterCache.data;
+        } else {
+            filtered = Filtering.filterOffers(state, base);
+            state._filterCache = { sig: filterSig, data: filtered };
+        }
+    } catch(e) {
+        // Fallback: always re-filter if signature computation fails
+        filtered = Filtering.filterOffers(state, base);
+    }
         state.originalOffers = filtered;
         // For B2B depth computations we only want to exclude rows that are
         // explicitly hidden by Hidden Groups. Do NOT apply Advanced Search or
@@ -1326,8 +1350,10 @@ const TableRenderer = {
                 const fullLen = state.fullOriginalOffers.length;
                 const masterCacheKey = sortKey + '|' + fullLen;
                 if (!state._globalSortedCache[masterCacheKey]) {
-                    // Compute and cache master sorted list only once per profile length + sort key.
                     state._globalSortedCache[masterCacheKey] = App.SortUtils.sortOffers([...state.fullOriginalOffers], currentSortColumn, currentSortOrder);
+                    // Evict oldest entry if cache exceeds 3 entries
+                    const keys = Object.keys(state._globalSortedCache);
+                    if (keys.length > 3) delete state._globalSortedCache[keys[0]];
                 }
                 const membership = new Set(filtered);
                 state.sortedOffers = state._globalSortedCache[masterCacheKey].filter(w => membership.has(w));
@@ -1339,6 +1365,16 @@ const TableRenderer = {
             state.sortedOffers = [...filtered];
         }
         if (viewMode === 'table') {
+            // Skip full table rebuild if sort key, filter sig, and row count are unchanged
+            const renderSig = `${sortKey}|${state._filterCache?.sig ?? ''}|${state.sortedOffers.length}|${viewMode}`;
+            if (state._lastRenderSig === renderSig && table.contains(thead) && table.contains(tbody) && tbody.children.length > 0) {
+                // Nothing changed — skip render, just update column visibility
+                try { this.applyColumnVisibility(state); } catch(e) {}
+                try { if (!state._skipBreadcrumb) Breadcrumbs.updateBreadcrumb(state.groupingStack, state.groupKeysStack); } catch(e) {}
+                if (switchToken && this.currentSwitchToken === switchToken) this._applyActiveTabHighlight(state.selectedProfileKey);
+                return;
+            }
+            state._lastRenderSig = renderSig;
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             try {
                 this._ensureRowsHaveB2BDepth(state.sortedOffers, {

@@ -55,6 +55,17 @@ function _logOfferValueSummary(tag='OfferValueSummary') {
 }
 
 const Utils = {
+    getCookie(name) {
+        try {
+            const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*=\\s*([^;]*)'));
+            const value = match ? decodeURIComponent(match[1]) : null;
+            console.debug('[Utils] getCookie("' + name + '"):', value ? 'found (length=' + value.length + ')' : 'not found', '| cookie string length:', (document.cookie || '').length);
+            return value;
+        } catch (e) {
+            console.debug('[Utils] getCookie("' + name + '") error:', e.message);
+            return null;
+        }
+    },
     // Centralized brand detection (R = Royal, C = Celebrity)
     detectBrand() {
         const host = (location && location.hostname) ? location.hostname : '';
@@ -305,7 +316,7 @@ const Utils = {
             try { if (entry && entry.pricingDerived && entry.pricingDerived.categories) categoriesMap = entry.pricingDerived.categories; } catch(e){ }
             // Heuristic classification for stateroom codes (broader mapping than original)
             function classifyBroad(code) {
-                try { if (typeof window !== 'undefined' && window.RoomCategoryUtils && typeof window.RoomCategoryUtils.classifyBroad === 'function') return window.RoomCategoryUtils.classifyBroad(code); } catch(e){}
+                try { if (typeof RoomCategoryUtils.classifyBroad === 'function') return RoomCategoryUtils.classifyBroad(code); } catch(e){}
                 if (!code) return null;
                 const up = String(code).trim().toUpperCase();
                 if (/SUITE|JRSUITE|JR\s?SUITE|JS|SU\b|DLX|DELUXE/.test(up)) return 'DELUXE';

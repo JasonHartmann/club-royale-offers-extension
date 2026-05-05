@@ -296,7 +296,7 @@ const AdvancedSearch = {
                             sailings.forEach(s => {
                                 try {
                                     // Names from itinerary helper (already includes regions after our modification)
-                                    const list = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.getPortsForSailing === 'function') ? AdvancedItinerarySearch.getPortsForSailing(s) : [];
+                                    const list = (typeof AdvancedItinerarySearch.getPortsForSailing === 'function') ? AdvancedItinerarySearch.getPortsForSailing(s) : [];
                                     if (Array.isArray(list)) {
                                         list.forEach(p => { const n = norm(p); if (n && !portMap.has(n)) portMap.set(n, (''+p).trim()); });
                                     }
@@ -318,7 +318,7 @@ const AdvancedSearch = {
                     ports = Array.from(portMap.values()).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
                     // Fallback to itinerary cache aggregate (legacy behavior) if we have no ports yet (e.g., hydration pending)
                     if (!ports.length) {
-                        try { ports = (window.AdvancedItinerarySearch && typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : []; } catch(fallbackErr){ ports = []; }
+                        try { ports = (typeof AdvancedItinerarySearch.listAllPorts === 'function') ? AdvancedItinerarySearch.listAllPorts(state) : []; } catch(fallbackErr){ ports = []; }
                     }
                 } catch(ePorts){ ports = []; }
                 if (!ports || !ports.length) {

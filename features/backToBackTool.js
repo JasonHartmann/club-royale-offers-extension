@@ -66,12 +66,7 @@
 
     function getPerks(entry) {
         try {
-            if (window.App && App.Utils && typeof App.Utils.computePerks === 'function') {
-                return App.Utils.computePerks(entry.offer, entry.sailing) || '';
-            }
-        } catch (e) {}
-        try {
-            if (window.Utils && typeof Utils.computePerks === 'function') {
+            if (typeof Utils.computePerks === 'function') {
                 return Utils.computePerks(entry.offer, entry.sailing) || '';
             }
         } catch (e) {}

@@ -55,34 +55,56 @@ const ApiClient = {
         console.debug('[apiClient] fetchOffers called, retryCount:', retryCount);
         let authToken, accountId, loyaltyId, user;
         try {
-            console.debug('[apiClient] Parsing session data from localStorage');
+            console.debug('[apiClient] Resolving auth token and session data');
+            authToken = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.getCookie === 'function')
+                ? App.Utils.getCookie('accessToken') : null;
+            console.debug('[apiClient] Cookie accessToken present:', !!authToken, authToken ? '(length=' + authToken.length + ')' : '');
             const sessionData = localStorage.getItem('persist:session');
-            if (!sessionData) {
-                console.debug('[apiClient] No session data found');
+            console.debug('[apiClient] persist:session present:', !!sessionData, sessionData ? '(length=' + sessionData.length + ')' : '');
+            if (!sessionData && !authToken) {
+                console.debug('[apiClient] No session data or access token found');
                 App.ErrorHandler.showError('Failed to load offers: No session data. Please log in again.');
                 return;
             }
-            const parsedData = JSON.parse(sessionData);
-            authToken = parsedData.token ? JSON.parse(parsedData.token) : null;
-            const tokenExpiration = parsedData.tokenExpiration ? parseInt(parsedData.tokenExpiration) * 1000 : null;
-            user = parsedData.user ? JSON.parse(parsedData.user) : null;
+            const parsedData = sessionData ? JSON.parse(sessionData) : {};
+            console.debug('[apiClient] parsedData top-level keys:', Object.keys(parsedData).join(', '));
+            // New flat format: fields are directly on the object
+            // Legacy format: fields are JSON-stringified sub-values
+            if (!authToken) {
+                authToken = parsedData.token ? (typeof parsedData.token === 'string' && parsedData.token.startsWith('"') ? JSON.parse(parsedData.token) : parsedData.token) : null;
+                console.debug('[apiClient] Fell back to parsedData.token, present:', !!authToken);
+            }
+            user = parsedData.user
+                ? (typeof parsedData.user === 'string' ? JSON.parse(parsedData.user) : parsedData.user)
+                : (parsedData.accountId ? parsedData : null);
+            console.debug('[apiClient] user resolved:', !!user, user ? 'accountId=' + (user.accountId || 'MISSING') + ' cruiseLoyaltyId=' + (user.cruiseLoyaltyId || 'MISSING') + ' exp=' + (user.exp || 'MISSING') : '');
             accountId = user && user.accountId ? user.accountId : null;
             loyaltyId = user && user.cruiseLoyaltyId ? user.cruiseLoyaltyId : null;
-            if (!authToken || !tokenExpiration || !accountId) {
-                console.debug('[apiClient] Invalid session data');
+            // Expiration: new format uses `exp` (seconds); legacy uses `tokenExpiration` (seconds)
+            const rawExp = user && user.exp ? user.exp : (parsedData.tokenExpiration ? parseInt(parsedData.tokenExpiration) : null);
+            const tokenExpiration = rawExp ? rawExp * 1000 : null;
+            // Track whether the auth token came from the cookie (host-managed, may be refreshed
+            // independently of persist:session) vs from localStorage
+            const tokenFromCookie = !!(typeof App !== 'undefined' && App.Utils && typeof App.Utils.getCookie === 'function' && App.Utils.getCookie('accessToken'));
+            console.debug('[apiClient] authToken:', !!authToken, 'accountId:', accountId, 'loyaltyId:', loyaltyId, 'tokenExpiration:', tokenExpiration ? new Date(tokenExpiration).toISOString() : 'none', 'tokenFromCookie:', tokenFromCookie);
+            if (!authToken || !accountId) {
+                console.debug('[apiClient] Invalid session data — authToken:', !!authToken, 'accountId:', accountId);
                 App.ErrorHandler.showError('Failed to load offers: Invalid session data. Please log in again.');
                 return;
             }
-            const currentTime = Date.now();
-            if (tokenExpiration < currentTime) {
-                console.debug('[apiClient] Token expired:', new Date(tokenExpiration).toISOString());
-                // Avoid removing the host page's `persist:session` localStorage key.
-                // Deleting this key can log out or interfere with the host app unexpectedly.
-                // If extension-managed session cleanup is required, use extension storage or an internal key.
-                try { console.debug('[apiClient] NOTE: not removing host localStorage persist:session (preserved)'); } catch(e){}
-                App.ErrorHandler.showError('Session expired. Please log in again.');
-                App.ErrorHandler.closeModalIfOpen();
-                return;
+            // Only enforce local expiration check when the token came from localStorage.
+            // When the token is from the accessToken cookie, the host site manages refresh
+            // and the persist:session exp may be stale; let the server decide via 403.
+            if (tokenExpiration && !tokenFromCookie) {
+                const currentTime = Date.now();
+                if (tokenExpiration < currentTime) {
+                    console.debug('[apiClient] Token expired:', new Date(tokenExpiration).toISOString());
+                    App.ErrorHandler.showError('Session expired. Please log in again.');
+                    App.ErrorHandler.closeModalIfOpen();
+                    return;
+                }
+            } else if (tokenExpiration && tokenFromCookie) {
+                console.debug('[apiClient] Skipping local expiration check — token sourced from cookie (host-managed)');
             }
             console.debug('[apiClient] Session data parsed successfully');
         } catch (error) {
@@ -99,25 +121,42 @@ const ApiClient = {
             const headers = {
                 'accept': 'application/json',
                 'accept-language': 'en-US,en;q=0.9',
-                'account-id': accountId,
+                'x-account-id': accountId,
+                'x-loyalty-id': loyaltyId || '',
                 'authorization': networkAuth,
                 'content-type': 'application/json',
+                'cache-control': 'no-cache',
+                'pragma': 'no-cache',
             };
             console.debug('[apiClient] Request headers built (authorization redacted)');
             // Centralized brand detection
             const host = (location && location.hostname) ? location.hostname : '';
             const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : (host.includes('celebritycruises.com') ? 'C' : 'R');
-            const relativePath = '/api/casino/casino-offers/v1';
+            const relativePath = '/api/casino/v2/offers/merged';
             const onSupportedDomain = host.includes('royalcaribbean.com') || host.includes('celebritycruises.com') || host.includes('comproyale.com');
             const isSimDomain = host.includes('comproyale.com');
             const defaultDomain = brandCode === 'C' ? 'https://www.celebritycruises.com' : 'https://www.royalcaribbean.com';
             const endpoint = onSupportedDomain ? relativePath : `${defaultDomain}${relativePath}`;
             console.debug('[apiClient] Endpoint resolved:', endpoint, 'brand:', brandCode);
+            // Extract approvedAgencyIds and digitalRedemption from session featureFlags
+            let approvedAgencyIds = [];
+            let digitalRedemption = true;
+            try {
+                const ff = user && user.featureFlags ? user.featureFlags : null;
+                if (ff) {
+                    if (Array.isArray(ff['approved-agency-ids'])) approvedAgencyIds = ff['approved-agency-ids'];
+                    if (typeof ff['digital-redemption'] === 'boolean') digitalRedemption = ff['digital-redemption'];
+                }
+            } catch (e) { /* ignore */ }
+            console.debug('[apiClient] approvedAgencyIds:', approvedAgencyIds, 'digitalRedemption:', digitalRedemption);
             const baseRequestBody = {
-                cruiseLoyaltyId: loyaltyId,
+                sortBy: 'offer.reserveByDate',
+                sortDirection: 'asc',
+                limit: 100,
+                approvedAgencyIds: approvedAgencyIds,
+                page: 1,
+                digitalRedemption: digitalRedemption,
                 offerCode: '',
-                brand: brandCode,
-                // returnExcludedSailings: true
             };
             // Helper to remove excluded sailings from an offer in-place
             const removeExcludedFromOffer = (offer) => {
@@ -174,13 +213,12 @@ const ApiClient = {
             const response = simFetch ? await simFetch(baseRequestBody) : await fetch(endpoint, {
                 method: 'POST',
                 headers: headers,
-                credentials: 'omit',
+                credentials: 'include',
                 body: JSON.stringify(baseRequestBody)
             });
             console.debug('[apiClient] Network request completed, status:', response.status);
             if (response.status === 403) {
                 console.debug('[apiClient] 403 error detected, session expired');
-                localStorage.removeItem('persist:session');
                 App.ErrorHandler.showError('Session expired. Please log in again.');
                 App.ErrorHandler.closeModalIfOpen();
                 App.Spinner.hideSpinner();

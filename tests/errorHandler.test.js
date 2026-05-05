@@ -20,7 +20,7 @@ describe('ErrorHandler', () => {
                 id: '',
                 className: '',
                 textContent: '',
-                style: { backgroundColor: '', color: '' },
+                style: { backgroundColor: '', color: '', setProperty: jest.fn() },
                 remove: jest.fn(),
                 appendChild: jest.fn(),
             };
