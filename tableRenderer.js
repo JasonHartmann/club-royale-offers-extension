@@ -1381,101 +1381,54 @@ const TableRenderer = {
                     allowSideBySide: allowSideBySidePref,
                     filterPredicate: allowRowForDepth
                 });
-                const domRows = Array.from(tbody.querySelectorAll('tr'));
-                // Build a map from rowId -> DOM tr for robust matching when sorting/reordering occurs
-                const domRowById = new Map();
-                domRows.forEach((tr) => {
+                // Helper: apply B2B depth badges to currently-rendered DOM rows
+                const applyB2BToVisibleRows = () => {
+                    const domRows = Array.from(tbody.querySelectorAll('tr[data-vs-idx], tr[data-b2b-row-id]'));
+                    const domRowById = new Map();
+                    domRows.forEach((tr) => {
+                        try {
+                            const rid = tr.dataset && tr.dataset.b2bRowId ? String(tr.dataset.b2bRowId) : null;
+                            if (rid) domRowById.set(rid, tr);
+                        } catch(e) {}
+                    });
+                    // For virtual-scroll rows, use data-vs-idx for positional mapping
+                    const isVirtual = !!state._virtualScroll;
+                    const allTrs = isVirtual ? domRows : Array.from(tbody.querySelectorAll('tr'));
+                    allTrs.forEach((tr) => {
+                        try {
+                            const idx = isVirtual ? Number(tr.dataset.vsIdx) : Array.prototype.indexOf.call(tbody.children, tr);
+                            const pair = state.sortedOffers[idx];
+                            if (!pair) return;
+                            const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
+                            const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                            // Prefer rowId match, fallback to positional
+                            let target = tr;
+                            if (rowId && domRowById.has(rowId)) target = domRowById.get(rowId);
+                            const cell = target.querySelector('.b2b-depth-cell');
+                            if (!cell) return;
+                            if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
+                            else cell.textContent = String(depth);
+                            try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
+                        } catch(e) { /* ignore per-row errors */ }
+                    });
+                };
+                // Apply to initially rendered rows
+                applyB2BToVisibleRows();
+                // Listen for chunk/scroll events to apply to newly rendered rows
+                const token = state._rowRenderToken || null;
+                const chunkHandler = (chunkEv) => {
                     try {
-                        const rid = tr.dataset && tr.dataset.b2bRowId ? String(tr.dataset.b2bRowId) : null;
-                        if (rid) domRowById.set(rid, tr);
+                        if (chunkEv && chunkEv.detail && token && chunkEv.detail.token && chunkEv.detail.token !== token) return;
+                        applyB2BToVisibleRows();
                     } catch(e) {}
-                });
-                // Apply depths by looking up the rendered row by its stable rowId when possible.
-                state.sortedOffers.forEach((pair, idx) => {
-                    try {
-                        if (!pair) return;
-                        const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
-                        const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
-                        let tr = null;
-                        if (rowId && domRowById.has(rowId)) tr = domRowById.get(rowId);
-                        // Fallback to positional mapping when dataset not present or mismatch
-                        if (!tr && domRows[idx]) tr = domRows[idx];
-                        if (!tr) return;
-                        const cell = tr.querySelector('.b2b-depth-cell');
-                        if (!cell) return;
-                        if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
-                        else cell.textContent = String(depth);
-                        try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(attachErr) { console.debug('[tableRenderer] Unable to attach BackToBackTool trigger', attachErr); }
-                    } catch(e) { /* ignore per-row errors */ }
-                });
-                // If incremental rendering is still in progress, ensure newly appended rows also get depth badges
-                try {
-                    const renderedCount = rows.length;
-                    const totalCount = Array.isArray(state.sortedOffers) ? state.sortedOffers.length : 0;
-                    if (renderedCount < totalCount) {
-                        const token = state._rowRenderToken || null;
-                        const handler = (ev) => {
-                            try {
-                                if (ev && ev.detail && token && ev.detail.token && ev.detail.token !== token) return; // ignore other renders
-                                        const allRows = Array.from(tbody.querySelectorAll('tr'));
-                                        const domById = new Map();
-                                        allRows.forEach(r => { try { const rid = r.dataset && r.dataset.b2bRowId ? String(r.dataset.b2bRowId) : null; if (rid) domById.set(rid, r); } catch(e){} });
-                                        // Apply depths using stable rowId mapping where possible
-                                        state.sortedOffers.forEach((pair, i) => {
-                                            try {
-                                                if (!pair) return;
-                                                const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
-                                                const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
-                                                let tr = null;
-                                                if (rowId && domById.has(rowId)) tr = domById.get(rowId);
-                                                if (!tr && allRows[i]) tr = allRows[i];
-                                                if (!tr) return;
-                                                const cell = tr.querySelector('.b2b-depth-cell');
-                                                if (!cell) return;
-                                                if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
-                                                else cell.textContent = String(depth);
-                                                try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
-                                            } catch(e) { /* ignore post-render per-row errors */ }
-                                        });
-                                try { console.debug('[B2B] Applied depths after incremental render', { rendered: allRows.length, total: totalCount }); } catch(e){}
-                            } catch(e) { /* ignore post-render assignment errors */ }
-                        };
-                        try { document.addEventListener('tableRenderComplete', handler, { once: true }); } catch(e) { document.addEventListener('tableRenderComplete', handler); }
-
-                        // Progressive update: when incremental chunks render, apply depths to newly rendered rows.
-                        const chunkHandler = (chunkEv) => {
-                            try {
-                                if (!chunkEv || !chunkEv.detail) return;
-                                if (token && chunkEv.detail.token && chunkEv.detail.token !== token) return;
-                                const renderedSoFar = Number(chunkEv.detail.rendered) || 0;
-                                const allRows = Array.from(tbody.querySelectorAll('tr'));
-                                const domById = new Map();
-                                allRows.forEach(r => { try { const rid = r.dataset && r.dataset.b2bRowId ? String(r.dataset.b2bRowId) : null; if (rid) domById.set(rid, r); } catch(e){} });
-                                for (let rr = 0; rr < Math.min(renderedSoFar, allRows.length); rr++) {
-                                    try {
-                                        const pair = state.sortedOffers[rr];
-                                        if (!pair) continue;
-                                        const rowId = pair.sailing && pair.sailing.__b2bRowId ? String(pair.sailing.__b2bRowId) : null;
-                                        const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : null;
-                                        let tr = null;
-                                        if (rowId && domById.has(rowId)) tr = domById.get(rowId);
-                                        if (!tr && allRows[rr]) tr = allRows[rr];
-                                        if (!tr) continue;
-                                        const cell = tr.querySelector('.b2b-depth-cell');
-                                        if (!cell) continue;
-                                        if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
-                                        else cell.textContent = String(depth);
-                                        try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e){}
-                                    } catch(e) { /* ignore */ }
-                                }
-                            } catch(e) { /* ignore chunk handler errors */ }
-                        };
-                        try { document.addEventListener('tableChunkRendered', chunkHandler); } catch(e) { /* ignore */ }
-                    }
-                } catch(e) { /* ignore incremental render detection errors */ }
+                };
+                try { document.addEventListener('tableChunkRendered', chunkHandler); } catch(e) {}
+                try { document.addEventListener('tableRenderComplete', (ev) => {
+                    try { if (ev && ev.detail && token && ev.detail.token && ev.detail.token !== token) return; applyB2BToVisibleRows(); } catch(e) {}
+                }, { once: true }); } catch(e) {}
                 try {
                     const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
-                    if (autoRunB2B) console.debug('[B2B] Depth computation complete', { rows: rows.length });
+                    if (autoRunB2B) console.debug('[B2B] Depth computation complete', { total: state.sortedOffers.length });
                 } catch(e) {}
             } catch(e) { /* ignore B2B calculation errors so table still renders */ }
             if (!table.contains(thead)) table.appendChild(thead);
