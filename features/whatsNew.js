@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '13'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes
+    const TOUR_REVISION = '14'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes, r14 B2B lag days
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -101,10 +101,10 @@
         _initSteps(){
             this._steps = [
                 {
-                    id:'pricingBugfix',
-                    target:()=> document.querySelector('th[data-key="offerValue"], td[data-col="offerValue"]') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
-                    title:'Minor Pricing Bugfix',
-                    body:'Fixed a minor pricing issue to keep displayed values accurate after refresh and recalculation.',
+                    id:'b2bLagDays',
+                    target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
+                    title:'B2B Lag Days',
+                    body:'New setting: allow a gap of up to 3 days between back-to-back sailings. Set the "Lag days between sailings" slider in Settings to control how many days apart sailings can be and still chain together.',
                 },
                 {
                     id:'supportCoffee',

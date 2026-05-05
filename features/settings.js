@@ -107,7 +107,7 @@ const Settings = {
             drivingControlArea.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:8px; margin-left:28px; opacity:1; transition: opacity 0.2s; flex-wrap:wrap; overflow:hidden;';
             drivingControlArea.id = 'gobo-driving-range-sub-option';
             const drivingLabel = document.createElement('span');
-            drivingLabel.style.cssText = 'font-size:13px; white-space:nowrap;';
+            drivingLabel.style.cssText = 'font-size:13px; white-space:nowrap; min-width:170px;';
             drivingLabel.textContent = 'Include ports within:';
             const drivingSlider = document.createElement('input');
             drivingSlider.type = 'range';
@@ -154,7 +154,81 @@ const Settings = {
             drivingControlArea.appendChild(drivingSlider);
             drivingControlArea.appendChild(drivingValueDisplay);
             sbsArea.appendChild(drivingControlArea);
-            
+
+            // --- B2B Lag Days option (independent of Side-by-Sides) ---
+            const lagDaysDefault = (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BLagDays === 'function')
+                ? App.SettingsStore.getB2BLagDays()
+                : (settingsStore.b2bLagDays !== undefined ? settingsStore.b2bLagDays : 0);
+            const lagEnabled = lagDaysDefault > 0;
+            const lagLabel2 = document.createElement('label'); lagLabel2.style.cssText = 'display:flex; align-items:center; gap:8px;';
+            const lagCb = document.createElement('input'); lagCb.type = 'checkbox'; lagCb.id = 'gobo-setting-lag-enabled'; lagCb.checked = lagEnabled;
+            const lagTitle = document.createElement('strong'); lagTitle.textContent = 'Allow Gap Between Sailings';
+            lagLabel2.appendChild(lagCb); lagLabel2.appendChild(lagTitle);
+            const lagDesc = document.createElement('div'); lagDesc.className = 'gobo-setting-desc'; lagDesc.style.cssText = 'font-size:12px; margin-left:28px;';
+            lagDesc.textContent = 'When enabled, back-to-back chains can include sailings that don\u2019t start on the exact same day the previous sailing ends. Use the slider to set the maximum gap allowed. NOTE: this will affect performance!';
+            const lagControlArea = document.createElement('div');
+            lagControlArea.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:8px; margin-left:28px; opacity:' + (lagEnabled ? '1' : '0.5') + '; transition: opacity 0.2s; flex-wrap:wrap; overflow:hidden; pointer-events:' + (lagEnabled ? 'auto' : 'none') + ';';
+            lagControlArea.id = 'gobo-lag-days-sub-option';
+            const lagLabel = document.createElement('span');
+            lagLabel.style.cssText = 'font-size:13px; white-space:nowrap; min-width:170px;';
+            lagLabel.textContent = 'Max gap between sailings:';
+            const lagSlider = document.createElement('input');
+            lagSlider.type = 'range';
+            lagSlider.id = 'gobo-setting-b2b-lag-days';
+            lagSlider.min = '1';
+            lagSlider.max = '3';
+            lagSlider.step = '1';
+            lagSlider.value = lagDaysDefault > 0 ? lagDaysDefault : 1;
+            lagSlider.disabled = !lagEnabled;
+            lagSlider.style.cssText = 'flex:1 1 60px; min-width:60px; cursor:pointer;';
+            const lagValueDisplay = document.createElement('span');
+            lagValueDisplay.style.cssText = 'font-weight:bold; min-width:80px; text-align:right; font-size:13px; white-space:nowrap; flex-shrink:0;';
+            const updateLagDisplay = () => {
+                const val = parseInt(lagSlider.value, 10);
+                lagValueDisplay.textContent = val + ' day' + (val === 1 ? '' : 's');
+            };
+            updateLagDisplay();
+            const applyLagValue = (val) => {
+                try {
+                    if (window.App && App.SettingsStore && typeof App.SettingsStore.setB2BLagDays === 'function') {
+                        App.SettingsStore.setB2BLagDays(val);
+                    } else {
+                        settingsStore.b2bLagDays = val;
+                        if (typeof goboStorageSet === 'function') goboStorageSet('goboSettings', JSON.stringify(settingsStore));
+                        else localStorage.setItem('goboSettings', JSON.stringify(settingsStore));
+                        if (window.App) App.B2BLagDays = val;
+                        try {
+                            if (window.App && App.TableRenderer && typeof App.TableRenderer.refreshB2BDepths === 'function') {
+                                App.TableRenderer.refreshB2BDepths({ showSpinner: true });
+                            }
+                        } catch(e) {}
+                    }
+                } catch(e){}
+            };
+            const updateLagControlState = () => {
+                const on = lagCb.checked;
+                lagControlArea.style.opacity = on ? '1' : '0.5';
+                lagControlArea.style.pointerEvents = on ? 'auto' : 'none';
+                lagSlider.disabled = !on;
+            };
+            lagCb.addEventListener('change', () => {
+                updateLagControlState();
+                try {
+                    if (lagCb.checked) {
+                        applyLagValue(parseInt(lagSlider.value, 10));
+                    } else {
+                        applyLagValue(0);
+                    }
+                } catch(e){}
+            });
+            lagSlider.addEventListener('change', () => {
+                updateLagDisplay();
+                try { applyLagValue(parseInt(lagSlider.value, 10)); } catch(e){}
+            });
+            lagSlider.addEventListener('input', updateLagDisplay);
+            lagControlArea.appendChild(lagLabel);
+            lagControlArea.appendChild(lagSlider);
+            lagControlArea.appendChild(lagValueDisplay);
             // Update driving range control visibility and disabled state when SBS checkbox changes
             const updateDrivingRangeState = () => {
                 const isEnabled = sbsCb.checked;
@@ -172,6 +246,15 @@ const Settings = {
                 } catch(e){}
             });
             body.appendChild(sbsArea);
+
+            // B2B Lag Days (independent setting)
+            const lagArea = document.createElement('div');
+            lagArea.className = 'gobo-setting-area';
+            lagArea.style.cssText = 'margin-bottom:12px;';
+            lagArea.appendChild(lagLabel2);
+            lagArea.appendChild(lagDesc);
+            lagArea.appendChild(lagControlArea);
+            body.appendChild(lagArea);
 
             // Include Taxes & Fees in Price Filters setting
             const tAndFArea = document.createElement('div');

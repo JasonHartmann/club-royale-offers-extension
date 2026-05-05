@@ -248,6 +248,8 @@ body.gobo-dark .donate-panel a.venmo-link:hover {
 .b2b-chain-card.b2b-chain-region-link .b2b-chain-meta strong { color:#581c87; }
 .b2b-chain-card.b2b-chain-region-link .b2b-chain-step-head span,
 .b2b-chain-card.b2b-chain-region-link .b2b-chain-ports { color:#6b21a8; border-left-color:rgba(107,33,168,0.25); }
+.b2b-lag-banner { background:#94a3b8; color:#1e293b; font-size:13px; font-weight:700; text-transform:uppercase; text-align:center; padding:5px 10px; border-radius:8px; margin-bottom:2px; letter-spacing:0.03em; }
+body.gobo-dark .b2b-lag-banner { background:#475569; color:#e2e8f0; }
 .b2b-chain-step-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
 .b2b-chain-step-head h4 { margin:0; font-size:15px; color:#0f172a; }
 .b2b-chain-step-head span { font-size:11px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:0.04em; display:inline-block; padding-right:28px; box-sizing:border-box; }

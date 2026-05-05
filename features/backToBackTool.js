@@ -229,7 +229,9 @@
                 }
             };
             // Let the browser paint the spinner before running the task.
-            requestAnimationFrame(() => setTimeout(run, 0));
+            // Double-rAF ensures the spinner frame is actually composited
+            // before the heavy synchronous work blocks the main thread.
+            requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(run, 0)));
         },
 
         registerEnvironment(opts) {
@@ -326,9 +328,13 @@
             pill.setAttribute('tabindex', '0');
             pill.dataset.b2bRowId = rowId;
             if (pill.dataset.b2bBound === 'true') return;
+            let _b2bOpening = false;
             const handler = (ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
+                if (_b2bOpening) return;
+                _b2bOpening = true;
+                setTimeout(() => { _b2bOpening = false; }, 500);
                 this.openByRowId(rowId);
             };
             pill.addEventListener('click', handler, true);
@@ -438,7 +444,13 @@
         openByRowId(rowId) {
             try { console.debug('[B2B] openByRowId called', { rowId, hasMap: !!this._context.rowMap.has(rowId) }); } catch(e){}
             if (!rowId) return;
-            this._scheduleWithSpinner(() => {
+            // Show spinner synchronously so it appears on the very next paint frame,
+            // then defer the heavy work.  _scheduleWithSpinner would delay the
+            // spinner behind a double-rAF; instead we show it here and hide it
+            // when the deferred task finishes.
+            const spinner = (typeof Spinner !== 'undefined' && Spinner && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') ? Spinner : null;
+            try { if (spinner) spinner.showSpinner(); } catch(e) {}
+            const doWork = () => {
                 if (!this._context.rowMap.has(rowId)) {
                     try { console.debug('[B2B] row not found in rowMap, attempting DOM reconstruction', rowId); } catch(e){}
                     try {
@@ -503,83 +515,14 @@
                         // persist selection across renders/overlay lifecycle
                         try { this._selectedRowId = rowId; } catch(e) { /* ignore */ }
                     } catch (e) { /* non-fatal - proceed with opening */ }
-                    // Diagnostic logging: compute B2B depths and longest chain for clicked row
-                    try {
-                        const rows = (this._context && Array.isArray(this._context.rows)) ? this._context.rows.slice() : ((App && App.TableRenderer && App.TableRenderer.lastState && Array.isArray(App.TableRenderer.lastState.rows)) ? App.TableRenderer.lastState.rows.slice() : []);
-                        let clickedIdx = -1;
-                        for (let i = 0; i < rows.length; i++) {
-                            const r = rows[i];
-                            if (!r) continue;
-                            if (r.sailing && r.sailing.__b2bRowId === rowId) { clickedIdx = i; break; }
-                            if (r.rowId && String(r.rowId) === String(rowId)) { clickedIdx = i; break; }
-                        }
-                        const b2bOpts = { allowSideBySide: !!(this._context && this._context.allowSideBySide) };
-                        // Dev diagnostic: print both table and builder chains for the clicked idx/rowId
-                        try {
-                            if (DEV_B2B_DEBUG && typeof B2BUtils !== 'undefined' && typeof B2BUtils.debugChainFor === 'function') {
-                                try {
-                                    const tableRows = (App && App.TableRenderer && App.TableRenderer.lastState && Array.isArray(App.TableRenderer.lastState.sortedOffers)) ? App.TableRenderer.lastState.sortedOffers : null;
-                                    const b2bRows = (this._context && this._context.rowMap) ? Array.from(this._context.rowMap.values()) : null;
-                                    if (tableRows) {
-                                        const t = B2BUtils.debugChainFor({ rows: tableRows, idx: clickedIdx });
-                                        console.debug && console.debug('[B2B DEV] tableRows chain', t);
-                                    }
-                                    if (b2bRows) {
-                                        const b = B2BUtils.debugChainFor({ rows: b2bRows, idx: clickedIdx });
-                                        console.debug && console.debug('[B2B DEV] b2bRows chain', b);
-                                    }
-                                } catch(e) { console.debug && console.debug('[B2B DEV] debugChainFor error', e); }
-                            }
-                        } catch(e) {}
-                        try {
-                            // IMPORTANT: Do NOT propagate advanced/table-level filter predicates
-                            // into B2B computations. Only exclude rows that belong to Hidden
-                            // Groups. Build a predicate that consults the hidden-group stores
-                            // (global and state) and nothing else.
-                            const ctxState = (this._context && this._context.state) || (App && App.TableRenderer && App.TableRenderer.lastState) || null;
-                            b2bOpts.filterPredicate = (row) => {
-                                try {
-                                    if (!row) return false;
-                                    const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
-                                    const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
-                                    const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
-                                    const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                                    const globalHidden = (typeof Filtering !== 'undefined' && Filtering._globalHiddenRowKeys instanceof Set) ? Filtering._globalHiddenRowKeys : null;
-                                    const stateHidden = (ctxState && ctxState._hiddenGroupRowKeys instanceof Set) ? ctxState._hiddenGroupRowKeys : null;
-                                    return !((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)));
-                                } catch(e) { return true; }
-                            };
-                        } catch(e) {}
-                        let depthMap = null;
-                        let longest = null;
-                        try {
-                            // Avoid heavy diagnostics for very large row sets unless debugging explicitly enabled
-                            const doHeavyDiag = (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS) || (Array.isArray(rows) && rows.length <= 500);
-                            // The B2B tool always computes diagnostics regardless of any table-level autorun flag.
-                            if (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeB2BDepth === 'function') {
-                                depthMap = window.B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
-                            }
-                            if (doHeavyDiag && typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestChainFromIndex === 'function') {
-                                longest = window.B2BUtils.computeLongestChainFromIndex(rows, b2bOpts, clickedIdx) || [];
-                            }
-                        } catch(e) { if (typeof console !== 'undefined' && console.debug) console.debug('[B2B] diagnostic compute error', e); }
-                        try {
-                            console.groupCollapsed && console.groupCollapsed('[B2B DIAG] rowId=' + rowId + ' idx=' + clickedIdx);
-                            console.log('rowsCount', rows.length);
-                            console.log('clickedIdx', clickedIdx);
-                            try { console.log('depthForClicked', depthMap && depthMap.get(clickedIdx)); } catch(e) {}
-                            try { console.log('longestChainForClicked', longest); } catch(e) {}
-                            // sample meta for first 200 rows
-                            try {
-                                const sample = (rows || []).slice(0, 200).map((rr, ii) => ({ idx: ii, rowId: rr && rr.sailing && rr.sailing.__b2bRowId ? rr.sailing.__b2bRowId : (rr && rr.rowId), offerCode: (rr && rr.offer && rr.offer.campaignOffer && rr.offer.campaignOffer.offerCode) ? rr.offer.campaignOffer.offerCode : '', startISO: (rr && rr.sailing && rr.sailing.sailDate) ? String(rr.sailing.sailDate).slice(0,10) : null, endISO: (rr && rr.sailing && (rr.sailing.endDate || rr.sailing.disembarkDate)) ? String(rr.sailing.endDate || rr.sailing.disembarkDate).slice(0,10) : null }));
-                                console.log('metaSample', sample);
-                            } catch(e) {}
-                            console.groupEnd && console.groupEnd();
-                        } catch(e) {}
-                    } catch(e) { console.debug('[B2B] diagnostic outer error', e); }
                     this._startSession(rowId);
                 } catch(e) { try { console.debug('[B2B] _startSession error', e); } catch(ee){} }
-            });
+                try { if (spinner) spinner.hideSpinner(); } catch(e) {}
+            };
+            // Defer work to allow the browser to paint the spinner first.
+            // Force a style recalc so the spinner is visible before we yield.
+            try { if (spinner) { const el = document.querySelector('.gobo-spinner'); if (el) el.offsetHeight; } } catch(e) {}
+            requestAnimationFrame(() => setTimeout(doWork, 0));
         },
 
         _startSession(rowId) {
@@ -1159,6 +1102,22 @@
                 }
                 card.className = cardClass;
                 card.dataset.rowId = rowId;
+
+                // Show lag banner when there's a gap between this sailing and the previous one
+                if (idx > 0) {
+                    const prevRowId = this._activeSession.chain[idx - 1];
+                    const prevMeta = this._getMeta(prevRowId);
+                    if (prevMeta && prevMeta.endISO && meta.startISO) {
+                        const lag = diffDays(meta.startISO, prevMeta.endISO);
+                        if (lag > 0) {
+                            const lagBanner = document.createElement('div');
+                            lagBanner.className = 'b2b-lag-banner';
+                            lagBanner.textContent = lag === 1 ? '1 day gap' : `${lag} day gap`;
+                            card.appendChild(lagBanner);
+                        }
+                    }
+                }
+
                 const head = document.createElement('div');
                 head.className = 'b2b-chain-step-head';
                 const title = document.createElement('h4');
@@ -1356,6 +1315,26 @@
                 const isSideBySide = lastMeta.shipKey && candidateMeta.shipKey && lastMeta.shipKey !== candidateMeta.shipKey;
                 // Mark as region match if it's a side-by-side with a nearby port
                 const isRegionMatch = isSideBySide && isNearbyPort;
+                // Compute travel time for region-match options (different port)
+                let travelMinutes = Infinity;
+                if (isRegionMatch) {
+                    try {
+                        const currentPort = (lastMeta.disembarkPort || '').toLowerCase();
+                        const nextPort = (candidateMeta.embarkPort || candidateMeta.disembarkPort || '').toLowerCase();
+                        if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.getTravelTime === 'function') {
+                            const t = PortsTravelTimes.getTravelTime(currentPort, nextPort);
+                            if (t != null && isFinite(t)) travelMinutes = t;
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+                // Compute offer value for sorting (not displayed)
+                let offerValue = null;
+                try {
+                    const rowEntry = this._context.rowMap.get(rowId);
+                    if (rowEntry && rowEntry.offer && rowEntry.sailing) {
+                        offerValue = App.Utils.computeOfferValue(rowEntry.offer, rowEntry.sailing);
+                    }
+                } catch (e) { /* ignore */ }
                 options.push({
                     rowId,
                     meta: candidateMeta,
@@ -1364,7 +1343,9 @@
                     nearbyLabel,
                     isRegionMatch,
                     regionLabel: isRegionMatch ? nearbyLabel : null,
-                    lag
+                    lag,
+                    travelMinutes,
+                    offerValue
                 });
             });
             // Advanced sort:
@@ -1510,9 +1491,17 @@
                 return false;
             }
             const lag = diffDays(nextMeta.startISO, currentMeta.endISO);
-            // Only same-day connections allowed (lag must be exactly 0)
-            if (lag == null || lag !== 0) {
-                _dbg('Not linkable: not same-day', { lag, currentMeta, nextMeta });
+            let maxLagDays = 0;
+            try {
+                if (window.App && App.SettingsStore && typeof App.SettingsStore.getB2BLagDays === 'function') {
+                    maxLagDays = App.SettingsStore.getB2BLagDays();
+                } else if (window.App && typeof App.B2BLagDays !== 'undefined') {
+                    maxLagDays = App.B2BLagDays;
+                }
+            } catch (e) { /* ignore */ }
+            maxLagDays = Math.max(0, Math.min(7, parseInt(maxLagDays, 10) || 0));
+            if (lag == null || lag < 0 || lag > maxLagDays) {
+                _dbg('Not linkable: lag out of range', { lag, maxLagDays, currentMeta, nextMeta });
                 return false;
             }
             let drivingRangeHours = 0;
@@ -1685,15 +1674,35 @@
                 }
             });
 
-            // Sort options by: sold-out last, then descendant count (depth-1) descending, then by start date (asc)
+            // Sort options by: sold-out last, then depth desc, then start date asc,
+            // then connection type (Same Ship -> Side-by-Side -> Different Port by distance)
+            const connectionTypeRank = (opt) => {
+                if (!opt.isSideBySide && !opt.isRegionMatch) return 0; // same ship
+                if (opt.isSideBySide && !opt.isRegionMatch) return 1;  // side-by-side
+                return 2; // different port (region match)
+            };
             options.sort((a, b) => {
                 // Sold-out cards go to the bottom
                 if (a.isSoldOut !== b.isSoldOut) return a.isSoldOut ? 1 : -1;
                 const da = (typeof a.depth === 'number') ? Math.max(0, a.depth - 1) : 0;
                 const db = (typeof b.depth === 'number') ? Math.max(0, b.depth - 1) : 0;
                 if (db !== da) return db - da; // larger descendant counts first
-                if (a.meta.startISO === b.meta.startISO) return 0;
-                return a.meta.startISO < b.meta.startISO ? -1 : 1;
+                if (a.meta.startISO !== b.meta.startISO) return a.meta.startISO < b.meta.startISO ? -1 : 1;
+                // Same depth and start date: rank by connection type
+                const ra = connectionTypeRank(a);
+                const rb = connectionTypeRank(b);
+                if (ra !== rb) return ra - rb;
+                // Both different-port: sort by travel distance ascending
+                if (ra === 2) {
+                    const ta = (typeof a.travelMinutes === 'number') ? a.travelMinutes : Infinity;
+                    const tb = (typeof b.travelMinutes === 'number') ? b.travelMinutes : Infinity;
+                    if (ta !== tb) return ta - tb;
+                }
+                // Within same connection type: sort by offer value descending (greatest first)
+                const va = (a.offerValue != null && isFinite(a.offerValue)) ? a.offerValue : -Infinity;
+                const vb = (b.offerValue != null && isFinite(b.offerValue)) ? b.offerValue : -Infinity;
+                if (vb !== va) return vb - va;
+                return 0;
             });
 
             options.forEach(opt => {
@@ -1703,6 +1712,15 @@
                     + (opt.isRegionMatch ? ' b2b-region-link' : '')
                     + (!opt.isSideBySide && !opt.isRegionMatch ? ' b2b-same-ship' : '')
                     + (opt.isSoldOut ? ' b2b-sold-out' : '');
+
+                // Show lag banner when there's a gap before this prospective sailing
+                if (opt.lag > 0) {
+                    const lagBanner = document.createElement('div');
+                    lagBanner.className = 'b2b-lag-banner';
+                    lagBanner.textContent = opt.lag === 1 ? '1 day gap' : `${opt.lag} day gap`;
+                    card.appendChild(lagBanner);
+                }
+
                 const metaBlock = document.createElement('div');
                 metaBlock.className = 'b2b-option-meta';
                 // Build header with ship name and badge on same line

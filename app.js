@@ -88,6 +88,22 @@
                     } catch(e) {}
                 } catch(e) {}
             },
+            getB2BLagDays() {
+                try { const s = this.getSettings(); return (typeof s.b2bLagDays !== 'undefined') ? parseInt(s.b2bLagDays, 10) || 0 : 0; } catch(e) { return 0; }
+            },
+            setB2BLagDays(val) {
+                try {
+                    const s = this.getSettings() || {};
+                    s.b2bLagDays = Math.max(0, Math.min(7, parseInt(val, 10) || 0));
+                    this.setSettings(s);
+                    try { window.App.B2BLagDays = s.b2bLagDays; } catch(e) {}
+                    try {
+                        if (window.App && App.TableRenderer && typeof App.TableRenderer.refreshB2BDepths === 'function') {
+                            App.TableRenderer.refreshB2BDepths({ showSpinner: true });
+                        }
+                    } catch(e) {}
+                } catch(e) {}
+            },
             getIncludeSideBySide() {
                 try { const s = this.getSettings(); return (typeof s.includeSideBySide !== 'undefined') ? !!s.includeSideBySide : true; } catch(e) { return true; }
             },
@@ -117,6 +133,8 @@
         BackToBackAutoRun: (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true,
         // runtime value: driving range in hours (0-5) for B2B port matching; default 0 (exact port match only)
         B2BDrivingRangeHours: (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0,
+        // runtime value: lag days (0-7) between sailings for B2B chaining; default 0 (same-day only)
+        B2BLagDays: (typeof __goboSettings.b2bLagDays !== 'undefined') ? Math.max(0, Math.min(7, parseInt(__goboSettings.b2bLagDays, 10) || 0)) : 0,
         ProfileCache: _prev.ProfileCache || [],
         refreshSettingsFromStorage() {
             try {
@@ -124,6 +142,7 @@
                 __goboSettings = latest || {};
                 App.BackToBackAutoRun = (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true;
                 App.B2BDrivingRangeHours = (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0;
+                App.B2BLagDays = (typeof __goboSettings.b2bLagDays !== 'undefined') ? Math.max(0, Math.min(7, parseInt(__goboSettings.b2bLagDays, 10) || 0)) : 0;
             } catch(e) { /* ignore */ }
             try { App.applyTheme(); } catch(e) { /* ignore */ }
         },

@@ -150,6 +150,14 @@
         } catch (e) { /* ignore */ }
         if (drivingRangeHours == null) drivingRangeHours = 0;
         drivingRangeHours = Math.max(0, Math.min(5, parseInt(drivingRangeHours, 10) || 0));
+        let lagDays = (options.lagDays !== undefined) ? parseInt(options.lagDays, 10) || 0 : null;
+        try {
+            if (lagDays == null && typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getB2BLagDays === 'function') {
+                lagDays = App.SettingsStore.getB2BLagDays();
+            }
+        } catch (e) { /* ignore */ }
+        if (lagDays == null) lagDays = 0;
+        lagDays = Math.max(0, Math.min(7, parseInt(lagDays, 10) || 0));
         const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
         const initialUsedOfferCodes = Array.isArray(options.initialUsedOfferCodes) ? options.initialUsedOfferCodes.map(c => (c || '').toString().trim()) : [];
         if (!Array.isArray(rows) || !rows.length) return new Map();
@@ -288,15 +296,24 @@
             if (!shipKey) return;
             const matchKeys = getMatchKeys(info, 'start');
             if (!matchKeys.length) return;
-            matchKeys.forEach((portKey) => {
-                const key = day + '|' + portKey + '|' + shipKey;
-                if (!startIndex.has(key)) startIndex.set(key, []);
-                startIndex.get(key).push(info.idx);
-                if (allowSideBySide) {
-                    const sideKey = day + '|' + portKey + '|*';
-                    if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
-                    startIndex.get(sideKey).push(info.idx);
-                }
+            // Index the sailing's start day and also lag-offset days so that a sailing ending
+            // up to `lagDays` before this start can find it via the index.
+            const daysToIndex = [day];
+            for (let ld = 1; ld <= lagDays; ld++) {
+                const offsetDay = addDays(day, -ld);
+                if (offsetDay && offsetDay !== day) daysToIndex.push(offsetDay);
+            }
+            daysToIndex.forEach((indexDay) => {
+                matchKeys.forEach((portKey) => {
+                    const key = indexDay + '|' + portKey + '|' + shipKey;
+                    if (!startIndex.has(key)) startIndex.set(key, []);
+                    startIndex.get(key).push(info.idx);
+                    if (allowSideBySide) {
+                        const sideKey = indexDay + '|' + portKey + '|*';
+                        if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
+                        startIndex.get(sideKey).push(info.idx);
+                    }
+                });
             });
         });
 
@@ -330,6 +347,15 @@
                 d.setUTCDate(d.getUTCDate() + delta);
                 return d.toISOString().slice(0, 10);
             } catch(e){ return iso; }
+        }
+
+        function diffDaysISO(nextISO, prevISO) {
+            try {
+                const a = new Date(String(nextISO).slice(0,10) + 'T00:00:00Z');
+                const b = new Date(String(prevISO).slice(0,10) + 'T00:00:00Z');
+                if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+                return Math.round((a.getTime() - b.getTime()) / 86400000);
+            } catch(e) { return null; }
         }
 
         function dfs(rootIdx, usedGlobal) {
@@ -369,7 +395,10 @@
                     if (nextIdx === rootIdx) continue;
                     const nextInfo = meta[nextIdx];
                     if (!nextInfo.allow) continue;
-                    if (!nextInfo.startISO || (nextInfo.startISO !== day && nextInfo.startISO !== nextDay)) continue;
+                    if (!nextInfo.startISO) continue;
+                    // Check adjacency: next sailing starts on same day or within lagDays
+                    const gap = diffDaysISO(nextInfo.startISO, day);
+                    if (gap == null || gap < 0 || gap > lagDays) continue;
                     if (offerUsedHere.has(nextInfo.offerCode)) continue;
                     const newUsed = offerUsedHere;
                     const branchDepth = 1 + dfs(nextIdx, newUsed);
@@ -405,7 +434,6 @@
                 if (curPath.length > best.length) best = curPath.slice();
                 if (!rootInfo.endISO || (!rootInfo.endPort && !rootInfo.endRegion)) return;
                 const day = rootInfo.endISO;
-                const nextDay = day ? addDays(day, 1) : null;
                 const portKey = getMatchKey(rootInfo, 'end');
                 const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
                 if (!portKey || !shipKey) return;
@@ -413,10 +441,6 @@
                 if (day) {
                     keysToCheck.push(day + '|' + portKey + '|' + shipKey);
                     if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
-                }
-                if (nextDay) {
-                    keysToCheck.push(nextDay + '|' + portKey + '|' + shipKey);
-                    if (allowSideBySide) keysToCheck.push(nextDay + '|' + portKey + '|*');
                 }
                 const usedHere = new Set(usedSet);
                 usedHere.add(rootInfo.offerCode);
@@ -428,7 +452,9 @@
                         if (nextIdx === rootIdx) continue;
                         const nextInfo = meta[nextIdx];
                         if (!nextInfo || !nextInfo.allow) continue;
-                        if (!nextInfo.startISO || (nextInfo.startISO !== day && nextInfo.startISO !== nextDay)) continue;
+                        if (!nextInfo.startISO) continue;
+                        const gap = diffDaysISO(nextInfo.startISO, day);
+                        if (gap == null || gap < 0 || gap > lagDays) continue;
                         if (usedHere.has(nextInfo.offerCode)) continue;
                         dfsLocal(nextIdx, usedHere, curPath);
                     }
@@ -509,29 +535,52 @@
             return { idx, endISO, endPort, startISO, startPort, shipKey, offerCode, allow };
         });
 
+        let lagDays2 = 0;
+        try {
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getB2BLagDays === 'function') {
+                lagDays2 = App.SettingsStore.getB2BLagDays();
+            }
+        } catch (e) { /* ignore */ }
+        lagDays2 = Math.max(0, Math.min(7, parseInt(lagDays2, 10) || 0));
+
+        function addDaysLocal(iso, delta) {
+            try {
+                const d = new Date(String(iso).slice(0,10) + 'T00:00:00Z');
+                if (isNaN(d.getTime())) return iso;
+                d.setUTCDate(d.getUTCDate() + delta);
+                return d.toISOString().slice(0, 10);
+            } catch (e) { return iso; }
+        }
+        function diffDaysLocal(nextISO, prevISO) {
+            try {
+                const a = new Date(String(nextISO).slice(0,10) + 'T00:00:00Z');
+                const b = new Date(String(prevISO).slice(0,10) + 'T00:00:00Z');
+                if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+                return Math.round((a.getTime() - b.getTime()) / 86400000);
+            } catch(e) { return null; }
+        }
+
         const startIndex = new Map();
         meta.forEach(info => {
             if (!info.startISO || !info.startPort || !info.allow) return;
             const day = info.startISO;
             const portKey = info.startPort.toLowerCase();
-            const key = day + '|' + portKey + '|' + (info.shipKey || '');
-            if (!startIndex.has(key)) startIndex.set(key, []);
-            startIndex.get(key).push(info.idx);
-            if (allowSideBySide) {
-                const sideKey = day + '|' + portKey + '|*';
-                if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
-                startIndex.get(sideKey).push(info.idx);
+            const daysToIndex = [day];
+            for (let ld = 1; ld <= lagDays2; ld++) {
+                const offsetDay = addDaysLocal(day, -ld);
+                if (offsetDay && offsetDay !== day) daysToIndex.push(offsetDay);
             }
+            daysToIndex.forEach((indexDay) => {
+                const key = indexDay + '|' + portKey + '|' + (info.shipKey || '');
+                if (!startIndex.has(key)) startIndex.set(key, []);
+                startIndex.get(key).push(info.idx);
+                if (allowSideBySide) {
+                    const sideKey = indexDay + '|' + portKey + '|*';
+                    if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
+                    startIndex.get(sideKey).push(info.idx);
+                }
+            });
         });
-
-        function addDays(iso, delta) {
-            try {
-                const d = new Date(iso);
-                if (isNaN(d.getTime())) return iso;
-                d.setDate(d.getDate() + delta);
-                return d.toISOString().slice(0, 10);
-            } catch (e) { return iso; }
-        }
 
         let bestPath = [];
 
@@ -542,7 +591,6 @@
             if (curPath.length > bestPath.length) bestPath = curPath.slice();
             if (!rootInfo.endISO || !rootInfo.endPort) return;
             const day = rootInfo.endISO;
-            const nextDay = day ? addDays(day, 1) : null;
             const portKey = rootInfo.endPort.toLowerCase();
             const shipKey = rootInfo.shipKey || '';
             if (!portKey || !shipKey) return;
@@ -550,10 +598,6 @@
             if (day) {
                 keysToCheck.push(day + '|' + portKey + '|' + shipKey);
                 if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
-            }
-            if (nextDay) {
-                keysToCheck.push(nextDay + '|' + portKey + '|' + shipKey);
-                if (allowSideBySide) keysToCheck.push(nextDay + '|' + portKey + '|*');
             }
             const usedHere = new Set(usedSet);
             usedHere.add(rootInfo.offerCode);
@@ -565,7 +609,9 @@
                     if (nextIdx === rootIdx) continue;
                     const nextInfo = meta[nextIdx];
                     if (!nextInfo || !nextInfo.allow) continue;
-                    if (!nextInfo.startISO || (nextInfo.startISO !== day && nextInfo.startISO !== nextDay)) continue;
+                    if (!nextInfo.startISO) continue;
+                    const gap = diffDaysLocal(nextInfo.startISO, day);
+                    if (gap == null || gap < 0 || gap > lagDays2) continue;
                     if (usedHere.has(nextInfo.offerCode)) continue;
                     dfsPath(nextIdx, usedHere, curPath);
                 }
@@ -608,13 +654,29 @@
 
             if (!meta[startIdx] || !meta[startIdx].allow) return [];
 
-            function addDays(iso, delta) {
+            let lagDays3 = 0;
+            try {
+                if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getB2BLagDays === 'function') {
+                    lagDays3 = App.SettingsStore.getB2BLagDays();
+                }
+            } catch (e) { /* ignore */ }
+            lagDays3 = Math.max(0, Math.min(7, parseInt(lagDays3, 10) || 0));
+
+            function addDaysL(iso, delta) {
                 try {
-                    const d = new Date(iso);
+                    const d = new Date(String(iso).slice(0,10) + 'T00:00:00Z');
                     if (isNaN(d.getTime())) return iso;
-                    d.setDate(d.getDate() + delta);
+                    d.setUTCDate(d.getUTCDate() + delta);
                     return d.toISOString().slice(0, 10);
                 } catch(e) { return iso; }
+            }
+            function diffDaysL(nextISO, prevISO) {
+                try {
+                    const a = new Date(String(nextISO).slice(0,10) + 'T00:00:00Z');
+                    const b = new Date(String(prevISO).slice(0,10) + 'T00:00:00Z');
+                    if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+                    return Math.round((a.getTime() - b.getTime()) / 86400000);
+                } catch(e) { return null; }
             }
 
             // Build startIndex map
@@ -625,14 +687,21 @@
                 const portKey = info.startPort.toLowerCase();
                 const shipKey = (info.shipName || '').toLowerCase();
                 if (!portKey || !shipKey) return;
-                const key = day + '|' + portKey + '|' + shipKey;
-                if (!startIndex.has(key)) startIndex.set(key, []);
-                startIndex.get(key).push(info.idx);
-                if (allowSideBySide) {
-                    const sideKey = day + '|' + portKey + '|*';
-                    if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
-                    startIndex.get(sideKey).push(info.idx);
+                const daysToIndex = [day];
+                for (let ld = 1; ld <= lagDays3; ld++) {
+                    const offsetDay = addDaysL(day, -ld);
+                    if (offsetDay && offsetDay !== day) daysToIndex.push(offsetDay);
                 }
+                daysToIndex.forEach((indexDay) => {
+                    const key = indexDay + '|' + portKey + '|' + shipKey;
+                    if (!startIndex.has(key)) startIndex.set(key, []);
+                    startIndex.get(key).push(info.idx);
+                    if (allowSideBySide) {
+                        const sideKey = indexDay + '|' + portKey + '|*';
+                        if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
+                        startIndex.get(sideKey).push(info.idx);
+                    }
+                });
             });
 
             // sort buckets by startISO desc
@@ -660,7 +729,6 @@
                 if (curPath.length > best.length) best = curPath.slice();
                 if (!rootInfo.endISO || !rootInfo.endPort) return;
                 const day = rootInfo.endISO;
-                const nextDay = day ? addDays(day, 1) : null;
                 const portKey = rootInfo.endPort.toLowerCase();
                 const shipKey = (rootInfo.shipName || '').toLowerCase();
                 if (!portKey || !shipKey) return;
@@ -668,10 +736,6 @@
                 if (day) {
                     keysToCheck.push(day + '|' + portKey + '|' + shipKey);
                     if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
-                }
-                if (nextDay) {
-                    keysToCheck.push(nextDay + '|' + portKey + '|' + shipKey);
-                    if (allowSideBySide) keysToCheck.push(nextDay + '|' + portKey + '|*');
                 }
                 const usedHere = new Set(usedSet);
                 usedHere.add(rootInfo.offerCode);
@@ -683,7 +747,9 @@
                         if (nextIdx === rootIdx) continue;
                         const nextInfo = meta[nextIdx];
                         if (!nextInfo || !nextInfo.allow) continue;
-                        if (!nextInfo.startISO || (nextInfo.startISO !== day && nextInfo.startISO !== nextDay)) continue;
+                        if (!nextInfo.startISO) continue;
+                        const gap = diffDaysL(nextInfo.startISO, day);
+                        if (gap == null || gap < 0 || gap > lagDays3) continue;
                         if (usedHere.has(nextInfo.offerCode)) continue;
                         dfsLocal(nextIdx, usedHere, curPath);
                     }
