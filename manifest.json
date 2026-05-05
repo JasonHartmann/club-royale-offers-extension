@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cruise Comp Offers Viewer",
   "short_name": "Cruise Comp Offers",
-  "version": "2.2",
+  "version": "2.3",
   "description": "View cruise comp offers in a sortable, groupable table and accordion.",
   "browser_specific_settings": {
     "gecko": {
