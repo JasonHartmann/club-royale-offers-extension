@@ -530,7 +530,7 @@
             this._activeSession = {
                 chain: [rowId],
                 rootRowId: rowId,
-                allowSideBySide: !!this._context.allowSideBySide,
+                allowSideBySide: !!App.SettingsStore.getIncludeSideBySide(),
                 bannerTimeout: null,
                 ui: null,
                 keyHandler: null,
