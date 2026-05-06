@@ -551,7 +551,11 @@
                 const data = this._cache[key];
                 const existing = document.getElementById('gobo-itinerary-modal');
                 if (existing) existing.remove();
-                try { document.querySelectorAll('.gobo-itinerary-highlight').forEach(el => el.classList.remove('gobo-itinerary-highlight')); } catch (e) {}
+                try {
+                    document.querySelectorAll('.gobo-itinerary-highlight').forEach(el => el.classList.remove('gobo-itinerary-highlight'));
+                    const prevState = (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                    if (prevState && prevState._virtualScroll) delete prevState._virtualScroll.highlightVsIdx;
+                } catch (e) {}
                 let rowToHighlight = null;
                 try {
                     if (sourceEl && sourceEl instanceof Element) rowToHighlight = sourceEl.closest ? sourceEl.closest('tr') || sourceEl : sourceEl;
@@ -571,7 +575,12 @@
                 if (rowToHighlight) {
                     try {
                         rowToHighlight.classList.add('gobo-itinerary-highlight');
-                        rowToHighlight.scrollIntoView({behavior: 'smooth', block: 'center'});
+                        // Track highlight index on virtual scroll state so it survives row recycling
+                        const vsIdx = rowToHighlight.dataset && rowToHighlight.dataset.vsIdx;
+                        const state = (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                        if (vsIdx != null && state && state._virtualScroll) {
+                            state._virtualScroll.highlightVsIdx = parseInt(vsIdx, 10);
+                        }
                     } catch (e) {}
                 }
                 if (!data) {

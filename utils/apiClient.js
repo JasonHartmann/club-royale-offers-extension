@@ -1,4 +1,33 @@
 const ApiClient = {
+    async fetchGuestEmail(accountId, authToken) {
+        try {
+            const url = `https://aws-prd.api.rccl.com/en/royal/web/v3/guestAccounts/${encodeURIComponent(accountId)}`;
+            const rawAuth = authToken && authToken.toString ? authToken.toString() : '';
+            const accessToken = rawAuth.startsWith('Bearer ') ? rawAuth.slice(7) : rawAuth;
+            const resp = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'accept': 'application/json',
+                    'content-type': 'application/json',
+                    'access-token': accessToken,
+                    'account-id': accountId,
+                    'appkey': 'hyNNqIPHHzaLzVpcICPdAdbFV8yvTsAm',
+                    'vds-id': accountId,
+                },
+            });
+            if (!resp.ok) {
+                console.debug(`[apiClient] fetchGuestEmail failed: ${resp.status}`);
+                return null;
+            }
+            const data = await resp.json();
+            const email = data?.payload?.contactInformation?.email || null;
+            console.debug('[apiClient] fetchGuestEmail resolved email:', !!email);
+            return email;
+        } catch (e) {
+            console.debug('[apiClient] fetchGuestEmail error:', e.message);
+            return null;
+        }
+    },
     // New helper to compare sailings between original batch offer and refreshed offer
     logSailingDifferences(originalOffer, refreshedOffer) {
         try {
@@ -116,6 +145,20 @@ const ApiClient = {
             console.debug('[apiClient] Failed to parse session data:', error.message);
             App.ErrorHandler.showError('Failed to load session data. Please log in again.');
             return;
+        }
+
+        // Fetch email from guestAccounts API if not already available on user
+        if (accountId && authToken && (!user || !user.email)) {
+            try {
+                const guestEmail = await this.fetchGuestEmail(accountId, authToken);
+                if (guestEmail) {
+                    if (!user) user = {};
+                    user.email = guestEmail;
+                    console.debug('[apiClient] Attached guest email to user object');
+                }
+            } catch (e) {
+                console.debug('[apiClient] Guest email fetch failed (non-fatal):', e.message);
+            }
         }
 
         try {

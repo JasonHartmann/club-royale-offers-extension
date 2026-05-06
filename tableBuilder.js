@@ -268,6 +268,14 @@ const TableBuilder = {
                 } catch(e) {}
             }
 
+            // Re-apply itinerary highlight if tracked
+            try {
+                if (typeof vs.highlightVsIdx === 'number') {
+                    const hlRow = tbody.querySelector('tr[data-vs-idx="' + vs.highlightVsIdx + '"]');
+                    if (hlRow) hlRow.classList.add('gobo-itinerary-highlight');
+                }
+            } catch(e) {}
+
             // Dispatch event so B2B depth badges can be applied to visible rows
             try {
                 const evt = new CustomEvent('tableChunkRendered', { detail: { token: state._rowRenderToken, rendered: endIdx, virtualStart: startIdx, virtualEnd: endIdx } });
