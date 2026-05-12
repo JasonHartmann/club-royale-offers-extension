@@ -870,24 +870,13 @@ const TableRenderer = {
     },
     async displayTable(data, selectedProfileKey, overlappingElements) {
         try {
-            // Always determine current user's key
             let currentKey = null;
             try {
-                const sessionRaw = localStorage.getItem('persist:session');
-                console.debug('[tableRenderer] persist:session present:', !!sessionRaw);
-                if (sessionRaw) {
-                    const parsed = JSON.parse(sessionRaw);
-                    console.debug('[tableRenderer] parsed keys:', Object.keys(parsed).join(', '));
-                    const user = parsed.user
-                        ? (typeof parsed.user === 'string' ? JSON.parse(parsed.user) : parsed.user)
-                        : (parsed.accountId ? parsed : null);
-                    console.debug('[tableRenderer] user resolved:', !!user, user ? 'accountId=' + (user.accountId || 'MISSING') : '');
-                    if (user) {
-                        const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
-                        const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                        currentKey = `gobo-${usernameKey}`;
-                        console.debug('[tableRenderer] currentKey:', currentKey);
-                    }
+                const email = App.Utils.getCookie('VDS_ID');
+                if (email) {
+                    const usernameKey = email.replace(/[^a-zA-Z0-9-_.]/g, '_');
+                    currentKey = `gobo-${usernameKey}`;
+                    console.debug('[tableRenderer] currentKey from cookie:', currentKey);
                 }
             } catch (e) {
                 console.debug('[tableRenderer] session parse error:', e.message);

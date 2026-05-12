@@ -191,29 +191,18 @@ const Breadcrumbs = {
                             }
                     let currentKey = null;
                     try {
-                        const raw = localStorage.getItem('persist:session');
-                        console.debug('[breadcrumbs] persist:session present:', !!raw);
-                        if (raw) {
-                            const parsed = JSON.parse(raw);
-                            console.debug('[breadcrumbs] parsed keys:', Object.keys(parsed).join(', '));
-                            const user = parsed.user
-                                ? (typeof parsed.user === 'string' ? JSON.parse(parsed.user) : parsed.user)
-                                : (parsed.accountId ? parsed : null);
-                            console.debug('[breadcrumbs] user resolved:', !!user, user ? 'accountId=' + (user.accountId || 'MISSING') : '');
-                            if (user) {
-                                const rawKey = String(user.username || user.userName || user.email || user.name || user.accountId || '');
-                                const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                                console.debug('[breadcrumbs] usernameKey:', usernameKey);
-                                // Prefer branded key if present: gobo-<brand>-<username>
-                                const brand = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : 'R';
-                                const brandedCandidate = `gobo-${brand}-${usernameKey}`;
-                                if (profileKeys.includes(brandedCandidate)) currentKey = brandedCandidate;
-                                else {
-                                    const legacyCandidate = `gobo-${usernameKey}`;
-                                    if (profileKeys.includes(legacyCandidate)) currentKey = legacyCandidate;
-                                }
-                                console.debug('[breadcrumbs] currentKey resolved:', currentKey);
+                        const email = App.Utils.getCookie('VDS_ID');
+                        if (email) {
+                            const usernameKey = email.replace(/[^a-zA-Z0-9-_.]/g, '_');
+                            console.debug('[breadcrumbs] usernameKey from cookie:', usernameKey);
+                            const brand = App.Utils.detectBrand();
+                            const brandedCandidate = `gobo-${brand}-${usernameKey}`;
+                            if (profileKeys.includes(brandedCandidate)) currentKey = brandedCandidate;
+                            else {
+                                const legacyCandidate = `gobo-${usernameKey}`;
+                                if (profileKeys.includes(legacyCandidate)) currentKey = legacyCandidate;
                             }
+                            console.debug('[breadcrumbs] currentKey resolved:', currentKey);
                         }
                     } catch (e) {
                         console.debug('[breadcrumbs] session parse error:', e.message);

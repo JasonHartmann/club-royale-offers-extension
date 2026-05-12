@@ -20,10 +20,11 @@ Practical Guidance
 - Debug Flag: All debug output must be gated by the single global flag `window.GOBO_DEBUG_LOGS` (default `false`). Toggle it in DevTools when needed; do not hardcode it to `true` in commits.
 - Tests: Run tests locally when changing core logic; add small focused unit tests when adding significant behavior.
 
-Module Load Order
------------------
+Module Load Order & Fail-Fast
+-----------------------------
 - Prefer resolving module availability by ensuring correct `manifest.json` script order.
-- If `manifest.json` cannot be changed, use an explicit, documented resolver pattern (getter/accessor) or a small, well-documented defensive wrapper — avoid scattering silent `if (window.X)` guards that hide real issues.
+- If `manifest.json` cannot be changed, use an explicit, documented resolver pattern (getter/accessor) or a small, well-documented defensive wrapper.
+- **Anti-pattern:** Defensive typeof checks like `typeof App !== 'undefined' && App.Utils && typeof App.Utils.getCookie === 'function'`. If a module should exist and doesn't, the app should fail loudly — not shamble along with silent fallbacks. Trust the `App` module; if it's missing, let it crash.
 - Document any temporary workarounds and open a follow-up issue/PR to fix ordering.
 
 Design & Decomposition

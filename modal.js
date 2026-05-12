@@ -338,15 +338,12 @@ const Modal = {
         document.body.appendChild(container);
         document.body.style.overflow = 'hidden';
 
-        // --- Session disappearance watcher ---
-        // Poll every 2 seconds for session presence (check both localStorage and cookie)
+       // --- Session disappearance watcher ---
         const sessionCheckInterval = setInterval(() => {
             try {
-                const sessionRaw = localStorage.getItem('persist:session');
-                const cookieToken = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.getCookie === 'function')
-                    ? App.Utils.getCookie('accessToken') : null;
-                console.debug('[modal] Session watcher tick — persist:session:', !!sessionRaw, 'accessToken cookie:', !!cookieToken);
-                if (!sessionRaw && !cookieToken) {
+                const cookieToken = App.Utils.getCookie('accessToken');
+                console.debug('[modal] Session watcher tick — accessToken cookie:', !!cookieToken);
+                if (!cookieToken) {
                     console.debug('[modal] Session disappeared, closing modal');
                     this.closeModal(container, backdrop, overlappingElements);
                     clearInterval(sessionCheckInterval);

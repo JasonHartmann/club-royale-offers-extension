@@ -84,77 +84,43 @@ const ApiClient = {
         console.debug('[apiClient] fetchOffers called, retryCount:', retryCount);
         let authToken, accountId, loyaltyId, user;
         try {
-            console.debug('[apiClient] Resolving auth token and session data');
+            console.debug('[apiClient] Resolving auth token from cookies');
             authToken = App.Utils.getCookie('accessToken');
             accountId = App.Utils.getCookie('VDS_ID');
             loyaltyId = App.Utils.getCookie('loyalty_ID');
             console.debug('[apiClient] Cookie accessToken present:', !!authToken, authToken ? '(length=' + authToken.length + ')' : '');
-            const sessionData = localStorage.getItem('persist:session');
-            console.debug('[apiClient] persist:session present:', !!sessionData, sessionData ? '(length=' + sessionData.length + ')' : '');
-            if (!sessionData && !authToken) {
-                console.debug('[apiClient] No session data or access token found');
+            if (!authToken) {
+                console.debug('[apiClient] No access token found');
                 App.ErrorHandler.showError('Failed to load offers: No session data. Please log in again.');
                 return;
             }
-            const parsedData = sessionData ? JSON.parse(sessionData) : {};
-            console.debug('[apiClient] parsedData top-level keys:', Object.keys(parsedData).join(', '));
-            // New flat format: fields are directly on the object
-            // Legacy format: fields are JSON-stringified sub-values
-            if (!authToken) {
-                authToken = parsedData.token ? (typeof parsedData.token === 'string' && parsedData.token.startsWith('"') ? JSON.parse(parsedData.token) : parsedData.token) : null;
-                console.debug('[apiClient] Fell back to parsedData.token, present:', !!authToken);
-            }
-            user = parsedData.user
-                ? (typeof parsedData.user === 'string' ? JSON.parse(parsedData.user) : parsedData.user)
-                : (parsedData.accountId ? parsedData : null);
-            console.debug('[apiClient] user resolved:', !!user, user ? 'accountId=' + (user.accountId || 'MISSING') + ' cruiseLoyaltyId=' + (user.cruiseLoyaltyId || 'MISSING') + ' exp=' + (user.exp || 'MISSING') : '');
             if (!accountId) {
-                accountId = user && user.accountId ? user.accountId : null;
+                console.debug('[apiClient] No VDS_ID cookie, attempting to resolve from guestAccounts');
+                const guestEmailResult = await this.fetchGuestEmail('', authToken);
+                if (guestEmailResult && guestEmailResult.accountId) {
+                    accountId = guestEmailResult.accountId;
+                    console.debug('[apiClient] Resolved accountId from guestAccounts:', accountId);
+                }
             }
-            if (!loyaltyId) {
-                loyaltyId = user && user.cruiseLoyaltyId ? user.cruiseLoyaltyId : null;
-            }
-            // Expiration: new format uses `exp` (seconds); legacy uses `tokenExpiration` (seconds)
-            const rawExp = user && user.exp ? user.exp : (parsedData.tokenExpiration ? parseInt(parsedData.tokenExpiration) : null);
-            const tokenExpiration = rawExp ? rawExp * 1000 : null;
-            // Track whether the auth token came from the cookie (host-managed, may be refreshed
-            // independently of persist:session) vs from localStorage
-            const tokenFromCookie = !!(typeof App !== 'undefined' && App.Utils && typeof App.Utils.getCookie === 'function' && App.Utils.getCookie('accessToken'));
-            console.debug('[apiClient] authToken:', !!authToken, 'accountId:', accountId, 'loyaltyId:', loyaltyId, 'tokenExpiration:', tokenExpiration ? new Date(tokenExpiration).toISOString() : 'none', 'tokenFromCookie:', tokenFromCookie);
-            if (!authToken || !accountId) {
-                console.debug('[apiClient] Invalid session data — authToken:', !!authToken, 'accountId:', accountId);
-                App.ErrorHandler.showError('Failed to load offers: Invalid session data. Please log in again.');
+            if (!accountId) {
+                console.debug('[apiClient] Could not resolve accountId');
+                App.ErrorHandler.showError('Failed to load offers: Could not identify account. Please log in again.');
                 return;
             }
-            // Only enforce local expiration check when the token came from localStorage.
-            // When the token is from the accessToken cookie, the host site manages refresh
-            // and the persist:session exp may be stale; let the server decide via 403.
-            if (tokenExpiration && !tokenFromCookie) {
-                const currentTime = Date.now();
-                if (tokenExpiration < currentTime) {
-                    console.debug('[apiClient] Token expired:', new Date(tokenExpiration).toISOString());
-                    App.ErrorHandler.showError('Session expired. Please log in again.');
-                    App.ErrorHandler.closeModalIfOpen();
-                    return;
-                }
-            } else if (tokenExpiration && tokenFromCookie) {
-                console.debug('[apiClient] Skipping local expiration check — token sourced from cookie (host-managed)');
-            }
-            console.debug('[apiClient] Session data parsed successfully');
+            console.debug('[apiClient] authToken:', !!authToken, 'accountId:', accountId, 'loyaltyId:', loyaltyId);
         } catch (error) {
-            console.debug('[apiClient] Failed to parse session data:', error.message);
+            console.debug('[apiClient] Failed to resolve session data:', error.message);
             App.ErrorHandler.showError('Failed to load session data. Please log in again.');
             return;
         }
 
-        // Fetch email from guestAccounts API if not already available on user
-        if (accountId && authToken && (!user || !user.email)) {
+        user = {};
+        if (accountId && authToken) {
             try {
                 const guestEmail = await this.fetchGuestEmail(accountId, authToken);
                 if (guestEmail) {
-                    if (!user) user = {};
                     user.email = guestEmail;
-                    console.debug('[apiClient] Attached guest email to user object');
+                    console.debug('[apiClient] Fetched guest email:', guestEmail);
                 }
             } catch (e) {
                 console.debug('[apiClient] Guest email fetch failed (non-fatal):', e.message);
@@ -179,7 +145,7 @@ const ApiClient = {
             console.debug('[apiClient] Request headers built (authorization redacted)');
             // Centralized brand detection
             const host = (location && location.hostname) ? location.hostname : '';
-            const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : (host.includes('celebritycruises.com') ? 'C' : 'R');
+            const brandCode = App.Utils.detectBrand();
             const relativePath = '/api/casino/v2/offers/merged';
             const onSupportedDomain = host.includes('royalcaribbean.com') || host.includes('celebritycruises.com') || host.includes('comproyale.com');
             const isSimDomain = host.includes('comproyale.com');
@@ -419,7 +385,7 @@ const ApiClient = {
                 const rawKey = (user && (user.username || user.userName || user.email || user.name || user.accountId)) ? String(user.username || user.userName || user.email || user.name || user.accountId) : 'unknown';
                 const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
                 // brandCode already resolved earlier
-                const brandCode = (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') ? App.Utils.detectBrand() : 'R';
+                const brandCode = App.Utils.detectBrand();
                 const legacyKey = `gobo-${usernameKey}`; // backward-compatible
                 const brandedKey = `gobo-${brandCode}-${usernameKey}`;
                 const payload = { savedAt: Date.now(), data: normalizedData, brand: brandCode };
@@ -471,9 +437,7 @@ const ApiClient = {
                 if (window.performance && window.performance.memory) {
                     console.debug('[apiClient] Post-spinner: JS Heap Size:', window.performance.memory.usedJSHeapSize, '/', window.performance.memory.totalJSHeapSize);
                 }
-                if (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) {
-                    console.debug('[apiClient] Post-spinner: TableRenderer.lastState:', App.TableRenderer.lastState);
-                }
+                console.debug('[apiClient] Post-spinner: TableRenderer.lastState:', App.TableRenderer.lastState);
             } catch (e) {
                 console.warn('[apiClient] Post-spinner: Error during extra logging', e);
             }
