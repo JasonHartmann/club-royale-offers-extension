@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Comp Royale — Cruise Offers Viewer v2.3.1</title>
+  <title>Comp Royale — Cruise Offers Viewer v2.3.2</title>
   <meta name="description" content="Browser extension that transforms Royal Caribbean and Celebrity Cruises comp offers into a sortable, filterable power-user interface. Multi-profile, upgrade pricing, B2B Builder, dark mode — zero tracking." />
   <meta name="theme-color" content="#050f20" />
   <meta property="og:title" content="Comp Royale — Cruise Offers Viewer" />
@@ -55,7 +55,7 @@
 <header class="hero">
   <div class="hero-inner">
     <div class="hero-content">
-      <div class="hero-badge">✦ v2.3.1 Now Available · 100% Free</div>
+      <div class="hero-badge">✦ v2.3.2 Now Available · 100% Free</div>
       <h1 class="hero-title">
         Your cruise offers,<br>
         <span class="accent">finally organized</span>
@@ -137,12 +137,12 @@
 <section id="whatsnew" class="section">
   <div class="wrapper">
     <span class="section-kicker">Release</span>
-    <h2 class="section-title">What's New in v2.3.1</h2>
+    <h2 class="section-title">What's New in v2.3.2</h2>
     <p class="section-lead">This release includes:</p>
     <ul class="section-lead">
+      <li>Fixed profile loading issue — email and account info now resolved reliably via cookies</li>
+      <li>Removed dependency on localStorage session data that was causing intermittent failures</li>
       <li>Various bugfixes and performance improvements</li>
-      <li>Update to deal with the modified access token structure and URL scheme</li>
-      <li>Added B2B Lag setting for sailings with date gaps</li>
     </ul>
 
     <div class="whatsnew-grid">
@@ -509,9 +509,20 @@
     <div class="release-timeline">
 
       <div class="release-entry current">
-        <div class="release-ver"><span class="ver-badge">v2.3.1</span></div>
+        <div class="release-ver"><span class="ver-badge">v2.3.2</span></div>
         <div class="release-body">
           <h4>Current Release</h4>
+          <ul>
+            <li>Fixed profile loading issue — email and account info now resolved reliably via cookies</li>
+            <li>Removed dependency on localStorage session data that was causing intermittent failures</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="release-entry">
+        <div class="release-ver"><span class="ver-badge">v2.3.1</span></div>
+        <div class="release-body">
+          <h4>Bugfix Release</h4>
           <ul>
             <li>Minor pricing bugfix for more accurate displayed values after refresh and recalculation</li>
             <li>Removed offer code lookup links because supporting endpoints are no longer available</li>

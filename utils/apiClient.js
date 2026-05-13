@@ -1,5 +1,5 @@
 const ApiClient = {
-    async fetchGuestEmail(accountId, authToken) {
+    async fetchGuestAccount(accountId, authToken) {
         try {
             const url = `https://aws-prd.api.rccl.com/en/royal/web/v3/guestAccounts/${encodeURIComponent(accountId)}`;
             const rawAuth = authToken && authToken.toString ? authToken.toString() : '';
@@ -16,15 +16,17 @@ const ApiClient = {
                 },
             });
             if (!resp.ok) {
-                console.debug(`[apiClient] fetchGuestEmail failed: ${resp.status}`);
+                console.debug(`[apiClient] fetchGuestAccount failed: ${resp.status}`);
                 return null;
             }
             const data = await resp.json();
-            const email = data?.payload?.contactInformation?.email || null;
-            console.debug('[apiClient] fetchGuestEmail resolved email:', !!email);
-            return email;
+            const payload = data?.payload || {};
+            const email = payload.contactInformation?.email || null;
+            const resolvedAccountId = payload.accountId || null;
+            console.debug(`[apiClient] fetchGuestAccount resolved accountId=${resolvedAccountId}, email=${!!email}`);
+            return { accountId: resolvedAccountId, email };
         } catch (e) {
-            console.debug('[apiClient] fetchGuestEmail error:', e.message);
+            console.debug('[apiClient] fetchGuestAccount error:', e.message);
             return null;
         }
     },
@@ -96,9 +98,9 @@ const ApiClient = {
             }
             if (!accountId) {
                 console.debug('[apiClient] No VDS_ID cookie, attempting to resolve from guestAccounts');
-                const guestEmailResult = await this.fetchGuestEmail('', authToken);
-                if (guestEmailResult && guestEmailResult.accountId) {
-                    accountId = guestEmailResult.accountId;
+                const guestAccount = await this.fetchGuestAccount('', authToken);
+                if (guestAccount && guestAccount.accountId) {
+                    accountId = guestAccount.accountId;
                     console.debug('[apiClient] Resolved accountId from guestAccounts:', accountId);
                 }
             }
@@ -117,13 +119,18 @@ const ApiClient = {
         user = {};
         if (accountId && authToken) {
             try {
-                const guestEmail = await this.fetchGuestEmail(accountId, authToken);
-                if (guestEmail) {
-                    user.email = guestEmail;
-                    console.debug('[apiClient] Fetched guest email:', guestEmail);
+                const guestAccount = await this.fetchGuestAccount(accountId, authToken);
+                if (guestAccount) {
+                    if (guestAccount.email) {
+                        user.email = guestAccount.email;
+                        console.debug('[apiClient] Fetched guest email:', guestAccount.email);
+                    }
+                    if (guestAccount.accountId) {
+                        user.accountId = guestAccount.accountId;
+                    }
                 }
             } catch (e) {
-                console.debug('[apiClient] Guest email fetch failed (non-fatal):', e.message);
+                console.debug('[apiClient] Guest account fetch failed (non-fatal):', e.message);
             }
         }
 
