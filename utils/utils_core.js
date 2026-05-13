@@ -576,6 +576,8 @@ const Utils = {
             'icon of the seas': 'Icon',
             'star of the seas': 'Icon',
             'legend of the seas': 'Icon',
+            'hero of the seas': 'Icon',
+            'champion of the seas': 'Icon',
             'utopia of the seas': 'Oasis',
             'oasis of the seas': 'Oasis',
             'allure of the seas': 'Oasis',
