@@ -135,6 +135,8 @@
         B2BDrivingRangeHours: (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0,
         // runtime value: lag days (0-7) between sailings for B2B chaining; default 0 (same-day only)
         B2BLagDays: (typeof __goboSettings.b2bLagDays !== 'undefined') ? Math.max(0, Math.min(7, parseInt(__goboSettings.b2bLagDays, 10) || 0)) : 0,
+        // Shared email: null initially, set by apiClient.fetchGuestAccount, hydrated from localStorage by breadcrumbs fallback
+        CurrentUserEmail: null,
         ProfileCache: _prev.ProfileCache || [],
         refreshSettingsFromStorage() {
             try {

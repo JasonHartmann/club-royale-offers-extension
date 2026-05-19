@@ -37,6 +37,9 @@
             } catch(e){}
         } catch(e){}
         row.className = 'hover:bg-gray-50';
+        if (idx !== null && idx !== undefined) {
+            row.classList.add(idx % 2 === 0 ? 'gobo-row-even' : 'gobo-row-odd');
+        }
         if (isNewest) row.classList.add('newest-offer-row');
         if (isExpiringSoon) row.classList.add('expiring-soon-row');
         let guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests';

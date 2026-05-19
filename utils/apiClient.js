@@ -97,14 +97,6 @@ const ApiClient = {
                 return;
             }
             if (!accountId) {
-                console.debug('[apiClient] No VDS_ID cookie, attempting to resolve from guestAccounts');
-                const guestAccount = await this.fetchGuestAccount('', authToken);
-                if (guestAccount && guestAccount.accountId) {
-                    accountId = guestAccount.accountId;
-                    console.debug('[apiClient] Resolved accountId from guestAccounts:', accountId);
-                }
-            }
-            if (!accountId) {
                 console.debug('[apiClient] Could not resolve accountId');
                 App.ErrorHandler.showError('Failed to load offers: Could not identify account. Please log in again.');
                 return;
@@ -120,17 +112,21 @@ const ApiClient = {
         if (accountId && authToken) {
             try {
                 const guestAccount = await this.fetchGuestAccount(accountId, authToken);
-                if (guestAccount) {
-                    if (guestAccount.email) {
-                        user.email = guestAccount.email;
-                        console.debug('[apiClient] Fetched guest email:', guestAccount.email);
-                    }
-                    if (guestAccount.accountId) {
-                        user.accountId = guestAccount.accountId;
-                    }
+                if (!guestAccount || !guestAccount.email) {
+                    console.warn('[apiClient] Guest account fetch returned no email');
+                    App.ErrorHandler.showError('Failed to load user profile. Please reload the page and try again.');
+                    return;
+                }
+                App.CurrentUserEmail = guestAccount.email;
+                user.email = guestAccount.email;
+                console.debug('[apiClient] Fetched guest email:', guestAccount.email);
+                if (guestAccount.accountId) {
+                    user.accountId = guestAccount.accountId;
                 }
             } catch (e) {
-                console.debug('[apiClient] Guest account fetch failed (non-fatal):', e.message);
+                console.warn('[apiClient] Guest account fetch failed:', e.message);
+                App.ErrorHandler.showError('Failed to load user profile. Please reload the page and try again.');
+                return;
             }
         }
 
@@ -389,13 +385,13 @@ const ApiClient = {
             // Persist normalized data so it can be accessed across logins by key: gobo-<brand>-<username>
             try {
                 console.debug('[apiClient] Persisting normalized offers to storage (brand aware)');
-                const rawKey = (user && (user.username || user.userName || user.email || user.name || user.accountId)) ? String(user.username || user.userName || user.email || user.name || user.accountId) : 'unknown';
+                const rawKey = (App.CurrentUserEmail) ? String(App.CurrentUserEmail) : (user && (user.email || user.username || user.userName || user.name)) ? String(user.email || user.username || user.userName || user.name) : 'unknown-user';
                 const usernameKey = rawKey.replace(/[^a-zA-Z0-9-_.]/g, '_');
                 // brandCode already resolved earlier
                 const brandCode = App.Utils.detectBrand();
                 const legacyKey = `gobo-${usernameKey}`; // backward-compatible
                 const brandedKey = `gobo-${brandCode}-${usernameKey}`;
-                const payload = { savedAt: Date.now(), data: normalizedData, brand: brandCode };
+                const payload = { savedAt: Date.now(), data: normalizedData, brand: brandCode, email: App.CurrentUserEmail || user.email };
                 // Write branded key
                 if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(payload)); else localStorage.setItem(brandedKey, JSON.stringify(payload));
                 // If legacy key exists already, leave it untouched; else optionally seed it for a transition (commented out for now)

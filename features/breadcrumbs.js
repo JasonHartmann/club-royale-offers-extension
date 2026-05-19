@@ -162,10 +162,10 @@ const Breadcrumbs = {
                             let brand = null;
                             if (k === 'goob-favorites') {
                                 label = 'Favorites';
+                            } else if (payload && payload.email) {
+                                label = payload.email;
                             } else {
-                                // Hide branded prefix in label: gobo-R-username -> username
                                 const userKey = k.replace(/^gobo-[A-Za-z]-/, '').replace(/^gobo-/, '');
-                                // Convert underscores back to '@' like previous logic (best-effort email reconstruction)
                                 label = userKey.replace(/_/g, '@');
                                 const m = k.match(/^gobo-([A-Za-z])-?/);
                                 if (m) brand = m[1];
@@ -189,12 +189,14 @@ const Breadcrumbs = {
                                 }
                             } catch (e) {/* ignore */
                             }
+                    // Sort profiles before key resolution so fallback picks most recently updated first
+                    profiles.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
                     let currentKey = null;
                     try {
-                        const email = App.Utils.getCookie('VDS_ID');
-                        if (email) {
+                        if (App.CurrentUserEmail) {
+                            const email = App.CurrentUserEmail;
                             const usernameKey = email.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                            console.debug('[breadcrumbs] usernameKey from cookie:', usernameKey);
+                            console.debug('[breadcrumbs] usernameKey from App.CurrentUserEmail:', usernameKey);
                             const brand = App.Utils.detectBrand();
                             const brandedCandidate = `gobo-${brand}-${usernameKey}`;
                             if (profileKeys.includes(brandedCandidate)) currentKey = brandedCandidate;
@@ -205,9 +207,8 @@ const Breadcrumbs = {
                             console.debug('[breadcrumbs] currentKey resolved:', currentKey);
                         }
                     } catch (e) {
-                        console.debug('[breadcrumbs] session parse error:', e.message);
+                        console.debug('[breadcrumbs] currentKey resolution error:', e.message);
                     }
-                    profiles.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
                     let favoritesEntry = null;
                     const favIdx = profiles.findIndex(p => p.key === 'goob-favorites');
                     if (favIdx !== -1) favoritesEntry = profiles.splice(favIdx, 1)[0];

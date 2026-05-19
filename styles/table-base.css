@@ -25,8 +25,8 @@
 .table-auto th, .table-auto td, .accordion-table th, .accordion-table td { box-sizing:border-box; font-size:0.75rem; padding:4px 6px; vertical-align:top; }
 .table-auto th, .table-auto td, .accordion-table th, .accordion-table td { border:1px solid #e5e7eb; }
 
-/* Zebra stripes */
-.table-auto tbody tr:nth-child(odd) { background:#fafafa; }
+/* Zebra stripes (class-based so virtual scroll spacer rows don't shift parity) */
+.table-auto tbody tr.gobo-row-odd { background:#fafafa; }
 
 /* Accordion table font size reinforcement */
 .accordion-table th, .accordion-table td { font-size:0.75rem; }
@@ -65,8 +65,8 @@ body.gobo-dark .accordion-table td {
 	border:1px solid rgba(148,163,184,0.2);
 	color:#e2e8f0;
 }
-body.gobo-dark .table-auto tbody tr:nth-child(odd) { background:#0b1220; }
-body.gobo-dark .table-auto tbody tr:nth-child(even) { background:#0f172a; }
+body.gobo-dark .table-auto tbody tr.gobo-row-odd { background:#0b1220; }
+body.gobo-dark .table-auto tbody tr.gobo-row-even { background:#0f172a; }
 
 /* Responsive: Maximize modal space on narrow screens */
 @media (max-width: 960px) {

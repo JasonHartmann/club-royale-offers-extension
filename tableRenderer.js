@@ -872,14 +872,25 @@ const TableRenderer = {
         try {
             let currentKey = null;
             try {
-                const email = App.Utils.getCookie('VDS_ID');
+                const email = App.CurrentUserEmail;
                 if (email) {
                     const usernameKey = email.replace(/[^a-zA-Z0-9-_.]/g, '_');
-                    currentKey = `gobo-${usernameKey}`;
-                    console.debug('[tableRenderer] currentKey from cookie:', currentKey);
+                    const brand = App.Utils.detectBrand();
+                    const brandedCandidate = `gobo-${brand}-${usernameKey}`;
+                    const legacyCandidate = `gobo-${usernameKey}`;
+                    // Check localStorage directly to avoid depending on pre-hydration below
+                    const exists = (key) => {
+                        try {
+                            const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(key) : localStorage.getItem(key);
+                            return !!raw;
+                        } catch(e) { return false; }
+                    };
+                    if (exists(brandedCandidate)) currentKey = brandedCandidate;
+                    else if (exists(legacyCandidate)) currentKey = legacyCandidate;
+                    console.debug('[tableRenderer] currentKey from App.CurrentUserEmail:', currentKey);
                 }
             } catch (e) {
-                console.debug('[tableRenderer] session parse error:', e.message);
+                console.debug('[tableRenderer] currentKey resolution error:', e.message);
             }
 
             // Defensive: sanitize selectedProfileKey so we never store an object into state.selectedProfileKey
