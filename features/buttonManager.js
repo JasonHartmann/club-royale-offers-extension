@@ -1,5 +1,10 @@
 const ButtonManager = {
-    _placementObserver: null,
+  
+    isButtonCorrectlyPlaced() {
+        const btn = document.getElementById('gobo-offers-button');
+        if (!btn || !btn.isConnected) return false;
+        return !btn.classList.contains('gobo-button-fallback');
+    },
     addButton(maxAttempts = 10, attempt = 1) {
         try {
             const path = (location && location.pathname ? location.pathname : '').toLowerCase();
@@ -12,8 +17,7 @@ const ButtonManager = {
 
             const existingButton = document.getElementById('gobo-offers-button');
             if (existingButton) {
-                // Button already in DOM – verify it's still connected (not orphaned by SPA re-render)
-                if (existingButton.isConnected) return;
+                if (existingButton.isConnected && !existingButton.classList.contains('gobo-button-fallback')) return;
                 existingButton.remove();
             }
             const button = document.createElement('button');
@@ -25,7 +29,32 @@ const ButtonManager = {
                 App.ApiClient.fetchOffers();
             });
 
-            const banner = document.querySelector('div[class*="flex"][class*="items-center"][class*="justify-between"]');
+            // Find the top navigation banner – look for the nav bar that contains sign-in/out
+            // or user greeting elements, to avoid targeting lower sections like "CURRENT CLUB TIER".
+            const bannerCandidates = document.querySelectorAll('div[class*="flex"][class*="items-center"][class*="justify-between"]');
+            let banner = null;
+            // First pass: find the candidate that contains nav-like content (sign-out link, user name, etc.)
+            bannerCandidates.forEach(el => {
+                try {
+                    if (banner) return;
+                    const html = el.innerHTML || '';
+                    // The top nav bar typically has sign-in/out links or a greeting like "Hi, NAME"
+                    if (/sign.?in|sign.?out|log.?in|log.?out|Hi,\s/i.test(html)) {
+                        banner = el;
+                    }
+                } catch(e) {}
+            });
+            // Second pass: fall back to the candidate closest to the top of the viewport
+            if (!banner && bannerCandidates.length > 0) {
+                let bestTop = Infinity;
+                bannerCandidates.forEach(el => {
+                    try {
+                        const rect = el.getBoundingClientRect();
+                        if (rect.top >= 0 && rect.top < bestTop) { bestTop = rect.top; banner = el; }
+                    } catch(e) {}
+                });
+                if (!banner) banner = bannerCandidates[0];
+            }
             if (!banner && attempt <= maxAttempts) {
                 setTimeout(() => this.addButton(maxAttempts, attempt + 1), 100);
                 return;
@@ -33,8 +62,7 @@ const ButtonManager = {
             const narrowViewport = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
             if (!banner) {
                 console.debug('Banner div not found after max attempts, using centered fixed position');
-                button.className = 'fixed top-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
-                // Center horizontally
+                button.className = 'gobo-button-fallback fixed top-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
                 button.style.left = '50%';
                 button.style.transform = 'translateX(-50%)';
                 if (narrowViewport) {
@@ -72,7 +100,7 @@ const ButtonManager = {
                     centerContainer.style.left = '50%';
                     centerContainer.style.transform = 'translateX(-50%)';
                     centerContainer.style.height = '100%';
-                    centerContainer.style.zIndex = 'auto';
+                    centerContainer.style.zIndex = '9999';
                     centerContainer.style.display = 'flex';
                     centerContainer.style.justifyContent = 'center';
                     centerContainer.style.alignItems = 'center';
@@ -89,33 +117,10 @@ const ButtonManager = {
                 // No automatic scrolling: leave layout and viewport unchanged.
                 console.debug('Button centered in banner div');
             }
-            // Value column (offerValue) added – no button adjustments required.
             console.debug('Button added to DOM');
-            // Watch for SPA frameworks removing the button (race condition) and re-place it
-            this._watchButtonRemoval();
-        } catch (error) {
+         } catch (error) {
             console.debug('Failed to add button:', error.message);
             App.ErrorHandler.showError('Failed to add button. Please reload the page.');
         }
-    },
-    _watchButtonRemoval() {
-        try {
-            // Disconnect any previous observer to avoid duplicates
-            if (this._placementObserver) { this._placementObserver.disconnect(); this._placementObserver = null; }
-            const observer = new MutationObserver(() => {
-                try {
-                    const btn = document.getElementById('gobo-offers-button');
-                    if (!btn || !btn.isConnected) {
-                        console.debug('[ButtonManager] Button removed from DOM, re-placing');
-                        observer.disconnect();
-                        this._placementObserver = null;
-                        // Small delay to let the SPA finish its DOM update
-                        setTimeout(() => this.addButton(), 200);
-                    }
-                } catch(e) { /* ignore */ }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-            this._placementObserver = observer;
-        } catch(e) { /* ignore in environments without MutationObserver */ }
     }
 };

@@ -9,10 +9,14 @@ const DOMUtils = {
         this._scheduleLateInjection();
     },
     waitForDom(maxAttempts = 10, attempt = 1) {
-        if (document.head && document.body) {
+        // At document_start, document.head/body may exist as empty shells while
+        // the SPA hasn't rendered a single component. Wait for DOMContentLoaded
+        // (full HTML parse) before firing injection, so the banner div has a
+        // chance to exist in the initial HTML or the SPA has at least bootstrapped.
+        if (document.readyState === 'complete' || (document.readyState === 'interactive' && document.body && document.body.innerHTML.length > 0)) {
+            console.debug('DOM ready (complete/interactive with content), injecting immediately');
             this._onDomReady();
         } else if (document.readyState === 'loading') {
-            // Use event listener instead of polling when DOM is still loading
             document.addEventListener('DOMContentLoaded', () => this._onDomReady(), { once: true });
         } else if (attempt <= maxAttempts) {
             console.debug(`DOM not ready, retrying (${attempt}/${maxAttempts})`);
@@ -29,7 +33,7 @@ const DOMUtils = {
             try { this._observer.disconnect(); } catch (e) { /* ignore */ }
         }
         const observer = new MutationObserver(() => {
-            if (!document.getElementById('gobo-offers-button')) {
+            if (!App.ButtonManager.isButtonCorrectlyPlaced()) {
                 App.ButtonManager.addButton();
             }
         });
@@ -40,7 +44,7 @@ const DOMUtils = {
     },
     _scheduleLateInjection() {
         const lateAttempt = () => {
-            if (!document.getElementById('gobo-offers-button')) {
+            if (!App.ButtonManager.isButtonCorrectlyPlaced()) {
                 App.ButtonManager.addButton(30);
             }
             this.observeDomChanges();
