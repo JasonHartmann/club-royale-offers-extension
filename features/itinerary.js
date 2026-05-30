@@ -738,6 +738,10 @@
                             }
                         } catch(e){}
                     }
+                    // Fallback to INTERIOR when category is unknown (matches base table behavior)
+                    if (!offerCategoryRaw) {
+                        offerCategoryRaw = 'INTERIOR';
+                    }
                     // Store original resolved awarded category separately for UI highlight (even if sold out)
                     const originalAwardCategoryResolved = resolveCategory(offerCategoryRaw);
 

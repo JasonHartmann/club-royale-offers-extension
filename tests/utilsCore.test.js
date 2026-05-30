@@ -472,6 +472,48 @@ describe('Utils (utils_core)', () => {
             const data = { offers: [] };
             expect(Utils.normalizeOffers(data)).toBe(data);
         });
+
+        test('derives roomType from roomTypeList when roomType is absent', () => {
+            const data = {
+                offers: [{
+                    campaignOffer: {
+                        offerCode: 'X',
+                        name: 'deal',
+                        sailings: [{ shipName: 'Test', roomTypeList: [{ code: 'INTERIOR', name: 'Interior' }] }],
+                    },
+                }],
+            };
+            Utils.normalizeOffers(data);
+            expect(data.offers[0].campaignOffer.sailings[0].roomType).toBe('Interior');
+        });
+
+        test('preserves existing roomType when roomTypeList is also present', () => {
+            const data = {
+                offers: [{
+                    campaignOffer: {
+                        offerCode: 'X',
+                        name: 'deal',
+                        sailings: [{ shipName: 'Test', roomType: 'Balcony', roomTypeList: [{ code: 'INTERIOR', name: 'Interior' }] }],
+                    },
+                }],
+            };
+            Utils.normalizeOffers(data);
+            expect(data.offers[0].campaignOffer.sailings[0].roomType).toBe('Balcony');
+        });
+
+        test('falls back to roomTypeList code when name is missing', () => {
+            const data = {
+                offers: [{
+                    campaignOffer: {
+                        offerCode: 'X',
+                        name: 'deal',
+                        sailings: [{ shipName: 'Test', roomTypeList: [{ code: 'INTERIOR' }] }],
+                    },
+                }],
+            };
+            Utils.normalizeOffers(data);
+            expect(data.offers[0].campaignOffer.sailings[0].roomType).toBe('INTERIOR');
+        });
     });
 
     describe('isCelebrity / getRedemptionBase', () => {

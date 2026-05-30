@@ -68,6 +68,14 @@ body.gobo-dark .accordion-table td {
 body.gobo-dark .table-auto tbody tr.gobo-row-odd { background:#0b1220; }
 body.gobo-dark .table-auto tbody tr.gobo-row-even { background:#0f172a; }
 
+/* Dark-mode row hover override (counters hover:bg-gray-50 in utils_row.js) */
+body.gobo-dark .table-auto tbody tr:hover,
+body.gobo-dark .accordion-table tbody tr:hover {
+	background: rgba(51, 65, 85, 0.45) !important;
+}
+body.gobo-dark .accordion-table tbody tr.gobo-row-odd { background:#0b1220; }
+body.gobo-dark .accordion-table tbody tr.gobo-row-even { background:#0f172a; }
+
 /* Responsive: Maximize modal space on narrow screens */
 @media (max-width: 960px) {
 	#gobo-offers-table {

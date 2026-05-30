@@ -40,6 +40,14 @@ const AdvancedSearch = {
             if (!Array.isArray(state.advancedSearch.predicates)) state.advancedSearch.predicates = [];
             if (typeof state.advancedSearch.masterEnabled !== 'undefined') delete state.advancedSearch.masterEnabled; // legacy cleanup
         }
+        // Hydrate includeTaxesAndFeesInPriceFilters from SettingsStore when not yet set
+        if (typeof state.advancedSearch.includeTaxesAndFeesInPriceFilters !== 'boolean') {
+            try {
+                if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function') {
+                    state.advancedSearch.includeTaxesAndFeesInPriceFilters = !!App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters();
+                }
+            } catch(e) { /* ignore */ }
+        }
         return state.advancedSearch;
     },
     storageKey(profileKey) {
@@ -59,7 +67,11 @@ const AdvancedSearch = {
                         values: p.values.slice(),
                         complete: !!p.complete
                     })),
-                includeTaxesAndFeesInPriceFilters: state.advancedSearch.includeTaxesAndFeesInPriceFilters !== false // default true
+                includeTaxesAndFeesInPriceFilters: (typeof state.advancedSearch.includeTaxesAndFeesInPriceFilters === 'boolean')
+                    ? state.advancedSearch.includeTaxesAndFeesInPriceFilters
+                    : (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function')
+                        ? !!App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters()
+                        : true
             };
             // Use 'default' when no profile key is available so user preferences still persist
             const key = this.storageKey(state.selectedProfileKey || 'default');

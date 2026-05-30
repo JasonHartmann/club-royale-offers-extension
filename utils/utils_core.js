@@ -552,6 +552,9 @@ const Utils = {
                     if (typeof co.name === 'string') co.name = Utils.toTitleCase(co.name.trim());
                     if (Array.isArray(co.sailings)) {
                         co.sailings.forEach((sailing) => {
+                            if (!sailing.roomType && Array.isArray(sailing.roomTypeList) && sailing.roomTypeList.length > 0) {
+                                sailing.roomType = sailing.roomTypeList[0].name || sailing.roomTypeList[0].code || '';
+                            }
                             if (typeof sailing.shipName === 'string') sailing.shipName = Utils.toTitleCase(sailing.shipName.trim());
                             if (sailing.departurePort?.name) sailing.departurePort.name = Utils.toPortTitleCase(sailing.departurePort.name.trim());
                             if (typeof sailing.itineraryDescription === 'string') sailing.itineraryDescription = Utils.toTitleCase(sailing.itineraryDescription.trim());

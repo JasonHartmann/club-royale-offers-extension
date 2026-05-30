@@ -164,6 +164,37 @@ const TableBuilder = {
     },
 
     /**
+     * Measure every row's actual height and build a cumulative position array.
+     * positions[i] = Y offset where row i starts. positions[0] = 0.
+     * Also returns totalHeight = positions[total] (end of last row).
+     */
+    _measureAllRowHeights(tbody, state, globalMaxOfferDate, soonestExpDate) {
+        try {
+            const self = this;
+            const total = state.sortedOffers.length;
+            const heights = new Array(total);
+            let cumulative = 0;
+            for (let i = 0; i < total; i++) {
+                const row = self._createRow(state, i, globalMaxOfferDate, soonestExpDate);
+                if (row) {
+                    tbody.appendChild(row);
+                    heights[i] = row.offsetHeight || self.ROW_HEIGHT_ESTIMATE;
+                    tbody.removeChild(row);
+                } else {
+                    heights[i] = self.ROW_HEIGHT_ESTIMATE;
+                }
+                cumulative += heights[i];
+            }
+            const positions = new Array(total + 1);
+            positions[0] = 0;
+            for (let i = 0; i < total; i++) positions[i + 1] = positions[i] + heights[i];
+            return { heights, positions, totalHeight: cumulative };
+        } catch(e) {
+            return null;
+        }
+    },
+
+ /**
      * Attach (or re-attach) the virtual-scroll listener to the scroll container.
      * Stores cleanup handle on state so it can be removed on next render.
      */
@@ -172,7 +203,6 @@ const TableBuilder = {
         const total = state.sortedOffers.length;
         const colSpan = (state.headers && state.headers.length) ? state.headers.length : 18;
 
-        // Create spacer rows
         const topSpacer = document.createElement('tr');
         topSpacer.className = 'gobo-vs-spacer-top';
         topSpacer.innerHTML = `<td colspan="${colSpan}" style="padding:0;border:none;"></td>`;
@@ -180,23 +210,27 @@ const TableBuilder = {
         bottomSpacer.className = 'gobo-vs-spacer-bottom';
         bottomSpacer.innerHTML = `<td colspan="${colSpan}" style="padding:0;border:none;"></td>`;
 
-        // Virtual-scroll state stored on the table state object
-        const vs = {
-            topSpacer,
-            bottomSpacer,
-            rowHeight: this.ROW_HEIGHT_ESTIMATE,
-            renderedStart: 0,
-            renderedEnd: 0,
-            total,
-            measured: false
-        };
-        state._virtualScroll = vs;
-
         tbody.innerHTML = '';
         tbody.appendChild(topSpacer);
         tbody.appendChild(bottomSpacer);
 
-        // Find the scroll container (parent of the table)
+        const measured = this._measureAllRowHeights(tbody, state, globalMaxOfferDate, soonestExpDate);
+        if (!measured) return;
+        const { heights, positions, totalHeight } = measured;
+
+        const vs = {
+            topSpacer,
+            bottomSpacer,
+            heights,
+            positions,
+            totalHeight,
+            renderedStart: 0,
+            renderedEnd: 0,
+            total
+        };
+        state._virtualScroll = vs;
+
+        let scrollEl = null;
         const findScrollContainer = () => {
             try {
                 const tbl = tbody.parentElement;
@@ -208,24 +242,31 @@ const TableBuilder = {
             } catch(e) {}
             return null;
         };
+        scrollEl = findScrollContainer();
+
+        const findRowByY = (y) => {
+            let lo = 0, hi = total;
+            while (lo < hi) {
+                const mid = (lo + hi) >>> 1;
+                if (positions[mid] <= y) lo = mid + 1;
+                else hi = mid;
+            }
+            return Math.max(0, lo - 1);
+        };
 
         const renderVisibleRows = () => {
-            const scrollEl = findScrollContainer();
             const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
             const viewportHeight = scrollEl ? scrollEl.clientHeight : 600;
-            const rh = vs.rowHeight;
             const buffer = self.BUFFER_ROWS;
 
-            // Determine which rows should be in the DOM
-            let startIdx = Math.floor(scrollTop / rh) - buffer;
-            if (startIdx < 0) startIdx = 0;
-            let endIdx = Math.ceil((scrollTop + viewportHeight) / rh) + buffer;
-            if (endIdx > total) endIdx = total;
+            const firstVisible = findRowByY(scrollTop);
+            let startIdx = Math.max(0, firstVisible - buffer);
+            let endIdx = firstVisible + 1;
+            while (endIdx < total && positions[endIdx + 1] < scrollTop + viewportHeight) endIdx++;
+            endIdx = Math.min(total, endIdx + buffer);
 
-            // Skip if range hasn't changed
             if (startIdx === vs.renderedStart && endIdx === vs.renderedEnd) return;
 
-            // Build fragment of rows for [startIdx, endIdx)
             const frag = document.createDocumentFragment();
             for (let i = startIdx; i < endIdx; i++) {
                 const row = self._createRow(state, i, globalMaxOfferDate, soonestExpDate);
@@ -235,38 +276,17 @@ const TableBuilder = {
                 }
             }
 
-            // Remove old data rows (everything between spacers)
             while (topSpacer.nextSibling && topSpacer.nextSibling !== bottomSpacer) {
                 tbody.removeChild(topSpacer.nextSibling);
             }
 
-            // Insert new rows before bottom spacer
             tbody.insertBefore(frag, bottomSpacer);
 
-            // Update spacer heights
-            topSpacer.firstChild.style.height = (startIdx * rh) + 'px';
-            bottomSpacer.firstChild.style.height = ((total - endIdx) * rh) + 'px';
+            topSpacer.firstChild.style.height = positions[startIdx] + 'px';
+            bottomSpacer.firstChild.style.height = (positions[total] - positions[endIdx]) + 'px';
 
             vs.renderedStart = startIdx;
             vs.renderedEnd = endIdx;
-
-            // Measure actual row height after first render for accuracy
-            if (!vs.measured) {
-                try {
-                    const firstDataRow = topSpacer.nextSibling;
-                    if (firstDataRow && firstDataRow !== bottomSpacer) {
-                        const actualHeight = firstDataRow.getBoundingClientRect().height;
-                        if (actualHeight > 0) {
-                            vs.rowHeight = actualHeight;
-                            vs.measured = true;
-                            // Re-render with corrected height
-                            vs.renderedStart = -1; // force re-render
-                            renderVisibleRows();
-                            return;
-                        }
-                    }
-                } catch(e) {}
-            }
 
             // Re-apply itinerary highlight if tracked
             try {
@@ -293,29 +313,29 @@ const TableBuilder = {
             });
         };
 
-        // Initial render
         renderVisibleRows();
 
         // Attach scroll listener (deferred so table is in DOM)
         const attachListener = () => {
-            const scrollEl = findScrollContainer();
-            if (scrollEl) {
+            const el = scrollEl || findScrollContainer();
+            if (el) {
                 // Remove previous listener if any
                 if (state._vsCleanup) { try { state._vsCleanup(); } catch(e) {} }
-                scrollEl.addEventListener('scroll', onScroll, { passive: true });
+                el.addEventListener('scroll', onScroll, { passive: true });
                 state._vsCleanup = () => {
-                    scrollEl.removeEventListener('scroll', onScroll);
+                    el.removeEventListener('scroll', onScroll);
                     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                 };
             } else {
                 // Retry once after a frame (table may not be in DOM yet)
                 requestAnimationFrame(() => {
-                    const el = findScrollContainer();
-                    if (el) {
-                        if (state._vsCleanup) { try { state._vsCleanup(); } catch(e) {} }
-                        el.addEventListener('scroll', onScroll, { passive: true });
+                    const e = findScrollContainer();
+                    if (e) {
+                        scrollEl = e;
+                        if (state._vsCleanup) { try { state._vsCleanup(); } catch(err) {} }
+                        e.addEventListener('scroll', onScroll, { passive: true });
                         state._vsCleanup = () => {
-                            el.removeEventListener('scroll', onScroll);
+                            e.removeEventListener('scroll', onScroll);
                             if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                         };
                     }
