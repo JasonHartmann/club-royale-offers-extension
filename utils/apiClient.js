@@ -266,7 +266,7 @@ const ApiClient = {
                 data.offers = data.offers.map(o => ({ ...o })); // shallow clone each offer root
                 data.offers.forEach(o => {
                     removeExcludedFromOffer(o);
-                    enforceTierNightLimit(o);
+                    //enforceTierNightLimit(o);
                 });
                 console.debug('[apiClient] Offers array processed');
             }
@@ -366,7 +366,7 @@ const ApiClient = {
                             data.offers[originalIdx] = { ...original, campaignOffer: newCO };
                             // Post-merge pruning / limits (may drop some superset entries if excluded or >7 nights for TIER)
                             removeExcludedFromOffer(data.offers[originalIdx]);
-                            enforceTierNightLimit(data.offers[originalIdx]);
+                            //enforceTierNightLimit(data.offers[originalIdx]);
                             console.debug(`[apiClient] Unioned sailings for offer ${code}: original=${originalSailings.length} refetched=${refreshedSailings.length} added=${added} replaced=${replaced} final=${data.offers[originalIdx].campaignOffer.sailings.length}`);
                         }
                     });
