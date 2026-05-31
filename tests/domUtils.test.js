@@ -16,7 +16,7 @@ describe('DOMUtils', () => {
         injectStylesheet = jest.fn();
 
         global.App = {
-            ButtonManager: { addButton },
+            ButtonManager: { addButton, isButtonCorrectlyPlaced: jest.fn() },
             Styles: { injectStylesheet },
         };
 
