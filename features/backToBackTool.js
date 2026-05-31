@@ -316,36 +316,10 @@
         },
 
         attachToCell(cell, context) {
-            if (!cell) return;
-            const pill = cell.querySelector('.b2b-chevrons');
-            if (!pill) return;
-            const sailing = context && context.sailing;
-            const rowId = sailing && sailing.__b2bRowId;
-            if (!rowId) return;
-            // try { console.debug('[B2B] attachToCell binding', { rowId }); } catch(e){}
-            pill.classList.add('b2b-pill-button');
-            pill.setAttribute('role', 'button');
-            pill.setAttribute('tabindex', '0');
-            pill.dataset.b2bRowId = rowId;
-            if (pill.dataset.b2bBound === 'true') return;
-            let _b2bOpening = false;
-            const handler = (ev) => {
-                ev.preventDefault();
-                ev.stopPropagation();
-                if (_b2bOpening) return;
-                _b2bOpening = true;
-                setTimeout(() => { _b2bOpening = false; }, 500);
-                this.openByRowId(rowId);
-            };
-            pill.addEventListener('click', handler, true);
-            pill.addEventListener('pointerdown', handler, true);
-            pill.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            }, true);
-            pill.dataset.b2bBound = 'true';
+            // No-op: click handling is done at the cell level in utils_row.js
+            // with a shared guard to prevent pointerdown+click double-fire.
+            // This method is retained for backward compatibility with callers
+            // that invoke BackToBackTool.attachToCell().
         },
 
         // Debugging helper: capture-phase listener to detect clicks that never reach our handlers
@@ -699,9 +673,8 @@
             const keyHandler = (ev) => {
                 if (ev.key === 'Escape') this._closeOverlay();
             };
-            const dismissGraceUntil = Date.now() + 300;
             overlay.addEventListener('click', (ev) => {
-                if (ev.target === overlay && Date.now() > dismissGraceUntil) this._closeOverlay();
+                if (ev.target === overlay) this._closeOverlay();
             });
             document.addEventListener('keydown', keyHandler);
 
