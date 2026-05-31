@@ -699,8 +699,9 @@
             const keyHandler = (ev) => {
                 if (ev.key === 'Escape') this._closeOverlay();
             };
+            const dismissGraceUntil = Date.now() + 300;
             overlay.addEventListener('click', (ev) => {
-                if (ev.target === overlay) this._closeOverlay();
+                if (ev.target === overlay && Date.now() > dismissGraceUntil) this._closeOverlay();
             });
             document.addEventListener('keydown', keyHandler);
 
