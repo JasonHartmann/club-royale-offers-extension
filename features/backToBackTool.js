@@ -33,14 +33,10 @@
 
     function formatDateLabel(iso, includeDow) {
         if (!iso) return 'Date TBA';
-        try {
-            const d = new Date(iso + 'T00:00:00Z');
-            if (isNaN(d)) return iso;
-            const base = DATE_FMT.format(d);
-            return includeDow ? `${DOW_FMT.format(d)} ${base}` : base;
-        } catch (e) {
-            return iso;
-        }
+        const d = new Date(iso + 'T00:00:00Z');
+        if (isNaN(d)) return iso;
+        const base = DATE_FMT.format(d);
+        return includeDow ? `${DOW_FMT.format(d)} ${base}` : base;
     }
 
     function formatRange(meta) {

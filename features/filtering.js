@@ -774,8 +774,15 @@ const Filtering = {
                 } catch(logErr){ /* ignore logging errors */ }
                 return inRange;
             }
-            const values = Array.isArray(predicate.values) ? predicate.values.map(v=>Filtering.normalizePredicateValue(v, predicate.fieldKey)) : [];
-            const fv = Filtering.normalizePredicateValue(fieldValue == null ? '' : (''+fieldValue), predicate.fieldKey);
+            const dateFields = new Set(['offerDate', 'expiration', 'sailDate', 'endDate']);
+            const fmtForMatch = (val, fieldKey) => {
+                if (dateFields.has(fieldKey) && val && String(val).length >= 7) {
+                    try { return App.Utils.formatDate(String(val).trim()); } catch(e) {}
+                }
+                return val;
+            };
+            const values = Array.isArray(predicate.values) ? predicate.values.map(v => Filtering.normalizePredicateValue(fmtForMatch(v, predicate.fieldKey), predicate.fieldKey)) : [];
+            const fv = Filtering.normalizePredicateValue(fmtForMatch(fieldValue, predicate.fieldKey) == null ? '' : (''+fmtForMatch(fieldValue, predicate.fieldKey)), predicate.fieldKey);
             if (!op || !values.length) return true;
             if (op === 'in') return values.includes(fv);
             if (op === 'not in') return !values.includes(fv);
@@ -809,9 +816,9 @@ const Filtering = {
             case 'offerCode':
                 return offer.campaignOffer?.offerCode;
             case 'offerDate':
-                return App.Utils.formatDate(offer.campaignOffer?.startDate);
+                return offer.campaignOffer?.startDate ? String(offer.campaignOffer.startDate).trim().split('T')[0] : undefined;
             case 'expiration':
-                return App.Utils.formatDate(offer.campaignOffer?.reserveByDate);
+                return offer.campaignOffer?.reserveByDate ? String(offer.campaignOffer.reserveByDate).trim().split('T')[0] : undefined;
             case 'offerName':
                 return offer.campaignOffer?.name || '-';
             case 'shipClass':
@@ -819,15 +826,10 @@ const Filtering = {
             case 'ship':
                 return sailing?.shipName || '-';
             case 'sailDate':
-                return App.Utils.formatDate(sailing.sailDate);
+                return sailing.sailDate ? String(sailing.sailDate).trim().split('T')[0] : undefined;
             case 'endDate':
                 if (!computedEndIso) return '-';
-                try {
-                    if (typeof App !== 'undefined' && App && App.Utils && typeof App.Utils.formatDate === 'function') {
-                        return App.Utils.formatDate(computedEndIso);
-                    }
-                } catch (formatErr) { /* ignore */ }
-                return computedEndIso;
+                return computedEndIso.trim().split('T')[0];
             case 'departurePort':
                 return sailing.departurePort?.name || '-';
             case 'nights':

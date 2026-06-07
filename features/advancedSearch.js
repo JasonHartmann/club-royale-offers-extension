@@ -462,12 +462,7 @@ const AdvancedSearch = {
         // Special handling for date range committed predicate: display a single summarized chip
         if (pred.operator === 'date range' && pred.values && pred.values.length === 2) {
             const [startIso, endIso] = pred.values;
-            const fmt = (iso) => {
-                if (!iso) return '?';
-                const parts = iso.split('-');
-                if (parts.length !== 3) return iso;
-                return parts[1] + '/' + parts[2] + '/' + parts[0].slice(-2);
-            };
+            const fmt = (iso) => App.Utils.formatDate(iso) || (iso || '?');
             const chip = document.createElement('span');
             chip.className = 'adv-chip adv-chip-daterange';
             chip.textContent = fmt(startIso) + ' → ' + fmt(endIso);
@@ -493,10 +488,17 @@ const AdvancedSearch = {
             box.appendChild(chipsWrap);
             return chipsWrap;
         }
+        const dateFields = new Set(['offerDate', 'expiration', 'sailDate', 'endDate']);
+        const displayVal = (v, fieldKey) => {
+            if (dateFields.has(fieldKey) && v && String(v).length >= 7) {
+                try { return App.Utils.formatDate(String(v).trim()) || v; } catch(e) {}
+            }
+            return v;
+        };
         pred.values.forEach(val => {
             const chip = document.createElement('span');
             chip.className = 'adv-chip';
-            chip.textContent = val;
+            chip.textContent = displayVal(val, pred.fieldKey);
             // If predicate is committed (complete), clicking the chip (not the remove button) should enter edit mode.
             if (pred.complete) {
                 chip.title = 'Click to edit this filter';
@@ -751,19 +753,21 @@ const AdvancedSearch = {
                                     setTimeout(() => { try { this.renderPredicates(state); } catch(e){} }, 1200);
                                 }
                             } else {
-                                const alreadySelected = new Set(pred.values.map(v => Filtering.normalizePredicateValue(v, pred.fieldKey)));
-                                const CHUNK_SYNC_THRESHOLD = 250, CHUNK_SIZE = 300;
-                                if (values.length <= CHUNK_SYNC_THRESHOLD) {
-                                    values.forEach(v => { const opt = document.createElement('option'); opt.value = v; opt.textContent = v; opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); sel.appendChild(opt); });
-                                } else {
-                                    sel.classList.add('loading'); let idx = 0;
-                                    const addChunk = () => {
-                                        if (!sel.isConnected) return; const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
-                                        while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); opt.value = v; opt.textContent = v; opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
-                                        sel.appendChild(frag);
-                                        if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else { sel.classList.remove('loading'); }
-                                    }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
-                                }
+                                 const dateFields = new Set(['offerDate', 'expiration', 'sailDate', 'endDate']);
+                                 const displayOpt = (v) => (dateFields.has(pred.fieldKey) && v && String(v).length >= 7) ? (App.Utils.formatDate(String(v).trim()) || v) : v;
+                                 const alreadySelected = new Set(pred.values.map(v => Filtering.normalizePredicateValue(v, pred.fieldKey)));
+                                 const CHUNK_SYNC_THRESHOLD = 250, CHUNK_SIZE = 300;
+                                 if (values.length <= CHUNK_SYNC_THRESHOLD) {
+                                     values.forEach(v => { const opt = document.createElement('option'); opt.value = v; opt.textContent = displayOpt(v); opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); sel.appendChild(opt); });
+                                 } else {
+                                     sel.classList.add('loading'); let idx = 0;
+                                     const addChunk = () => {
+                                         if (!sel.isConnected) return; const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
+                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); opt.value = v; opt.textContent = displayOpt(v); opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
+                                         sel.appendChild(frag);
+                                         if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else { sel.classList.remove('loading'); }
+                                     }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
+                                 }
                                 sel.addEventListener('change', () => {
                                     // Inline update without full render to prevent scroll jump
                                     const chosen = Array.from(sel.selectedOptions).map(o => Filtering.normalizePredicateValue(o.value, pred.fieldKey));
@@ -781,7 +785,7 @@ const AdvancedSearch = {
                                             if (existingPlaceholder) existingPlaceholder.remove();
                                             const chipsWrap = document.createElement('div'); chipsWrap.className='adv-value-chips';
                                             pred.values.forEach(val => {
-                                                const chip = document.createElement('span'); chip.className='adv-chip'; chip.textContent = val;
+                                                const chip = document.createElement('span'); chip.className='adv-chip'; chip.textContent = (['offerDate','expiration','sailDate','endDate'].includes(pred.fieldKey) && val && String(val).length >= 7) ? (App.Utils.formatDate(String(val).trim()) || val) : val;
                                                 // remove button
                                                 const removeBtn = document.createElement('button'); removeBtn.type='button'; removeBtn.textContent='\u2715'; removeBtn.className='adv-chip-remove';
                                                 removeBtn.addEventListener('click', (e) => {
@@ -1423,10 +1427,7 @@ const AdvancedSearch = {
                 const yr = d.getUTCFullYear(); const m = (d.getUTCMonth()+1).toString().padStart(2,'0'); const day = d.getUTCDate().toString().padStart(2,'0');
                 return `${yr}-${m}-${day}`;
             };
-            const fmtDisp = (iso) => {
-                if (!iso) return '?';
-                const [y,m,d]=iso.split('-'); return `${m}/${d}/${y.slice(-2)}`;
-            };
+            const fmtDisp = (iso) => App.Utils.formatDate(iso) || (iso || '?');
             const renderCalendars = () => {
                 calHost.innerHTML='';
                 const months = [0,1];

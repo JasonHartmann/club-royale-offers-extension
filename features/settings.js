@@ -3,6 +3,62 @@ const Settings = {
         if (!state.settings) state.settings = {};
         return state;
     },
+    buildDateFormatSetting(body) {
+        const area = document.createElement('div');
+        area.className = 'gobo-setting-area';
+        area.style.cssText = 'margin-bottom:12px; width:100%;';
+
+        const title = document.createElement('strong');
+        title.textContent = 'Date Format';
+
+        const desc = document.createElement('div');
+        desc.className = 'gobo-setting-desc';
+        desc.style.cssText = 'font-size:12px; margin:6px 0 8px 0;';
+        desc.textContent = 'Choose how dates are displayed across the extension (tables, filters, popups, and CSV export).';
+
+        const select = document.createElement('select');
+        select.id = 'gobo-setting-dateformat';
+
+        const currentFormat = App.SettingsStore.getDateFullFormat();
+
+        const optionCompact = document.createElement('option');
+        optionCompact.value = 'compact';
+        optionCompact.textContent = 'MM/DD/YY (e.g., 03/15/25)';
+        if (!currentFormat) optionCompact.selected = true;
+
+        const optionFull = document.createElement('option');
+        optionFull.value = 'full';
+        optionFull.textContent = 'YYYY-MM-DD (e.g., 2025-03-15)';
+        if (currentFormat) optionFull.selected = true;
+
+        select.appendChild(optionCompact);
+        select.appendChild(optionFull);
+
+        select.addEventListener('change', () => {
+            const isFull = select.value === 'full';
+            App.SettingsStore.setDateFullFormat(isFull);
+            App.DateFullFormat = isFull;
+            try {
+                const state = App.TableRenderer.lastState;
+                if (state) {
+                    state._switchToken = App.TableRenderer.currentSwitchToken;
+                    delete state._lastRenderSig;
+                    // Bust Advanced Search value caches so IN/NOT IN lists rebuild with new format
+                    delete state._advFieldCache;
+                    delete state._advStaticFieldIndex;
+                    delete state._advIndexBuilding;
+                }
+                if (state && typeof App.AdvancedSearch.lightRefresh === 'function') {
+                    App.AdvancedSearch.lightRefresh(state, { showSpinner: false });
+                }
+            } catch(e) { /* ignore */ }
+        });
+
+        area.appendChild(title);
+        area.appendChild(desc);
+        area.appendChild(select);
+        body.appendChild(area);
+    },
     buildGearButton() {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -339,6 +395,9 @@ const Settings = {
             darkDesc.textContent = 'Apply a darker theme to the offers table, modals, and panels.';
             darkArea.appendChild(darkLabel); darkArea.appendChild(darkDesc);
             body.appendChild(darkArea);
+
+            // Date Format setting (YYYY-MM-DD vs MM/DD/YY)
+            Settings.buildDateFormatSetting(body);
 
             // Column visibility settings
             const columnArea = document.createElement('div');

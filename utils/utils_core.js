@@ -97,11 +97,10 @@ const Utils = {
         }
         return names.size ? Array.from(names).join(' | ') : '-';
     },
-    // Helper to format date string as MM/DD/YY without timezone shift
     formatDate(dateStr) {
         if (!dateStr) return '-';
-        // Handles YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss
         const [year, month, day] = dateStr.split('T')[0].split('-');
+        if (App.DateFullFormat) return `${year}-${month}-${day}`;
         return `${month}/${day}/${year.slice(-2)}`;
     },
     // Helper to extract nights and destination from itinerary string

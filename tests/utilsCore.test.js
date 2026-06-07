@@ -62,6 +62,32 @@ describe('Utils (utils_core)', () => {
         test('handles year 2000', () => {
             expect(Utils.formatDate('2000-06-15')).toBe('06/15/00');
         });
+
+        test('returns YYYY-MM-DD when App.DateFullFormat is true', () => {
+            const orig = global.App ? global.App.DateFullFormat : undefined;
+            try { global.App = global.App || {}; global.App.DateFullFormat = true; } catch(e) {}
+            expect(Utils.formatDate('2025-03-15')).toBe('2025-03-15');
+            try { if (orig === undefined) delete global.App.DateFullFormat; else global.App.DateFullFormat = orig; } catch(e) {}
+        });
+
+        test('returns YYYY-MM-DD with time stripped when App.DateFullFormat is true', () => {
+            const orig = global.App ? global.App.DateFullFormat : undefined;
+            try { global.App = global.App || {}; global.App.DateFullFormat = true; } catch(e) {}
+            expect(Utils.formatDate('2026-12-01T14:30:00')).toBe('2026-12-01');
+            try { if (orig === undefined) delete global.App.DateFullFormat; else global.App.DateFullFormat = orig; } catch(e) {}
+        });
+
+        test('toggles correctly between MM/DD/YY and YYYY-MM-DD', () => {
+            const orig = global.App ? global.App.DateFullFormat : undefined;
+            try { global.App = global.App || {}; } catch(e) {}
+            global.App.DateFullFormat = false;
+            expect(Utils.formatDate('2024-07-04')).toBe('07/04/24');
+            global.App.DateFullFormat = true;
+            expect(Utils.formatDate('2024-07-04')).toBe('2024-07-04');
+            global.App.DateFullFormat = false;
+            expect(Utils.formatDate('2024-07-04')).toBe('07/04/24');
+            try { if (orig === undefined) delete global.App.DateFullFormat; else global.App.DateFullFormat = orig; } catch(e) {}
+        });
     });
 
     describe('parseItinerary', () => {

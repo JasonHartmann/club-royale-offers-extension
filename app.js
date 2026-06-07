@@ -127,6 +127,12 @@
             },
             setDarkMode(val) {
                 try { const s = this.getSettings() || {}; s.darkMode = !!val; this.setSettings(s); } catch(e) {}
+            },
+            getDateFullFormat() {
+                try { const s = this.getSettings(); return (typeof s.dateFullFormat !== 'undefined') ? !!s.dateFullFormat : false; } catch(e) { return false; }
+            },
+            setDateFullFormat(val) {
+                try { const s = this.getSettings() || {}; s.dateFullFormat = !!val; this.setSettings(s); try { window.App.DateFullFormat = !!val; } catch(e) {} } catch(e) {}
             }
         },
         // runtime flag to control expensive B2B computations; default true for backwards compatibility
@@ -135,6 +141,8 @@
         B2BDrivingRangeHours: (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0,
         // runtime value: lag days (0-7) between sailings for B2B chaining; default 0 (same-day only)
         B2BLagDays: (typeof __goboSettings.b2bLagDays !== 'undefined') ? Math.max(0, Math.min(7, parseInt(__goboSettings.b2bLagDays, 10) || 0)) : 0,
+        // runtime flag: full date format (YYYY-MM-DD) vs compact (MM/DD/YY); default false (compact)
+        DateFullFormat: (typeof __goboSettings.dateFullFormat !== 'undefined') ? !!__goboSettings.dateFullFormat : false,
         // Shared email: null initially, set by apiClient.fetchGuestAccount, hydrated from localStorage by breadcrumbs fallback
         CurrentUserEmail: null,
         ProfileCache: _prev.ProfileCache || [],
@@ -145,6 +153,7 @@
                 App.BackToBackAutoRun = (typeof __goboSettings.autoRunB2B !== 'undefined') ? !!__goboSettings.autoRunB2B : true;
                 App.B2BDrivingRangeHours = (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0;
                 App.B2BLagDays = (typeof __goboSettings.b2bLagDays !== 'undefined') ? Math.max(0, Math.min(7, parseInt(__goboSettings.b2bLagDays, 10) || 0)) : 0;
+                App.DateFullFormat = (typeof __goboSettings.dateFullFormat !== 'undefined') ? !!__goboSettings.dateFullFormat : false;
             } catch(e) { /* ignore */ }
             try { App.applyTheme(); } catch(e) { /* ignore */ }
         },

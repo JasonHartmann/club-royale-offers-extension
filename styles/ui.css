@@ -1082,3 +1082,26 @@ body.gobo-dark .gobo-setting-desc { color:#cbd5f5; }
 body.gobo-dark .profile-link-icon-img {
     filter: brightness(1.8) contrast(1.2) saturate(1.1);
 }
+
+/* Settings: Date Format dropdown */
+#gobo-setting-dateformat {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 14px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #1a1a1a;
+}
+
+/* Dark mode: Date Format dropdown */
+body.gobo-dark #gobo-setting-dateformat {
+    background: #1e293b;
+    color: #e5e7eb;
+    border-color: #475569;
+}
+
+body.gobo-dark #gobo-setting-dateformat option {
+    background: #1e293b;
+    color: #e5e7eb;
+}
