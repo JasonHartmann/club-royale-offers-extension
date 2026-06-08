@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CR Offers - Card + Table Mockup</title>
+<style>
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: #1e293b;
+  --bg-header: #334155;
+  --bg-l2-header: #2d3a4d;
+  --border-color: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-green: #22c55e;
+  --accent-pink: #f472b6;
+  --accent-blue: #3b82f6;
+  --accent-orange: #f59e0b;
+  --danger: #ef4444;
+  --star-color: #fbbf24;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* === STICKY BAR === */
+.sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sticky-bar .btn-wrap {
+  position: relative;
+  display: inline-block;
+}
+.sticky-bar .btn {
+  background: var(--bg-header);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sticky-bar .btn:hover { background: #475569; }
+.sticky-bar .btn.active { background: var(--accent-blue); border-color: var(--accent-blue); }
+.sticky-bar .btn svg { width: 14px; height: 14px; fill: currentColor; }
+.sticky-bar .spacer { flex: 1; }
+.sticky-bar .badge-count {
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* === DROPDOWN PANEL === */
+.dropdown-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  padding: 6px;
+  z-index: 200;
+  display: none;
+  min-width: 220px;
+}
+.dropdown-panel.open { display: block; }
+.dropdown-panel button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+}
+.dropdown-panel button:hover { background: var(--bg-header); }
+.dropdown-panel button.active { background: var(--accent-blue); font-weight: 600; }
+
+/* === SCROLLABLE AREA === */
+.scroll-area {
+  padding: 8px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* === CARD VIEW CONTAINER === */
+#cardView {
+  display: flex;
+  flex-direction: column;
+}
+
+/* === CARD GRID (only applies to cards, not group headers) === */
+.card-grid {
+  display: grid;
+  gap: 8px;
+}
+
+/* === GROUP HEADERS === */
+.group-header {
+  padding: 12px 16px;
+  margin: 8px 0 4px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  transition: background 0.15s;
+}
+.group-header:hover { opacity: 0.9; }
+.group-header.level-0 {
+  background: var(--bg-header);
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 16px;
+}
+.group-header.level-1 {
+  background: var(--bg-l2-header);
+  font-size: 14px;
+  font-weight: 600;
+  padding-left: 24px;
+  margin-top: 6px;
+}
+.group-header .arrow {
+  transition: transform 0.2s;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.group-header.collapsed .arrow { transform: rotate(-90deg); }
+.group-content { overflow: hidden; transition: max-height 0.25s ease; }
+.group-content.collapsed { max-height: 0 !important; }
+
+/* === CARDS === */
+.card {
+  background: linear-gradient(160deg, #253347 0%, #1e293b 100%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 14px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: border-color 0.15s, transform 0.1s;
+  position: relative;
+  overflow: hidden;
+}
+.card:hover { border-color: #475569; }
+.card.highlight-green { box-shadow: 0 0 0 1px var(--accent-green); }
+.card.highlight-pink { box-shadow: 0 0 0 1px var(--accent-pink); }
+
+/* Card inner sections */
+.card-section {
+  padding-bottom: 7px;
+}
+.card-section-divider {
+  border-top: 1px solid rgba(51,65,85,0.5);
+  margin-bottom: 7px;
+  padding-top: 7px;
+}
+
+/* Row A: Ship + Class + Nights + Guest badge + Star */
+.card-row-ship {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.card-star {
+  color: var(--star-color);
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.card-star.empty { color: var(--text-muted); }
+.card-ship-name {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.card-class-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  background: rgba(100,116,139,0.25);
+  border-radius: 4px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.card-row-ship-spacer { flex: 1; }
+.card-nights-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.card-guest-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+.badge-gobo { background: #3b2040; color: var(--accent-pink); }
+.badge-doubles { background: #1e3a2f; color: var(--accent-green); }
+
+/* Row B: Departure port + itinerary */
+.card-route {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.card-route-departure {
+  color: var(--text-muted);
+}
+
+/* Row C: Dates (Offer Rcvd / Sail / Expiration) */
+.card-dates-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.card-date-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-secondary);
+}
+.card-date-item .card-date-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-right: 2px;
+}
+.card-date-expire {
+  color: var(--accent-orange);
+}
+.card-date-expire .card-date-label {
+  color: var(--accent-orange);
+}
+.card-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* Row D: Offer info (Name + Code) */
+.card-offer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.card-offer-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-offer-code {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  background: rgba(59,130,246,0.15);
+  border-radius: 4px;
+  color: var(--accent-blue);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* Row E: Meta chips (Category / Value / Trade / Perks) */
+.card-meta-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.card-chip {
+  font-size: 10px;
+  padding: 2px 7px;
+  background: var(--bg-header);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.card-chip-category {
+  background: rgba(100,116,139,0.2);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.card-chip-value {
+  background: rgba(34,197,94,0.1);
+  color: var(--accent-green);
+  font-weight: 600;
+}
+.card-chip-trade {
+  background: rgba(245,158,11,0.12);
+  color: var(--accent-orange);
+}
+.card-chip-perk {
+  background: rgba(244,114,182,0.12);
+  color: var(--accent-pink);
+}
+
+/* Row F: Pricing grid (You Pay + 3 upgrades) */
+.card-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.card-price-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 4px;
+  border-radius: 6px;
+  background: rgba(15,23,42,0.4);
+  border: 1px solid transparent;
+}
+.card-price-cell.you-pay {
+  background: rgba(34,197,94,0.12);
+  border-color: rgba(34,197,94,0.3);
+}
+.card-price-cell.upgrade {
+  background: rgba(15,23,42,0.3);
+}
+.card-price-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 1px;
+}
+.card-price-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.card-price-cell.you-pay .card-price-value {
+  color: var(--accent-green);
+}
+
+/* Row G: B2B corner + Actions */
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.card-actions {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+.card-action-btn {
+  flex: 1;
+  background: var(--bg-header);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+.card-action-btn:hover { color: var(--text-primary); background: #475569; }
+.card-b2b-corner {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #1e3a5f;
+  color: var(--accent-blue);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+/* Column visibility helpers */
+.card-field[data-field] { display: contents; }
+.card-field-hidden { display: none !important; }
+/* For meta chips: if hidden, hide the chip */
+.card-meta-row .card-chip.card-field-hidden { display: none; }
+/* For pricing cells: if hidden, collapse */
+.card-pricing-grid .card-price-cell.card-field-hidden { display: none; }
+
+/* === TABLE VIEW === */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.table-wrapper th {
+  background: var(--bg-header);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+.table-wrapper th:hover { color: var(--text-primary); }
+.table-wrapper th.sorted-asc::after { content: ' ▲'; }
+.table-wrapper th.sorted-desc::after { content: ' ▼'; }
+.table-wrapper td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+.table-wrapper tr:hover td { background: var(--bg-secondary); }
+.table-wrapper tr.highlight-green td:first-child { border-left: 3px solid var(--accent-green); }
+.table-wrapper tr.highlight-pink td:first-child { border-left: 3px solid var(--accent-pink); }
+
+/* === VIEW TOGGLE === */
+.view-toggle {
+  display: none;
+}
+.view-mode-table #cardView { display: none; }
+.view-mode-cards #tableView { display: none; }
+
+/* === RESPONSIVE === */
+@media (max-width: 900px) {
+  .card-grid { grid-template-columns: 1fr; }
+  .sticky-bar { padding: 8px 12px; gap: 6px; }
+  .sticky-bar .btn { padding: 6px 10px; font-size: 12px; }
+  .scroll-area { padding: 4px; }
+}
+@media (min-width: 901px) and (max-width: 1200px) {
+  .card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1201px) {
+  .card-grid { grid-template-columns: repeat(3, 1fr); }
+  .view-toggle { display: inline-flex; }
+  .view-mode-cards #tableView { display: none; }
+  .view-mode-table #cardView { display: none; }
+}
+@media (max-width: 480px) {
+  .group-header.level-0 { font-size: 14px; padding: 10px 12px; }
+  .group-header.level-1 { font-size: 12px; padding-left: 16px; }
+  .card { padding: 10px; }
+  .card-ship-name { font-size: 13px; }
+  .card-pricing-grid { grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .card-price-value { font-size: 11px; }
+  .card-offer-name { font-size: 11px; }
+  .card-dates-row { gap: 8px; }
+}
+</style>
+</head>
+<body class="view-mode-cards">
+
+<div class="sticky-bar">
+  <div class="btn-wrap">
+    <button class="btn" id="sortBtn" onclick="toggleDropdown('sortPanel')">
+      Sort: <span id="sortLabel">Ship</span> ▾
+    </button>
+    <div class="dropdown-panel" id="sortPanel">
+      <button data-sort="ship" class="active" onclick="sortBy('ship')">Ship Name</button>
+      <button data-sort="sailDate" onclick="sortBy('sailDate')">Sail Date</button>
+      <button data-sort="expiration" onclick="sortBy('expiration')">Expiry Date</button>
+      <button data-sort="nights" onclick="sortBy('nights')">Nights</button>
+      <button data-sort="value" onclick="sortBy('value')">Est. Value</button>
+      <button data-sort="offerDate" onclick="sortBy('offerDate')">Offer Date</button>
+      <button data-sort="destination" onclick="sortBy('destination')">Destination</button>
+    </div>
+  </div>
+
+  <div class="btn-wrap">
+    <button class="btn" id="groupBtn" onclick="toggleDropdown('groupPanel')">
+      Group: <span id="groupLabel">Ship</span> ▾
+    </button>
+    <div class="dropdown-panel" id="groupPanel">
+      <button data-group="none" onclick="groupBy('none')">None (Flat List)</button>
+      <button data-group="ship" class="active" onclick="groupBy('ship')">Ship Name</button>
+      <button data-group="ship+destination" onclick="groupBy('ship+destination')">Ship → Destination</button>
+      <button data-group="ship+nights" onclick="groupBy('ship+nights')">Ship → Nights</button>
+      <button data-group="destination" onclick="groupBy('destination')">Destination</button>
+      <button data-group="destination+nights" onclick="groupBy('destination+nights')">Destination → Nights</button>
+    </div>
+  </div>
+
+  <span class="badge-count" id="offerCount">0 offers</span>
+
+  <span class="spacer"></span>
+
+  <button class="btn view-toggle" id="viewCardsBtn" onclick="setView('cards')">☷ Cards</button>
+  <button class="btn view-toggle" id="viewTableBtn" onclick="setView('table')">▦ Table</button>
+</div>
+
+<div class="scroll-area" id="scrollArea">
+  <div id="cardView"></div>
+  <div id="tableView" style="display:none;"></div>
+</div>
+
+<script>
+const SHIPS = [
+  'Quantum of the Dream', 'Allure of the Seas', 'Spectrum of the Seas',
+  'Harmony of the Seas', 'Wonder of the Seas', 'Anthem of the Seas',
+  'Ovation of the Seas', 'Independence of the Seas', 'Liberty of the Seas',
+  'Celebrity Apex', 'Celebrity Beyond'
+];
+const SHIP_CLASSES = {
+  'Quantum of the Dream': 'Quantum',
+  'Allure of the Seas': 'Oasis',
+  'Spectrum of the Seas': 'Spectrum',
+  'Harmony of the Seas': 'Oasis',
+  'Wonder of the Seas': 'Oasis',
+  'Anthem of the Seas': 'Quantum',
+  'Ovation of the Seas': 'Quantum',
+  'Independence of the Seas': 'Freedom',
+  'Liberty of the Seas': 'Freedom',
+  'Celebrity Apex': 'Royale',
+  'Celebrity Beyond': 'Apex'
+};
+const DESTINATIONS = ['Caribbean', 'Mediterranean', 'Bahamas', 'Norwegian Fjords', 'Alaska', 'Transatlantic'];
+const ITINERARIES = {
+  'Caribbean': ['Perfect Day Getaway Cruise', 'Western Caribbean Cruise', 'Eastern Caribbean Cruise', 'Southern Caribbean Cruise'],
+  'Mediterranean': ['Greek Isles & Turkey', 'Adriatic & Italy', 'Western Mediterranean', 'Eastern Mediterranean'],
+  'Bahamas': ['Perfect Day at CocoCay', 'Bahamas & Amber Cove', 'Bahamas Getaway'],
+  'Norwegian Fjords': ['Trollfjord & Geirangerfjord', 'Norwegian Fjords Cruise', 'Bergen to Oslo'],
+  'Alaska': ['Inside Passage Alaska', 'Alaska & Vancouver', 'Glacier Bay Alaska'],
+  'Transatlantic': ['Repositioning Crossing', 'Transatlantic Crossing']
+};
+const PORTS = {
+  'Caribbean': ['Miami', 'Port Canaveral', 'Fort Lauderdale'],
+  'Mediterranean': ['Barcelona', 'Rome (Civitavecchia)', 'Southampton', 'Piraeus'],
+  'Bahamas': ['Miami', 'Port Canaveral'],
+  'Norwegian Fjords': ['Oslo', 'Copenhagen', 'Bergen'],
+  'Alaska': ['Seattle', 'Vancouver', 'Los Angeles'],
+  'Transatlantic': ['Fort Lauderdale', 'Southampton', 'Barcelona']
+};
+const OFFER_CODES = ['26AUG106', '26TIER3', '26SUMMER', '26CRGOBO', '26WINTER', '26TIER1', '26BONUS'];
+const OFFER_NAMES = ['All-in On August', 'Summer Savings', 'Cruise Rewards Bonus', 'Tier 3 Perk', 'Winter Wonderland', 'GOBO Special', 'Early Bird Offer'];
+const ROOM_TYPES = ['Interior', 'Interior GTY', 'Ocean View', 'Ocean View GTY', 'Balcony', 'Balcony GTY', 'Suite'];
+const NIGHTS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const PERKS = [null, null, null, null, '$250 Onboard Credit', 'Beverage Package Included', 'Berkely\'s Dining', 'Internet Included', 'Perfect Day On Us', 'Royal Key Perks'];
+
+function randomDate(start, end) {
+  const d = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+  return d.toISOString().split('T')[0];
+}
+function randomElement(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// Simulate "You Pay" pricing: for awarded category = T&F only
+// Upgrade prices: max(targetPrice - awardedPrice, 0) + T&F
+// Matches actual table columns: interior (You Pay), oceanViewUpgrade, balconyUpgrade, suiteUpgrade
+function generatePricing(awardedCategory) {
+  // Base prices per category (dual occupancy)
+  const catPrices = { 'interior': 180, 'ocean view': 380, 'balcony': 620, 'suite': 1400 };
+  const awarded = (awardedCategory || 'Interior').toLowerCase().replace(' gty', '');
+  const taxes = Math.floor(50 + Math.random() * 150);
+  const awardedPrice = catPrices[awarded] || catPrices['interior'];
+
+  // "You Pay" for awarded category = T&F only (comp covers base fare)
+  const youPay = taxes + Math.floor(Math.random() * 50);
+
+  // Upgrade prices for each column
+  // Interior column = "You Pay" when awarded is Interior, otherwise downgrade cost (usually same as youPay)
+  const interior = awarded === 'interior' ? youPay : Math.max(taxes, Math.floor(taxes * (0.8 + Math.random() * 0.4)));
+  // OV, Balcony, Suite upgrades = price diff + T&F
+  const ovUpgrade = awarded === 'ocean view' ? youPay : Math.max(taxes, catPrices['ocean view'] - awardedPrice + taxes + Math.floor(Math.random() * 100 - 50));
+  const balconyUpgrade = awarded === 'balcony' ? youPay : Math.max(taxes, catPrices['balcony'] - awardedPrice + taxes + Math.floor(Math.random() * 100 - 50));
+  const suiteUpgrade = awarded === 'suite' ? youPay : Math.max(taxes, catPrices['suite'] - awardedPrice + taxes + Math.floor(Math.random() * 200 - 100));
+
+  return {
+    interior: Math.max(0, interior),
+    oceanViewUpgrade: Math.max(0, ovUpgrade),
+    balconyUpgrade: Math.max(0, balconyUpgrade),
+    suiteUpgrade: Math.max(0, suiteUpgrade),
+  };
+}
+
+const offers = [];
+const baseDate = new Date('2025-06-01');
+const endDate = new Date('2026-08-31');
+
+for (let i = 0; i < 60; i++) {
+  const ship = randomElement(SHIPS);
+  const dest = randomElement(DESTINATIONS);
+  const itinerary = randomElement(ITINERARIES[dest] || ['Cruise']);
+  const nights = randomElement(NIGHTS);
+  const port = randomElement(PORTS[dest] || ['Miami']);
+  const sailDate = randomDate(baseDate, endDate);
+  const offerDate = randomDate(new Date('2025-01-01'), new Date('2025-12-01'));
+  const expDate = new Date(new Date(offerDate).getTime() + (30 + Math.floor(Math.random() * 90)) * 86400000).toISOString().split('T')[0];
+  const offerType = Math.random() < 0.3 ? 'GOBO' : 'Doubles';
+  const room = randomElement(ROOM_TYPES);
+  const roomBase = room.replace(' GTY', '');
+  const offerValue = Math.floor(200 + Math.random() * 1200);
+  const tradeValue = Math.random() < 0.15 ? Math.floor(50 + Math.random() * 300) : 0;
+  const shipClass = SHIP_CLASSES[ship] || 'Other';
+  const perk = randomElement(PERKS);
+  const pricing = generatePricing(roomBase);
+
+  offers.push({
+    id: i + 1,
+    offerCode: randomElement(OFFER_CODES),
+    offerName: randomElement(OFFER_NAMES),
+    offerDate,
+    expiration: expDate,
+    offerType,
+    ship,
+    shipClass,
+    destination: itinerary,
+    destinationShort: dest,
+    departurePort: port,
+    sailDate,
+    nights,
+    roomType: room,
+    roomCategory: roomBase,
+    offerValue,
+    tradeValue,
+    perk: perk || '-',
+    guests: offerType === 'GOBO' ? 1 : 2,
+    isStarred: Math.random() < 0.15,
+    isB2B: Math.random() < 0.2,
+    b2bDepth: Math.floor(Math.random() * 6),
+    // Pricing data matching actual table semantics
+    pricing: pricing,
+  });
+}
+
+offers.sort((a, b) => b.offerDate.localeCompare(a.offerDate));
+
+let currentSort = 'ship';
+let currentGroup = 'ship';
+let currentView = 'cards';
+let expandedGroups = {};
+
+function formatShortDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getHighlight(offer) {
+  const sorted = [...offers].sort((a, b) => b.offerDate.localeCompare(a.offerDate));
+  if (sorted[0] && offer.offerDate === sorted[0].offerDate && offer.offerCode === sorted[0].offerCode) return 'highlight-green';
+  const now = new Date();
+  const exp = new Date(offer.expiration);
+  const diff = (exp - now) / 86400000;
+  if (diff > 0 && diff <= 3) return 'highlight-pink';
+  return '';
+}
+
+function renderCardHTML(offer) {
+  const hl = getHighlight(offer);
+  const p = offer.pricing;
+  const awardedRoom = offer.roomCategory.toLowerCase();
+
+  // Build pricing cells: You Pay (highlighted) + upgrade columns for categories above awarded
+  // Match table columns: interior, oceanViewUpgrade, balconyUpgrade, suiteUpgrade
+  const awardedKeyMap = { 'interior': 'interior', 'ocean view': 'ov', 'balcony': 'balcony', 'suite': 'suite' };
+  const awardedKey = awardedKeyMap[awardedRoom] || 'interior';
+
+  // Match table columns: interior, oceanViewUpgrade, balconyUpgrade, suiteUpgrade
+  // Awarded category column is highlighted green and labeled "You Pay"
+  const priceCells = [
+    { label: awardedKey === 'interior' ? 'You Pay' : 'Interior', value: p.interior, key: 'interior', isYouPay: awardedKey === 'interior' },
+    { label: awardedKey === 'ov' ? 'You Pay' : 'OV', value: p.oceanViewUpgrade, key: 'oceanViewUpgrade', isYouPay: awardedKey === 'ov' },
+    { label: awardedKey === 'balcony' ? 'You Pay' : 'Balcony', value: p.balconyUpgrade, key: 'balconyUpgrade', isYouPay: awardedKey === 'balcony' },
+    { label: awardedKey === 'suite' ? 'You Pay' : 'Suite', value: p.suiteUpgrade, key: 'suiteUpgrade', isYouPay: awardedKey === 'suite' },
+  ];
+
+  const priceCellsHTML = priceCells.map(pc => {
+    let cls = 'card-price-cell';
+    if (pc.isYouPay) cls += ' you-pay';
+    else cls += ' upgrade';
+    return `<div class="${cls} card-field" data-field="${pc.key}">
+      <span class="card-price-label">${pc.label}</span>
+      <span class="card-price-value">$${pc.value.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+
+  // Meta chips
+  const categoryChip = `<span class="card-chip card-chip-category card-field" data-field="category">${offer.roomType}</span>`;
+  const valueChip = `<span class="card-chip card-chip-value card-field" data-field="offerValue">Value: $${offer.offerValue.toLocaleString()}</span>`;
+  const tradeChip = offer.tradeValue > 0 ? `<span class="card-chip card-chip-trade card-field" data-field="tradeInValue">Trade: $${offer.tradeValue.toLocaleString()}</span>` : '';
+  const perkChip = offer.perk && offer.perk !== '-' ? `<span class="card-chip card-chip-perk card-field" data-field="perks" title="${offer.perk}">★ ${offer.perk}</span>` : '';
+
+  // B2B badge (bottom-right area of footer)
+  const b2bBadge = offer.isB2B ? `<span class="card-b2b-corner card-field" data-field="b2bDepth">B2B >> ${offer.b2bDepth}</span>` : '';
+
+  // Guest badge
+  const guestBadge = offer.offerType === 'GOBO'
+    ? `<span class="card-guest-badge badge-gobo card-field" data-field="guests">For 1</span>`
+    : `<span class="card-guest-badge badge-doubles card-field" data-field="guests">For 2</span>`;
+
+  return `
+    <div class="card ${hl}">
+      <!-- Row A: Ship, Class, Nights, Guest badge, Star -->
+      <div class="card-section">
+        <div class="card-row-ship">
+          <span class="card-star ${offer.isStarred ? '' : 'empty'} card-field" data-field="favorite" onclick="toggleStar(this)">★</span>
+          <span class="card-ship-name card-field" data-field="ship">${offer.ship}</span>
+          <span class="card-class-badge card-field" data-field="shipClass">${offer.shipClass}</span>
+          <span class="card-row-ship-spacer"></span>
+          <span class="card-nights-badge card-field" data-field="nights">${offer.nights}n</span>
+          ${guestBadge}
+        </div>
+      </div>
+
+      <!-- Row B: Departure + Route -->
+      <div class="card-section">
+        <div class="card-route">
+          <span class="card-field" data-field="departurePort"><span class="card-route-departure">${offer.departurePort}</span> → </span>
+          <span class="card-field" data-field="destination">${offer.destination}</span>
+        </div>
+      </div>
+
+      <!-- Row C: Dates (Offer / Sail / Expiration) -->
+      <div class="card-section">
+        <div class="card-dates-row">
+          <span class="card-date-item card-field" data-field="offerDate">
+            <span class="card-date-label">Rcvd</span>${formatShortDate(offer.offerDate)}
+          </span>
+          <span class="card-date-item card-field" data-field="sailDate">
+            <svg class="card-icon" viewBox="0 0 20 20"><path d="M6 2v3H4v12a2 2 0 002 2h8a2 2 0 002-2V5h-2V2H6zm9 15H5V7h10v10z" fill="currentColor"/></svg>
+            ${formatShortDate(offer.sailDate)}
+          </span>
+          <span class="card-date-item card-date-expire card-field" data-field="expiration">
+            <svg class="card-icon" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 9H9V7h2v4z" fill="currentColor"/></svg>
+            <span class="card-date-label">Exp</span>${formatShortDate(offer.expiration)}
+          </span>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="card-section-divider"></div>
+
+      <!-- Row D: Offer Name + Code -->
+      <div class="card-section">
+        <div class="card-offer-row">
+          <span class="card-offer-name card-field" data-field="offerName">${offer.offerName}</span>
+          <span class="card-offer-code card-field" data-field="offerCode">${offer.offerCode}</span>
+        </div>
+      </div>
+
+      <!-- Row E: Meta chips -->
+      <div class="card-section">
+        <div class="card-meta-row">
+          ${categoryChip}
+          ${valueChip}
+          ${tradeChip}
+          ${perkChip}
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="card-section-divider"></div>
+
+      <!-- Row F: Pricing grid (You Pay + upgrades) -->
+      <div class="card-section">
+        <div class="card-pricing-grid">
+          ${priceCellsHTML}
+        </div>
+      </div>
+
+      <!-- Row G: Actions + B2B badge -->
+      <div class="card-section" style="padding-bottom:0;">
+        <div class="card-footer">
+          <div class="card-actions">
+            <button class="card-action-btn">Itinerary</button>
+          </div>
+          ${b2bBadge}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderGrouped(data) {
+  const container = document.getElementById('cardView');
+  if (currentGroup === 'none') {
+    let html = '<div class="card-grid">';
+    for (const offer of data) html += renderCardHTML(offer);
+    html += '</div>';
+    container.innerHTML = html;
+    return;
+  }
+
+  const keys = currentGroup.split('+');
+  const grouped = {};
+  for (const offer of data) {
+    const path = keys.map(k => {
+      if (k === 'ship') return offer.ship;
+      if (k === 'destination') return offer.destination;
+      if (k === 'nights') return `${offer.nights} nights`;
+      return offer[k];
+    });
+    const pathStr = path.join('::');
+    grouped[pathStr] = grouped[pathStr] || { path, offers: [] };
+    grouped[pathStr].offers.push(offer);
+  }
+
+  let html = '';
+  const groupPaths = Object.keys(grouped);
+
+  if (keys.length === 1) {
+    for (const pathStr of groupPaths) {
+      const g = grouped[pathStr];
+      const key = `grp::${pathStr.replace(/::/g, '-')}`;
+      const expanded = expandedGroups[key] === true;
+      const arrow = expanded ? '▼' : '▶';
+
+      html += `
+      <div class="group-header level-0 ${expanded ? '' : 'collapsed'}" onclick="toggleGroup('${key}')">
+        <span>${g.path[0]} <span style="color:var(--text-muted);font-size:13px;font-weight:400">(${g.offers.length})</span></span>
+        <span class="arrow">${arrow}</span>
+      </div>
+      <div class="group-content ${expanded ? '' : 'collapsed'}" id="${key}">
+        <div class="card-grid">`;
+      for (const offer of g.offers) html += renderCardHTML(offer);
+      html += '</div></div>';
+    }
+  } else {
+    const topLevelKeys = [...new Set(groupPaths.map(p => grouped[p].path[0]))].sort();
+    for (const t0 of topLevelKeys) {
+      const l0Key = `grp::L0::${t0.replace(/::/g, '-')}`;
+      const l0Expanded = expandedGroups[l0Key] === true;
+      const l0Arrow = l0Expanded ? '▼' : '▶';
+      const l0Total = [...groupPaths.filter(p => grouped[p].path[0] === t0)].reduce((sum, p) => sum + grouped[p].offers.length, 0);
+
+      html += `
+      <div class="group-header level-0 ${l0Expanded ? '' : 'collapsed'}" onclick="toggleGroup('${l0Key}')">
+        <span>${t0} <span style="color:var(--text-muted);font-size:13px;font-weight:400">(${l0Total})</span></span>
+        <span class="arrow">${l0Arrow}</span>
+      </div>
+      <div class="group-content ${l0Expanded ? '' : 'collapsed'}" id="${l0Key}">`;
+
+      const topLevelPaths = groupPaths.filter(p => grouped[p].path[0] === t0);
+      const l1Keys = [...new Set(topLevelPaths.map(p => grouped[p].path[1]))].sort();
+
+      for (const t1 of l1Keys) {
+        const l1Key = `grp::L1::${t0.replace(/::/g, '-')}-${t1.replace(/::/g, '-')}`;
+        const l1Expanded = expandedGroups[l1Key] === true;
+        const l1Arrow = l1Expanded ? '▼' : '▶';
+        const l1Offers = grouped[topLevelPaths.find(p => grouped[p].path[1] === t1)].offers;
+
+        html += `
+        <div class="group-header level-1 ${l1Expanded ? '' : 'collapsed'}" onclick="toggleGroup('${l1Key}')">
+          <span>${t1} <span style="color:var(--text-muted);font-size:11px;font-weight:400">(${l1Offers.length})</span></span>
+          <span class="arrow">${l1Arrow}</span>
+        </div>
+        <div class="group-content ${l1Expanded ? '' : 'collapsed'}" id="${l1Key}">
+          <div class="card-grid">`;
+        for (const offer of l1Offers) html += renderCardHTML(offer);
+        html += '</div></div>';
+      }
+
+      html += '</div>';
+    }
+  }
+
+  container.innerHTML = html;
+}
+
+function renderTable(data) {
+  const container = document.getElementById('tableView');
+  const headers = [
+    { key: 'ship', label: 'Ship' },
+    { key: 'sailDate', label: 'Sail' },
+    { key: 'expiration', label: 'Expire' },
+    { key: 'destination', label: 'Destination' },
+    { key: 'nights', label: 'Nights' },
+    { key: 'roomType', label: 'Room' },
+    { key: 'value', label: 'Value' }
+  ];
+
+  let html = '<table><thead><tr>';
+  headers.forEach(h => {
+    const cls = currentSort === h.key ? 'sorted-asc' : '';
+    html += `<th class="${cls}" onclick="sortBy('${h.key}')">${h.label}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  for (const offer of data) {
+    const hl = getHighlight(offer);
+    html += `<tr class="${hl}">
+      <td>${offer.ship}</td>
+      <td>${formatShortDate(offer.sailDate)}</td>
+      <td>${formatShortDate(offer.expiration)}</td>
+      <td>${offer.destination}</td>
+      <td>${offer.nights}</td>
+      <td>${offer.roomType}</td>
+      <td>$${offer.offerValue.toLocaleString()}</td>
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function sortBy(col) {
+  currentSort = col;
+  document.getElementById('sortLabel').textContent =
+    col === 'ship' ? 'Ship' :
+    col === 'sailDate' ? 'Sail Date' :
+    col === 'expiration' ? 'Expiry' :
+    col === 'nights' ? 'Nights' :
+    col === 'value' ? 'Value' :
+    col === 'offerDate' ? 'Offer Date' :
+    col === 'destination' ? 'Destination' : col;
+
+  document.querySelectorAll('#sortPanel button').forEach(b => {
+    b.classList.toggle('active', b.dataset.sort === col);
+  });
+  closeAllDropdowns();
+  render();
+}
+
+function groupBy(grp) {
+  currentGroup = grp;
+  expandedGroups = {};
+  document.getElementById('groupLabel').textContent =
+    grp === 'none' ? 'None' :
+    grp === 'ship' ? 'Ship' :
+    grp === 'ship+destination' ? 'Ship → Dest' :
+    grp === 'ship+nights' ? 'Ship → Nights' :
+    grp === 'destination' ? 'Destination' :
+    grp === 'destination+nights' ? 'Dest → Nights' : grp;
+
+  document.querySelectorAll('#groupPanel button').forEach(b => {
+    b.classList.toggle('active', b.dataset.group === grp);
+  });
+  closeAllDropdowns();
+  render();
+}
+
+function toggleGroup(key) {
+  let level = 'root';
+  if (key.includes('::L0::')) level = 'L0';
+  else if (key.includes('::L1::')) level = 'L1';
+
+  const wasOpen = expandedGroups[key] === true;
+  if (wasOpen) {
+    expandedGroups[key] = false;
+  } else {
+    for (const k of Object.keys(expandedGroups)) {
+      let otherLevel = 'root';
+      if (k.includes('::L0::')) otherLevel = 'L0';
+      else if (k.includes('::L1::')) otherLevel = 'L1';
+      if (otherLevel === level) expandedGroups[k] = false;
+    }
+    expandedGroups[key] = true;
+  }
+  render();
+}
+
+function setView(view) {
+  currentView = view;
+  document.body.className = view === 'cards' ? 'view-mode-cards' : 'view-mode-table';
+  document.getElementById('viewCardsBtn').classList.toggle('active', view === 'cards');
+  document.getElementById('viewTableBtn').classList.toggle('active', view === 'table');
+}
+
+function toggleStar(el) { el.classList.toggle('empty'); }
+
+function toggleDropdown(id) {
+  const panel = document.getElementById(id);
+  const wasOpen = panel.classList.contains('open');
+  closeAllDropdowns();
+  if (!wasOpen) panel.classList.add('open');
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('open'));
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.btn-wrap')) closeAllDropdowns();
+});
+
+function render() {
+  let data = [...offers];
+
+  data.sort((a, b) => {
+    switch (currentSort) {
+      case 'ship': return a.ship.localeCompare(b.ship);
+      case 'sailDate': return a.sailDate.localeCompare(b.sailDate);
+      case 'expiration': return a.expiration.localeCompare(b.expiration);
+      case 'nights': return a.nights - b.nights;
+      case 'value': return b.offerValue - a.offerValue;
+      case 'offerDate': return b.offerDate.localeCompare(a.offerDate);
+      case 'destination': return a.destination.localeCompare(b.destination);
+      default: return 0;
+    }
+  });
+
+  document.getElementById('offerCount').textContent = `${data.length} offers`;
+
+  if (currentView === 'cards' || window.innerWidth < 1201) {
+    document.body.className = 'view-mode-cards';
+    document.getElementById('tableView').style.display = 'none';
+    document.getElementById('cardView').style.display = '';
+    renderGrouped(data);
+  } else {
+    document.getElementById('cardView').style.display = 'none';
+    document.getElementById('tableView').style.display = '';
+    renderTable(data);
+  }
+}
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth >= 1201) {
+    if (!currentView) setView('cards');
+    document.getElementById('viewCardsBtn').classList.toggle('active', currentView === 'cards');
+    document.getElementById('viewTableBtn').classList.toggle('active', currentView === 'table');
+  } else {
+    document.getElementById('cardView').style.display = '';
+    document.getElementById('tableView').style.display = 'none';
+  }
+  render();
+});
+
+setView('cards');
+render();
+</script>
+</body>
+</html>
