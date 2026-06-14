@@ -57,27 +57,28 @@ body {
   display: inline-block;
 }
 .sticky-bar .btn {
-  background: var(--bg-header);
+  background: #1e293b;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(51,65,85,0.6);
   border-radius: var(--radius-sm);
-  padding: 7px 14px;
-  font-size: 13px;
+  padding: 6px 12px;
+  font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-weight: 500;
 }
-.sticky-bar .btn:hover { background: #475569; }
-.sticky-bar .btn.active { background: var(--accent-blue); border-color: var(--accent-blue); }
+.sticky-bar .btn:hover { background: #334155; border-color: #475569; }
+.sticky-bar .btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; font-weight: 600; }
 .sticky-bar .btn svg { width: 14px; height: 14px; fill: currentColor; }
 .sticky-bar .spacer { flex: 1; }
 .sticky-bar .badge-count {
   background: var(--accent-blue);
   color: #fff;
   font-size: 11px;
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 12px;
   font-weight: 600;
 }
@@ -169,8 +170,8 @@ body {
 
 /* === CARDS === */
 .card {
-  background: linear-gradient(160deg, #253347 0%, #1e293b 100%);
-  border: 1px solid var(--border-color);
+  background: linear-gradient(160deg, #1a2332 0%, #151d2b 100%);
+  border: 1px solid rgba(51,65,85,0.5);
   border-radius: var(--radius);
   padding: 14px 14px 14px;
   display: flex;
@@ -186,12 +187,11 @@ body {
 
 /* Card inner sections */
 .card-section {
-  padding-bottom: 7px;
+  padding-bottom: 6px;
 }
 .card-section-divider {
-  border-top: 1px solid rgba(51,65,85,0.5);
-  margin-bottom: 7px;
-  padding-top: 7px;
+  border-top: 1px solid rgba(51,65,85,0.4);
+  margin: 6px 0;
 }
 
 /* Row A: Ship + Class + Nights + Guest badge + Star */
@@ -360,28 +360,31 @@ body {
   align-items: center;
   padding: 6px 4px;
   border-radius: 6px;
-  background: rgba(15,23,42,0.4);
+  background: rgba(15,23,42,0.3);
   border: 1px solid transparent;
 }
 .card-price-cell.you-pay {
-  background: rgba(34,197,94,0.12);
-  border-color: rgba(34,197,94,0.3);
+  background: rgba(34,197,94,0.1);
+  border-color: rgba(34,197,94,0.25);
 }
 .card-price-cell.upgrade {
-  background: rgba(15,23,42,0.3);
+  background: rgba(15,23,42,0.25);
 }
 .card-price-label {
   font-size: 9px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 1px;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
 }
 .card-price-value {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-secondary);
+}
+.card-price-cell.you-pay .card-price-label {
+  color: var(--accent-green);
 }
 .card-price-cell.you-pay .card-price-value {
   color: var(--accent-green);
@@ -524,9 +527,9 @@ body {
 .dimensions-panel {
   max-width: 1400px;
   margin: 0 auto;
-  background: #0f172a;
-  border: 1px solid rgba(148,163,184,0.2);
-  border-radius: 8px;
+  background: #111827;
+  border: 1px solid rgba(51,65,85,0.6);
+  border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   max-height: 0;
   overflow: hidden;
@@ -538,16 +541,18 @@ body {
 .dimensions-panel.open {
   max-height: 600px;
   opacity: 1;
-  padding: 12px;
+  padding: 8px;
   margin-top: 8px;
   overflow-y: auto;
 }
-.dimensions-panel.open::-webkit-scrollbar { width: 6px; }
-.dimensions-panel.open::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+.dimensions-panel.open::-webkit-scrollbar { width: 8px; }
+.dimensions-panel.open::-webkit-scrollbar-track { background: transparent; margin-right: 2px; }
+.dimensions-panel.open::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+.dimensions-panel.open::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-.dim-section { margin-bottom: 8px; }
+.dim-section { margin-bottom: 6px; }
 .dim-header {
-  background: #111827;
+  background: rgba(30,41,59,0.5);
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -559,37 +564,55 @@ body {
   font-weight: 600;
   color: #e2e8f0;
 }
-.dim-header:hover { background: #1e293b; }
+.dim-header:hover { background: rgba(30,41,59,0.8); }
 .dim-header .chevron { transition: transform 0.2s; font-size: 11px; color: #64748b; }
 .dim-header.collapsed .chevron { transform: rotate(-90deg); }
 .dim-count { font-size: 11px; color: #64748b; font-weight: 400; margin-left: 6px; }
 
 .dim-body {
-  padding: 8px 4px 4px;
+  padding: 4px 4px 2px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 .dim-body.collapsed { display: none; }
 
-.dim-checkbox {
+.dim-search-row {
   display: flex;
+  padding: 4px 8px;
+  gap: 4px;
+}
+.dim-search-row input {
+  flex: 1;
+  background: rgba(15,23,42,0.5);
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #e2e8f0;
+  padding: 4px 8px;
+  font-size: 11px;
+  outline: none;
+}
+.dim-search-row input:focus { border-color: #3b82f6; }
+
+.dim-checkbox {
+  display: grid;
+  grid-template-columns: 16px 1fr 30px;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   color: #e2e8f0;
 }
-.dim-checkbox:hover { background: #1e293b; }
+.dim-checkbox:hover { background: rgba(30,41,59,0.7); }
 .dim-checkbox input[type="checkbox"] {
   width: 16px; height: 16px;
   accent-color: #2563eb;
-  flex-shrink: 0;
+  justify-self: start;
 }
 .dim-checkbox .label-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dim-checkbox .count { color: #64748b; font-size: 11px; margin-left: auto; padding-left: 8px; }
+.dim-checkbox .count { color: #64748b; font-size: 11px; text-align: right; justify-self: end; }
 
 .dim-advanced-btn {
   background: none;
@@ -695,23 +718,24 @@ body {
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  background: rgba(59,130,246,0.15);
-  border: 1px solid rgba(59,130,246,0.4);
-  color: #60a5fa;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 16px;
+  background: rgba(59,130,246,0.2);
+  border: 1px solid rgba(59,130,246,0.35);
+  color: #e2e8f0;
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
 }
 .filter-chip button {
-  background: none; border: none; color: #60a5fa; font-size: 14px; line-height: 1; cursor: pointer; padding: 0 2px;
+  background: none; border: none; color: #94a3b8; font-size: 15px; line-height: 1; cursor: pointer; padding: 0 2px;
+  margin-left: 2px;
 }
-.filter-chip button:hover { color: #3b82f6; }
+.filter-chip button:hover { color: #e2e8f0; }
 .hidden-chip {
-  background: rgba(239,68,68,0.12);
-  border: 1px solid rgba(239,68,68,0.4);
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.35);
   color: #f87171;
 }
 .hidden-chip button:hover { color: #ef4444; }
@@ -1505,7 +1529,7 @@ function renderDimensionsPanel() {
   for (const dim of dims) {
     const open = state.dimensionSections[dim.key] !== false;
     const vals = dim.values.sort();
-    html += `<div class="dim-section" style="position:relative;">
+    html += `<div class="dim-section" style="position:relative;" data-dim="${dim.key}">`;
       <div class="dim-header ${open ? '' : 'collapsed'}" onclick="toggleDimensionSection('${dim.key}')">
         <span>${dim.label} <span class="dim-count">(${vals.length})</span></span>
         <span style="display:inline-flex;gap:4px;align-items:center;">
@@ -1529,11 +1553,14 @@ function renderDimensionsPanel() {
         </div>
       </div>
       <div class="dim-body ${open ? '' : 'collapsed'}">`;
+    html += `<div class="dim-search-row">
+      <input type="text" placeholder="Search ${dim.label.toLowerCase()}…" oninput="filterDimValues('${dim.key}', this.value)">
+    </div>`;
     for (const v of vals) {
       const pred = getPredicateForDimension(dim.key, v);
       const checked = pred ? 'checked' : '';
       const c = counts[dim.key][v] || 0;
-      html += `<label class="dim-checkbox">
+      html += `<label class="dim-checkbox" data-dim-value="${dim.key}">
         <input type="checkbox" ${checked} onchange="updateFilter('${dim.key}', '${v}', this.checked)">
         <span class="label-text">${v}</span>
         <span class="count">${c}</span>
@@ -1739,6 +1766,16 @@ function addAdvancedPredicate(fieldKey, operator, value) {
     addPredicate(fieldKey, operator, [value]);
   }
   document.querySelectorAll('.advanced-operator-popover.open').forEach(p => p.classList.remove('open'));
+}
+
+function filterDimValues(dimKey, query) {
+  const section = document.querySelector(`.dim-section[data-dim="${dimKey}"]`);
+  if (!section) return;
+  const q = query.trim().toLowerCase();
+  section.querySelectorAll('.dim-checkbox[data-dim-value="' + dimKey + '"]').forEach(label => {
+    const txt = label.querySelector('.label-text')?.textContent.toLowerCase() || '';
+    label.style.display = (!q || txt.includes(q)) ? '' : 'none';
+  });
 }
 
 function applyFilters() {
