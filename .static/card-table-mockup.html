@@ -33,19 +33,25 @@ body {
   overflow-x: hidden;
 }
 
-/* === STICKY BAR === */
-.sticky-bar {
+<style>
+/* === STICKY HEADER === */
+.sticky-header {
   position: sticky;
   top: 0;
   z-index: 100;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
+}
+
+/* === STICKY BAR === */
+.sticky-bar {
   padding: 10px 16px;
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
+
 .sticky-bar .btn-wrap {
   position: relative;
   display: inline-block;
@@ -494,52 +500,341 @@ body {
   .card-offer-name { font-size: 11px; }
   .card-dates-row { gap: 8px; }
 }
+
+/* === DIMENSIONS PANEL (WAVES 1-6) === */
+.filters-toggle {
+  position: relative;
+}
+.filters-toggle.active {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #0f172a;
+  font-weight: 700;
+}
+.filters-toggle .filter-count {
+  background: #0f172a;
+  color: #f59e0b;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  margin-left: 4px;
+  font-weight: 700;
+}
+
+.dimensions-panel {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #0f172a;
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.2s ease, padding 0.2s ease;
+  padding: 0;
+  margin-top: 0;
+}
+.dimensions-panel.open {
+  max-height: 600px;
+  opacity: 1;
+  padding: 12px;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+.dimensions-panel.open::-webkit-scrollbar { width: 6px; }
+.dimensions-panel.open::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+.dim-section { margin-bottom: 8px; }
+.dim-header {
+  background: #111827;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+.dim-header:hover { background: #1e293b; }
+.dim-header .chevron { transition: transform 0.2s; font-size: 11px; color: #64748b; }
+.dim-header.collapsed .chevron { transform: rotate(-90deg); }
+.dim-count { font-size: 11px; color: #64748b; font-weight: 400; margin-left: 6px; }
+
+.dim-body {
+  padding: 8px 4px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dim-body.collapsed { display: none; }
+
+.dim-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #e2e8f0;
+}
+.dim-checkbox:hover { background: #1e293b; }
+.dim-checkbox input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+}
+.dim-checkbox .label-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dim-checkbox .count { color: #64748b; font-size: 11px; margin-left: auto; padding-left: 8px; }
+
+.dim-advanced-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.dim-advanced-btn:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+/* Advanced operator popover */
+.advanced-operator-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  padding: 6px;
+  z-index: 300;
+  display: none;
+  min-width: 200px;
+}
+.advanced-operator-popover.open { display: block; }
+.advanced-operator-popover button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.advanced-operator-popover button:hover { background: #334155; }
+.advanced-operator-popover button.active { background: #3b82f6; font-weight: 600; }
+
+/* Advanced operator inline input row */
+.adv-op-input-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #334155;
+}
+.adv-op-input-row input[type="text"],
+.adv-op-input-row input[type="number"] {
+  flex: 1;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #e2e8f0;
+  padding: 5px 8px;
+  font-size: 12px;
+  outline: none;
+}
+.adv-op-input-row input:focus { border-color: #3b82f6; }
+.adv-op-input-row button {
+  width: auto;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Date range presets */
+.date-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.date-preset-btn {
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.3);
+  color: #60a5fa;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.date-preset-btn:hover { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.5); }
+
+.active-filters-row {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(59,130,246,0.15);
+  border: 1px solid rgba(59,130,246,0.4);
+  color: #60a5fa;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.filter-chip button {
+  background: none; border: none; color: #60a5fa; font-size: 14px; line-height: 1; cursor: pointer; padding: 0 2px;
+}
+.filter-chip button:hover { color: #3b82f6; }
+.hidden-chip {
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.4);
+  color: #f87171;
+}
+.hidden-chip button:hover { color: #ef4444; }
+
+.clear-all-btn {
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.5);
+  color: #f87171;
+  font-weight: 700;
+}
+.clear-all-btn:hover { background: rgba(239,68,68,0.35); }
+
+.group-trashcan {
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-right: 6px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.group-trashcan:hover { opacity: 1; color: var(--danger); }
+
+.date-inputs { display: flex; gap: 8px; align-items: center; padding: 4px 8px; }
+.date-inputs input[type="date"] {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+/* Mobile bottom-sheet */
+@media (max-width: 768px) {
+  .dimensions-panel.open {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 70vh;
+    z-index: 300;
+    border-radius: 12px 12px 0 0;
+    transform: translateY(0);
+    transition: transform 0.3s ease;
+    margin: 0;
+  }
+  .dimensions-panel.collapsed {
+    transform: translateY(100%);
+    max-height: 0;
+    opacity: 0;
+  }
+  .mobile-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 299;
+    display: none;
+  }
+  .mobile-backdrop.active { display: block; }
+  .active-filters-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 6px 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+}
 </style>
 </head>
 <body class="view-mode-cards">
 
-<div class="sticky-bar">
-  <div class="btn-wrap">
-    <button class="btn" id="sortBtn" onclick="toggleDropdown('sortPanel')">
-      Sort: <span id="sortLabel">Ship</span> ▾
-    </button>
-    <div class="dropdown-panel" id="sortPanel">
-      <button data-sort="ship" class="active" onclick="sortBy('ship')">Ship Name</button>
-      <button data-sort="sailDate" onclick="sortBy('sailDate')">Sail Date</button>
-      <button data-sort="expiration" onclick="sortBy('expiration')">Expiry Date</button>
-      <button data-sort="nights" onclick="sortBy('nights')">Nights</button>
-      <button data-sort="value" onclick="sortBy('value')">Est. Value</button>
-      <button data-sort="offerDate" onclick="sortBy('offerDate')">Offer Date</button>
-      <button data-sort="destination" onclick="sortBy('destination')">Destination</button>
+<div class="sticky-header">
+  <div class="sticky-bar">
+    <button class="btn filters-toggle" id="filtersToggleBtn" onclick="toggleDimensionsPanel()">⋮ Filters</button>
+
+    <div class="btn-wrap">
+      <button class="btn" id="sortBtn" onclick="toggleDropdown('sortPanel')">
+        Sort: <span id="sortLabel">Ship</span> ▾
+      </button>
+      <div class="dropdown-panel" id="sortPanel">
+        <button data-sort="ship" class="active" onclick="sortBy('ship')">Ship Name</button>
+        <button data-sort="sailDate" onclick="sortBy('sailDate')">Sail Date</button>
+        <button data-sort="expiration" onclick="sortBy('expiration')">Expiry Date</button>
+        <button data-sort="nights" onclick="sortBy('nights')">Nights</button>
+        <button data-sort="value" onclick="sortBy('value')">Est. Value</button>
+        <button data-sort="offerDate" onclick="sortBy('offerDate')">Offer Date</button>
+        <button data-sort="destination" onclick="sortBy('destination')">Destination</button>
+      </div>
     </div>
+
+    <div class="btn-wrap">
+      <button class="btn" id="groupBtn" onclick="toggleDropdown('groupPanel')">
+        Group: <span id="groupLabel">Ship</span> ▾
+      </button>
+      <div class="dropdown-panel" id="groupPanel">
+        <button data-group="none" onclick="groupBy('none')">None (Flat List)</button>
+        <button data-group="ship" class="active" onclick="groupBy('ship')">Ship Name</button>
+        <button data-group="ship+destination" onclick="groupBy('ship+destination')">Ship → Destination</button>
+        <button data-group="ship+nights" onclick="groupBy('ship+nights')">Ship → Nights</button>
+        <button data-group="destination" onclick="groupBy('destination')">Destination</button>
+        <button data-group="destination+nights" onclick="groupBy('destination+nights')">Destination → Nights</button>
+      </div>
+    </div>
+
+    <span class="badge-count" id="offerCount">0 offers</span>
+
+    <span class="spacer"></span>
+
+    <button class="btn view-toggle" id="viewCardsBtn" onclick="setView('cards')">☷ Cards</button>
+    <button class="btn view-toggle" id="viewTableBtn" onclick="setView('table')">▦ Table</button>
   </div>
 
-  <div class="btn-wrap">
-    <button class="btn" id="groupBtn" onclick="toggleDropdown('groupPanel')">
-      Group: <span id="groupLabel">Ship</span> ▾
-    </button>
-    <div class="dropdown-panel" id="groupPanel">
-      <button data-group="none" onclick="groupBy('none')">None (Flat List)</button>
-      <button data-group="ship" class="active" onclick="groupBy('ship')">Ship Name</button>
-      <button data-group="ship+destination" onclick="groupBy('ship+destination')">Ship → Destination</button>
-      <button data-group="ship+nights" onclick="groupBy('ship+nights')">Ship → Nights</button>
-      <button data-group="destination" onclick="groupBy('destination')">Destination</button>
-      <button data-group="destination+nights" onclick="groupBy('destination+nights')">Destination → Nights</button>
-    </div>
-  </div>
-
-  <span class="badge-count" id="offerCount">0 offers</span>
-
-  <span class="spacer"></span>
-
-  <button class="btn view-toggle" id="viewCardsBtn" onclick="setView('cards')">☷ Cards</button>
-  <button class="btn view-toggle" id="viewTableBtn" onclick="setView('table')">▦ Table</button>
+  <div class="active-filters-row" id="activeFiltersRow"></div>
 </div>
 
 <div class="scroll-area" id="scrollArea">
   <div id="cardView"></div>
   <div id="tableView" style="display:none;"></div>
 </div>
+
+<div class="mobile-backdrop" id="mobileBackdrop" onclick="toggleDimensionsPanel()"></div>
+<div id="dimensionsPanel" class="dimensions-panel collapsed"></div>
 
 <script>
 const SHIPS = [
@@ -675,6 +970,99 @@ let currentSort = 'ship';
 let currentGroup = 'ship';
 let currentView = 'cards';
 let expandedGroups = {};
+
+/* === PREDICATE ENGINE (WAVE 0) === */
+const PredicateEngine = {
+  evaluatePredicate(predicate, fieldValue, offer, sailing) {
+    try {
+      let op = (predicate.operator||'').toLowerCase();
+      if (op === 'starts with') op = 'contains';
+      if (op === 'less than') {
+        const targetRaw = Array.isArray(predicate.values) && predicate.values.length ? predicate.values[0] : null;
+        if (targetRaw == null || targetRaw === '') return true;
+        const targetNum = Number(targetRaw);
+        if (!isFinite(targetNum)) return true;
+        const actualNum = Number(fieldValue);
+        if (!isFinite(actualNum)) return false;
+        return actualNum < targetNum;
+      }
+      if (op === 'greater than') {
+        const targetRaw = Array.isArray(predicate.values) && predicate.values.length ? predicate.values[0] : null;
+        if (targetRaw == null || targetRaw === '') return true;
+        const targetNum = Number(targetRaw);
+        if (!isFinite(targetNum)) return true;
+        const actualNum = Number(fieldValue);
+        if (!isFinite(actualNum)) return false;
+        return actualNum > targetNum;
+      }
+      if (op === 'date range') {
+        if (!Array.isArray(predicate.values) || predicate.values.length !== 2) return true;
+        const [startIso, endIso] = predicate.values;
+        if (!startIso || !endIso) return true;
+        const toEpoch = (iso) => {
+          if (!iso) return NaN;
+          const parts = iso.split('-');
+          if (parts.length !== 3) return NaN;
+          const y = parseInt(parts[0],10), m=parseInt(parts[1],10)-1, d=parseInt(parts[2],10);
+          return Date.UTC(y,m,d);
+        };
+        const startEp = toEpoch(startIso), endEp = toEpoch(endIso);
+        if (isNaN(startEp) || isNaN(endEp)) return true;
+        let rawIso = null;
+        try {
+          switch (predicate.fieldKey) {
+            case 'offerDate': rawIso = offer?.offerDate || null; break;
+            case 'expiration': rawIso = offer?.expiration || null; break;
+            case 'sailDate': rawIso = offer?.sailDate || null; break;
+            default: rawIso = null; break;
+          }
+        } catch(e) { rawIso = null; }
+        if (!rawIso) {
+          try {
+            const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(fieldValue || '');
+            if (m) {
+              const mm = parseInt(m[1],10), dd=parseInt(m[2],10), yy=parseInt(m[3],10);
+              const fullYear = 2000 + yy;
+              rawIso = `${fullYear.toString().padStart(4,'0')}-${mm.toString().padStart(2,'0')}-${dd.toString().padStart(2,'0')}`;
+            }
+          } catch(e){}
+        }
+        if (!rawIso) {
+          try {
+            const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec((fieldValue || '').trim());
+            if (isoMatch) rawIso = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+          } catch(e){}
+        }
+        if (!rawIso) return true;
+        rawIso = rawIso.split('T')[0];
+        const valEp = toEpoch(rawIso);
+        return !isNaN(valEp) && valEp >= startEp && valEp <= endEp;
+      }
+      const values = Array.isArray(predicate.values) ? predicate.values.map(v => PredicateEngine.normalizePredicateValue(v)) : [];
+      const fv = PredicateEngine.normalizePredicateValue(fieldValue == null ? '' : (''+fieldValue));
+      if (!op || !values.length) return true;
+      if (op === 'in') return values.includes(fv);
+      if (op === 'not in') return !values.includes(fv);
+      if (op === 'contains') return values.some(v => fv.includes(v));
+      if (op === 'not contains') return values.every(v => !fv.includes(v));
+      return true;
+    } catch(e) { return true; }
+  },
+  normalizePredicateValue(raw) {
+    try { return (''+raw).trim().toUpperCase(); } catch(e){ return ''; }
+  }
+};
+
+/* === STATE (WAVE 1) === */
+let state = {
+  advancedSearch: {
+    enabled: true,
+    predicates: []
+  },
+  hiddenGroups: new Set(),
+  dimensionSections: { ship: true, destination: true, nights: true, roomType: true, offerCode: true, dates: true },
+  dimensionsPanelOpen: false
+};
 
 function formatShortDate(dateStr) {
   if (!dateStr) return '-';
@@ -853,7 +1241,7 @@ function renderGrouped(data) {
 
       html += `
       <div class="group-header level-0 ${expanded ? '' : 'collapsed'}" onclick="toggleGroup('${key}')">
-        <span>${g.path[0]} <span style="color:var(--text-muted);font-size:13px;font-weight:400">(${g.offers.length})</span></span>
+        <span><span class="group-trashcan" title="Hide group" onclick="hideGroup(event, '${g.path[0]}')"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2v3H4v12a2 2 0 002 2h8a2 2 0 002-2V5h-2V2H6zm9 15H5V7h10v10z"/></svg></span> ${g.path[0]} <span style="color:var(--text-muted);font-size:13px;font-weight:400">(${g.offers.length})</span></span>
         <span class="arrow">${arrow}</span>
       </div>
       <div class="group-content ${expanded ? '' : 'collapsed'}" id="${key}">
@@ -871,7 +1259,7 @@ function renderGrouped(data) {
 
       html += `
       <div class="group-header level-0 ${l0Expanded ? '' : 'collapsed'}" onclick="toggleGroup('${l0Key}')">
-        <span>${t0} <span style="color:var(--text-muted);font-size:13px;font-weight:400">(${l0Total})</span></span>
+        <span><span class="group-trashcan" title="Hide group" onclick="hideGroup(event, '${t0}')"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2v3H4v12a2 2 0 002 2h8a2 2 0 002-2V5h-2V2H6zm9 15H5V7h10v10z"/></svg></span> ${t0} <span style="color:var(--text-muted);font-size:13px;font-weight:400">(${l0Total})</span></span>
         <span class="arrow">${l0Arrow}</span>
       </div>
       <div class="group-content ${l0Expanded ? '' : 'collapsed'}" id="${l0Key}">`;
@@ -1015,12 +1403,407 @@ function closeAllDropdowns() {
   document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('open'));
 }
 
+function toggleDimensionsPanel() {
+  const panel = document.getElementById('dimensionsPanel');
+  const btn = document.getElementById('filtersToggleBtn');
+  const backdrop = document.getElementById('mobileBackdrop');
+  state.dimensionsPanelOpen = !state.dimensionsPanelOpen;
+
+  if (state.dimensionsPanelOpen) {
+    panel.classList.remove('collapsed');
+    panel.classList.add('open');
+    btn.classList.add('active');
+    if (window.innerWidth <= 768 && backdrop) backdrop.classList.add('active');
+    renderDimensionsPanel();
+  } else {
+    panel.classList.remove('open');
+    panel.classList.add('collapsed');
+    btn.classList.remove('active');
+    if (backdrop) backdrop.classList.remove('active');
+  }
+}
+
+
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.btn-wrap')) closeAllDropdowns();
+  // Close dimensions panel when clicking outside it
+  if (state.dimensionsPanelOpen && !e.target.closest('#dimensionsPanel') && !e.target.closest('#filtersToggleBtn')) {
+    toggleDimensionsPanel();
+  }
+  // Close advanced operator popover when clicking outside
+  if (!e.target.closest('.advanced-operator-popover') && !e.target.closest('.dim-advanced-btn')) {
+    document.querySelectorAll('.advanced-operator-popover.open').forEach(p => p.classList.remove('open'));
+  }
 });
 
+/* === FILTERING ENGINE (WAVE 1) === */
+function getFilteredOffers() {
+  let result = [...offers];
+
+  // Apply predicates (AND across predicates)
+  for (const predicate of state.advancedSearch.predicates) {
+    if (!predicate.complete) continue;
+    result = result.filter(o => {
+      try {
+        let fieldValue;
+        switch (predicate.fieldKey) {
+          case 'ship': fieldValue = o.ship; break;
+          case 'destination': fieldValue = o.destination; break;
+          case 'nights': fieldValue = String(o.nights); break;
+          case 'roomType': fieldValue = o.roomType; break;
+          case 'offerCode': fieldValue = o.offerCode; break;
+          case 'sailDate': fieldValue = o.sailDate; break;
+          case 'offerDate': fieldValue = o.offerDate; break;
+          case 'expiration': fieldValue = o.expiration; break;
+          default: fieldValue = '';
+        }
+        return PredicateEngine.evaluatePredicate(predicate, fieldValue, o, o);
+      } catch(e) { return true; }
+    });
+  }
+
+  // Exclude hidden groups
+  if (state.hiddenGroups.size) {
+    result = result.filter(o => {
+      for (const h of state.hiddenGroups) {
+        if (h.includes(o.ship) || h.includes(o.destination)) return false;
+      }
+      return true;
+    });
+  }
+  return result;
+}
+
+function computeDimensionCounts(filtered) {
+  const counts = { ship: {}, destination: {}, nights: {}, roomType: {}, offerCode: {} };
+  for (const o of filtered) {
+    counts.ship[o.ship] = (counts.ship[o.ship] || 0) + 1;
+    counts.destination[o.destination] = (counts.destination[o.destination] || 0) + 1;
+    counts.nights[o.nights] = (counts.nights[o.nights] || 0) + 1;
+    counts.roomType[o.roomType] = (counts.roomType[o.roomType] || 0) + 1;
+    counts.offerCode[o.offerCode] = (counts.offerCode[o.offerCode] || 0) + 1;
+  }
+  return counts;
+}
+
+function renderDimensionsPanel() {
+  const panel = document.getElementById('dimensionsPanel');
+  if (!panel) return;
+
+  const filtered = getFilteredOffers();
+  const counts = computeDimensionCounts(filtered);
+
+  const dims = [
+    { key: 'ship', label: 'Ship', values: SHIPS },
+    { key: 'destination', label: 'Destination', values: [...new Set(offers.map(o => o.destination))] },
+    { key: 'nights', label: 'Nights', values: NIGHTS },
+    { key: 'roomType', label: 'Room Type', values: ROOM_TYPES },
+    { key: 'offerCode', label: 'Offer Code', values: OFFER_CODES },
+  ];
+
+  let html = '';
+  for (const dim of dims) {
+    const open = state.dimensionSections[dim.key] !== false;
+    const vals = dim.values.sort();
+    html += `<div class="dim-section" style="position:relative;">
+      <div class="dim-header ${open ? '' : 'collapsed'}" onclick="toggleDimensionSection('${dim.key}')">
+        <span>${dim.label} <span class="dim-count">(${vals.length})</span></span>
+        <span style="display:inline-flex;gap:4px;align-items:center;">
+          <button class="dim-advanced-btn" onclick="event.stopPropagation();toggleAdvancedOperator('${dim.key}')" title="Advanced operators">⋮</button>
+          <span class="chevron">▼</span>
+        </span>
+      </div>
+      <div class="advanced-operator-popover" id="popover-${dim.key}">
+        <button onclick="showAdvInput('${dim.key}', 'in', '${dim.label}')">IS (equals)</button>
+        <button onclick="showAdvInput('${dim.key}', 'not in', '${dim.label}')">IS NOT</button>
+        <button onclick="showAdvInput('${dim.key}', 'contains', '${dim.label}')">CONTAINS</button>
+        <button onclick="showAdvInput('${dim.key}', 'not contains', '${dim.label}')">NOT CONTAINS</button>
+        ${dim.key === 'nights' || dim.key === 'offerValue' ? `
+        <button onclick="showAdvInput('${dim.key}', 'less than', '${dim.label}', true)">LESS THAN</button>
+        <button onclick="showAdvInput('${dim.key}', 'greater than', '${dim.label}', true)">GREATER THAN</button>
+        ` : ''}
+        <div class="adv-op-input-row" id="adv-input-${dim.key}" style="display:none;">
+          <input type="${dim.key === 'nights' ? 'number' : 'text'}" placeholder="Value…" id="adv-val-${dim.key}" onkeydown="if(event.key==='Enter')submitAdvInput('${dim.key}')">
+          <button onclick="submitAdvInput('${dim.key}')">Apply</button>
+          <button onclick="hideAdvInput('${dim.key}')" style="font-weight:400;color:#64748b">✕</button>
+        </div>
+      </div>
+      <div class="dim-body ${open ? '' : 'collapsed'}">`;
+    for (const v of vals) {
+      const pred = getPredicateForDimension(dim.key, v);
+      const checked = pred ? 'checked' : '';
+      const c = counts[dim.key][v] || 0;
+      html += `<label class="dim-checkbox">
+        <input type="checkbox" ${checked} onchange="updateFilter('${dim.key}', '${v}', this.checked)">
+        <span class="label-text">${v}</span>
+        <span class="count">${c}</span>
+      </label>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Dates section
+  const datesOpen = state.dimensionSections.dates !== false;
+  html += `<div class="dim-section">
+    <div class="dim-header ${datesOpen ? '' : 'collapsed'}" onclick="toggleDimensionSection('dates')">
+      <span>Dates</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="dim-body ${datesOpen ? '' : 'collapsed'}">`;
+  const dateFields = [
+    { key: 'sailDate', label: 'Sail Date' },
+    { key: 'offerDate', label: 'Offer Date' },
+    { key: 'expiration', label: 'Expiration' }
+  ];
+  // Date range presets
+  const today = new Date();
+  const fmt = (d) => d.toISOString().slice(0,10);
+  const presets = [
+    { label: 'Next 7 Days', start: fmt(today), end: fmt(new Date(today.getTime() + 7*864e5)) },
+    { label: 'Next 14 Days', start: fmt(today), end: fmt(new Date(today.getTime() + 14*864e5)) },
+    { label: 'Next 30 Days', start: fmt(today), end: fmt(new Date(today.getTime() + 30*864e5)) },
+    { label: 'This Month', start: fmt(new Date(today.getFullYear(), today.getMonth(), 1)), end: fmt(new Date(today.getFullYear(), today.getMonth()+1, 0)) },
+    { label: 'Next Month', start: fmt(new Date(today.getFullYear(), today.getMonth()+1, 1)), end: fmt(new Date(today.getFullYear(), today.getMonth()+2, 0)) },
+  ];
+
+  for (const df of dateFields) {
+    const pred = state.advancedSearch.predicates.find(p =>
+      p.fieldKey === df.key && p.operator === 'date range'
+    );
+    const start = pred ? pred.values[0] || '' : '';
+    const end = pred ? pred.values[1] || '' : '';
+    html += `<div class="date-inputs" style="margin-bottom:4px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="width:80px;font-size:11px;color:#64748b">${df.label}</span>
+          <input type="date" value="${start}" onchange="updateDateFilter('${df.key}', 'start', this.value)" style="background:#0f172a;border:1px solid #334155;border-radius:4px;color:#e2e8f0;padding:3px 6px;font-size:11px;">
+          <span style="color:#64748b">→</span>
+          <input type="date" value="${end}" onchange="updateDateFilter('${df.key}', 'end', this.value)" style="background:#0f172a;border:1px solid #334155;border-radius:4px;color:#e2e8f0;padding:3px 6px;font-size:11px;">
+          ${pred && pred.complete ? `<button class="date-preset-btn" onclick="removeDateFilter('${df.key}')" style="margin-left:auto;font-size:9px;padding:2px 6px;">Clear</button>` : ''}
+        </div>
+        <div class="date-presets">
+          ${presets.map(p => `<button class="date-preset-btn" onclick="applyDatePreset('${df.key}', '${p.start}', '${p.end}')">${p.label}</button>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+  html += `</div></div>`;
+
+  panel.innerHTML = html;
+}
+
+function getPredicateForDimension(dimKey, value) {
+  return state.advancedSearch.predicates.find(p =>
+    p.fieldKey === dimKey && p.operator === 'in' && p.values.includes(value)
+  );
+}
+
+function addPredicate(fieldKey, operator, values) {
+  const existing = state.advancedSearch.predicates.find(p =>
+    p.fieldKey === fieldKey && p.operator === operator
+  );
+  if (existing) {
+    existing.values = [...new Set([...existing.values, ...values])];
+  } else {
+    state.advancedSearch.predicates.push({
+      id: `pred_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+      fieldKey,
+      operator,
+      values,
+      complete: true
+    });
+  }
+  applyFilters();
+}
+
+function removePredicate(predicateId) {
+  state.advancedSearch.predicates = state.advancedSearch.predicates.filter(p => p.id !== predicateId);
+  applyFilters();
+}
+
+function updateFilter(dim, value, checked) {
+  if (checked) {
+    addPredicate(dim, 'in', [value]);
+  } else {
+    const pred = getPredicateForDimension(dim, value);
+    if (pred) {
+      pred.values = pred.values.filter(v => v !== value);
+      if (pred.values.length === 0) {
+        removePredicate(pred.id);
+        return;
+      }
+    }
+  }
+  applyFilters();
+}
+
+function applyDatePreset(dimKey, start, end) {
+  updateDateFilter(dimKey, 'start', start);
+  updateDateFilter(dimKey, 'end', end);
+  renderDimensionsPanel();
+}
+
+function removeDateFilter(dimKey) {
+  const idx = state.advancedSearch.predicates.findIndex(p =>
+    p.fieldKey === dimKey && p.operator === 'date range'
+  );
+  if (idx !== -1) {
+    state.advancedSearch.predicates.splice(idx, 1);
+    applyFilters();
+  }
+}
+
+function updateDateFilter(dim, which, val) {
+  let pred = state.advancedSearch.predicates.find(p =>
+    p.fieldKey === dim && p.operator === 'date range'
+  );
+  if (val) {
+    if (!pred) {
+      pred = {
+        id: `pred_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+        fieldKey: dim,
+        operator: 'date range',
+        values: [null, null],
+        complete: false
+      };
+      state.advancedSearch.predicates.push(pred);
+    }
+    pred.values[which === 'start' ? 0 : 1] = val;
+    pred.complete = (pred.values[0] && pred.values[1]);
+  } else if (pred) {
+    pred.values[which === 'start' ? 0 : 1] = null;
+    pred.complete = (pred.values[0] && pred.values[1]);
+    if (!pred.complete && !pred.values[0] && !pred.values[1]) {
+      removePredicate(pred.id);
+      return;
+    }
+  }
+  applyFilters();
+}
+
+function toggleDimensionSection(dim) {
+  state.dimensionSections[dim] = !state.dimensionSections[dim];
+  renderDimensionsPanel();
+}
+
+function toggleAdvancedOperator(dimKey) {
+  const popover = document.getElementById(`popover-${dimKey}`);
+  const wasOpen = popover && popover.classList.contains('open');
+
+  // Close all popovers and hide all input rows
+  document.querySelectorAll('.advanced-operator-popover.open').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.adv-op-input-row').forEach(r => r.style.display = 'none');
+  Object.keys(_advPending).forEach(k => delete _advPending[k]);
+
+  if (!wasOpen && popover) {
+    popover.classList.add('open');
+  }
+}
+
+// Pending operator state per dimension
+const _advPending = {};
+
+function showAdvInput(dimKey, operator, label, isNumber) {
+  const row = document.getElementById(`adv-input-${dimKey}`);
+  const input = document.getElementById(`adv-val-${dimKey}`);
+  if (!row || !input) return;
+  _advPending[dimKey] = { fieldKey: dimKey, operator, label, isNumber };
+  input.type = isNumber ? 'number' : 'text';
+  input.placeholder = isNumber ? 'e.g. 7' : `Value for ${label}…`;
+  input.value = '';
+  row.style.display = 'flex';
+  input.focus();
+}
+
+function hideAdvInput(dimKey) {
+  const row = document.getElementById(`adv-input-${dimKey}`);
+  if (row) row.style.display = 'none';
+  delete _advPending[dimKey];
+}
+
+function submitAdvInput(dimKey) {
+  const input = document.getElementById(`adv-val-${dimKey}`);
+  const pending = _advPending[dimKey];
+  if (!pending || !input) return;
+  const val = input.value.trim();
+  if (val) {
+    addPredicate(pending.fieldKey, pending.operator, [val]);
+  }
+  hideAdvInput(dimKey);
+  // Close popover
+  document.querySelectorAll('.advanced-operator-popover.open').forEach(p => p.classList.remove('open'));
+}
+
+function addAdvancedPredicate(fieldKey, operator, value) {
+  if (value !== null && value !== undefined) {
+    addPredicate(fieldKey, operator, [value]);
+  }
+  document.querySelectorAll('.advanced-operator-popover.open').forEach(p => p.classList.remove('open'));
+}
+
+function applyFilters() {
+  const filtered = getFilteredOffers();
+  renderGrouped(filtered); // reuse existing grouped renderer
+  renderActiveChips();
+  updateOfferCount(filtered.length);
+  renderDimensionsPanel(); // refresh counts
+}
+
+function updateOfferCount(n) {
+  const el = document.getElementById('offerCount');
+  if (el) el.textContent = `${n} offers`;
+}
+
+function renderActiveChips() {
+  const row = document.getElementById('activeFiltersRow');
+  if (!row) return;
+  let html = '';
+
+  for (const pred of state.advancedSearch.predicates) {
+    if (!pred.complete) continue;
+    const dimLabel = pred.fieldKey.charAt(0).toUpperCase() + pred.fieldKey.slice(1);
+    let valueStr;
+    if (pred.operator === 'date range') {
+      valueStr = `${pred.values[0] || '...'} → ${pred.values[1] || '...'}`;
+    } else {
+      valueStr = pred.operator === 'in' ? pred.values.join(', ') : pred.values[0];
+    }
+    html += `<span class="filter-chip">${dimLabel}: ${valueStr} <button onclick="removePredicate('${pred.id}')">×</button></span>`;
+  }
+
+  for (const hidden of state.hiddenGroups) {
+    html += `<span class="filter-chip hidden-chip">${hidden} <button onclick="unhideGroup('${hidden}')">×</button></span>`;
+  }
+
+  if (html || state.hiddenGroups.size) {
+    html += `<button class="filter-chip clear-all-btn" onclick="clearAllFilters()">Clear All</button>`;
+  } else {
+    html = '<span style="color:var(--text-muted);font-size:11px;padding:4px 0">No active filters</span>';
+  }
+  row.innerHTML = html;
+}
+
+function unhideGroup(group) {
+  state.hiddenGroups.delete(group);
+  applyFilters();
+}
+
+function clearAllFilters() {
+  state.advancedSearch.predicates = [];
+  state.hiddenGroups.clear();
+  applyFilters();
+}
+
+function hideGroup(ev, groupKey) {
+  ev.stopPropagation();
+  const label = currentGroup.includes('ship') ? 'Ship' : currentGroup.includes('destination') ? 'Destination' : 'Group';
+  state.hiddenGroups.add(`${label}: ${groupKey}`);
+  applyFilters();
+}
+
 function render() {
-  let data = [...offers];
+  // Apply filters first, then sort the filtered set
+  let data = getFilteredOffers();
 
   data.sort((a, b) => {
     switch (currentSort) {
@@ -1047,6 +1830,14 @@ function render() {
     document.getElementById('tableView').style.display = '';
     renderTable(data);
   }
+
+  // Update filter UI
+  renderActiveChips();
+  const btn = document.getElementById('filtersToggleBtn');
+  if (btn) {
+    const totalActive = state.advancedSearch.predicates.filter(p => p.complete).length + state.hiddenGroups.size;
+    btn.innerHTML = totalActive > 0 ? `⋮ Filters <span class="filter-count">${totalActive}</span>` : '⋮ Filters';
+  }
 }
 
 window.addEventListener('resize', () => {
@@ -1058,11 +1849,23 @@ window.addEventListener('resize', () => {
     document.getElementById('cardView').style.display = '';
     document.getElementById('tableView').style.display = 'none';
   }
+  // close mobile panel on desktop resize
+  if (window.innerWidth > 768 && state.dimensionsPanelOpen) {
+    const panel = document.getElementById('dimensionsPanel');
+    const btn = document.getElementById('filtersToggleBtn');
+    const backdrop = document.getElementById('mobileBackdrop');
+    panel.classList.remove('open');
+    panel.classList.add('collapsed');
+    btn.classList.remove('active');
+    if (backdrop) backdrop.classList.remove('active');
+    state.dimensionsPanelOpen = false;
+  }
   render();
 });
 
 setView('cards');
 render();
+renderActiveChips();
 </script>
 </body>
 </html>
