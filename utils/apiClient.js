@@ -96,6 +96,21 @@ const ApiClient = {
                 App.ErrorHandler.showError('Failed to load offers: No session data. Please log in again.');
                 return;
             }
+            // Fallback: extract accountId from JWT sub claim when VDS_ID cookie is unavailable
+            if (!accountId && authToken) {
+                try {
+                    const parts = authToken.split('.');
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                        if (payload.sub) {
+                            accountId = payload.sub;
+                            console.debug('[apiClient] accountId extracted from JWT sub:', accountId);
+                        }
+                    }
+                } catch (e) {
+                    console.debug('[apiClient] Failed to extract accountId from JWT:', e.message);
+                }
+            }
             if (!accountId) {
                 console.debug('[apiClient] Could not resolve accountId');
                 App.ErrorHandler.showError('Failed to load offers: Could not identify account. Please log in again.');
@@ -149,12 +164,13 @@ const ApiClient = {
             // Centralized brand detection
             const host = (location && location.hostname) ? location.hostname : '';
             const brandCode = App.Utils.detectBrand();
-            const relativePath = '/api/casino/v2/offers/merged';
+            const partnerRelativePath = '/api/casino/v1/partners/player';
+            const listRelativePath = '/api/casino/v2/offers/list';
+            const detailsRelativePath = '/api/casino/v2/offers/details';
             const onSupportedDomain = host.includes('royalcaribbean.com') || host.includes('celebritycruises.com') || host.includes('comproyale.com');
             const isSimDomain = host.includes('comproyale.com');
             const defaultDomain = brandCode === 'C' ? 'https://www.celebritycruises.com' : 'https://www.royalcaribbean.com';
-            const endpoint = onSupportedDomain ? relativePath : `${defaultDomain}${relativePath}`;
-            console.debug('[apiClient] Endpoint resolved:', endpoint, 'brand:', brandCode);
+            console.debug('[apiClient] Brand resolved:', brandCode, 'onSupportedDomain:', onSupportedDomain);
             // Extract approvedAgencyIds and digitalRedemption from session featureFlags
             let approvedAgencyIds = [];
             let digitalRedemption = true;
@@ -226,154 +242,198 @@ const ApiClient = {
                 if (hasCode && json.offers) json.offers = json.offers.filter(o => o?.campaignOffer?.offerCode === body.offerCode.trim());
                 return new Response(JSON.stringify(json), { status: 200, headers: { 'content-type': 'application/json' } });
             } : null;
-            console.debug('[apiClient] Sending fetch request to offers API');
-            const response = simFetch ? await simFetch(baseRequestBody) : await fetch(endpoint, {
-                method: 'POST',
-                headers: headers,
-                credentials: 'include',
-                body: JSON.stringify(baseRequestBody)
-            });
-            console.debug('[apiClient] Network request completed, status:', response.status);
-            if (response.status === 403) {
-                console.debug('[apiClient] 403 error detected, session expired');
-                App.ErrorHandler.showError('Session expired. Please log in again.');
-                App.ErrorHandler.closeModalIfOpen();
-                App.Spinner.hideSpinner();
-                return;
-            }
-            if (response.status === 503 && retryCount > 0) {
-                console.debug(`[apiClient] 503 error, retrying (${retryCount} attempts left)`);
-                setTimeout(() => this.fetchOffers(retryCount - 1), 2000);
-                return;
-            }
-            if (!response.ok) {
-                const errorText = await response.text();
-                const status = response.status;
-                console.debug('[apiClient] Non-OK response:', status, errorText);
-                App.ErrorHandler.showError(`Failed to load offers: HTTP ${status}. Please try again later.`);
-                App.ErrorHandler.closeModalIfOpen();
-                return;
-            }
-            // Deep clone JSON to strip potential Xray wrappers (Firefox) so we can safely add/replace properties
-            const rawData = await response.json();
             let data;
-            try { data = JSON.parse(JSON.stringify(rawData)); } catch(e) { data = rawData; }
-            // Avoid logging full API payloads in debug to prevent sensitive data exposure
+
+            if (isSimDomain && simFetch) {
+                console.debug('[apiClient] Sim domain detected, using simFetch');
+                const response = await simFetch(baseRequestBody);
+                if (response.status === 403) {
+                    console.debug('[apiClient] 403 error detected, session expired');
+                    App.ErrorHandler.showError('Session expired. Please log in again.');
+                    App.ErrorHandler.closeModalIfOpen();
+                    App.Spinner.hideSpinner();
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Sim fetch failed: ${response.status}`);
+                }
+                const rawData = await response.json();
+                try { data = JSON.parse(JSON.stringify(rawData)); } catch(e) { data = rawData; }
+            } else {
+                console.debug('[apiClient] Starting new 3-step offer fetch flow');
+
+                // 1. Get Partnership IDs
+                const partnerEndpoint = onSupportedDomain ? partnerRelativePath : `${defaultDomain}${partnerRelativePath}`;
+                console.debug('[apiClient] Fetching partnership IDs:', partnerEndpoint);
+                const partnerResp = await fetch(partnerEndpoint, { method: 'GET', headers, credentials: 'include' });
+
+                if (partnerResp.status === 403) {
+                    console.debug('[apiClient] 403 error on partners, session expired');
+                    App.ErrorHandler.showError('Session expired. Please log in again.');
+                    App.Spinner.hideSpinner();
+                    return;
+                }
+
+                const partnershipIds = [];
+                if (partnerResp.ok) {
+                    try {
+                        const partnerData = await partnerResp.json();
+                        // Response shape: { message, data: [ { id, partnerId, partnerName, ... } ] }
+                        const partners = Array.isArray(partnerData) ? partnerData : (Array.isArray(partnerData?.data) ? partnerData.data : []);
+                        partners.forEach(p => {
+                            const id = p.partnershipId || p.id || p;
+                            if (id && typeof id === 'string') partnershipIds.push(id);
+                        });
+                    } catch(e) { console.warn('[apiClient] Failed to parse partnership IDs', e); }
+                } else {
+                    console.warn('[apiClient] Partnership IDs fetch failed with status:', partnerResp.status);
+                }
+                console.debug('[apiClient] Partnership IDs retrieved:', partnershipIds);
+
+                // 2. Get Offers List
+                const listParams = new URLSearchParams();
+                if (partnershipIds.length) {
+                    listParams.append('partnershipIds', partnershipIds.join(','));
+                }
+                if (baseRequestBody.sortBy) listParams.append('sortBy', baseRequestBody.sortBy);
+                if (baseRequestBody.sortDirection) listParams.append('sortDirection', baseRequestBody.sortDirection);
+                if (baseRequestBody.limit) listParams.append('limit', baseRequestBody.limit);
+                if (baseRequestBody.page) listParams.append('page', baseRequestBody.page);
+                if (baseRequestBody.digitalRedemption !== undefined) listParams.append('digitalRedemption', baseRequestBody.digitalRedemption);
+                if (baseRequestBody.approvedAgencyIds && baseRequestBody.approvedAgencyIds.length) {
+                    listParams.append('approvedAgencyIds', baseRequestBody.approvedAgencyIds.join(','));
+                }
+
+                const listEndpoint = (onSupportedDomain ? listRelativePath : `${defaultDomain}${listRelativePath}`) + '?' + listParams.toString();
+                console.debug('[apiClient] Fetching offers list:', listEndpoint);
+                const listResp = await fetch(listEndpoint, { method: 'GET', headers, credentials: 'include' });
+
+                if (listResp.status === 403) {
+                    App.ErrorHandler.showError('Session expired. Please log in again.');
+                    App.Spinner.hideSpinner();
+                    return;
+                }
+                if (listResp.status === 503 && retryCount > 0) {
+                    console.debug(`[apiClient] 503 error on list, retrying (${retryCount} attempts left)`);
+                    setTimeout(() => this.fetchOffers(retryCount - 1), 2000);
+                    return;
+                }
+                if (!listResp.ok) {
+                    const errorText = await listResp.text();
+                    throw new Error(`Failed to load offers list: HTTP ${listResp.status}. ${errorText.slice(0, 100)}`);
+                }
+
+                // Some RCCL responses arrive as base64-encoded octet-stream; detect and decode
+                let listData;
+                const listCt = (listResp.headers.get('content-type') || '').toLowerCase();
+                if (listCt.includes('application/json')) {
+                    listData = await listResp.json();
+                } else {
+                    const rawListText = await listResp.text();
+                    try {
+                        listData = JSON.parse(rawListText);
+                    } catch (_) {
+                        try { listData = JSON.parse(atob(rawListText)); } catch (e2) {
+                            throw new Error('Could not parse offers list response as JSON or base64');
+                        }
+                    }
+                }
+                const initialOffers = (listData && Array.isArray(listData.offers)) ? listData.offers : (Array.isArray(listData) ? listData : []);
+                console.debug('[apiClient] Offers list retrieved, count:', initialOffers.length);
+
+                // 3. Fetch details for each offer in parallel
+                console.debug('[apiClient] Fetching details for all offers');
+                const detailedOffers = await Promise.all(initialOffers.map(async (offer) => {
+                    try {
+                        const co = offer.campaignOffer || offer;
+                        const offerCode = (co.offerCode || '').toString().trim();
+                        const playerOfferId = (offer.playerOfferId || '').toString().trim();
+
+                        if (!offerCode || !playerOfferId) return offer;
+
+                        const detailsParams = new URLSearchParams();
+                        detailsParams.append('offerCode', offerCode);
+                        detailsParams.append('playerOfferId', playerOfferId);
+                        detailsParams.append('limit', '999');
+                        detailsParams.append('page', '1');
+                        detailsParams.append('sortBy', baseRequestBody.sortBy);
+                        detailsParams.append('sortDirection', baseRequestBody.sortDirection);
+                        const detailsEndpoint = (onSupportedDomain ? detailsRelativePath : `${defaultDomain}${detailsRelativePath}`) +
+                            '?' + detailsParams.toString();
+
+                        const dResp = await fetch(detailsEndpoint, { method: 'GET', headers, credentials: 'include' });
+                        if (!dResp.ok) return offer;
+
+                        // Some RCCL responses arrive as base64-encoded octet-stream; detect and decode
+                        let detailsData;
+                        const detailsCt = (dResp.headers.get('content-type') || '').toLowerCase();
+                        if (detailsCt.includes('application/json')) {
+                            detailsData = await dResp.json();
+                        } else {
+                            const rawText = await dResp.text();
+                            try {
+                                detailsData = JSON.parse(rawText);
+                            } catch (_) {
+                                try { detailsData = JSON.parse(atob(rawText)); } catch (e2) {
+                                    console.warn('[apiClient] Could not parse details response as JSON or base64:', e2);
+                                    return offer;
+                                }
+                            }
+                        }
+                        if (detailsData && detailsData.error) {
+                            console.warn('[apiClient] Details endpoint returned error for', offerCode, detailsData.message || detailsData.code);
+                            return offer;
+                        }
+
+                        // The details endpoint returns a full envelope:
+                        // { firstName, lastName, offers: [{ campaignOffer: { sailings, ... }, ... }], totalOffers, ... }
+                        // Extract the matching offer's campaignOffer from the envelope.
+                        let detailCampaignOffer = null;
+                        if (Array.isArray(detailsData.offers) && detailsData.offers.length > 0) {
+                            // Find by offerCode match; fall back to first entry
+                            const match = detailsData.offers.find(o =>
+                                (o.campaignOffer?.offerCode || '').toString().trim() === offerCode
+                            ) || detailsData.offers[0];
+                            detailCampaignOffer = match.campaignOffer || match;
+                        } else if (detailsData.campaignOffer) {
+                            // Flat shape: details response IS the offer object
+                            detailCampaignOffer = detailsData.campaignOffer;
+                        } else if (detailsData.sailings || detailsData.offerCode) {
+                            // Direct campaignOffer-level payload
+                            detailCampaignOffer = detailsData;
+                        }
+
+                        if (!detailCampaignOffer) {
+                            console.warn('[apiClient] Could not extract campaignOffer from details for', offerCode);
+                            return offer;
+                        }
+
+                        // Deep clone to avoid mutation issues (Firefox Xray)
+                        const mergedOffer = JSON.parse(JSON.stringify(offer));
+                        if (mergedOffer.campaignOffer) {
+                            mergedOffer.campaignOffer = { ...mergedOffer.campaignOffer, ...detailCampaignOffer };
+                        } else {
+                            mergedOffer.campaignOffer = detailCampaignOffer;
+                        }
+                        return mergedOffer;
+                    } catch (e) {
+                        console.warn('[apiClient] Error fetching details for an offer:', e);
+                        return offer;
+                    }
+                }));
+
+                data = { offers: detailedOffers };
+            }
+
+            // Pruning / Processing
             console.debug('[apiClient] API response received: offers=', Array.isArray(data && data.offers) ? data.offers.length : 0);
-            // Remove excluded sailings and enforce night limit for TIER offers
             if (data && Array.isArray(data.offers)) {
                 console.debug('[apiClient] Processing offers array, length:', data.offers.length);
                 data.offers = data.offers.map(o => ({ ...o })); // shallow clone each offer root
                 data.offers.forEach(o => {
                     removeExcludedFromOffer(o);
-                    //enforceTierNightLimit(o);
                 });
                 console.debug('[apiClient] Offers array processed');
-            }
-            // Identify offers that returned with empty sailings but have an offerCode we can refetch
-            const offersToRefetch = (data && Array.isArray(data.offers)) ? data.offers
-                .filter(o => o?.campaignOffer?.offerCode && Array.isArray(o.campaignOffer.sailings) && (o.campaignOffer.sailings.length === 0 || o.campaignOffer.sailings[0].itineraryCode === null) )
-                .map(o => o.campaignOffer.offerCode.trim()) : [];
-
-            // Snapshot original offers (post initial pruning) for diff logging
-            const originalOfferSnapshots = {};
-            if (offersToRefetch.length) {
-                offersToRefetch.forEach(code => {
-                    const snap = data.offers.find(o => o?.campaignOffer?.offerCode === code);
-                    if (snap) {
-                        try { originalOfferSnapshots[code] = JSON.parse(JSON.stringify(snap)); } catch(e) { originalOfferSnapshots[code] = snap; }
-                    }
-                });
-            }
-
-            if (offersToRefetch.length) {
-                console.debug(`[apiClient] Refetching ${offersToRefetch.length} offers with empty sailings`, offersToRefetch);
-                // Deduplicate just in case
-                const uniqueCodes = Array.from(new Set(offersToRefetch));
-                const refetchPromises = uniqueCodes.map(code => {
-                    const body = { ...baseRequestBody, offerCode: code };
-                    return (simFetch ? simFetch(body) : fetch(endpoint, {
-                        method: 'POST',
-                        headers,
-                        credentials: 'omit',
-                        body: JSON.stringify(body)
-                    }))
-                        .then(r => {
-                            if (!r.ok) throw new Error(`Refetch ${code} failed: ${r.status}`);
-                            return r.json();
-                        })
-                        .then(refetchData => {
-                            // Deep clone refetch data for same Firefox safety
-                            try { refetchData = JSON.parse(JSON.stringify(refetchData)); } catch(e) { /* ignore */ }
-                            return ({ code, refetchData });
-                        })
-                        .catch(err => {
-                            console.warn('[apiClient] Offer refetch failed', code, err.message);
-                            return { code, refetchData: null };
-                        });
-                });
-
-                console.debug('[apiClient] Awaiting Promise.all for refetches');
-                const refetchResults = await Promise.all(refetchPromises);
-                console.debug('[apiClient] Refetches completed');
-                // Merge sailings into original data (create new objects instead of mutating in-place to appease Xray wrappers)
-                try {
-                    refetchResults.forEach(({ code, refetchData }) => {
-                        if (!refetchData || !Array.isArray(refetchData.offers)) return;
-                        const refreshedOffer = refetchData.offers.find(o => o?.campaignOffer?.offerCode === code);
-                        if (!refreshedOffer) return;
-                        const originalIdx = data.offers.findIndex(o => o?.campaignOffer?.offerCode === code);
-                        if (originalIdx === -1) return;
-                        const original = data.offers[originalIdx];
-                        const refreshedSailings = refreshedOffer?.campaignOffer?.sailings;
-                        // Always log differences even if refreshedSailings is empty/undefined
-                        try { this.logSailingDifferences(originalOfferSnapshots[code], refreshedOffer); } catch(dErr) { console.warn('[apiClient] logSailingDifferences invocation failed', dErr); }
-
-                        if (Array.isArray(refreshedSailings)) {
-                            // Build a superset (union) of original + refreshed sailings (keyed by shipCode + sailDate)
-                            const origCO = original.campaignOffer || {};
-                            const originalSailings = Array.isArray(origCO.sailings) ? origCO.sailings : [];
-                            const superset = originalSailings.map(s => ({ ...s }));
-                            const keyFor = (s) => {
-                                const shipCode = (s.shipCode || '').toString().toUpperCase();
-                                const sailDate = (s.sailDate || '').toString();
-                                return (shipCode && sailDate) ? `${shipCode}|${sailDate}` : null;
-                            };
-                            const indexByKey = new Map();
-                            superset.forEach((s, i) => {
-                                const k = keyFor(s); if (k) indexByKey.set(k, i);
-                            });
-                            let added = 0, replaced = 0;
-                            refreshedSailings.forEach(rs => {
-                                const clone = { ...rs };
-                                const k = keyFor(clone);
-                                if (k && indexByKey.has(k)) {
-                                    // Replace existing with refreshed (prefer fresher itinerary details)
-                                    const idx = indexByKey.get(k);
-                                    superset[idx] = clone;
-                                    replaced++;
-                                } else {
-                                    superset.push(clone);
-                                    if (k) indexByKey.set(k, superset.length - 1);
-                                    added++;
-                                }
-                            });
-                            const newCO = {
-                                ...origCO,
-                                sailings: superset,
-                                excludedSailings: Array.isArray(refreshedOffer.campaignOffer?.excludedSailings) ? refreshedOffer.campaignOffer.excludedSailings.map(s => ({ ...s })) : origCO.excludedSailings
-                            };
-                            data.offers[originalIdx] = { ...original, campaignOffer: newCO };
-                            // Post-merge pruning / limits (may drop some superset entries if excluded or >7 nights for TIER)
-                            removeExcludedFromOffer(data.offers[originalIdx]);
-                            //enforceTierNightLimit(data.offers[originalIdx]);
-                            console.debug(`[apiClient] Unioned sailings for offer ${code}: original=${originalSailings.length} refetched=${refreshedSailings.length} added=${added} replaced=${replaced} final=${data.offers[originalIdx].campaignOffer.sailings.length}`);
-                        }
-                    });
-                    console.debug('[apiClient] Refetched offers merged');
-                } catch(mergeErr) {
-                    console.warn('[apiClient] Merge phase error (continuing with partial data):', mergeErr);
-                }
             }
 
             // normalize data (trim, adjust capitalization, etc.) AFTER potential merges so added sailings are normalized too
