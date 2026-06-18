@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Comp Royale — Cruise Offers Viewer v2.3.2</title>
+  <title>Comp Royale — Cruise Offers Viewer v2.3.3</title>
   <meta name="description" content="Browser extension that transforms Royal Caribbean and Celebrity Cruises comp offers into a sortable, filterable power-user interface. Multi-profile, upgrade pricing, B2B Builder, dark mode — zero tracking." />
   <meta name="theme-color" content="#050f20" />
   <meta property="og:title" content="Comp Royale — Cruise Offers Viewer" />
@@ -55,7 +55,7 @@
 <header class="hero">
   <div class="hero-inner">
     <div class="hero-content">
-      <div class="hero-badge">✦ v2.3.2 Now Available · 100% Free</div>
+      <div class="hero-badge">✦ v2.3.3 Now Available · 100% Free</div>
       <h1 class="hero-title">
         Your cruise offers,<br>
         <span class="accent">finally organized</span>
@@ -137,34 +137,35 @@
 <section id="whatsnew" class="section">
   <div class="wrapper">
     <span class="section-kicker">Release</span>
-    <h2 class="section-title">What's New in v2.3.2</h2>
+    <h2 class="section-title">What's New in v2.3.3</h2>
     <p class="section-lead">This release includes:</p>
     <ul class="section-lead">
+      <li>Updated offer retrieval — new multi-step API flow for improved reliability</li>
+      <li>JWT fallback for account identification when cookies are unavailable</li>
       <li>Configurable date format — choose MM/DD/YY or YYYY-MM-DD in Settings</li>
-      <li>Fixed profile loading issue — email and account info now resolved reliably via cookies</li>
       <li>Various bugfixes and performance improvements</li>
     </ul>
 
     <div class="whatsnew-grid">
       <div class="whatsnew-card">
+        <div class="wn-icon">🔄</div>
+        <div class="wn-body">
+          <h4>Updated Offer Retrieval</h4>
+          <p>Offers are now loaded through an updated multi-step API flow for improved reliability. Handles base64-encoded responses and gracefully falls back when individual endpoints are unavailable.</p>
+        </div>
+      </div>
+      <div class="whatsnew-card">
+        <div class="wn-icon">🔑</div>
+        <div class="wn-body">
+          <h4>Smarter Account Detection</h4>
+          <p>Account identification now falls back to your access token (JWT) when cookies are unavailable, reducing "Please log in again" errors.</p>
+        </div>
+      </div>
+      <div class="whatsnew-card">
         <div class="wn-icon">📅</div>
         <div class="wn-body">
           <h4>Date Format Setting</h4>
           <p>New dropdown in Settings to switch between MM/DD/YY (compact) and YYYY-MM-DD (full). Applies globally across tables, filter chips, Advanced Search, calendar editor, and CSV export.</p>
-        </div>
-      </div>
-      <div class="whatsnew-card">
-        <div class="wn-icon">💰</div>
-        <div class="wn-body">
-          <h4>Minor Pricing Bugfix</h4>
-          <p>Fixed a minor pricing issue to keep displayed values accurate after refresh and recalculation.</p>
-        </div>
-      </div>
-      <div class="whatsnew-card">
-        <div class="wn-icon">🧹</div>
-        <div class="wn-body">
-          <h4>Offer Code Lookup Removed</h4>
-          <p>Offer code lookup links were removed because the supporting endpoints are no longer available.</p>
         </div>
       </div>
     </div>
@@ -516,9 +517,22 @@
     <div class="release-timeline">
 
       <div class="release-entry current">
-        <div class="release-ver"><span class="ver-badge">v2.3.2</span></div>
+        <div class="release-ver"><span class="ver-badge">v2.3.3</span></div>
         <div class="release-body">
           <h4>Current Release</h4>
+          <ul>
+            <li>Updated offer retrieval — new multi-step API flow replacing deprecated merged endpoint</li>
+            <li>JWT fallback for account identification when cookies are unavailable</li>
+            <li>Base64/octet-stream response decoding for RCCL API compatibility</li>
+            <li>Configurable date format — MM/DD/YY or YYYY-MM-DD in Settings</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="release-entry">
+        <div class="release-ver"><span class="ver-badge">v2.3.2</span></div>
+        <div class="release-body">
+          <h4>Profile Loading Fix</h4>
           <ul>
             <li>Fixed profile loading issue — email and account info now resolved reliably via cookies</li>
             <li>Removed dependency on localStorage session data that was causing intermittent failures</li>

@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '15'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes, r14 B2B lag days, r15 date format setting
+    const TOUR_REVISION = '16'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes, r14 B2B lag days, r15 date format setting, r16 updated offer retrieval
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -101,16 +101,22 @@
         _initSteps(){
             this._steps = [
                 {
+                    id:'updatedOfferRetrieval',
+                    target:()=> document.querySelector('#gobo-offers-table') || null,
+                    title:'Updated Offer Retrieval',
+                    body:'Offers are now loaded through an updated multi-step API flow for improved reliability. Account identification falls back to your access token when cookies are unavailable, so you should see fewer "Please log in again" errors.',
+                },
+                {
                     id:'dateFormat',
                     target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
                     title:'Date Format Setting',
-                    body:'New in Settings: choose between MM/DD/YY (compact) and YYYY-MM-DD (full) date formats. Your choice applies everywhere — tables, filter chips, Advanced Search dropdowns, calendar editor, and CSV export.',
+                    body:'Choose between MM/DD/YY (compact) and YYYY-MM-DD (full) date formats in Settings. Your choice applies everywhere — tables, filter chips, Advanced Search dropdowns, calendar editor, and CSV export.',
                 },
                 {
                     id:'b2bLagDays',
                     target:()=> document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
                     title:'B2B Lag Days',
-                    body:'New setting: allow a gap of up to 3 days between back-to-back sailings. Set the "Lag days between sailings" slider in Settings to control how many days apart sailings can be and still chain together.',
+                    body:'Allow a gap of up to 3 days between back-to-back sailings. Set the "Lag days between sailings" slider in Settings to control how many days apart sailings can be and still chain together.',
                 },
                 {
                     id:'supportCoffee',
