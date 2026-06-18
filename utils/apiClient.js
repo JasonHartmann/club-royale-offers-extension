@@ -343,6 +343,7 @@ const ApiClient = {
 
                 // 3. Fetch details for each offer in parallel
                 console.debug('[apiClient] Fetching details for all offers');
+                let detailsEnvelope = null; // capture top-level envelope (loyaltyId, firstName, etc.)
                 const detailedOffers = await Promise.all(initialOffers.map(async (offer) => {
                     try {
                         const co = offer.campaignOffer || offer;
@@ -385,6 +386,15 @@ const ApiClient = {
                             return offer;
                         }
 
+                        // Capture envelope fields (loyaltyId, firstName, etc.) from the first successful details response
+                        if (!detailsEnvelope && detailsData && typeof detailsData === 'object' && !Array.isArray(detailsData)) {
+                            detailsEnvelope = {};
+                            if (detailsData.loyaltyId) detailsEnvelope.loyaltyId = detailsData.loyaltyId;
+                            if (detailsData.firstName) detailsEnvelope.firstName = detailsData.firstName;
+                            if (detailsData.lastName) detailsEnvelope.lastName = detailsData.lastName;
+                            if (detailsData.email) detailsEnvelope.email = detailsData.email;
+                        }
+
                         // The details endpoint returns a full envelope:
                         // { firstName, lastName, offers: [{ campaignOffer: { sailings, ... }, ... }], totalOffers, ... }
                         // Extract the matching offer's campaignOffer from the envelope.
@@ -422,7 +432,20 @@ const ApiClient = {
                     }
                 }));
 
-                data = { offers: detailedOffers };
+                // Build envelope fields from details response, list response, or cookie fallback
+                const envelopeFields = {};
+                // Prefer details envelope (has loyaltyId in the real API response)
+                if (detailsEnvelope) Object.assign(envelopeFields, detailsEnvelope);
+                // Fall back to listData envelope if it carries these fields
+                if (listData && typeof listData === 'object' && !Array.isArray(listData)) {
+                    if (!envelopeFields.loyaltyId && listData.loyaltyId) envelopeFields.loyaltyId = listData.loyaltyId;
+                    if (!envelopeFields.firstName && listData.firstName) envelopeFields.firstName = listData.firstName;
+                    if (!envelopeFields.lastName && listData.lastName) envelopeFields.lastName = listData.lastName;
+                    if (!envelopeFields.email && listData.email) envelopeFields.email = listData.email;
+                }
+                // Last resort: use the cookie value captured earlier
+                if (!envelopeFields.loyaltyId && loyaltyId) envelopeFields.loyaltyId = loyaltyId;
+                data = { ...envelopeFields, offers: detailedOffers };
             }
 
             // Pruning / Processing
