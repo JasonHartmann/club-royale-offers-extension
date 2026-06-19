@@ -1376,6 +1376,7 @@ const TableRenderer = {
             }
             state._lastRenderSig = renderSig;
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
+            let _b2bApply = null; // hoisted reference for post-DOM-attach re-apply
             try {
                 this._ensureRowsHaveB2BDepth(state.sortedOffers, {
                     allowSideBySide: allowSideBySidePref,
@@ -1414,6 +1415,7 @@ const TableRenderer = {
                 };
                 // Apply to initially rendered rows
                 applyB2BToVisibleRows();
+                _b2bApply = applyB2BToVisibleRows;
                 // Listen for chunk/scroll events to apply to newly rendered rows
                 const token = state._rowRenderToken || null;
                 const chunkHandler = (chunkEv) => {
@@ -1434,6 +1436,30 @@ const TableRenderer = {
             if (!table.contains(thead)) table.appendChild(thead);
             if (!table.contains(tbody)) table.appendChild(tbody);
             table.style.display = 'table';
+            // Re-apply B2B pills after DOM attachment.
+            // The earlier synchronous call ran while tbody was detached;
+            // for virtual-scroll the viewport estimate was wrong (600px
+            // fallback) so some rows may not have been rendered.  Force a
+            // re-render with the real viewport, then re-apply pills.
+            if (typeof _b2bApply === 'function') {
+                requestAnimationFrame(() => {
+                    try {
+                        // Virtual scroll: re-render with actual viewport dims
+                        if (state._vsRenderVisible) {
+                            // Reset rendered range so renderVisibleRows detects
+                            // a change and actually re-creates rows.
+                            try {
+                                if (state._virtualScroll) {
+                                    state._virtualScroll.renderedStart = -1;
+                                    state._virtualScroll.renderedEnd = -1;
+                                }
+                            } catch(e) {}
+                            try { state._vsRenderVisible(); } catch(e) {}
+                        }
+                        _b2bApply();
+                    } catch(e) { /* ignore */ }
+                });
+            }
         } else {
             if (!state.groupingStack.length) {
                 state.viewMode = 'table';

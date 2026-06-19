@@ -255,6 +255,10 @@ const TableBuilder = {
         };
 
         const renderVisibleRows = () => {
+            // Lazily resolve scroll container — on first call tbody may be
+            // detached so scrollEl is null.  Re-check each invocation so
+            // post-DOM-attach calls use real viewport dimensions.
+            if (!scrollEl) scrollEl = findScrollContainer();
             const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
             const viewportHeight = scrollEl ? scrollEl.clientHeight : 600;
             const buffer = self.BUFFER_ROWS;
