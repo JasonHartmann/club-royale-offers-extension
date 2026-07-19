@@ -57,15 +57,17 @@
         const shipClass = Utils.getShipClass(sailing.shipName);
         // Trade-in value extraction & formatting (inserted between Expiration and Name columns)
         const rawTrade = offer.campaignOffer?.tradeInValue;
-        const tradeDisplay = App.Utils.formatTradeValue(rawTrade);
+        let tradeDisplay = '-';
+        try { tradeDisplay = App.Utils.formatTradeValue(rawTrade); } catch(e){}
         // New Value column (Offer Value)
         let valueDisplay;
         try {
             const rawVal = App.Utils.computeOfferValue(offer, sailing);
             valueDisplay = App.Utils.formatOfferValue(rawVal);
         } catch(e){ valueDisplay = undefined; }
-        const includeTaxesAndFees = App.Utils.getIncludeTaxesAndFeesPreference(App.TableRenderer.lastState);
-        const upgradeOptions = { includeTaxes: includeTaxesAndFees, state: App.TableRenderer.lastState };
+        let includeTaxesAndFees = true;
+        try { includeTaxesAndFees = App.Utils.getIncludeTaxesAndFeesPreference(App.TableRenderer.lastState); } catch(e){}
+        const upgradeOptions = { includeTaxes: includeTaxesAndFees, state: App.TableRenderer ? App.TableRenderer.lastState : null };
         let interiorDisplay;
         let oceanViewUpgradeDisplay;
         let balconyUpgradeDisplay;
@@ -80,7 +82,8 @@
             suiteUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('suiteUpgrade', offer, sailing, upgradeOptions);
         } catch(e){ oceanViewUpgradeDisplay='-'; balconyUpgradeDisplay='-'; suiteUpgradeDisplay='-'; interiorDisplay=interiorDisplay||'-'; }
         // Favorite / ID column setup
-        const isFavoritesView = App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites';
+        let isFavoritesView = false;
+        try { isFavoritesView = App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites'; } catch(e){}
         let favCellHtml;
         if (isFavoritesView && idx !== null) {
             // Show saved profileId as ID icon, with Trash Icon below
