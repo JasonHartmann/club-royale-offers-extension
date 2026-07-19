@@ -821,8 +821,14 @@ const Filtering = {
                 return offer.campaignOffer?.reserveByDate ? String(offer.campaignOffer.reserveByDate).trim().split('T')[0] : undefined;
             case 'offerName':
                 return offer.campaignOffer?.name || '-';
-            case 'shipClass':
-                return Utils.getShipClass(sailing.shipName);
+            case 'shipClass': {
+                try {
+                    const name = sailing?.shipName;
+                    if (App && App.Utils && typeof App.Utils.getShipClass === 'function') return App.Utils.getShipClass(name);
+                    if (typeof Utils !== 'undefined' && Utils && typeof Utils.getShipClass === 'function') return Utils.getShipClass(name);
+                    return '-';
+                } catch (e) { return '-'; }
+            }
             case 'ship':
                 return sailing?.shipName || '-';
             case 'sailDate':
@@ -842,8 +848,14 @@ const Filtering = {
                 return guestsText;
             case 'perks':
                 return perksStr;
-            case 'tradeInValue':
-                return App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue);
+            case 'tradeInValue': {
+                try {
+                    const v = offer?.campaignOffer?.tradeInValue;
+                    if (App && App.Utils && typeof App.Utils.formatTradeValue === 'function') return App.Utils.formatTradeValue(v);
+                    if (typeof Utils !== 'undefined' && Utils && typeof Utils.formatTradeValue === 'function') return Utils.formatTradeValue(v);
+                    return '-';
+                } catch (e) { return '-'; }
+            }
             case 'b2bDepth': {
                 const depthVal = (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : null;
                 if (depthVal != null) return depthVal;

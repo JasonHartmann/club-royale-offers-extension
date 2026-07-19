@@ -646,9 +646,10 @@ const Utils = {
     }
 };
 
-// Expose globally for other scripts that may reference window.Utils
+// Expose globally for other scripts that may reference window.Utils or globalThis.Utils
 if (typeof window !== 'undefined') {
     try { window.Utils = Utils; } catch(e) { /* ignore in strict environments */ }
+    try { globalThis.Utils = Utils; } catch(e) { /* ignore in strict environments */ }
     // Attach post-render listeners once
     try {
         if (!window._offerValueListenersAttached) {

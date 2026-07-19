@@ -5,11 +5,7 @@
     Utils.createOfferRow = function ({offer, sailing}, isNewest = false, isExpiringSoon = false, idx = null) {
         const row = document.createElement('tr');
         let hiddenSet = null;
-        try {
-            if (App && App.TableRenderer && typeof App.TableRenderer.getHiddenColumnsSet === 'function') {
-                hiddenSet = App.TableRenderer.getHiddenColumnsSet(App.TableRenderer.lastState);
-            }
-        } catch(e) { hiddenSet = null; }
+        try { hiddenSet = App.TableRenderer.getHiddenColumnsSet(App.TableRenderer.lastState); } catch(e) { hiddenSet = null; }
         const isHiddenCol = (key) => !!(hiddenSet && hiddenSet.has(key));
         const tdClass = (key, base) => `${base}${isHiddenCol(key) ? ' gobo-col-hidden' : ''}`;
         // Attach identifying data attributes for recomputation of offerValue
@@ -61,47 +57,30 @@
         const shipClass = Utils.getShipClass(sailing.shipName);
         // Trade-in value extraction & formatting (inserted between Expiration and Name columns)
         const rawTrade = offer.campaignOffer?.tradeInValue;
-        const tradeDisplay = (typeof App !== 'undefined' && App.Utils && App.Utils.formatTradeValue) ? App.Utils.formatTradeValue(rawTrade) : (function(rt){ if (rt===undefined||rt===null||rt==='') return '-'; const cleaned=String(rt).replace(/[^0-9.\-]/g,''); const parsed = cleaned===''?NaN:parseFloat(cleaned); if(!isNaN(parsed)) return Number.isInteger(parsed)?`$${parsed.toLocaleString()}`:`$${parsed.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}`; return String(rt); })(rawTrade);
+        const tradeDisplay = App.Utils.formatTradeValue(rawTrade);
         // New Value column (Offer Value)
         let valueDisplay;
         try {
-            const rawVal = (App && App.Utils && typeof App.Utils.computeOfferValue === 'function') ? App.Utils.computeOfferValue(offer, sailing) : (Utils.computeOfferValue ? Utils.computeOfferValue(offer, sailing) : null);
-            valueDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawVal) : (Utils.formatOfferValue ? Utils.formatOfferValue(rawVal) : (rawVal!=null?`$${Number(rawVal).toFixed(2)}`:'-'));
+            const rawVal = App.Utils.computeOfferValue(offer, sailing);
+            valueDisplay = App.Utils.formatOfferValue(rawVal);
         } catch(e){ valueDisplay = undefined; }
-        const includeTaxesAndFees = (App && App.Utils && typeof App.Utils.getIncludeTaxesAndFeesPreference === 'function') ? App.Utils.getIncludeTaxesAndFeesPreference(App && App.TableRenderer ? App.TableRenderer.lastState : null) : true;
-        const upgradeOptions = { includeTaxes: includeTaxesAndFees, state: App && App.TableRenderer ? App.TableRenderer.lastState : null };
+        const includeTaxesAndFees = App.Utils.getIncludeTaxesAndFeesPreference(App.TableRenderer.lastState);
+        const upgradeOptions = { includeTaxes: includeTaxesAndFees, state: App.TableRenderer.lastState };
         let interiorDisplay;
         let oceanViewUpgradeDisplay;
         let balconyUpgradeDisplay;
         let suiteUpgradeDisplay;
         try {
-            const interiorRaw = (App && App.Utils && typeof App.Utils.computeInteriorYouPayPrice === 'function')
-                ? App.Utils.computeInteriorYouPayPrice(offer, sailing, upgradeOptions)
-                : null;
-            interiorDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(interiorRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(interiorRaw) : (interiorRaw!=null?`$${Number(interiorRaw).toFixed(2)}`:'-'));
+            const interiorRaw = App.Utils.computeInteriorYouPayPrice(offer, sailing, upgradeOptions);
+            interiorDisplay = App.Utils.formatOfferValue(interiorRaw);
         } catch(e){ interiorDisplay = undefined; }
         try {
-            if (App && App.Utils && typeof App.Utils.formatUpgradePriceForColumn === 'function') {
-                oceanViewUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('oceanViewUpgrade', offer, sailing, upgradeOptions);
-                balconyUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('balconyUpgrade', offer, sailing, upgradeOptions);
-                suiteUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('suiteUpgrade', offer, sailing, upgradeOptions);
-            } else {
-                const oceanRaw = (App && App.Utils && typeof App.Utils.computeOceanViewUpgradePrice === 'function')
-                    ? App.Utils.computeOceanViewUpgradePrice(offer, sailing, upgradeOptions)
-                    : (App && App.PricingUtils && typeof App.PricingUtils.computeOceanViewUpgradePrice === 'function') ? App.PricingUtils.computeOceanViewUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
-                const balconyRaw = (App && App.Utils && typeof App.Utils.computeBalconyUpgradePrice === 'function')
-                    ? App.Utils.computeBalconyUpgradePrice(offer, sailing, upgradeOptions)
-                    : (App && App.PricingUtils && typeof App.PricingUtils.computeBalconyUpgradePrice === 'function') ? App.PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
-                const suiteRaw = (App && App.Utils && typeof App.Utils.computeSuiteUpgradePrice === 'function')
-                    ? App.Utils.computeSuiteUpgradePrice(offer, sailing, upgradeOptions)
-                    : (App && App.PricingUtils && typeof App.PricingUtils.computeSuiteUpgradePrice === 'function') ? App.PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: includeTaxesAndFees }) : null;
-                oceanViewUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(oceanRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(oceanRaw) : (oceanRaw!=null?`$${Number(oceanRaw).toFixed(2)}`:'-'));
-                balconyUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(balconyRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(balconyRaw) : (balconyRaw!=null?`$${Number(balconyRaw).toFixed(2)}`:'-'));
-                suiteUpgradeDisplay = (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(suiteRaw) : (Utils.formatOfferValue ? Utils.formatOfferValue(suiteRaw) : (suiteRaw!=null?`$${Number(suiteRaw).toFixed(2)}`:'-'));
-            }
+            oceanViewUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('oceanViewUpgrade', offer, sailing, upgradeOptions);
+            balconyUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('balconyUpgrade', offer, sailing, upgradeOptions);
+            suiteUpgradeDisplay = App.Utils.formatUpgradePriceForColumn('suiteUpgrade', offer, sailing, upgradeOptions);
         } catch(e){ oceanViewUpgradeDisplay='-'; balconyUpgradeDisplay='-'; suiteUpgradeDisplay='-'; interiorDisplay=interiorDisplay||'-'; }
         // Favorite / ID column setup
-        const isFavoritesView = (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+        const isFavoritesView = App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites';
         let favCellHtml;
         if (isFavoritesView && idx !== null) {
             // Show saved profileId as ID icon, with Trash Icon below
@@ -141,8 +120,8 @@
         } else {
             let profileId = null;
             try {
-                if (App && App.CurrentProfile && App.CurrentProfile.state && App.CurrentProfile.state.profileId !== undefined && App.CurrentProfile.state.profileId !== null) {
-                    profileId = App.CurrentProfile.state.profileId; // allow 0
+                if (App.CurrentProfile && App.CurrentProfile.state && App.CurrentProfile.state.profileId != null) {
+                    profileId = App.CurrentProfile.state.profileId;
                 }
             } catch(e){}
             let isFav = false;
@@ -179,7 +158,7 @@
                 // Do NOT apply this highlight when viewing the Favorites pseudo-profile
                 // (it produces a persistent highlight that doesn't make sense in that view).
                 try {
-                    const viewingFavorites = (typeof App !== 'undefined' && App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites');
+                    const viewingFavorites = App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites';
                     if (!viewingFavorites && window.BackToBackTool && BackToBackTool._selectedRowId && row.dataset && row.dataset.b2bRowId && String(row.dataset.b2bRowId) === String(BackToBackTool._selectedRowId)) {
                         row.classList.add('gobo-b2b-selected');
                     }
@@ -194,7 +173,7 @@
                     try { if (row.dataset && row.dataset.offerIndex !== undefined) b2bCell.dataset.offerIndex = row.dataset.offerIndex; } catch(e) {}
                     // If the TableRenderer has already computed depths, render the pill immediately
                     try {
-                        if (App && App.TableRenderer && App.TableRenderer.lastState && typeof App.TableRenderer.updateB2BDepthCell === 'function') {
+                        if (App.TableRenderer.lastState && App.TableRenderer.updateB2BDepthCell) {
                             let idx;
                             try { idx = row.dataset && row.dataset.offerIndex !== undefined ? parseInt(row.dataset.offerIndex, 10) : null; } catch(e) { idx = null; }
                             if ((idx === null || isNaN(idx)) && row.dataset && row.dataset.b2bRowId) {
@@ -267,7 +246,7 @@
                         e.preventDefault();
                         e.stopPropagation();
                         let profileId = null;
-                        try { if (App && App.CurrentProfile && App.CurrentProfile.state) profileId = App.CurrentProfile.state.profileId; } catch(err){}
+                        try { if (App.CurrentProfile && App.CurrentProfile.state) profileId = App.CurrentProfile.state.profileId; } catch(err){}
                         try { if (Favorites.ensureProfileExists) Favorites.ensureProfileExists(); } catch(err){}
                         try { Favorites.toggleFavorite(offer, sailing, profileId); } catch(err){ console.debug('[favorite-toggle] toggle error', err); }
                         // Re-evaluate favorite state

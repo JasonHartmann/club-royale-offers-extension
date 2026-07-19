@@ -409,9 +409,12 @@ const AdvancedSearch = {
             } else {
                 arr = Array.from(set).sort();
             }
-            state._advFieldCache[cacheKey] = arr;
-            if (!state._advFieldCacheOrder.includes(cacheKey)) state._advFieldCacheOrder.push(cacheKey);
-            pruneIfNeeded();
+            // Avoid poisoning cache with empty array when source has data (Firefox global-resolution failures)
+            if (arr.length > 0 || (Array.isArray(source) && !source.length)) {
+                state._advFieldCache[cacheKey] = arr;
+                if (!state._advFieldCacheOrder.includes(cacheKey)) state._advFieldCacheOrder.push(cacheKey);
+                pruneIfNeeded();
+            }
             return arr;
         } catch (e) {
             return [];
@@ -978,6 +981,7 @@ const AdvancedSearch = {
                 return;
             }
             state._advIndexBuilding = true;
+            try {
             // Hidden groups signature collected up-front; static index excludes hidden offers
             let hiddenGroups = [];
             try { hiddenGroups = (typeof Filtering !== 'undefined' && Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
@@ -1062,9 +1066,6 @@ const AdvancedSearch = {
             }
             state._advStaticFieldIndex = index;
             state._advIndexHiddenGroupsSig = hgSig;
-            try { window.__ADV_INDEX_BUILDING = false; } catch(e){}
-            // mark build complete and schedule a light re-render to pick up the new index
-            state._advIndexBuilding = false;
             this._logDebug('buildStaticFieldIndex:rebuilt', { fields: Object.keys(index).length, offerCount, hgSig });
             try {
                 setTimeout(() => {
@@ -1072,6 +1073,11 @@ const AdvancedSearch = {
                     try { this.ensureAddFieldDropdown(state); } catch (e) { /* ignore */ }
                 }, 0);
             } catch (e) { /* ignore */ }
+            } finally {
+                // Always clear flags even on early return or error
+                state._advIndexBuilding = false;
+                try { window.__ADV_INDEX_BUILDING = false; } catch(e){}
+            }
         } catch(e){ this._logDebug('buildStaticFieldIndex:error', e); }
     },
     buildToggleButton(state) {
