@@ -297,7 +297,7 @@
             rows.forEach((entry, idx) => {
                 if (!entry || !entry.sailing) return;
                 if (!entry.sailing.__b2bRowId) {
-                    const rawParts = [safeOfferCode(entry), entry.sailing.shipCode, entry.sailing.shipName, normalizeIso(entry.sailing.sailDate)];
+                    const rawParts = [entry.offer && entry.offer.playerOfferId, safeOfferCode(entry), entry.sailing.shipCode, entry.sailing.shipName, normalizeIso(entry.sailing.sailDate)];
                     const baseParts = rawParts.filter(p => p !== undefined && p !== null && String(p).trim() !== '').map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
                     if (baseParts.length) {
                         entry.sailing.__b2bRowId = `b2b-${baseParts.join('-')}`;
@@ -801,6 +801,7 @@
             const meta = {
                 rowId,
                 offerCode: safeOfferCode(entry),
+                offerKey: B2BUtils.getOfferKey(entry),
                 offerName: entry.offer && entry.offer.campaignOffer ? entry.offer.campaignOffer.name : '',
                 shipName: (entry.sailing && entry.sailing.shipName) || (itineraryRecord && itineraryRecord.shipName) || '',
                 shipCode: (entry.sailing && entry.sailing.shipCode) || (itineraryRecord && itineraryRecord.shipCode) || '',
@@ -1248,14 +1249,14 @@
             } catch (e) { /* ignore */ }
             const usedOfferCodes = new Set(chain.map(id => {
                 const meta = this._getMeta(id);
-                return meta && meta.offerCode ? meta.offerCode : null;
+                return meta && meta.offerKey ? meta.offerKey : null;
             }).filter(Boolean));
             const options = [];
             this._context.rowMap.forEach((entry, rowId) => {
                 if (chain.includes(rowId)) return;
                 const candidateMeta = this._getMeta(rowId);
                 if (!candidateMeta) return;
-                if (candidateMeta.offerCode && usedOfferCodes.has(candidateMeta.offerCode)) return;
+                if (candidateMeta.offerKey && usedOfferCodes.has(candidateMeta.offerKey)) return;
                 const linkable = this._isLinkable(lastMeta, candidateMeta, allowSideBySide);
                 if (!linkable) {
                     _dbg('Not linkable: isLinkable returned false', { from: lastMeta, to: candidateMeta });
@@ -1414,11 +1415,11 @@
             const chain = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain : [];
             const usedOfferCodes = new Set(chain.map(id => {
                 const m = this._getMeta(id);
-                return m && m.offerCode ? m.offerCode : null;
+                return m && m.offerKey ? m.offerKey : null;
             }).filter(Boolean));
             if (simulateAddRowId) {
                 const simMeta = this._getMeta(simulateAddRowId);
-                if (simMeta && simMeta.offerCode) usedOfferCodes.add(simMeta.offerCode);
+                if (simMeta && simMeta.offerKey) usedOfferCodes.add(simMeta.offerKey);
             }
             const ctxState = this._context ? this._context.state : null;
             const isVisibleRow = (r) => {
@@ -1445,7 +1446,7 @@
                 if (!isVisibleRow(entry)) return;
                 const candidateMeta = this._getMeta(rId);
                 if (!candidateMeta) return;
-                if (candidateMeta.offerCode && usedOfferCodes.has(candidateMeta.offerCode)) return;
+                if (candidateMeta.offerKey && usedOfferCodes.has(candidateMeta.offerKey)) return;
                 if (this._isLinkable(lastMeta, candidateMeta, allowSideBySide)) candidates.push(rId);
             });
             return candidates;
@@ -1602,15 +1603,16 @@
                     rowIndexById = new Map();
                     rows.forEach((entry, idx) => { if (entry && entry.sailing && entry.sailing.__b2bRowId) rowIndexById.set(entry.sailing.__b2bRowId, idx); });
 
-                    // Precompute the session's used offer codes (excluded globally for the depth calculation)
-                    sessionUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : [];
+                    // Precompute the session's used offer keys (excluded globally for the depth calculation)
+                    sessionUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerKey ? m.offerKey : null; }).filter(Boolean) : [];
 
-                    // For each option, compute depth by seeding the computeB2BDepth with the session's used codes plus the candidate's offer code.
+                    // For each option, compute depth by seeding the computeB2BDepth with the session's used keys plus the candidate's offer key.
                     // If autorun is disabled we set `force: true` to ensure the candidate-level compute runs.
                     options.forEach(o => {
                         try {
                             const optMeta = o.meta || this._getMeta(o.rowId) || {};
-                            const candidateOffer = optMeta.offerCode || null;
+                            const candidateOffer = optMeta.offerKey || null;
+                            // Values are offer keys (playerOfferId || offerCode); option name kept for callers.
                             const initialUsedOfferCodes = sessionUsedOfferCodes.slice();
                             if (candidateOffer) initialUsedOfferCodes.push(candidateOffer);
                             try {
@@ -1865,9 +1867,9 @@
                                 const rowsLocal = rows || ((this._context && this._context.rowMap) ? Array.from(this._context.rowMap.values()) : (this._context.rows || []));
                                 const ctxState = this._context.state || null;
                                 const filterPredLocal = filterPredicate || ((row) => { try { if (!row) return false; if (window.Filtering && typeof Filtering.wasRowHidden === 'function') return !Filtering.wasRowHidden(row, ctxState); if (window.Filtering && typeof Filtering.isRowHidden === 'function') return !Filtering.isRowHidden(row, ctxState); return true; } catch(e){ return true; } });
-                                const sessionCodes = sessionUsedOfferCodes || ((this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : []);
+                                const sessionCodes = sessionUsedOfferCodes || ((this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerKey ? m.offerKey : null; }).filter(Boolean) : []);
                                 const optMeta = opt.meta || this._getMeta(opt.rowId) || {};
-                                const candidateOffer = optMeta.offerCode || null;
+                                const candidateOffer = optMeta.offerKey || null;
                                 const initialUsed = sessionCodes.slice(); if (candidateOffer) initialUsed.push(candidateOffer);
                                 const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate: filterPredLocal, initialUsedOfferCodes: initialUsed, force: true };
                                 const depthsMap = B2BUtils.computeB2BDepth(rowsLocal, b2bOpts) || new Map();
@@ -1921,7 +1923,7 @@
                                 try {
                                     if (window.B2BUtils && typeof B2BUtils.computeB2BDepth === 'function' && this._context && Array.isArray(this._context.rows)) {
                                         const rows = this._context.rows || [];
-                                        const initialUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerCode ? m.offerCode : null; }).filter(Boolean) : [];
+                                        const initialUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerKey ? m.offerKey : null; }).filter(Boolean) : [];
                                         const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate: null, initialUsedOfferCodes };
                                         const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
                                         const idxs = [];
