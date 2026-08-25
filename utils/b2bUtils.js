@@ -139,6 +139,21 @@
         return { endISO: null, endPort: null, startISO: null, startPort: null, startRegion: null, endRegion: null };
     }
 
+    // Identity key for offer-level dedup: playerOfferId (top-level, then nested), else offerCode.
+    // Accepts a plain offer or a { offer, sailing } row. Blank/whitespace ids are absent.
+    function getOfferKey(offerOrRow) {
+        if (!offerOrRow || typeof offerOrRow !== 'object') return '';
+        const offer = (offerOrRow.offer && typeof offerOrRow.offer === 'object')
+            ? offerOrRow.offer
+            : offerOrRow;
+        const campaign = offer.campaignOffer || {};
+        const fromTop = offer.playerOfferId != null ? String(offer.playerOfferId).trim() : '';
+        if (fromTop) return fromTop;
+        const fromCampaign = campaign.playerOfferId != null ? String(campaign.playerOfferId).trim() : '';
+        if (fromCampaign) return fromCampaign;
+        return campaign.offerCode != null ? String(campaign.offerCode).trim() : '';
+    }
+
     function computeB2BDepth(rows, options) {
         options = options || {};
         const allowSideBySide = !!options.allowSideBySide;
@@ -159,6 +174,7 @@
         if (lagDays == null) lagDays = 0;
         lagDays = Math.max(0, Math.min(7, parseInt(lagDays, 10) || 0));
         const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
+        // Values are offer keys (playerOfferId || offerCode), not raw codes. Option name kept for callers.
         const initialUsedOfferCodes = Array.isArray(options.initialUsedOfferCodes) ? options.initialUsedOfferCodes.map(c => (c || '').toString().trim()) : [];
         if (!Array.isArray(rows) || !rows.length) return new Map();
 
@@ -179,6 +195,7 @@
             const shipCode = (sailing.shipCode || '').toString().trim();
             const shipName = (sailing.shipName || '').toString().trim();
             const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
+            const offerKey = getOfferKey(row);
             let allow = !filterPredicate || filterPredicate(row);
             // Fallback: if caller didn't provide a filterPredicate, consult hidden-row Sets directly
             // IMPORTANT: do NOT call into Filtering.wasRowHidden/isRowHidden here because those
@@ -189,11 +206,8 @@
                     const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
                     const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
                     try {
-                        const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
-                        const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
-                        const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
-                        const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                        if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) {
+                        const key = Filtering._rowKey(row);
+                        if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) {
                             allow = false;
                         }
                     } catch(e) { /* ignore per-row key build errors */ }
@@ -210,7 +224,9 @@
                 shipCode,
                 shipName,
                 offerCode,
-                allow
+                offerKey,
+                allow,
+                row
             };
         });
 
@@ -241,11 +257,8 @@
                         meta.forEach(m => {
                             if (!m.allow) return;
                             try {
-                                const code = (m.offerCode || '').toString().trim().toUpperCase();
-                                const ship = (m.shipCode || m.shipName || '').toString().trim().toUpperCase();
-                                const sail = (m.startISO || '').toString().trim().slice(0,10);
-                                const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                                if (hiddenByKey(key)) {
+                                const key = Filtering._rowKey(m.row);
+                                if (key && hiddenByKey(key)) {
                                     problemRows.push({ idx: m.idx, offerCode: m.offerCode, startISO: m.startISO, key });
                                 }
                             } catch(e){}
@@ -383,8 +396,8 @@
                     if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
                 });
             }
-            const offerUsedHere = usedGlobal.has(rootInfo.offerCode) ? usedGlobal : new Set(usedGlobal);
-            offerUsedHere.add(rootInfo.offerCode);
+            const offerUsedHere = usedGlobal.has(rootInfo.offerKey) ? usedGlobal : new Set(usedGlobal);
+            offerUsedHere.add(rootInfo.offerKey);
 
             for (let keyIdx = 0; keyIdx < keysToCheck.length; keyIdx++) {
                 const key = keysToCheck[keyIdx];
@@ -399,7 +412,7 @@
                     // Check adjacency: next sailing starts on same day or within lagDays
                     const gap = diffDaysISO(nextInfo.startISO, day);
                     if (gap == null || gap < 0 || gap > lagDays) continue;
-                    if (offerUsedHere.has(nextInfo.offerCode)) continue;
+                    if (offerUsedHere.has(nextInfo.offerKey)) continue;
                     const newUsed = offerUsedHere;
                     const branchDepth = 1 + dfs(nextIdx, newUsed);
                     if (branchDepth > maxDepth) maxDepth = branchDepth;
@@ -443,7 +456,7 @@
                     if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
                 }
                 const usedHere = new Set(usedSet);
-                usedHere.add(rootInfo.offerCode);
+                usedHere.add(rootInfo.offerKey);
                 for (let k = 0; k < keysToCheck.length; k++) {
                     const bucket = startIndex.get(keysToCheck[k]);
                     if (!bucket || !bucket.length) continue;
@@ -455,7 +468,7 @@
                         if (!nextInfo.startISO) continue;
                         const gap = diffDaysISO(nextInfo.startISO, day);
                         if (gap == null || gap < 0 || gap > lagDays) continue;
-                        if (usedHere.has(nextInfo.offerCode)) continue;
+                        if (usedHere.has(nextInfo.offerKey)) continue;
                         dfsLocal(nextIdx, usedHere, curPath);
                     }
                 }
@@ -514,6 +527,7 @@
             const sailing = row.sailing || {};
             const shipKey = (sailing.shipCode || sailing.shipName || '').toString().trim().toLowerCase();
             const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
+            const offerKey = getOfferKey(row);
             let allow = !filterPredicate || filterPredicate(row);
             // Use hidden-row Sets directly to avoid re-entrancy into Filtering helpers
             if (!filterPredicate && typeof Filtering !== 'undefined') {
@@ -522,17 +536,14 @@
                     const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
                     const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
                     try {
-                        const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
-                        const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
-                        const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
-                        const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
-                        if ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key))) {
+                        const key = Filtering._rowKey(row);
+                        if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) {
                             allow = false;
                         }
                     } catch(e) { /* ignore per-row key build errors */ }
                 } catch(e) { /* ignore */ }
             }
-            return { idx, endISO, endPort, startISO, startPort, shipKey, offerCode, allow };
+            return { idx, endISO, endPort, startISO, startPort, shipKey, offerCode, offerKey, allow };
         });
 
         let lagDays2 = 0;
@@ -600,7 +611,7 @@
                 if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
             }
             const usedHere = new Set(usedSet);
-            usedHere.add(rootInfo.offerCode);
+            usedHere.add(rootInfo.offerKey);
             for (let k = 0; k < keysToCheck.length; k++) {
                 const bucket = startIndex.get(keysToCheck[k]);
                 if (!bucket || !bucket.length) continue;
@@ -612,7 +623,7 @@
                     if (!nextInfo.startISO) continue;
                     const gap = diffDaysLocal(nextInfo.startISO, day);
                     if (gap == null || gap < 0 || gap > lagDays2) continue;
-                    if (usedHere.has(nextInfo.offerCode)) continue;
+                    if (usedHere.has(nextInfo.offerKey)) continue;
                     dfsPath(nextIdx, usedHere, curPath);
                 }
             }
@@ -627,6 +638,7 @@
     }
 
     const B2BUtils = {
+        getOfferKey,
         computeB2BDepth,
         computeLongestB2BPath,
         // Compute the longest chain (detailed nodes) starting from a specific index
@@ -642,6 +654,7 @@
                 const sailing = row.sailing || {};
                 const shipName = (sailing.shipName || sailing.shipCode || '').toString().trim();
                 const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
+                const offerKey = getOfferKey(row);
                 let allow = !filterPredicate || filterPredicate(row);
                 if (!filterPredicate && typeof Filtering !== 'undefined') {
                     try {
@@ -649,7 +662,7 @@
                         else if (typeof Filtering.isRowHidden === 'function') allow = allow && !Filtering.isRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
                     } catch(e) { /* ignore */ }
                 }
-                return { idx, endISO, endPort, startISO, startPort, shipName, offerCode, allow };
+                return { idx, endISO, endPort, startISO, startPort, shipName, offerCode, offerKey, allow };
             });
 
             if (!meta[startIdx] || !meta[startIdx].allow) return [];
@@ -738,7 +751,7 @@
                     if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
                 }
                 const usedHere = new Set(usedSet);
-                usedHere.add(rootInfo.offerCode);
+                usedHere.add(rootInfo.offerKey);
                 for (let k = 0; k < keysToCheck.length; k++) {
                     const bucket = startIndex.get(keysToCheck[k]);
                     if (!bucket || !bucket.length) continue;
@@ -750,7 +763,7 @@
                         if (!nextInfo.startISO) continue;
                         const gap = diffDaysL(nextInfo.startISO, day);
                         if (gap == null || gap < 0 || gap > lagDays3) continue;
-                        if (usedHere.has(nextInfo.offerCode)) continue;
+                        if (usedHere.has(nextInfo.offerKey)) continue;
                         dfsLocal(nextIdx, usedHere, curPath);
                     }
                 }

@@ -256,13 +256,11 @@
                         filtered = (rows || []).filter(r => {
                             try {
                                 if (!r) return false;
-                                const code = (r.offer && r.offer.campaignOffer && r.offer.campaignOffer.offerCode) ? String(r.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
-                                const ship = (r.sailing && (r.sailing.shipCode || r.sailing.shipName)) ? String(r.sailing.shipCode || r.sailing.shipName).trim().toUpperCase() : '';
-                                const sail = (r.sailing && r.sailing.sailDate) ? String(r.sailing.sailDate).trim().slice(0,10) : '';
-                                const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                                const key = Filtering._rowKey(r);
+                                if (!key) return true;
                                 return !((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)));
-                                } catch(e) { return true; }
-                            });
+                            } catch(e) { return true; }
+                        });
                     } catch(e) { /* fall back to original rows on error */ }
                     const afterCount = Array.isArray(filtered) ? filtered.length : 0;
                     if (window && window.GOBO_DEBUG_LOGS) {

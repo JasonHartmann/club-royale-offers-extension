@@ -413,8 +413,11 @@ const Filtering = {
             const code = (wrapper?.offer?.campaignOffer?.offerCode || '').toString().trim().toUpperCase();
             const ship = (wrapper?.sailing?.shipCode || wrapper?.sailing?.shipName || '').toString().trim().toUpperCase();
             const sail = (wrapper?.sailing?.sailDate || '').toString().trim().slice(0, 10);
-            if (!code && !ship && !sail) return null;
-            return `${code}|${ship}|${sail}`;
+            // Distinct offers can share code+ship+sail; prefix playerOfferId to disambiguate. Absent id keeps the legacy key shape.
+            const pid = (wrapper?.offer?.playerOfferId != null ? String(wrapper.offer.playerOfferId).trim()
+                : (wrapper?.offer?.campaignOffer?.playerOfferId != null ? String(wrapper.offer.campaignOffer.playerOfferId).trim() : ''));
+            if (!pid && !code && !ship && !sail) return null;
+            return pid ? `${pid}|${code}|${ship}|${sail}` : `${code}|${ship}|${sail}`;
         } catch (e) {
             return null;
         }
@@ -879,10 +882,8 @@ const Filtering = {
                     const filterPredicate = (row) => {
                         try {
                             if (!row) return false;
-                            const code = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode) ? String(row.offer.campaignOffer.offerCode).trim().toUpperCase() : '';
-                            const ship = (row.sailing && (row.sailing.shipCode || row.sailing.shipName)) ? String(row.sailing.shipCode || row.sailing.shipName).trim().toUpperCase() : '';
-                            const sail = (row.sailing && row.sailing.sailDate) ? String(row.sailing.sailDate).trim().slice(0,10) : '';
-                            const key = (code || '') + '|' + (ship || '') + '|' + (sail || '');
+                            const key = Filtering._rowKey(row);
+                            if (!key) return true;
                             return !(hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) && !(globalHidden && globalHidden.has(key));
                         } catch (e) { return true; }
                     };
