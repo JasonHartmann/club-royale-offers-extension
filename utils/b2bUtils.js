@@ -201,7 +201,6 @@
         if (lagDays == null) lagDays = 0;
         lagDays = Math.max(0, Math.min(7, parseInt(lagDays, 10) || 0));
         const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
-        // Values are offer keys (playerOfferId || offerCode), not raw codes. Option name kept for callers.
         const initialUsedOfferCodes = Array.isArray(options.initialUsedOfferCodes) ? options.initialUsedOfferCodes.map(c => (c || '').toString().trim()) : [];
         if (!Array.isArray(rows) || !rows.length) return new Map();
 
@@ -211,320 +210,195 @@
                 autoRunB2B = !!App.SettingsStore.getAutoRunB2B();
             }
         } catch (e) { /* ignore and keep default true */ }
-
-        // If auto-run is disabled, bail early unless the caller explicitly forces computation.
         if (!autoRunB2B && !options.force) return new Map();
 
-        // Normalize and precompute end/start keys
-        const meta = rows.map((row, idx) => {
-            const { endISO, endPort, startISO, startPort, startRegion, endRegion } = computeEndDateAndPort(row);
+        function dayNum(iso) {
+            if (!iso) return null;
+            const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z');
+            return isNaN(d.getTime()) ? null : Math.floor(d.getTime() / 86400000);
+        }
+
+        const matchCache = new Map();
+        const getMatchKeys = (port) => {
+            if (!port) return [];
+            const hit = matchCache.get(port);
+            if (hit) return hit;
+            let keys = null;
+            if (drivingRangeHours === 0) {
+                try {
+                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.normalizePort === 'function') {
+                        keys = [PortsTravelTimes.normalizePort(port).toLowerCase()];
+                    }
+                } catch (e) { /* ignore */ }
+                if (!keys) keys = [String(port).toLowerCase()];
+            } else {
+                try {
+                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.getNearbyPorts === 'function') {
+                        keys = PortsTravelTimes.getNearbyPorts(port, drivingRangeHours * 60).map(p => p.toLowerCase());
+                    }
+                } catch (e) { /* ignore */ }
+                if (!keys) {
+                    try {
+                        if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.normalizePort === 'function') {
+                            keys = [PortsTravelTimes.normalizePort(port).toLowerCase()];
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+                if (!keys) keys = [String(port).toLowerCase()];
+            }
+            matchCache.set(port, keys);
+            return keys;
+        };
+
+        const n = rows.length;
+        const meta = new Array(n);
+        const pidIndex = new Map();
+        let kCount = 0;
+        for (let i = 0; i < n; i++) {
+            const row = rows[i];
+            const { endISO, endPort, startISO, startPort } = computeEndDateAndPort(row);
             const sailing = row.sailing || {};
-            const shipCode = (sailing.shipCode || '').toString().trim();
-            const shipName = (sailing.shipName || '').toString().trim();
-            const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
+            const shipKey = ((sailing.shipCode || sailing.shipName || '') + '').trim().toLowerCase();
             const offerKey = getOfferKey(row);
             let allow = !filterPredicate || filterPredicate(row);
-            // Fallback: if caller didn't provide a filterPredicate, consult hidden-row Sets directly
-            // IMPORTANT: do NOT call into Filtering.wasRowHidden/isRowHidden here because those
-            // may call back into B2B diagnostics and cause recursion. Use the Stores directly.
             if (!filterPredicate && typeof Filtering !== 'undefined') {
                 try {
                     const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
                     const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
                     const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
-                    try {
-                        const key = Filtering.rowKey(row);
-                        if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) {
-                            allow = false;
-                        }
-                    } catch(e) { /* ignore per-row key build errors */ }
-                } catch(e) { /* ignore filtering fallback errors */ }
+                    const key = Filtering.rowKey(row);
+                    if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) allow = false;
+                } catch (e) { /* ignore */ }
             }
-            return {
-                idx,
-                endISO,
-                endPort,
-                startISO,
+            let bit = 0;
+            if (allow) {
+                let ki = pidIndex.get(offerKey);
+                if (ki === undefined) {
+                    ki = kCount++;
+                    pidIndex.set(offerKey, ki);
+                }
+                if (ki < 31) bit = 1 << ki;
+            }
+            meta[i] = {
+                sn: dayNum(startISO),
+                en: dayNum(endISO),
                 startPort,
-                startRegion,
-                endRegion,
-                shipCode,
-                shipName,
-                offerCode,
+                endPort,
+                shipKey,
                 offerKey,
                 allow,
-                row
+                bit
             };
-        });
+        }
 
-        try {
-            const allowedCount = meta.filter(m=>m.allow).length;
-            const sampleAllowed = meta.filter(m=>m.allow).slice(0,6).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
-            try {
-                if (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS && (autoRunB2B || options.force)) {
-                    console.debug('[B2BUtils] meta built', { total: meta.length, allowedCount, sampleAllowed });
-                    try {
-                        if (typeof filterPredicate === 'function') {
-                            const excluded = meta.filter(m=>!m.allow).slice(0,8).map(m=>({idx:m.idx, offerCode:m.offerCode, startISO:m.startISO, endISO:m.endISO}));
-                            console.debug('[B2BUtils] filterPredicate present - excluded sample', { excludedCount: meta.filter(m=>!m.allow).length, excluded });
-                        }
-                    } catch(e) { console.debug('[B2BUtils] debug predicate snapshot failed', e); }
-                    try {
-                        // Detect rows that appear in hidden-row stores but are still marked allow===true
-                        const hiddenByKey = (key) => {
-                            try {
-                                if (!key) return false;
-                                if (Filtering && Filtering._globalHiddenRowKeys instanceof Set && Filtering._globalHiddenRowKeys.has(key)) return true;
-                                const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
-                                if (lastState && lastState._hiddenGroupRowKeys instanceof Set && lastState._hiddenGroupRowKeys.has(key)) return true;
-                            } catch(e){}
-                            return false;
-                        };
-                        const problemRows = [];
-                        meta.forEach(m => {
-                            if (!m.allow) return;
-                            try {
-                                const key = Filtering.rowKey(m.row);
-                                if (key && hiddenByKey(key)) {
-                                    problemRows.push({ idx: m.idx, offerCode: m.offerCode, startISO: m.startISO, key });
-                                }
-                            } catch(e){}
-                        });
-                        if (problemRows.length) console.debug('[B2BUtils] Hidden rows included in allowed set (possible missing filterPredicate)', { count: problemRows.length, sample: problemRows.slice(0,8) });
-                    } catch(e) { console.debug('[B2BUtils] hidden-row diagnostic failed', e); }
-                }
-            } catch(e) { /* ignore debug errors */ }
-        } catch(e){ /* ignore */ }
-
-        // Build index: key = `${day}|${key}|${shipKey}` -> array of indices sorted by start date desc
-        const startIndex = new Map();
-        const getMatchKeys = (info, type) => {
-            const port = type === 'start' ? info.startPort : info.endPort;
-            if (!port) return [];
-            
-            if (drivingRangeHours === 0) {
-                // Exact port match only - normalize the port first
-                try {
-                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.normalizePort === 'function') {
-                        return [PortsTravelTimes.normalizePort(port).toLowerCase()];
-                    }
-                } catch(e) { /* ignore */ }
-                return [port.toLowerCase()];
-            } else {
-                // Use driving range to find nearby ports
-                try {
-                    const limitMinutes = drivingRangeHours * 60; // Convert hours to minutes
-                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.getNearbyPorts === 'function') {
-                        const nearbyPorts = PortsTravelTimes.getNearbyPorts(port, limitMinutes);
-                        return nearbyPorts.map(p => p.toLowerCase());
-                    }
-                } catch(e) { /* ignore errors and fall back to exact match */ }
-                // Fallback to exact port match if PortsTravelTimes fails - normalize first
-                try {
-                    if (typeof PortsTravelTimes !== 'undefined' && PortsTravelTimes && typeof PortsTravelTimes.normalizePort === 'function') {
-                        return [PortsTravelTimes.normalizePort(port).toLowerCase()];
-                    }
-                } catch(e) { /* ignore */ }
-                return [port.toLowerCase()];
-            }
+        const bucket = new Map();
+        const push = (key, idx) => {
+            let a = bucket.get(key);
+            if (!a) { a = []; bucket.set(key, a); }
+            a.push(idx);
         };
-        meta.forEach(info => {
-            // index by the sailing's start day and startPort so adjacency matches where next sailings embark
-            if (!info.startISO || !info.startPort || !info.allow) return;
-            const day = info.startISO;
-            const shipKey = (info.shipCode || info.shipName || '').toLowerCase();
-            if (!shipKey) return;
-            const matchKeys = getMatchKeys(info, 'start');
-            if (!matchKeys.length) return;
-            // Index the sailing's start day and also lag-offset days so that a sailing ending
-            // up to `lagDays` before this start can find it via the index.
-            const daysToIndex = [day];
-            for (let ld = 1; ld <= lagDays; ld++) {
-                const offsetDay = addDays(day, -ld);
-                if (offsetDay && offsetDay !== day) daysToIndex.push(offsetDay);
+        for (let i = 0; i < n; i++) {
+            const m = meta[i];
+            if (!m.allow || m.sn == null || !m.startPort || !m.shipKey) continue;
+            const mks = getMatchKeys(m.startPort);
+            if (!mks.length) continue;
+            for (let ld = 0; ld <= lagDays; ld++) {
+                const indexDay = m.sn - ld;
+                for (let p = 0; p < mks.length; p++) {
+                    const pk = mks[p];
+                    push(indexDay + '|' + pk + '|' + m.shipKey, i);
+                    if (allowSideBySide) push(indexDay + '|' + pk + '|*', i);
+                }
             }
-            daysToIndex.forEach((indexDay) => {
-                matchKeys.forEach((portKey) => {
-                    const key = indexDay + '|' + portKey + '|' + shipKey;
-                    if (!startIndex.has(key)) startIndex.set(key, []);
-                    startIndex.get(key).push(info.idx);
-                    if (allowSideBySide) {
-                        const sideKey = indexDay + '|' + portKey + '|*';
-                        if (!startIndex.has(sideKey)) startIndex.set(sideKey, []);
-                        startIndex.get(sideKey).push(info.idx);
-                    }
-                });
-            });
-        });
+        }
 
-        // Sort each adjacency bucket in descending sail date (for deterministic behavior)
-        startIndex.forEach((arrKey) => {
-            arrKey.sort((aIdx, bIdx) => {
-                const aISO = meta[aIdx].startISO || '';
-                const bISO = meta[bIdx].startISO || '';
-                if (aISO < bISO) return 1;
-                if (aISO > bISO) return -1;
-                return 0;
-            });
-        });
+        const adj = new Array(n);
+        for (let i = 0; i < n; i++) {
+            const m = meta[i];
+            const list = [];
+            if (m.allow && m.en != null && m.endPort && m.shipKey) {
+                const mks = getMatchKeys(m.endPort);
+                const seen = new Set();
+                for (let p = 0; p < mks.length; p++) {
+                    const pk = mks[p];
+                    const k1 = m.en + '|' + pk + '|' + m.shipKey;
+                    const k2 = allowSideBySide ? m.en + '|' + pk + '|*' : null;
+                    const buckets = k2 ? [bucket.get(k1), bucket.get(k2)] : [bucket.get(k1)];
+                    for (let b = 0; b < buckets.length; b++) {
+                        const arr = buckets[b];
+                        if (!arr) continue;
+                        for (let t = 0; t < arr.length; t++) {
+                            const j = arr[t];
+                            if (j === i || seen.has(j)) continue;
+                            seen.add(j);
+                            const gap = meta[j].sn - m.en;
+                            if (gap >= 0 && gap <= lagDays) list.push(j);
+                        }
+                    }
+                }
+            }
+            adj[i] = list;
+        }
 
         const depthMap = new Map();
-        const memo = new Map();
-
-        function getMemoKey(rootIdx, usedSet) {
-            if (!usedSet || !usedSet.size) return rootIdx + '|0';
-            try {
-                return rootIdx + '|' + Array.from(usedSet).sort().join(',');
-            } catch(e) {
-                return rootIdx + '|0';
+        const K = kCount;
+        // ponytail: 30-bit mask covers typical 15-20 offer codes; Set memo if more
+        if (K <= 30) {
+            const MOD = K === 0 ? 1 : (1 << K);
+            const fullMask = K === 0 ? 0 : (MOD - 1);
+            let seedMask = 0;
+            for (let s = 0; s < initialUsedOfferCodes.length; s++) {
+                const c = initialUsedOfferCodes[s];
+                if (!c) continue;
+                const ki = pidIndex.get(c);
+                if (ki !== undefined && ki < 31) seedMask |= (1 << ki);
             }
-        }
-
-        function addDays(iso, delta) {
-            try {
-                const d = new Date(String(iso).slice(0,10) + 'T00:00:00Z');
-                if (isNaN(d.getTime())) return iso;
-                d.setUTCDate(d.getUTCDate() + delta);
-                return d.toISOString().slice(0, 10);
-            } catch(e){ return iso; }
-        }
-
-        function diffDaysISO(nextISO, prevISO) {
-            try {
-                const a = new Date(String(nextISO).slice(0,10) + 'T00:00:00Z');
-                const b = new Date(String(prevISO).slice(0,10) + 'T00:00:00Z');
-                if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
-                return Math.round((a.getTime() - b.getTime()) / 86400000);
-            } catch(e) { return null; }
-        }
-
-        function dfs(rootIdx, usedGlobal) {
-            const memoKey = getMemoKey(rootIdx, usedGlobal);
-            if (memo.has(memoKey)) return memo.get(memoKey);
-            const rootInfo = meta[rootIdx];
-            if (!rootInfo || !rootInfo.endISO || !rootInfo.endPort) {
-                memo.set(memoKey, 1);
-                return 1;
-            }
-            let maxDepth = 1;
-            const day = rootInfo.endISO;
-            // Only allow same-day connections here; do not consider next-day links
-            const nextDay = null;
-            const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
-            const matchKeys = getMatchKeys(rootInfo, 'end');
-            if (!matchKeys.length || !shipKey) {
-                memo.set(memoKey, 1);
-                return 1;
-            }
-            const keysToCheck = [];
-            if (day) {
-                matchKeys.forEach((portKey) => {
-                    keysToCheck.push(day + '|' + portKey + '|' + shipKey);
-                    if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
-                });
-            }
-            const offerUsedHere = usedGlobal.has(rootInfo.offerKey) ? usedGlobal : new Set(usedGlobal);
-            offerUsedHere.add(rootInfo.offerKey);
-
-            for (let keyIdx = 0; keyIdx < keysToCheck.length; keyIdx++) {
-                const key = keysToCheck[keyIdx];
-                const bucket = startIndex.get(key);
-                if (!bucket || !bucket.length) continue;
-                for (let i = 0; i < bucket.length; i++) {
-                    const nextIdx = bucket[i];
-                    if (nextIdx === rootIdx) continue;
-                    const nextInfo = meta[nextIdx];
-                    if (!nextInfo.allow) continue;
-                    if (!nextInfo.startISO) continue;
-                    // Check adjacency: next sailing starts on same day or within lagDays
-                    const gap = diffDaysISO(nextInfo.startISO, day);
-                    if (gap == null || gap < 0 || gap > lagDays) continue;
-                    if (offerUsedHere.has(nextInfo.offerKey)) continue;
-                    const newUsed = offerUsedHere;
-                    const branchDepth = 1 + dfs(nextIdx, newUsed);
-                    if (branchDepth > maxDepth) maxDepth = branchDepth;
+            const memo = new Map();
+            const dfs = (i, avail) => {
+                const key = i * MOD + avail;
+                const hit = memo.get(key);
+                if (hit !== undefined) return hit;
+                let best = 0;
+                const list = adj[i];
+                for (let a = 0; a < list.length; a++) {
+                    const j = list[a];
+                    const bj = meta[j].bit;
+                    if (bj && !(avail & bj)) continue;
+                    const d = dfs(j, avail & ~bj);
+                    if (d > best) best = d;
                 }
+                const val = 1 + best;
+                memo.set(key, val);
+                return val;
+            };
+            for (let i = 0; i < n; i++) {
+                if (!meta[i].allow) continue;
+                depthMap.set(i, dfs(i, fullMask & ~(seedMask | meta[i].bit)));
             }
-            memo.set(memoKey, maxDepth);
-            return maxDepth;
-        }
-
-        // Compute depth for each row independently, seeding the used-offer set with any initial used codes
-        for (let i = 0; i < meta.length; i++) {
-            const info = meta[i];
-            if (!info.allow) continue;
+        } else {
             const seedSet = new Set(initialUsedOfferCodes.filter(Boolean));
-            const depth = dfs(i, seedSet);
-            depthMap.set(i, depth);
-        }
-        // Helper: compute longest chain starting from a specific index (returns array of offerCodes)
-        function computeLongestChainFromIndex(startIdx) {
-            if (!meta[startIdx] || !meta[startIdx].allow) return [];
-            let best = [];
-            function dfsLocal(rootIdx, usedSet, path) {
-                const rootInfo = meta[rootIdx];
-                if (!rootInfo) return;
-                const node = {
-                    offerCode: rootInfo.offerCode || '',
-                    shipName: rootInfo.shipName || rootInfo.shipCode || '',
-                    startISO: rootInfo.startISO || null,
-                    endISO: rootInfo.endISO || null
-                };
-                const curPath = path.concat(node);
-                if (curPath.length > best.length) best = curPath.slice();
-                if (!rootInfo.endISO || (!rootInfo.endPort && !rootInfo.endRegion)) return;
-                const day = rootInfo.endISO;
-                const portKey = getMatchKey(rootInfo, 'end');
-                const shipKey = (rootInfo.shipCode || rootInfo.shipName || '').toLowerCase();
-                if (!portKey || !shipKey) return;
-                const keysToCheck = [];
-                if (day) {
-                    keysToCheck.push(day + '|' + portKey + '|' + shipKey);
-                    if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
+            const memo = new Map();
+            const dfs = (i, used) => {
+                const key = i + '|' + Array.from(used).sort().join(',');
+                if (memo.has(key)) return memo.get(key);
+                const usedHere = new Set(used);
+                usedHere.add(meta[i].offerKey);
+                let best = 1;
+                const list = adj[i];
+                for (let a = 0; a < list.length; a++) {
+                    const j = list[a];
+                    if (usedHere.has(meta[j].offerKey)) continue;
+                    const d = 1 + dfs(j, usedHere);
+                    if (d > best) best = d;
                 }
-                const usedHere = new Set(usedSet);
-                usedHere.add(rootInfo.offerKey);
-                for (let k = 0; k < keysToCheck.length; k++) {
-                    const bucket = startIndex.get(keysToCheck[k]);
-                    if (!bucket || !bucket.length) continue;
-                    for (let i = 0; i < bucket.length; i++) {
-                        const nextIdx = bucket[i];
-                        if (nextIdx === rootIdx) continue;
-                        const nextInfo = meta[nextIdx];
-                        if (!nextInfo || !nextInfo.allow) continue;
-                        if (!nextInfo.startISO) continue;
-                        const gap = diffDaysISO(nextInfo.startISO, day);
-                        if (gap == null || gap < 0 || gap > lagDays) continue;
-                        if (usedHere.has(nextInfo.offerKey)) continue;
-                        dfsLocal(nextIdx, usedHere, curPath);
-                    }
-                }
+                memo.set(key, best);
+                return best;
+            };
+            for (let i = 0; i < n; i++) {
+                if (!meta[i].allow) continue;
+                depthMap.set(i, dfs(i, seedSet));
             }
-            dfsLocal(startIdx, new Set(), []);
-            return best.filter(Boolean);
         }
-        // // Diagnostics: only run heavy sampling when debug enabled to avoid noisy logs and expensive chain computations
-        // try {
-    //     if (typeof window !== 'undefined' && window.GOBO_DEBUG_LOGS && (autoRunB2B || options.force)) {
-        //         let allowedSeen = 0;
-        //         // sample less frequently for large sets to avoid heavy cost
-        //         const sampleInterval = Math.max(100, Math.floor(meta.length / 20));
-        //         for (let idx = 0; idx < meta.length; idx++) {
-        //             const info = meta[idx];
-        //             if (!info || !info.allow) continue;
-        //             allowedSeen += 1;
-        //             if (allowedSeen % sampleInterval !== 0) continue;
-        //             const depth = depthMap.get(idx) || 0;
-        //             // computeLongestChainFromIndex is expensive; only run it for small sets
-        //             let chain = [];
-        //             try { chain = computeLongestChainFromIndex(idx) || []; } catch(e) { chain = []; }
-        //             const chainSummary = Array.isArray(chain) ? chain.map(n => (n.offerCode || '') + '(@' + (n.shipName || '') + ':' + (n.startISO || '') + ')').join(' -> ') : String(chain || '');
-        //             try { console.debug('[B2B] Sampled offer depth', { idx, offerCode: info.offerCode, shipName: info.shipName, startISO: info.startISO, endISO: info.endISO, depth, chainLength: chain.length, chain }); } catch(e){}
-        //             try { console.debug('[B2B] Sampled chain (summary): ' + (chainSummary || '(none)')); } catch(e){}
-        //         }
-        //     }
-        // } catch(e) { /* ignore sampling diagnostic errors */ }
-
         return depthMap;
     }
 
