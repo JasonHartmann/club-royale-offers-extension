@@ -408,14 +408,14 @@ const Filtering = {
         if (!(Filtering._globalHiddenRowKeys instanceof Set)) Filtering._globalHiddenRowKeys = new Set();
         return Filtering._globalHiddenRowKeys;
     },
-    _rowKey(wrapper) {
+    rowKey(wrapper) {
         try {
             const code = (wrapper?.offer?.campaignOffer?.offerCode || '').toString().trim().toUpperCase();
             const ship = (wrapper?.sailing?.shipCode || wrapper?.sailing?.shipName || '').toString().trim().toUpperCase();
             const sail = (wrapper?.sailing?.sailDate || '').toString().trim().slice(0, 10);
             // Distinct offers can share code+ship+sail; prefix playerOfferId to disambiguate. Absent id keeps the legacy key shape.
-            const pid = (wrapper?.offer?.playerOfferId != null ? String(wrapper.offer.playerOfferId).trim()
-                : (wrapper?.offer?.campaignOffer?.playerOfferId != null ? String(wrapper.offer.campaignOffer.playerOfferId).trim() : ''));
+            const pid = (typeof B2BUtils !== 'undefined' && typeof B2BUtils.getPlayerOfferId === 'function')
+                ? B2BUtils.getPlayerOfferId(wrapper?.offer) : '';
             if (!pid && !code && !ship && !sail) return null;
             return pid ? `${pid}|${code}|${ship}|${sail}` : `${code}|${ship}|${sail}`;
         } catch (e) {
@@ -424,12 +424,12 @@ const Filtering = {
     },
     _rememberHiddenRow(wrapper, store) {
         if (!store) return;
-        const key = Filtering._rowKey(wrapper);
+        const key = Filtering.rowKey(wrapper);
         if (key) store.add(key);
     },
     wasRowHidden(wrapper, state) {
         if (!wrapper) return false;
-        const key = Filtering._rowKey(wrapper);
+        const key = Filtering.rowKey(wrapper);
         // no-op debug removed
         if (key) {
             if (state && state._hiddenGroupRowKeys instanceof Set && state._hiddenGroupRowKeys.has(key)) return true;
@@ -882,7 +882,7 @@ const Filtering = {
                     const filterPredicate = (row) => {
                         try {
                             if (!row) return false;
-                            const key = Filtering._rowKey(row);
+                            const key = Filtering.rowKey(row);
                             if (!key) return true;
                             return !(hiddenStore && hiddenStore instanceof Set && hiddenStore.has(key)) && !(globalHidden && globalHidden.has(key));
                         } catch (e) { return true; }

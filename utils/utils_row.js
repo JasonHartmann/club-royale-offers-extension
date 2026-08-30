@@ -18,16 +18,7 @@
             // Ensure sailing has a stable __b2bRowId so handlers can attach during incremental render
             try {
                 if (sailing && !sailing.__b2bRowId) {
-                    const rawParts = [offer && offer.playerOfferId, offer && offer.campaignOffer && offer.campaignOffer.offerCode, sailing.shipCode, sailing.shipName, sailing.sailDate];
-                    const baseParts = rawParts
-                        .filter(p => p !== undefined && p !== null && String(p).trim() !== '')
-                        .map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
-                    if (baseParts.length) {
-                        sailing.__b2bRowId = `b2b-${baseParts.join('-')}`;
-                    } else {
-                        // Fallback: use provided index if available, otherwise a short random id
-                        sailing.__b2bRowId = `b2b-${(idx !== null && idx !== undefined) ? idx : Math.random().toString(36).slice(2,9)}`;
-                    }
+                    sailing.__b2bRowId = B2BUtils.buildB2BRowId(offer, sailing, idx);
                 }
                 if (sailing && sailing.__b2bRowId) row.dataset.b2bRowId = sailing.__b2bRowId;
             } catch(e){}

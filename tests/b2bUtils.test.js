@@ -45,17 +45,6 @@
         };
     }
 
-    function buildB2BRowId(offer, sailing, idx) {
-        const rawParts = [offer && offer.playerOfferId, offer && offer.campaignOffer && offer.campaignOffer.offerCode, sailing.shipCode, sailing.shipName, sailing.sailDate];
-        const baseParts = rawParts
-            .filter(p => p !== undefined && p !== null && String(p).trim() !== '')
-            .map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
-        if (baseParts.length) {
-            return `b2b-${baseParts.join('-')}`;
-        }
-        return `b2b-${(idx !== null && idx !== undefined) ? idx : 'x'}`;
-    }
-
     function chainRows() {
         return [
             row('A', 'SHIP1', 'Miami', '2025-01-01', 3),
@@ -203,32 +192,30 @@
         describe('getOfferKey', () => {
             test('prefers top-level playerOfferId over offerCode', () => {
                 expect(B2BUtils.getOfferKey({
-                    playerOfferId: 'uuid-1',
-                    campaignOffer: { offerCode: 'A' }
+                    offer: { playerOfferId: 'uuid-1', campaignOffer: { offerCode: 'A' } }
                 })).toBe('uuid-1');
             });
 
             test('falls back to offerCode when playerOfferId is absent', () => {
                 expect(B2BUtils.getOfferKey({
-                    campaignOffer: { offerCode: 'A' }
+                    offer: { campaignOffer: { offerCode: 'A' } }
                 })).toBe('A');
             });
 
             test('treats blank playerOfferId as absent', () => {
                 expect(B2BUtils.getOfferKey({
-                    playerOfferId: '   ',
-                    campaignOffer: { offerCode: 'A' }
+                    offer: { playerOfferId: '   ', campaignOffer: { offerCode: 'A' } }
                 })).toBe('A');
+            });
+
+            test('prefers nested campaignOffer playerOfferId over offerCode', () => {
+                expect(B2BUtils.getOfferKey({
+                    offer: { campaignOffer: { playerOfferId: 'uuid-nested', offerCode: 'A' } }
+                })).toBe('uuid-nested');
             });
 
             test('returns empty string for null', () => {
                 expect(B2BUtils.getOfferKey(null)).toBe('');
-            });
-
-            test('unwraps row form { offer }', () => {
-                expect(B2BUtils.getOfferKey({
-                    offer: { playerOfferId: 'uuid-1' }
-                })).toBe('uuid-1');
             });
         });
 
@@ -260,8 +247,8 @@
             test('same code/ship/date with distinct playerOfferId yields distinct ids', () => {
                 const a = row('A', 'SHIP1', 'Miami', '2025-01-01', 3, { playerOfferId: 'u1' });
                 const b = row('A', 'SHIP1', 'Miami', '2025-01-01', 3, { playerOfferId: 'u2' });
-                const idA = buildB2BRowId(a.offer, a.sailing);
-                const idB = buildB2BRowId(b.offer, b.sailing);
+                const idA = B2BUtils.buildB2BRowId(a.offer, a.sailing);
+                const idB = B2BUtils.buildB2BRowId(b.offer, b.sailing);
                 expect(idA).not.toBe(idB);
                 expect(idA).toContain('u1');
                 expect(idB).toContain('u2');

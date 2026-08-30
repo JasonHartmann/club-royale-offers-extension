@@ -256,7 +256,7 @@
                         filtered = (rows || []).filter(r => {
                             try {
                                 if (!r) return false;
-                                const key = Filtering._rowKey(r);
+                                const key = Filtering.rowKey(r);
                                 if (!key) return true;
                                 return !((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)));
                             } catch(e) { return true; }
@@ -295,13 +295,7 @@
             rows.forEach((entry, idx) => {
                 if (!entry || !entry.sailing) return;
                 if (!entry.sailing.__b2bRowId) {
-                    const rawParts = [entry.offer && entry.offer.playerOfferId, safeOfferCode(entry), entry.sailing.shipCode, entry.sailing.shipName, normalizeIso(entry.sailing.sailDate)];
-                    const baseParts = rawParts.filter(p => p !== undefined && p !== null && String(p).trim() !== '').map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
-                    if (baseParts.length) {
-                        entry.sailing.__b2bRowId = `b2b-${baseParts.join('-')}`;
-                    } else {
-                        entry.sailing.__b2bRowId = `b2b-${idx}`;
-                    }
+                    entry.sailing.__b2bRowId = B2BUtils.buildB2BRowId(entry.offer, entry.sailing, idx);
                 }
                 rowMap.set(entry.sailing.__b2bRowId, entry);
             });
@@ -1610,7 +1604,6 @@
                         try {
                             const optMeta = o.meta || this._getMeta(o.rowId) || {};
                             const candidateOffer = optMeta.offerKey || null;
-                            // Values are offer keys (playerOfferId || offerCode); option name kept for callers.
                             const initialUsedOfferCodes = sessionUsedOfferCodes.slice();
                             if (candidateOffer) initialUsedOfferCodes.push(candidateOffer);
                             try {

@@ -139,19 +139,46 @@
         return { endISO: null, endPort: null, startISO: null, startPort: null, startRegion: null, endRegion: null };
     }
 
+    // playerOfferId on an offer: top-level, then nested campaignOffer. Blank/whitespace ids are absent.
+    function getPlayerOfferId(offer) {
+        if (!offer || typeof offer !== 'object') return '';
+        const top = offer.playerOfferId != null ? String(offer.playerOfferId).trim() : '';
+        if (top) return top;
+        const nested = offer.campaignOffer && offer.campaignOffer.playerOfferId != null
+            ? String(offer.campaignOffer.playerOfferId).trim() : '';
+        return nested;
+    }
+
     // Identity key for offer-level dedup: playerOfferId (top-level, then nested), else offerCode.
-    // Accepts a plain offer or a { offer, sailing } row. Blank/whitespace ids are absent.
-    function getOfferKey(offerOrRow) {
-        if (!offerOrRow || typeof offerOrRow !== 'object') return '';
-        const offer = (offerOrRow.offer && typeof offerOrRow.offer === 'object')
-            ? offerOrRow.offer
-            : offerOrRow;
-        const campaign = offer.campaignOffer || {};
-        const fromTop = offer.playerOfferId != null ? String(offer.playerOfferId).trim() : '';
-        if (fromTop) return fromTop;
-        const fromCampaign = campaign.playerOfferId != null ? String(campaign.playerOfferId).trim() : '';
-        if (fromCampaign) return fromCampaign;
-        return campaign.offerCode != null ? String(campaign.offerCode).trim() : '';
+    // Takes a { offer, sailing } row. Blank/whitespace ids are absent.
+    function getOfferKey(row) {
+        if (!row || typeof row !== 'object') return '';
+        const offer = row.offer || {};
+        const pid = getPlayerOfferId(offer);
+        if (pid) return pid;
+        return offer.campaignOffer && offer.campaignOffer.offerCode != null
+            ? String(offer.campaignOffer.offerCode).trim() : '';
+    }
+
+    // Stable row id for B2B handler attachment. Normalizes parts to [a-zA-Z0-9_-]; falls back to idx.
+    function buildB2BRowId(offer, sailing, idx) {
+        let sail = (sailing && sailing.sailDate != null) ? String(sailing.sailDate).trim() : '';
+        if (sail) {
+            if (/^\d{4}-\d{2}-\d{2}/.test(sail)) sail = sail.slice(0, 10);
+            else { const d = new Date(sail); sail = isNaN(d) ? '' : d.toISOString().slice(0, 10); }
+        }
+        const rawParts = [
+            offer && offer.playerOfferId,
+            offer && offer.campaignOffer && offer.campaignOffer.offerCode,
+            sailing && sailing.shipCode,
+            sailing && sailing.shipName,
+            sail
+        ];
+        const baseParts = rawParts
+            .filter(p => p !== undefined && p !== null && String(p).trim() !== '')
+            .map(p => String(p).trim().replace(/[^a-zA-Z0-9_-]/g, '_'));
+        if (baseParts.length) return `b2b-${baseParts.join('-')}`;
+        return `b2b-${(idx !== null && idx !== undefined) ? idx : Math.random().toString(36).slice(2, 9)}`;
     }
 
     function computeB2BDepth(rows, options) {
@@ -206,7 +233,7 @@
                     const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
                     const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
                     try {
-                        const key = Filtering._rowKey(row);
+                        const key = Filtering.rowKey(row);
                         if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) {
                             allow = false;
                         }
@@ -257,7 +284,7 @@
                         meta.forEach(m => {
                             if (!m.allow) return;
                             try {
-                                const key = Filtering._rowKey(m.row);
+                                const key = Filtering.rowKey(m.row);
                                 if (key && hiddenByKey(key)) {
                                     problemRows.push({ idx: m.idx, offerCode: m.offerCode, startISO: m.startISO, key });
                                 }
@@ -536,7 +563,7 @@
                     const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
                     const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
                     try {
-                        const key = Filtering._rowKey(row);
+                        const key = Filtering.rowKey(row);
                         if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) {
                             allow = false;
                         }
@@ -639,6 +666,8 @@
 
     const B2BUtils = {
         getOfferKey,
+        getPlayerOfferId,
+        buildB2BRowId,
         computeB2BDepth,
         computeLongestB2BPath,
         // Compute the longest chain (detailed nodes) starting from a specific index
