@@ -179,17 +179,24 @@ const TableBuilder = {
             const self = this;
             const total = state.sortedOffers.length;
             const heights = new Array(total);
+            // Phase 1: create every row and append it (batched DOM mutation).
+            const rows = new Array(total);
+            for (let i = 0; i < total; i++) {
+                rows[i] = self._createRow(state, i, globalMaxOfferDate, soonestExpDate);
+                if (rows[i]) tbody.appendChild(rows[i]);
+            }
+            // Phase 2: read every row's height in one batch. The first read forces a
+            // single layout pass over the whole tbody; the rest are served from the
+            // cached layout (no per-row reflow). Each row is still measured
+            // individually, so the scrollbar/spacer heights stay exact.
             let cumulative = 0;
             for (let i = 0; i < total; i++) {
-                const row = self._createRow(state, i, globalMaxOfferDate, soonestExpDate);
-                if (row) {
-                    tbody.appendChild(row);
-                    heights[i] = row.offsetHeight || self.ROW_HEIGHT_ESTIMATE;
-                    tbody.removeChild(row);
-                } else {
-                    heights[i] = self.ROW_HEIGHT_ESTIMATE;
-                }
+                heights[i] = rows[i] ? (rows[i].offsetHeight || self.ROW_HEIGHT_ESTIMATE) : self.ROW_HEIGHT_ESTIMATE;
                 cumulative += heights[i];
+            }
+            // Phase 3: remove every row (batched DOM mutation).
+            for (let i = 0; i < total; i++) {
+                if (rows[i]) tbody.removeChild(rows[i]);
             }
             const positions = new Array(total + 1);
             positions[0] = 0;
