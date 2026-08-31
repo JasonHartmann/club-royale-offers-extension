@@ -49,9 +49,20 @@ const TableBuilder = {
 
                 sortLabel.addEventListener('click', async () => {
                     console.debug('[tableBuilder] sort-label click', header.key);
-                    let spinnerShown = false;
-                    let hideAfterSort = false;
                     const isB2BColumn = header.key === 'b2bDepth';
+                    // Show the spinner synchronously so it paints before the heavy
+                    // sort work blocks the main thread (all columns, not just B2B).
+                    let spinner = null;
+                    try {
+                        if (window.Spinner && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') {
+                            Spinner.showSpinner();
+                            spinner = Spinner;
+                        }
+                    } catch(e) {
+                        console.debug('[tableBuilder] Unable to show spinner before sort', e);
+                    }
+                    // For the B2B column, wait for depths to finish computing (may
+                    // already be in flight). Only when actually pending/missing.
                     if (isB2BColumn && App && App.TableRenderer) {
                         const pending = (typeof App.TableRenderer.isB2BDepthPending === 'function') ? App.TableRenderer.isB2BDepthPending() : false;
                         const missingDepths = (typeof App.TableRenderer.hasComputedB2BDepths === 'function')
@@ -59,29 +70,15 @@ const TableBuilder = {
                             : (Array.isArray(state.sortedOffers) && state.sortedOffers.some(row => row && row.sailing && typeof row.sailing.__b2bDepth !== 'number'));
                         if (pending || missingDepths) {
                             try {
-                                if (window.Spinner && typeof Spinner.showSpinner === 'function') {
-                                    Spinner.showSpinner();
-                                    spinnerShown = true;
-                                }
-                            } catch(e) {
-                                console.debug('[tableBuilder] Unable to show spinner before B2B sort', e);
-                            }
-                            try {
                                 if (typeof App.TableRenderer.waitForB2BDepths === 'function') {
                                     await App.TableRenderer.waitForB2BDepths();
                                 }
-                                hideAfterSort = spinnerShown;
                             } catch(waitErr) {
                                 console.warn('[tableBuilder] waitForB2BDepths failed', waitErr);
-                                if (spinnerShown && window.Spinner && typeof Spinner.hideSpinner === 'function') {
-                                    try { Spinner.hideSpinner(); } catch(hideErr) { console.debug('[tableBuilder] Spinner.hideSpinner error', hideErr); }
-                                }
-                                spinnerShown = false;
-                                hideAfterSort = false;
                             }
                         }
                     }
-
+                    // Determine the next sort order (asc -> desc -> original -> asc).
                     let newSortOrder = 'asc';
                     if (state.currentSortColumn === header.key) {
                         newSortOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
@@ -98,11 +95,20 @@ const TableBuilder = {
                     state.groupKeysStack = [];
                     // Ensure token matches current profile to avoid stale-guard abort
                     try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
-                    console.debug('[tableBuilder] sort-label click: calling updateView', { token: state._switchToken });
-                    App.TableRenderer.updateView(state);
-                    if (hideAfterSort && window.Spinner && typeof Spinner.hideSpinner === 'function') {
-                        try { Spinner.hideSpinner(); } catch(hideErr) { console.debug('[tableBuilder] Spinner.hideSpinner error post-sort', hideErr); }
-                    }
+                    console.debug('[tableBuilder] sort-label click: deferring updateView', { token: state._switchToken });
+                    // Defer the heavy updateView so the spinner paints first.
+                    const doWork = () => {
+                        try {
+                            App.TableRenderer.updateView(state);
+                        } finally {
+                            if (spinner && typeof spinner.hideSpinner === 'function') {
+                                try { spinner.hideSpinner(); } catch(hideErr) { console.debug('[tableBuilder] Spinner.hideSpinner error post-sort', hideErr); }
+                            }
+                        }
+                    };
+                    // Force a layout so the spinner is real before we yield to the loop.
+                    try { if (spinner) { const el = document.getElementById('gobo-loading-spinner-container'); if (el) el.offsetHeight; } } catch(e) {}
+                    requestAnimationFrame(() => setTimeout(doWork, 0));
                 });
                 groupIcon.addEventListener('click', () => {
                     console.debug('[tableBuilder] group-icon click', header.key);
