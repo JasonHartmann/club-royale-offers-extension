@@ -24,7 +24,10 @@ describe('tableBuilder sort click spinner', () => {
         updateView = jest.fn();
         showSpinner = jest.fn();
         hideSpinner = jest.fn();
-        global.Spinner = { showSpinner, hideSpinner };
+        // Content-script reality: `const Spinner` is in lexical scope, NOT on window.
+        // Passing it as a Function argument — not global.Spinner — so a
+        // `window.Spinner` check cannot accidentally pass this test.
+        const spinner = { showSpinner, hideSpinner };
         global.App = {
             TableRenderer: {
                 updateView,
@@ -36,13 +39,12 @@ describe('tableBuilder sort click spinner', () => {
         };
 
         const src = fs.readFileSync(path.resolve(__dirname, '..', 'tableBuilder.js'), 'utf8');
-        const fn = new Function(src + '\nreturn TableBuilder;');
-        TableBuilder = fn();
+        const fn = new Function('Spinner', src + '\nreturn TableBuilder;');
+        TableBuilder = fn(spinner);
     });
 
     afterEach(() => {
         delete global.App;
-        delete global.Spinner;
         delete global.requestAnimationFrame;
     });
 

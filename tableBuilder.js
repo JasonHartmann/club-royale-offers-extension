@@ -50,11 +50,11 @@ const TableBuilder = {
                 sortLabel.addEventListener('click', async () => {
                     console.debug('[tableBuilder] sort-label click', header.key);
                     const isB2BColumn = header.key === 'b2bDepth';
-                    // Show the spinner synchronously so it paints before the heavy
-                    // sort work blocks the main thread (all columns, not just B2B).
+                    // Spinner is a const in spinner.js — it is NOT on window.
+                    // Checking window.Spinner silently skipped the overlay.
                     let spinner = null;
                     try {
-                        if (window.Spinner && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') {
+                        if (typeof Spinner !== 'undefined' && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') {
                             Spinner.showSpinner();
                             spinner = Spinner;
                         }
