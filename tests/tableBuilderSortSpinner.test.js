@@ -31,6 +31,7 @@ describe('tableBuilder sort click spinner', () => {
         global.App = {
             TableRenderer: {
                 updateView,
+                updateBreadcrumb: jest.fn(),
                 currentSwitchToken: 'token-1',
                 isB2BDepthPending: () => false,
                 hasComputedB2BDepths: () => true,
@@ -69,6 +70,14 @@ describe('tableBuilder sort click spinner', () => {
         const th = thead.querySelector(`th[data-key="${key}"]`);
         const label = th.querySelector('.sort-label');
         label.click();
+    }
+
+    function clickGroupIcon(state, key) {
+        const thead = TableBuilder.createTableHeader(state);
+        document.body.appendChild(thead);
+        const th = thead.querySelector(`th[data-key="${key}"]`);
+        const icon = th.querySelector('.group-icon');
+        icon.click();
     }
 
     // Run the captured rAF callbacks (which schedule the setTimeout(doWork, 0)).
@@ -151,4 +160,26 @@ describe('tableBuilder sort click spinner', () => {
         expect(updateView).toHaveBeenCalledTimes(1);
         expect(hideSpinner).toHaveBeenCalledTimes(1);
     });
+    test('group icon click shows spinner, defers updateView, enters accordion view', async () => {
+        const state = makeState();
+        clickGroupIcon(state, 'ship');
+
+        // Spinner shown synchronously on click.
+        expect(showSpinner).toHaveBeenCalledTimes(1);
+        // updateView is deferred, not called synchronously.
+        expect(updateView).not.toHaveBeenCalled();
+        // Accordion state set immediately.
+        expect(state.viewMode).toBe('accordion');
+        expect(state.groupingStack).toEqual(['ship']);
+        expect(state.groupKeysStack).toEqual([]);
+
+        // Flush the deferred work.
+        flushRaf();
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(updateView).toHaveBeenCalledTimes(1);
+        expect(global.App.TableRenderer.updateBreadcrumb).toHaveBeenCalledTimes(1);
+        expect(hideSpinner).toHaveBeenCalledTimes(1);
+    });
+
 });

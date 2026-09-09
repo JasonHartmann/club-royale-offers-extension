@@ -112,6 +112,18 @@ const TableBuilder = {
                 });
                 groupIcon.addEventListener('click', () => {
                     console.debug('[tableBuilder] group-icon click', header.key);
+                    // Show the spinner synchronously so it paints before the
+                    // accordion build blocks the main thread (same pattern as
+                    // the sort-label click).
+                    let spinner = null;
+                    try {
+                        if (typeof Spinner !== 'undefined' && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') {
+                            Spinner.showSpinner();
+                            spinner = Spinner;
+                        }
+                    } catch(e) {
+                        console.debug('[tableBuilder] Unable to show spinner before grouping', e);
+                    }
                     state.currentSortColumn = header.key;
                     state.currentSortOrder = 'asc';
                     state.currentGroupColumn = header.key;
@@ -122,9 +134,20 @@ const TableBuilder = {
                     state.groupKeysStack = [];
                     // Propagate current switch token so updateView isn't aborted as stale
                     try { if (App && App.TableRenderer) state._switchToken = App.TableRenderer.currentSwitchToken; } catch(e) { /* ignore */ }
-                    console.debug('[tableBuilder] group-icon click: calling updateView and updateBreadcrumb', { token: state._switchToken });
-                    App.TableRenderer.updateView(state);
-                    App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+                    console.debug('[tableBuilder] group-icon click: deferring updateView', { token: state._switchToken });
+                    const doWork = () => {
+                        try {
+                            App.TableRenderer.updateView(state);
+                            App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+                        } finally {
+                            if (spinner && typeof spinner.hideSpinner === 'function') {
+                                try { spinner.hideSpinner(); } catch(hideErr) { console.debug('[tableBuilder] Spinner.hideSpinner error post-group', hideErr); }
+                            }
+                        }
+                    };
+                    // Force a layout so the spinner is real before we yield to the loop.
+                    try { if (spinner) { const el = document.getElementById('gobo-loading-spinner-container'); if (el) el.offsetHeight; } } catch(e) {}
+                    requestAnimationFrame(() => setTimeout(doWork, 0));
                 });
             }
             tr.appendChild(th);

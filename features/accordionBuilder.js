@@ -333,6 +333,18 @@ const AccordionBuilder = {
                 // Sort click
                 sortLabel.addEventListener('click', e => {
                     e.stopPropagation();
+                    // Show the spinner synchronously so it paints before the
+                    // group re-render blocks the main thread (same pattern as
+                    // the main table's sort-label click).
+                    let spinner = null;
+                    try {
+                        if (typeof Spinner !== 'undefined' && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') {
+                            Spinner.showSpinner();
+                            spinner = Spinner;
+                        }
+                    } catch(err) {
+                        console.debug('[accordionBuilder] Unable to show spinner before group sort', err);
+                    }
                     const groupPath = [...groupKeysStack, groupKey].join('>');
                     const gs = groupSortStates[groupPath] || { currentSortColumn: null, currentSortOrder: 'original' };
                     let newOrder = 'asc';
@@ -343,28 +355,39 @@ const AccordionBuilder = {
                     gs.currentSortOrder = newOrder;
                     groupSortStates[groupPath] = gs;
 
-                    const offers = groupedData[groupKey];
-                    let soonest = null; const now = Date.now(); const twoDays = 2*24*60*60*1000;
-                    offers.forEach(({ offer }) => { const exp=offer.campaignOffer?.reserveByDate; if(exp){ const ms=new Date(exp).getTime(); if(ms>=now && ms-now<=twoDays){ if(!soonest|| ms<soonest) soonest=ms; } } });
-                    const sorted = newOrder !== 'original' ? App.SortUtils.sortOffers([...offers], headerObj.key, newOrder) : offers;
-                    const tbodyRef = table.querySelector('tbody');
-                    if (tbodyRef) tbodyRef.innerHTML='';
-                    sorted.forEach(({ offer, sailing }) => {
-                        const isNewest = globalMaxOfferDate && offer.campaignOffer?.startDate && new Date(offer.campaignOffer.startDate).getTime() === globalMaxOfferDate;
-                        const expDate = offer.campaignOffer?.reserveByDate;
-                        const isExpiringSoon = expDate && new Date(expDate).getTime() === soonest;
-                        const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
+                    const doWork = () => {
                         try {
-                            const cell = row.querySelector('.b2b-depth-cell');
-                            if (cell && sailing && typeof sailing.__b2bDepth === 'number') {
-                                if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth, sailing && sailing.__b2bChainId ? sailing.__b2bChainId : null);
-                                else cell.textContent = String(sailing.__b2bDepth);
+                            const offers = groupedData[groupKey];
+                            let soonest = null; const now = Date.now(); const twoDays = 2*24*60*60*1000;
+                            offers.forEach(({ offer }) => { const exp=offer.campaignOffer?.reserveByDate; if(exp){ const ms=new Date(exp).getTime(); if(ms>=now && ms-now<=twoDays){ if(!soonest|| ms<soonest) soonest=ms; } } });
+                            const sorted = newOrder !== 'original' ? App.SortUtils.sortOffers([...offers], headerObj.key, newOrder) : offers;
+                            const tbodyRef = table.querySelector('tbody');
+                            if (tbodyRef) tbodyRef.innerHTML='';
+                            sorted.forEach(({ offer, sailing }) => {
+                                const isNewest = globalMaxOfferDate && offer.campaignOffer?.startDate && new Date(offer.campaignOffer.startDate).getTime() === globalMaxOfferDate;
+                                const expDate = offer.campaignOffer?.reserveByDate;
+                                const isExpiringSoon = expDate && new Date(expDate).getTime() === soonest;
+                                const row = App.Utils.createOfferRow({ offer, sailing }, isNewest, isExpiringSoon);
+                                try {
+                                    const cell = row.querySelector('.b2b-depth-cell');
+                                    if (cell && sailing && typeof sailing.__b2bDepth === 'number') {
+                                        if (App?.TableRenderer?.updateB2BDepthCell) App.TableRenderer.updateB2BDepthCell(cell, sailing.__b2bDepth, sailing && sailing.__b2bChainId ? sailing.__b2bChainId : null);
+                                        else cell.textContent = String(sailing.__b2bDepth);
+                                    }
+                                } catch(e){ /* ignore */ }
+                                tbodyRef.appendChild(row);
+                            });
+                        } finally {
+                            tr.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
+                            if (newOrder==='asc') th.classList.add('sort-asc'); else if(newOrder==='desc') th.classList.add('sort-desc');
+                            if (spinner && typeof spinner.hideSpinner === 'function') {
+                                try { spinner.hideSpinner(); } catch(hideErr) { console.debug('[accordionBuilder] Spinner.hideSpinner error post-group-sort', hideErr); }
                             }
-                        } catch(e){ /* ignore */ }
-                        tbodyRef.appendChild(row);
-                    });
-                    tr.querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
-                    if (newOrder==='asc') th.classList.add('sort-asc'); else if(newOrder==='desc') th.classList.add('sort-desc');
+                        }
+                    };
+                    // Force a layout so the spinner is real before we yield to the loop.
+                    try { if (spinner) { const el = document.getElementById('gobo-loading-spinner-container'); if (el) el.offsetHeight; } } catch(err) {}
+                    requestAnimationFrame(() => setTimeout(doWork, 0));
                 });
 
                 tr.appendChild(th);
