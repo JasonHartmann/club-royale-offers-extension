@@ -156,20 +156,6 @@ const Breadcrumbs = {
                     try {
                         const rawStored = (typeof goboStorageGet === 'function' ? goboStorageGet(k) : localStorage.getItem(k));
                         const payload = rawStored ? JSON.parse(rawStored) : null;
-                        // TEMP-DIAG: which store is this chip reading from, and does the key exist elsewhere?
-                        try {
-                            const lsRaw = localStorage.getItem(k);
-                            let lsSavedAt = null;
-                            try { const lp = lsRaw ? JSON.parse(lsRaw) : null; lsSavedAt = lp && lp.savedAt; } catch(eLs){}
-                            console.log('[DIAG] profile tab', k, {
-                                source: (typeof goboStorageGet === 'function') ? 'goboStorageGet(in-memory)' : 'localStorage',
-                                savedAt: payload ? payload.savedAt : null,
-                                ageMin: payload && payload.savedAt ? Math.round((Date.now() - payload.savedAt) / 60000) : null,
-                                alsoInLocalStorage: !!lsRaw,
-                                localStorageSavedAt: lsSavedAt
-                            });
-                        } catch(eDiag){}
-                        // END TEMP-DIAG
                         if (payload && payload.data && payload.savedAt) {
                             // ID assignment is handled in batch earlier to avoid reentrancy; do not assign here.
                             let label;
@@ -194,25 +180,6 @@ const Breadcrumbs = {
                         }
                     } catch (e) {/* ignore */ }
                 });
-                // TEMP-DIAG: ground truth from chrome.storage.local (async)
-                try {
-                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                        chrome.storage.local.get(null, (items) => {
-                            try {
-                                const rows = Object.keys(items || {})
-                                    .filter(kk => kk.startsWith('gobo') || kk.startsWith('goob'))
-                                    .map(kk => {
-                                        let savedAt = null;
-                                        try { const pp = typeof items[kk] === 'string' ? JSON.parse(items[kk]) : items[kk]; savedAt = pp && pp.savedAt; } catch(eX){}
-                                        return { key: kk, savedAt, ageMin: savedAt ? Math.round((Date.now() - savedAt) / 60000) : null };
-                                    })
-                                    .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-                                console.log('[DIAG] chrome.storage.local ground truth', rows);
-                            } catch(eGt){}
-                        });
-                    }
-                } catch(eGt){}
-                // END TEMP-DIAG
                 if (profiles.length) {
                             try {
                                 if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) {

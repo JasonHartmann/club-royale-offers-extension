@@ -475,9 +475,6 @@ const ApiClient = {
                 const legacyKey = `gobo-${usernameKey}`; // backward-compatible
                 const brandedKey = `gobo-${brandCode}-${usernameKey}`;
                 const payload = { savedAt: Date.now(), data: normalizedData, brand: brandCode, email: App.CurrentUserEmail || user.email };
-                // TEMP-DIAG
-                console.log('[DIAG] persist offers', { rawKey, usernameKey, brandCode, brandedKey, legacyKey, savedAt: payload.savedAt });
-                // END TEMP-DIAG
                 // Write branded key
                 if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(payload)); else localStorage.setItem(brandedKey, JSON.stringify(payload));
                 // If legacy key exists already, leave it untouched; else optionally seed it for a transition (commented out for now)
