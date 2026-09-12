@@ -180,6 +180,9 @@
         const backend = extStorage === idbStorage ? 'indexeddb' : (extStorage ? 'browser.storage.local' : 'none');
         infoStore('backend', backend, { isIOS });
         if (isIOS && backend !== 'indexeddb') infoStore('iosStorageFallback', backend);
+        // TEMP-DIAG
+        console.log('[DIAG] GoboStore backend:', backend, { isSafari, isIOS, hasBrowser: typeof browser !== 'undefined', hasChrome: typeof chrome !== 'undefined' });
+        // END TEMP-DIAG
     } catch(e) { /* ignore */ }
     const internal = new Map();
     const pendingWrites = new Map();
@@ -197,6 +200,13 @@
                 const maybePromise = extStorage.set(batch, () => {
                     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
                         debugStore('flush: lastError', chrome.runtime.lastError);
+                        // TEMP-DIAG
+                        console.log('[DIAG] flush FAILED', Object.keys(batch), chrome.runtime.lastError.message);
+                        // END TEMP-DIAG
+                    } else {
+                        // TEMP-DIAG
+                        console.log('[DIAG] flush ok', Object.keys(batch));
+                        // END TEMP-DIAG
                     }
                 });
                 if (maybePromise && typeof maybePromise.then === 'function') {
@@ -237,6 +247,9 @@
                         });
                     } catch(e) { /* ignore */ }
                     try { infoStore('loadAll.done', internal.size); } catch(e) {}
+                    // TEMP-DIAG
+                    console.log('[DIAG] loadAll hydrated', internal.size, 'keys:', Array.from(internal.keys()).filter(k => k.startsWith('gobo') || k.startsWith('goob')));
+                    // END TEMP-DIAG
                     resolve();
                 });
                 if (maybePromise && typeof maybePromise.then === 'function') {
@@ -301,6 +314,9 @@
             internal.set(key, value);
             pendingWrites.set(key, value);
             debugStore('setItem queued', key);
+            // TEMP-DIAG
+            console.log('[DIAG] setItem', key, typeof value === 'string' ? value.length + ' bytes' : typeof value);
+            // END TEMP-DIAG
             scheduleFlush(true);
             // Dispatch a lightweight in-page event so UI can react immediately to important keys
             try {
@@ -369,9 +385,15 @@
                     if (newVal === undefined) {
                         internal.delete(k);
                         debugStore('externalChange: deleted key', k);
+                        // TEMP-DIAG
+                        console.log('[DIAG] externalChange deleted', k);
+                        // END TEMP-DIAG
                     } else {
                         internal.set(k, newVal);
                         debugStore('externalChange: updated key', k);
+                        // TEMP-DIAG
+                        console.log('[DIAG] externalChange updated', k);
+                        // END TEMP-DIAG
                     }
                     try { document.dispatchEvent(new CustomEvent('goboStorageUpdated', { detail: { key: k } })); } catch(e){}
                 });
