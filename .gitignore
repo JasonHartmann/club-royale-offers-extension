@@ -3,3 +3,5 @@ safari-build/
 dist/
 .aider*
 .opencode
+list.json
+details-*.json

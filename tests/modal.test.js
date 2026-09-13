@@ -81,6 +81,7 @@ function makeState() {
         table: document.createElement('table'),
         tbody: document.createElement('tbody'),
         accordionContainer: document.createElement('div'),
+        cardContainer: document.createElement('div'),
         backButton: document.createElement('button'),
     };
 }

@@ -1377,6 +1377,8 @@ const AdvancedSearch = {
             const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
             btn.textContent = committedCount ? `Advanced Search (${committedCount})` : 'Advanced Search';
             btn.setAttribute('aria-label', committedCount ? `Advanced Search with ${committedCount} filters` : 'Advanced Search');
+            const cardFilterBtn = document.querySelector('.gobo-card-filter');
+            if (cardFilterBtn) cardFilterBtn.textContent = committedCount ? `Filters (${committedCount})` : 'Filters';
             const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
             if (panel) {
                 const header = panel.querySelector('.adv-search-header');

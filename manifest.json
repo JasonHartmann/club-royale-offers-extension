@@ -44,7 +44,9 @@
         "styles/ui.css",
         "styles/tabs-badges.css",
         "styles/itinerary.css",
-        "styles/advanced-search.css"
+        "styles/advanced-search.css",
+        "styles/cards.css",
+        "styles/offerPdf.css"
       ],
       "js": [
       "safari-polyfill.js",
@@ -79,6 +81,8 @@
         "modal.js",
         "tableBuilder.js",
         "tableRenderer.js",
+        "features/cardView.js",
+        "features/offerPdf.js",
         "app.js"
       ],
       "run_at": "document_start"

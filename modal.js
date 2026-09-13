@@ -14,7 +14,7 @@ const Modal = {
         return backdrop;
     },
     setupModal(state, overlappingElements) {
-        const { container, backdrop, table, tbody, accordionContainer, backButton } = state;
+        const { container, backdrop, table, tbody, accordionContainer, cardContainer, backButton } = state;
         const scrollContainer = document.createElement('div');
         scrollContainer.className = 'table-scroll-container';
         const footerContainer = document.createElement('div');
@@ -62,6 +62,7 @@ const Modal = {
         scrollContainer.appendChild(breadcrumbContainer);
         scrollContainer.appendChild(table);
         scrollContainer.appendChild(accordionContainer);
+        scrollContainer.appendChild(cardContainer);
 
         // Prepare Buy Me a Coffee and Venmo links (they will be moved into the Donate panel)
         const coffeeButton = document.createElement('a');

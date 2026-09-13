@@ -39,6 +39,8 @@
         BackToBackTool,
         Favorites,
         Settings,
+        CardView,
+        OfferPdf,
         SettingsStore: {
             getSettings() {
                 try {
@@ -133,6 +135,12 @@
             },
             setDateFullFormat(val) {
                 try { const s = this.getSettings() || {}; s.dateFullFormat = !!val; this.setSettings(s); try { window.App.DateFullFormat = !!val; } catch(e) {} } catch(e) {}
+            },
+            getLayoutMode() {
+                try { const s = this.getSettings(); return (typeof s.layoutMode !== 'undefined') ? s.layoutMode : 'table'; } catch(e) { return 'table'; }
+            },
+            setLayoutMode(val) {
+                try { const s = this.getSettings() || {}; s.layoutMode = (val === 'cards') ? 'cards' : 'table'; this.setSettings(s); try { window.App.LayoutMode = s.layoutMode; } catch(e) {} } catch(e) {}
             }
         },
         // runtime flag to control expensive B2B computations; default true for backwards compatibility
@@ -143,6 +151,8 @@
         B2BLagDays: (typeof __goboSettings.b2bLagDays !== 'undefined') ? Math.max(0, Math.min(7, parseInt(__goboSettings.b2bLagDays, 10) || 0)) : 0,
         // runtime flag: full date format (YYYY-MM-DD) vs compact (MM/DD/YY); default false (compact)
         DateFullFormat: (typeof __goboSettings.dateFullFormat !== 'undefined') ? !!__goboSettings.dateFullFormat : false,
+        // runtime value: layout mode ('table' | 'cards'); default 'table'
+        LayoutMode: (typeof __goboSettings.layoutMode !== 'undefined') ? (__goboSettings.layoutMode === 'cards' ? 'cards' : 'table') : 'table',
         // Shared email: null initially, set by apiClient.fetchGuestAccount, hydrated from localStorage by breadcrumbs fallback
         CurrentUserEmail: null,
         ProfileCache: _prev.ProfileCache || [],
@@ -154,6 +164,7 @@
                 App.B2BDrivingRangeHours = (typeof __goboSettings.b2bDrivingRangeHours !== 'undefined') ? Math.max(0, Math.min(5, parseInt(__goboSettings.b2bDrivingRangeHours, 10) || 0)) : 0;
                 App.B2BLagDays = (typeof __goboSettings.b2bLagDays !== 'undefined') ? Math.max(0, Math.min(7, parseInt(__goboSettings.b2bLagDays, 10) || 0)) : 0;
                 App.DateFullFormat = (typeof __goboSettings.dateFullFormat !== 'undefined') ? !!__goboSettings.dateFullFormat : false;
+                App.LayoutMode = (typeof __goboSettings.layoutMode !== 'undefined') ? (__goboSettings.layoutMode === 'cards' ? 'cards' : 'table') : 'table';
             } catch(e) { /* ignore */ }
             try { App.applyTheme(); } catch(e) { /* ignore */ }
         },

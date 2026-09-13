@@ -59,6 +59,61 @@ const Settings = {
         area.appendChild(select);
         body.appendChild(area);
     },
+    buildLayoutModeSetting(body) {
+        const area = document.createElement('div');
+        area.className = 'gobo-setting-area';
+        area.style.cssText = 'margin-bottom:12px; width:100%;';
+
+        const title = document.createElement('strong');
+        title.textContent = 'Layout';
+
+        const desc = document.createElement('div');
+        desc.className = 'gobo-setting-desc';
+        desc.style.cssText = 'font-size:12px; margin:6px 0 8px 0;';
+        desc.textContent = 'Choose how offers are displayed: a traditional table, or a mobile-first card view.';
+
+        const select = document.createElement('select');
+        select.id = 'gobo-setting-layout';
+
+        const currentMode = App.SettingsStore.getLayoutMode();
+
+        const optionTable = document.createElement('option');
+        optionTable.value = 'table';
+        optionTable.textContent = 'Table';
+        if (currentMode !== 'cards') optionTable.selected = true;
+
+        const optionCards = document.createElement('option');
+        optionCards.value = 'cards';
+        optionCards.textContent = 'Cards';
+        if (currentMode === 'cards') optionCards.selected = true;
+
+        select.appendChild(optionTable);
+        select.appendChild(optionCards);
+
+        select.addEventListener('change', () => {
+            const mode = select.value;
+            App.SettingsStore.setLayoutMode(mode);
+            App.LayoutMode = mode;
+            try {
+                const state = App.TableRenderer.lastState;
+                if (state) {
+                    state._switchToken = App.TableRenderer.currentSwitchToken;
+                    delete state._lastRenderSig;
+                    delete state._advFieldCache;
+                    delete state._advStaticFieldIndex;
+                    delete state._advIndexBuilding;
+                }
+                if (state && typeof App.AdvancedSearch.lightRefresh === 'function') {
+                    App.AdvancedSearch.lightRefresh(state, { showSpinner: false });
+                }
+            } catch(e) { /* ignore */ }
+        });
+
+        area.appendChild(title);
+        area.appendChild(desc);
+        area.appendChild(select);
+        body.appendChild(area);
+    },
     buildGearButton() {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -398,6 +453,9 @@ const Settings = {
 
             // Date Format setting (YYYY-MM-DD vs MM/DD/YY)
             Settings.buildDateFormatSetting(body);
+
+            // Layout setting (Table vs Cards)
+            Settings.buildLayoutModeSetting(body);
 
             // Column visibility settings
             const columnArea = document.createElement('div');

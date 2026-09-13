@@ -1,0 +1,39 @@
+/* Offer flyer — standalone tab document (also inlined into the flyer tab by offerPdf.js) */
+* { box-sizing: border-box; }
+html { background: #f8fafc; }
+html.gobo-dark { background: #0f172a; }
+body { margin: 0; font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif; color: #0f172a; min-height: 100vh; position: relative; }
+html.gobo-dark body { color: #e2e8f0; }
+.gobo-flyer-aurora { position: fixed; inset: -20%; z-index: -1; pointer-events: none; filter: blur(40px); background: radial-gradient(60% 50% at 20% 30%, rgba(201,162,39,0.18), transparent 70%), radial-gradient(50% 40% at 80% 20%, rgba(56,189,248,0.14), transparent 70%), radial-gradient(60% 50% at 60% 80%, rgba(99,102,241,0.12), transparent 70%); animation: gobo-aurora 22s ease-in-out infinite alternate; }
+html.gobo-dark .gobo-flyer-aurora { background: radial-gradient(60% 50% at 20% 30%, rgba(250,204,21,0.16), transparent 70%), radial-gradient(50% 40% at 80% 20%, rgba(56,189,248,0.12), transparent 70%), radial-gradient(60% 50% at 60% 80%, rgba(129,140,248,0.18), transparent 70%); }
+@keyframes gobo-aurora { from { transform: translate3d(-2%,-1%,0) scale(1); } to { transform: translate3d(2%,2%,0) scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .gobo-flyer-aurora { animation: none; } }
+.gobo-flyer-exit { position: sticky; top: 0; z-index: 10; padding: 10px 16px; background: rgba(248,250,252,0.86); backdrop-filter: blur(8px); }
+html.gobo-dark .gobo-flyer-exit { background: rgba(15,23,42,0.86); }
+.gobo-flyer-back { min-height: 44px; min-width: 44px; padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; font-size: 14px; cursor: pointer; }
+html.gobo-dark .gobo-flyer-back { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+.gobo-flyer-sheet { max-width: 8.5in; margin: 0 auto; padding: 16px; }
+.gobo-flyer-gold-band { background: #c9a227; color: #fff; border-radius: 8px; padding: 20px 24px; text-align: center; }
+.gobo-flyer-kicker { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #7a5b12; font-weight: 700; }
+.gobo-flyer-h1 { margin: 12px 0 8px; font-size: 22px; line-height: 1.3; color: #fff; text-transform: uppercase; }
+.gobo-flyer-taxes { font-size: 13px; font-weight: 600; color: #7a5b12; }
+.gobo-flyer-redeem { margin-top: 10px; font-size: 14px; font-weight: 700; color: #7a5b12; }
+.gobo-flyer-body-title { margin: 24px 0 12px; font-size: 20px; text-align: center; color: #d97706; text-transform: uppercase; }
+html.gobo-dark .gobo-flyer-body-title { color: #fbbf24; }
+.gobo-flyer-section { margin-bottom: 20px; }
+.gobo-flyer-section-header { background: #4b5563; color: #fff; padding: 8px 12px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-radius: 6px 6px 0 0; }
+html.gobo-dark .gobo-flyer-section-header { background: #334155; }
+.gobo-flyer-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gobo-flyer-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #e2e8f0; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #64748b; }
+html.gobo-dark .gobo-flyer-table th { border-bottom-color: #334155; color: #94a3b8; }
+.gobo-flyer-table td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+html.gobo-dark .gobo-flyer-table td { border-bottom-color: #1e293b; }
+.gobo-flyer-ship { font-weight: 700; }
+.gobo-flyer-from { display: block; font-weight: 400; color: #64748b; font-size: 12px; }
+html.gobo-dark .gobo-flyer-from { color: #94a3b8; }
+.gobo-flyer-dates div { white-space: nowrap; }
+.gobo-flyer-gty-footer { margin-top: 24px; padding: 16px; background: #f1f5f9; border-radius: 8px; font-size: 13px; }
+html.gobo-dark .gobo-flyer-gty-footer { background: #1e293b; }
+.gobo-flyer-gty-footer h3 { margin: 0 0 8px; font-size: 14px; text-transform: uppercase; }
+@page { size: letter; margin: 0.5in; }
+@media print { .gobo-flyer-exit, .gobo-flyer-aurora { display: none !important; } body { background: #fff; } }

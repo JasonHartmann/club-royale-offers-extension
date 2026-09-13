@@ -752,6 +752,8 @@ const TableRenderer = {
         state.fullOriginalOffers = [...(state.originalOffers || [])];
         state.accordionContainer = document.createElement('div');
         state.accordionContainer.className = 'w-full';
+        state.cardContainer = document.createElement('div');
+        state.cardContainer.className = 'gobo-cards-container';
         state.backButton = document.createElement('button');
         state.backButton.style.display = 'none';
         state.backButton.onclick = () => {
@@ -796,6 +798,7 @@ const TableRenderer = {
         scrollContainer.appendChild(breadcrumbContainer);
         scrollContainer.appendChild(state.table);
         scrollContainer.appendChild(state.accordionContainer);
+        scrollContainer.appendChild(state.cardContainer);
         // Cache current if exists
         const currentScroll = document.querySelector('.table-scroll-container');
         console.debug('[DEBUG] currentScroll:', currentScroll);
@@ -970,6 +973,7 @@ const TableRenderer = {
                 table: App.TableBuilder.createMainTable(),
                 tbody: document.createElement('tbody'),
                 accordionContainer: document.createElement('div'),
+                cardContainer: document.createElement('div'),
                 backButton: document.createElement('button'),
                 headers: [
                     { key: 'favorite', label: (selectedProfileKey === 'goob-favorites' ? 'ID' : '\u2605') },
@@ -1018,6 +1022,7 @@ const TableRenderer = {
             state.fullOriginalOffers = [...state.originalOffers];
 
             state.accordionContainer.className = 'w-full';
+            state.cardContainer.className = 'gobo-cards-container';
             state.backButton.style.display = 'none';
             state.backButton.onclick = () => {
                 state.currentGroupColumn = null;
@@ -1112,9 +1117,10 @@ const TableRenderer = {
         } catch(e) { /* ignore header repair errors */ }
         const state = { ...baseState, selectedProfileKey: key, _switchToken: switchToken || baseState._switchToken, profileId: App.ProfileIdMap ? App.ProfileIdMap[key] : null };
         if (!state.advancedSearch) state.advancedSearch = { enabled:false, predicates: [] };
-        // Ensure core structures
         state.accordionContainer = document.createElement('div');
         state.accordionContainer.className = 'w-full';
+        state.cardContainer = document.createElement('div');
+        state.cardContainer.className = 'gobo-cards-container';
         state.backButton = document.createElement('button');
         state.backButton.style.display = 'none';
         state.backButton.onclick = () => {
@@ -1162,6 +1168,7 @@ const TableRenderer = {
         scrollContainer.appendChild(breadcrumbContainer);
         scrollContainer.appendChild(state.table);
         scrollContainer.appendChild(state.accordionContainer);
+        scrollContainer.appendChild(state.cardContainer);
         // Replace current
         const currentScroll = document.querySelector('.table-scroll-container');
         if (currentScroll) currentScroll.replaceWith(scrollContainer);
@@ -1290,8 +1297,13 @@ const TableRenderer = {
                 console.debug('[tableRenderer] Unable to register BackToBackTool context', contextErr);
             }
         }
-        table.style.display = viewMode === 'table' ? 'table' : 'none';
+        const layoutMode = (App && App.SettingsStore && typeof App.SettingsStore.getLayoutMode === 'function') ? App.SettingsStore.getLayoutMode() : 'table';
+        const showCards = viewMode === 'table' && layoutMode === 'cards';
+        table.style.display = (viewMode === 'table' && !showCards) ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
+        if (state.cardContainer) state.cardContainer.style.display = showCards ? 'block' : 'none';
+        const shell = document.getElementById('gobo-offers-table');
+        if (shell) shell.classList.toggle('gobo-layout-cards', !!showCards);
 
         const breadcrumbContainer = document.querySelector('.breadcrumb-container');
         if (breadcrumbContainer) breadcrumbContainer.style.display = '';
@@ -1366,7 +1378,54 @@ const TableRenderer = {
         }
         if (viewMode === 'table') {
             // Skip full table rebuild if sort key, filter sig, and row count are unchanged
-            const renderSig = `${sortKey}|${state._filterCache?.sig ?? ''}|${state.sortedOffers.length}|${viewMode}`;
+            const renderSig = `${sortKey}|${state._filterCache?.sig ?? ''}|${state.sortedOffers.length}|${viewMode}|${layoutMode}`;
+            if (showCards) {
+                // === Card view path ===
+                if (state._lastRenderSig === renderSig && state.cardContainer && state.cardContainer.children.length > 0) {
+                    // Nothing changed — skip render
+                    try { this.applyColumnVisibility(state); } catch(e) {}
+                    try { if (!state._skipBreadcrumb) Breadcrumbs.updateBreadcrumb(state.groupingStack, state.groupKeysStack); } catch(e) {}
+                    if (switchToken && this.currentSwitchToken === switchToken) this._applyActiveTabHighlight(state.selectedProfileKey);
+                    return;
+                }
+                state._lastRenderSig = renderSig;
+                // Cancel table virtual scroll when entering cards so a hidden table is not scrolling
+                try { if (state._vsCleanup) { state._vsCleanup(); state._vsCleanup = null; } } catch(e) {}
+                try { this._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: allowSideBySidePref, filterPredicate: allowRowForDepth }); } catch(e) {}
+                if (App.CardView && typeof App.CardView.render === 'function') {
+                    App.CardView.render(state.cardContainer, state, globalMaxOfferDate);
+                }
+                // Apply B2B pills to rendered cards (same as the table's applyB2BToVisibleRows)
+                try {
+                    const applyB2BToCards = () => {
+                        const cells = state.cardContainer.querySelectorAll('.gobo-sailing-card .b2b-depth-cell');
+                        cells.forEach((cell) => {
+                            try {
+                                const card = cell.closest('.gobo-sailing-card');
+                                const idx = (card && card.dataset && card.dataset.vsIdx !== undefined) ? Number(card.dataset.vsIdx) : NaN;
+                                const pair = Number.isFinite(idx) ? state.sortedOffers[idx] : null;
+                                if (!pair) return;
+                                const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
+                                if (typeof this.updateB2BDepthCell === 'function') this.updateB2BDepthCell(cell, depth, pair.sailing && pair.sailing.__b2bChainId ? pair.sailing.__b2bChainId : null);
+                                else cell.textContent = String(depth);
+                                try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(cell, pair); } catch(e) {}
+                            } catch(e) {}
+                        });
+                    };
+                    applyB2BToCards();
+                    const token = state._rowRenderToken || null;
+                    const chunkHandler = (chunkEv) => {
+                        try { if (chunkEv && chunkEv.detail && token && chunkEv.detail.token && chunkEv.detail.token !== token) return; applyB2BToCards(); } catch(e) {}
+                    };
+                    try { document.addEventListener('tableChunkRendered', chunkHandler); } catch(e) {}
+                    try { document.addEventListener('tableRenderComplete', (ev) => { try { if (ev && ev.detail && token && ev.detail.token && ev.detail.token !== token) return; applyB2BToCards(); } catch(e) {} }, { once: true }); } catch(e) {}
+                } catch(e) {}
+                // Common tail (same as the table/accordion paths)
+                try { this.applyColumnVisibility(state); } catch(e) {}
+                try { if (!state._skipBreadcrumb) Breadcrumbs.updateBreadcrumb(state.groupingStack, state.groupKeysStack); } catch(e) {}
+                if (switchToken && this.currentSwitchToken === switchToken) this._applyActiveTabHighlight(state.selectedProfileKey);
+                return;
+            }
             if (state._lastRenderSig === renderSig && table.contains(thead) && table.contains(tbody) && tbody.children.length > 0) {
                 // Nothing changed — skip render, just update column visibility
                 try { this.applyColumnVisibility(state); } catch(e) {}
@@ -1435,7 +1494,7 @@ const TableRenderer = {
             } catch(e) { /* ignore B2B calculation errors so table still renders */ }
             if (!table.contains(thead)) table.appendChild(thead);
             if (!table.contains(tbody)) table.appendChild(tbody);
-            table.style.display = 'table';
+            if (!showCards) table.style.display = 'table';
             // Re-apply B2B pills after DOM attachment.
             // The earlier synchronous call ran while tbody was detached;
             // for virtual-scroll the viewport estimate was wrong (600px
