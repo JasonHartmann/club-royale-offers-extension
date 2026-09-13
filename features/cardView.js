@@ -325,86 +325,117 @@
             if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) guestsText += ` + $${sailing.DOLLARSOFF_AMT} off`;
             if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) guestsText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
 
-            const body = document.createElement('div');
-            body.className = 'gobo-card-body';
-
+            // ===== HERO IMAGE (full-width, the cruise itself) =====
             const heroUrl = OfferPdf.heroFileUrl(offer);
-            if (heroUrl && !isHiddenCol('offerName')) {
+            const hero = document.createElement('div');
+            hero.className = 'gobo-card-hero';
+            if (heroUrl) {
                 const img = document.createElement('img');
-                img.className = 'gobo-card-thumb';
-                img.alt = '';
-                img.addEventListener('error', () => { img.style.display = 'none'; });
+                img.className = 'gobo-card-hero-img';
+                img.alt = sailing.shipName || '';
+                img.loading = 'lazy';
+                img.addEventListener('error', () => { hero.classList.add('gobo-card-hero-fallback'); img.remove(); });
                 OfferPdf.heroSrc(heroUrl).then(src => { if (src) img.src = src; }).catch(() => {});
-                body.appendChild(img);
+                hero.appendChild(img);
+            } else {
+                hero.classList.add('gobo-card-hero-fallback');
+            }
+            article.appendChild(hero);
+
+            // ===== MAIN CONTENT =====
+            const main = document.createElement('div');
+            main.className = 'gobo-card-main';
+
+            // Ship name — the hero text
+            const ship = document.createElement('h2');
+            ship.className = 'gobo-card-ship';
+            ship.textContent = sailing.shipName || '-';
+            main.appendChild(ship);
+
+            // Route: destination (itinerary link) · nights
+            const route = document.createElement('div');
+            route.className = 'gobo-card-route';
+            const destLink = document.createElement('a');
+            destLink.href = '#';
+            destLink.className = 'gobo-card-dest gobo-itinerary-link';
+            destLink.dataset.itineraryKey = itineraryKey;
+            try { destLink.dataset.offerCategory = (offer.campaignOffer && offer.campaignOffer.category) ? String(offer.campaignOffer.category) : (sailing.roomType || ''); } catch(e) {}
+            destLink.textContent = destination || itineraryKey;
+            destLink.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(itineraryKey, destLink); } catch(e){}
+            });
+            route.appendChild(destLink);
+            if (!isHiddenCol('nights')) {
+                const nightsSpan = document.createElement('span');
+                nightsSpan.className = 'gobo-card-route-nights';
+                nightsSpan.textContent = ' \u00b7 ' + nights + ' nights';
+                route.appendChild(nightsSpan);
+            }
+            main.appendChild(route);
+
+            // Date · port
+            const dateParts = [];
+            if (!isHiddenCol('sailDate')) dateParts.push(Utils.formatDate(sailing.sailDate));
+            if (!isHiddenCol('departurePort')) dateParts.push(sailing.departurePort?.name || '-');
+            if (dateParts.length) {
+                const dateLine = document.createElement('div');
+                dateLine.className = 'gobo-card-date';
+                dateLine.textContent = dateParts.join(' \u00b7 ');
+                main.appendChild(dateLine);
             }
 
-            const content = document.createElement('div');
-            content.className = 'gobo-card-content';
-
-            content.appendChild(this._buildFavoriteControl(offer, sailing, idx, isFavoritesView));
-
-            if (!isHiddenCol('offerName')) {
-                const title = document.createElement('h3');
-                title.className = 'gobo-card-title';
-                title.textContent = offer.campaignOffer.name || '-';
-                content.appendChild(title);
+            // Prices — the value prop (clean columns)
+            const priceItems = [];
+            if (!isHiddenCol('interior') && interiorDisplay !== undefined) priceItems.push(['Interior', interiorDisplay]);
+            if (!isHiddenCol('oceanViewUpgrade') && oceanViewUpgradeDisplay !== undefined) priceItems.push(['Ocean View', oceanViewUpgradeDisplay]);
+            if (!isHiddenCol('balconyUpgrade') && balconyUpgradeDisplay !== undefined) priceItems.push(['Balcony', balconyUpgradeDisplay]);
+            if (!isHiddenCol('suiteUpgrade') && suiteUpgradeDisplay !== undefined) priceItems.push(['Suite', suiteUpgradeDisplay]);
+            if (priceItems.length) {
+                const prices = document.createElement('div');
+                prices.className = 'gobo-card-prices';
+                priceItems.forEach(([label, val]) => {
+                    const col = document.createElement('div');
+                    col.className = 'gobo-card-price';
+                    const l = document.createElement('span');
+                    l.className = 'gobo-card-price-label';
+                    l.textContent = label;
+                    const v = document.createElement('span');
+                    v.className = 'gobo-card-price-val';
+                    v.textContent = val;
+                    col.appendChild(l);
+                    col.appendChild(v);
+                    prices.appendChild(col);
+                });
+                main.appendChild(prices);
             }
 
+            // Sub line: offer code (flyer link) · expires
+            const sub = document.createElement('div');
+            sub.className = 'gobo-card-sub';
             if (!isHiddenCol('offerCode')) {
                 const codeBtn = document.createElement('button');
                 codeBtn.type = 'button';
-                codeBtn.className = 'gobo-offer-pdf-link';
+                codeBtn.className = 'gobo-card-code';
                 codeBtn.textContent = codeCell;
                 codeBtn.setAttribute('aria-label', `Open flyer for offer ${codeCell}`);
                 codeBtn.addEventListener('click', (ev) => {
                     ev.preventDefault();
                     try { OfferPdf.open(codeCell, state); } catch(e) {}
                 });
-                content.appendChild(codeBtn);
+                sub.appendChild(codeBtn);
             }
-
             if (!isHiddenCol('expiration')) {
-                const exp = document.createElement('div');
+                const exp = document.createElement('span');
                 exp.className = 'gobo-card-expires';
-                exp.textContent = `Expires ${Utils.formatDate(offer.campaignOffer?.reserveByDate)}`;
-                content.appendChild(exp);
+                exp.textContent = ' \u00b7 Expires ' + Utils.formatDate(offer.campaignOffer?.reserveByDate);
+                sub.appendChild(exp);
             }
+            if (sub.children.length) main.appendChild(sub);
 
-            if (!isHiddenCol('shipClass') || !isHiddenCol('ship')) {
-                const meta = document.createElement('div');
-                meta.className = 'gobo-card-meta';
-                meta.textContent = `${shipClass} \u00b7 ${sailing.shipName || '-'}`;
-                content.appendChild(meta);
-            }
-
-            const sailParts = [];
-            if (!isHiddenCol('sailDate')) sailParts.push(Utils.formatDate(sailing.sailDate));
-            if (!isHiddenCol('departurePort')) sailParts.push(sailing.departurePort?.name || '-');
-            if (!isHiddenCol('nights')) sailParts.push(`${nights} nights`);
-            if (sailParts.length) {
-                const sail = document.createElement('div');
-                sail.className = 'gobo-card-sail';
-                sail.textContent = sailParts.join(' \u00b7 ');
-                content.appendChild(sail);
-            }
-
-            if (!isHiddenCol('destination')) {
-                const dest = document.createElement('div');
-                dest.className = 'gobo-card-dest';
-                const a = document.createElement('a');
-                a.href = '#';
-                a.className = 'gobo-itinerary-link';
-                a.dataset.itineraryKey = itineraryKey;
-                try { a.dataset.offerCategory = (offer.campaignOffer && offer.campaignOffer.category) ? String(offer.campaignOffer.category) : (sailing.roomType || ''); } catch(e) {}
-                a.textContent = destination || itineraryKey;
-                a.addEventListener('click', (ev) => {
-                    ev.preventDefault();
-                    try { if (ItineraryCache && typeof ItineraryCache.showModal === 'function') ItineraryCache.showModal(itineraryKey, a); } catch(e){}
-                });
-                dest.appendChild(a);
-                content.appendChild(dest);
-            }
-
+            // Actions: B2B pill + favorite
+            const actions = document.createElement('div');
+            actions.className = 'gobo-card-actions';
             if (!isHiddenCol('b2bDepth')) {
                 const b2b = document.createElement('div');
                 b2b.className = 'b2b-depth-cell b2b-depth-cell-action';
@@ -435,61 +466,54 @@
                     }
                 }
                 try { if (window.BackToBackTool && typeof BackToBackTool.attachToCell === 'function') BackToBackTool.attachToCell(b2b, { offer, sailing }); } catch(e) {}
-                content.appendChild(b2b);
+                actions.appendChild(b2b);
             }
+            actions.appendChild(this._buildFavoriteControl(offer, sailing, idx, isFavoritesView));
+            main.appendChild(actions);
 
-            const priceChips = [];
-            if (!isHiddenCol('interior') && interiorDisplay !== undefined) priceChips.push(['Interior', interiorDisplay]);
-            if (!isHiddenCol('oceanViewUpgrade') && oceanViewUpgradeDisplay !== undefined) priceChips.push(['OV', oceanViewUpgradeDisplay]);
-            if (!isHiddenCol('balconyUpgrade') && balconyUpgradeDisplay !== undefined) priceChips.push(['Balcony', balconyUpgradeDisplay]);
-            if (!isHiddenCol('suiteUpgrade') && suiteUpgradeDisplay !== undefined) priceChips.push(['Suite', suiteUpgradeDisplay]);
-            if (priceChips.length) {
-                const prices = document.createElement('div');
-                prices.className = 'gobo-card-prices';
-                priceChips.forEach(([label, val]) => {
-                    const chip = document.createElement('span');
-                    chip.className = 'gobo-card-price-chip';
+            // Details expand (one tap): the secondary fields
+            const detailRows = [];
+            if (!isHiddenCol('offerName')) detailRows.push(['Offer', offer.campaignOffer.name || '-']);
+            if (!isHiddenCol('shipClass')) detailRows.push(['Class', shipClass]);
+            if (!isHiddenCol('category') && room) detailRows.push(['Category', room]);
+            if (!isHiddenCol('guests')) detailRows.push(['Guests', guestsText]);
+            if (!isHiddenCol('perks') && perksStr) detailRows.push(['Perks', perksStr]);
+            if (!isHiddenCol('tradeInValue') && tradeDisplay !== '-') detailRows.push(['Trade', tradeDisplay]);
+            if (!isHiddenCol('offerValue') && valueDisplay !== undefined) detailRows.push(['Value', valueDisplay]);
+            if (!isHiddenCol('offerDate')) detailRows.push(['Received', Utils.formatDate(offer.campaignOffer?.startDate)]);
+            if (detailRows.length) {
+                const detailsToggle = document.createElement('button');
+                detailsToggle.type = 'button';
+                detailsToggle.className = 'gobo-card-details-toggle';
+                detailsToggle.textContent = 'Details';
+                detailsToggle.setAttribute('aria-expanded', 'false');
+                const details = document.createElement('div');
+                details.className = 'gobo-card-details';
+                details.hidden = true;
+                detailRows.forEach(([label, val]) => {
+                    const row = document.createElement('div');
+                    row.className = 'gobo-card-detail-row';
                     const l = document.createElement('span');
-                    l.className = 'gobo-card-price-label';
+                    l.className = 'gobo-card-detail-label';
                     l.textContent = label;
                     const v = document.createElement('span');
-                    v.className = 'gobo-card-price-val';
+                    v.className = 'gobo-card-detail-val';
                     v.textContent = val;
-                    chip.appendChild(l);
-                    chip.appendChild(v);
-                    prices.appendChild(chip);
+                    row.appendChild(l);
+                    row.appendChild(v);
+                    details.appendChild(row);
                 });
-                content.appendChild(prices);
+                detailsToggle.addEventListener('click', () => {
+                    const nowOpen = details.hidden;
+                    details.hidden = !nowOpen;
+                    detailsToggle.setAttribute('aria-expanded', String(nowOpen));
+                    detailsToggle.textContent = nowOpen ? 'Hide' : 'Details';
+                });
+                main.appendChild(detailsToggle);
+                main.appendChild(details);
             }
 
-            const footerChips = [];
-            if (!isHiddenCol('category') && room) footerChips.push(['Category', room]);
-            if (!isHiddenCol('guests')) footerChips.push(['Guests', guestsText]);
-            if (!isHiddenCol('perks') && perksStr) footerChips.push(['Perks', perksStr]);
-            if (!isHiddenCol('tradeInValue') && tradeDisplay !== '-') footerChips.push(['Trade', tradeDisplay]);
-            if (!isHiddenCol('offerValue') && valueDisplay !== undefined) footerChips.push(['Value', valueDisplay]);
-            if (!isHiddenCol('offerDate')) footerChips.push(['Received', Utils.formatDate(offer.campaignOffer?.startDate)]);
-            if (footerChips.length) {
-                const footer = document.createElement('div');
-                footer.className = 'gobo-card-footer';
-                footerChips.forEach(([label, val]) => {
-                    const chip = document.createElement('span');
-                    chip.className = 'gobo-card-footer-chip';
-                    const l = document.createElement('span');
-                    l.className = 'gobo-card-footer-label';
-                    l.textContent = label;
-                    const v = document.createElement('span');
-                    v.className = 'gobo-card-footer-val';
-                    v.textContent = val;
-                    chip.appendChild(l);
-                    chip.appendChild(v);
-                    footer.appendChild(chip);
-                });
-                content.appendChild(footer);
-            }
-
-            body.appendChild(content);
-            article.appendChild(body);
+            article.appendChild(main);
             return article;
         },
 
