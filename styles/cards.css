@@ -5,12 +5,12 @@
     max-width: 100vw; max-height: 100vh; width: 100vw; height: 100vh;
     inset: 0; margin: 0; border-radius: 0; border: none;
 }
-#gobo-offers-table.gobo-layout-cards .table-scroll-container { max-height: none; }
+#gobo-offers-table.gobo-layout-cards .table-scroll-container { max-height: none; height: 100%; overflow-y: auto; }
 
 /* Aurora background — CSS only, no canvas/lib */
 .gobo-card-view {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     min-height: 100%;
     background: #f8fafc;
 }
@@ -162,124 +162,200 @@ body.gobo-dark .gobo-card-empty { color: #94a3b8; }
 
 /* Card */
 .gobo-sailing-card {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    padding: 12px;
-    border-radius: 12px;
+    border-radius: 16px;
     background: #fff;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 body.gobo-dark .gobo-sailing-card { background: #1e293b; border-color: #334155; }
 .gobo-sailing-card.newest-offer-row { border-color: #facc15; box-shadow: 0 0 0 1px #facc15; }
 .gobo-sailing-card.expiring-soon-row { border-color: #f59e0b; box-shadow: 0 0 0 1px #f59e0b; }
 .gobo-sailing-card.gobo-b2b-selected { border-color: #3b82f6; box-shadow: 0 0 0 2px #3b82f6; }
-.gobo-card-body { display: flex; flex-direction: row; gap: 10px; flex: 1; min-width: 0; }
-.gobo-card-thumb {
-    width: 72px; height: 72px;
+
+/* Hero image — the cruise itself, full-width */
+.gobo-card-hero {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #3b82f6 100%);
+}
+.gobo-card-hero-img {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border-radius: 8px;
-    flex-shrink: 0;
-    background: #e2e8f0;
+    display: block;
 }
-body.gobo-dark .gobo-card-thumb { background: #334155; }
-.gobo-card-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.gobo-card-fav { display: flex; align-items: center; gap: 8px; }
-.gobo-card-fav .favorite-toggle {
-    min-width: 44px; min-height: 44px;
-    border: none;
-    background: none;
-    font-size: 22px;
-    line-height: 1;
-    color: #bbb;
-    cursor: pointer;
+
+/* Main content */
+.gobo-card-main {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
-.gobo-card-title {
+
+/* Ship name — the hero text */
+.gobo-card-ship {
     margin: 0;
-    font-size: 15px;
-    line-height: 1.3;
-    color: #0f172a;
+    font-size: 22px;
     font-weight: 700;
+    line-height: 1.2;
+    color: #0f172a;
+    letter-spacing: -0.01em;
 }
-body.gobo-dark .gobo-card-title { color: #e2e8f0; }
-.gobo-offer-pdf-link {
-    align-self: flex-start;
-    min-height: 44px;
-    padding: 4px 2px;
-    border: none;
-    background: none;
+body.gobo-dark .gobo-card-ship { color: #f1f5f9; }
+
+/* Route: destination (link) · nights */
+.gobo-card-route {
+    font-size: 15px;
+    color: #334155;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+}
+body.gobo-dark .gobo-card-route { color: #cbd5e1; }
+.gobo-card-dest {
     color: #2563eb;
-    font-size: 14px;
     font-weight: 600;
-    text-decoration: underline;
+    text-decoration: none;
     cursor: pointer;
 }
-body.gobo-dark .gobo-offer-pdf-link { color: #60a5fa; }
-.gobo-card-expires { font-size: 12px; color: #64748b; }
-body.gobo-dark .gobo-card-expires { color: #94a3b8; }
-.gobo-card-meta { font-size: 13px; font-weight: 600; color: #0f172a; }
-body.gobo-dark .gobo-card-meta { color: #e2e8f0; }
-.gobo-card-sail { font-size: 13px; color: #334155; }
-body.gobo-dark .gobo-card-sail { color: #cbd5e1; }
-.gobo-card-dest { font-size: 13px; }
-.gobo-card-dest .gobo-itinerary-link {
+.gobo-card-dest:hover { text-decoration: underline; }
+body.gobo-dark .gobo-card-dest { color: #60a5fa; }
+.gobo-card-route-nights { color: #64748b; }
+body.gobo-dark .gobo-card-route-nights { color: #94a3b8; }
+
+/* Date · port */
+.gobo-card-date {
+    font-size: 14px;
+    color: #64748b;
+}
+body.gobo-dark .gobo-card-date { color: #94a3b8; }
+
+/* Prices — the value prop (clean columns) */
+.gobo-card-prices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 8px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+body.gobo-dark .gobo-card-prices { background: #0f172a; }
+.gobo-card-price {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.gobo-card-price-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #64748b;
+}
+body.gobo-dark .gobo-card-price-label { color: #94a3b8; }
+.gobo-card-price-val {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+}
+body.gobo-dark .gobo-card-price-val { color: #f1f5f9; }
+
+/* Sub line: offer code · expires */
+.gobo-card-sub {
+    font-size: 13px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+body.gobo-dark .gobo-card-sub { color: #94a3b8; }
+.gobo-card-code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 700;
     color: #2563eb;
-    text-decoration: underline;
     cursor: pointer;
+    font-family: inherit;
 }
-body.gobo-dark .gobo-card-dest .gobo-itinerary-link { color: #60a5fa; }
+.gobo-card-code:hover { text-decoration: underline; }
+body.gobo-dark .gobo-card-code { color: #60a5fa; }
+.gobo-card-expires { color: inherit; }
+
+/* Actions: B2B pill + favorite */
+.gobo-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.gobo-card-actions .gobo-card-fav { margin-left: auto; }
 .gobo-sailing-card .b2b-depth-cell {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    min-height: 44px;
-    padding: 4px 10px;
+    min-height: 36px;
+    padding: 4px 12px;
     border-radius: 999px;
     background: #eff6ff;
     color: #1d4ed8;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    align-self: flex-start;
 }
 body.gobo-dark .gobo-sailing-card .b2b-depth-cell { background: #1e3a8a; color: #bfdbfe; }
 
-/* Price chips */
-.gobo-card-prices { display: flex; flex-wrap: wrap; gap: 6px; }
-.gobo-card-price-chip {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: #f1f5f9;
-    font-size: 12px;
+/* Details expand (one tap) */
+.gobo-card-details-toggle {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2563eb;
+    cursor: pointer;
+    font-family: inherit;
 }
-body.gobo-dark .gobo-card-price-chip { background: #0f172a; }
-.gobo-card-price-label { color: #64748b; font-weight: 600; }
-body.gobo-dark .gobo-card-price-label { color: #94a3b8; }
-.gobo-card-price-val { color: #0f172a; font-weight: 700; }
-body.gobo-dark .gobo-card-price-val { color: #e2e8f0; }
-.gobo-card-price-chip[data-value="0"] .gobo-card-price-val,
-.gobo-card-price-chip[data-value="-"] .gobo-card-price-val { color: #94a3b8; }
-
-/* Footer chips */
-.gobo-card-footer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-.gobo-card-footer-chip {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 6px;
+.gobo-card-details-toggle:hover { text-decoration: underline; }
+body.gobo-dark .gobo-card-details-toggle { color: #60a5fa; }
+.gobo-card-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
     background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    font-size: 11px;
+    border-radius: 10px;
+    font-size: 13px;
 }
-body.gobo-dark .gobo-card-footer-chip { background: #0f172a; border-color: #334155; }
-.gobo-card-footer-label { color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
-.gobo-card-footer-val { color: #334155; }
-body.gobo-dark .gobo-card-footer-val { color: #cbd5e1; }
+.gobo-card-details[hidden] { display: none; }
+body.gobo-dark .gobo-card-details { background: #0f172a; }
+.gobo-card-detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+.gobo-card-detail-label {
+    color: #64748b;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+body.gobo-dark .gobo-card-detail-label { color: #94a3b8; }
+.gobo-card-detail-val {
+    color: #0f172a;
+    text-align: right;
+    word-break: break-word;
+}
+body.gobo-dark .gobo-card-detail-val { color: #e2e8f0; }
 
 /* ===== Card-mode Advanced Search restyle (all under gobo-layout-cards) ===== */
 #gobo-offers-table.gobo-layout-cards .breadcrumb-container .adv-search-button { display: none; }

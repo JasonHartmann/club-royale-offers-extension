@@ -109,13 +109,13 @@ describe('cardView mobile card layout', () => {
         expect(card).not.toBeNull();
         expect(container.querySelector('.b2b-depth-cell')).not.toBeNull();
         expect(container.querySelector('.gobo-itinerary-link')).not.toBeNull();
-        expect(container.querySelector('.gobo-offer-pdf-link')).not.toBeNull();
+        expect(container.querySelector('.gobo-card-code')).not.toBeNull();
     });
 
     test('clicking the offer code button calls OfferPdf.open with that code', () => {
         const state = makeState();
         CardView.render(container, state);
-        const codeBtn = container.querySelector('.gobo-offer-pdf-link');
+        const codeBtn = container.querySelector('.gobo-card-code');
         expect(codeBtn.textContent).toBe('26TOR604');
         codeBtn.click();
         expect(OfferPdfStub.open).toHaveBeenCalledWith('26TOR604', state);
