@@ -1,4 +1,39 @@
 /* General UI elements, buttons, breadcrumbs, filters, animations extracted from styles.css */
+#gobo-offers-button {
+    position: fixed;
+    z-index: 9999998;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.2;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    white-space: nowrap;
+}
+#gobo-offers-button:hover { background: #1d4ed8; }
+@media (max-width: 520px) {
+    #gobo-offers-button { font-size: 12px; padding: 4px 10px; }
+}
+#gobo-error, #gobo-warning {
+    position: fixed;
+    top: 4rem;
+    right: 1rem;
+    z-index: 2147483647;
+    color: #fff;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.15);
+}
+#gobo-error { background: #dc2626; }
+#gobo-warning { background: #f97316; }
+
 /* Whats New pulse */
 @keyframes goboPulse { 0% { transform:scale(1); } 50% { transform:scale(1.08); } 100% { transform:scale(1); } }
 .gobo-whatsnew-focus { animation:goboFocusGlow 1.5s infinite; }

@@ -1,7 +1,11 @@
 /* Base table layout & general UI styles (extracted from original table.css) */
 /* Includes layout container, scrolling, spinner, headers, zebra stripes, font sizing & weight */
 
-#gobo-offers-table { max-width: 90vw; max-height: 90vh; background-color: #fff; color: #1f2937; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display:flex; flex-direction:column; }
+#gobo-offers-table { position:fixed; inset:0; margin:auto; z-index:10000000; max-width: 90vw; max-height: 90vh; background-color: #fff; color: #1f2937; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display:flex; flex-direction:column; }
+#gobo-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999999; pointer-events:auto; }
+#gobo-offers-table .w-full { width:100%; }
+#gobo-offers-table .border { border:1px solid #e5e7eb; }
+#gobo-offers-table .mb-2 { margin-bottom:0.5rem; }
 .table-scroll-container { flex:1 1 auto; overflow-y:auto; overflow-x:auto; max-height:calc(90vh - 60px); padding:8px; }
 .table-scroll-container::-webkit-scrollbar { width:12px; }
 .table-scroll-container::-webkit-scrollbar-track { background:#f1f1f1; border-radius:10px; }
@@ -27,6 +31,7 @@
 
 /* Zebra stripes (class-based so virtual scroll spacer rows don't shift parity) */
 .table-auto tbody tr.gobo-row-odd { background:#fafafa; }
+.table-auto tbody tr:hover, .accordion-table tbody tr:hover { background:#f9fafb; }
 
 /* Accordion table font size reinforcement */
 .accordion-table th, .accordion-table td { font-size:0.75rem; }

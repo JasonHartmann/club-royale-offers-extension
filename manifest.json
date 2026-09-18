@@ -37,7 +37,6 @@
         "https://*.comproyale.com/sim/*"
       ],
       "css": [
-        "styles/tailwind.min.css",
         "styles/table-base.css",
         "styles/table-columns.css",
         "styles/accordion.css",

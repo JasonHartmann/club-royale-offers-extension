@@ -16,7 +16,6 @@ const Styles = {
                 console.debug('[OffersExt] Safari detected; skipping dynamic stylesheet injection');
                 return;
             }
-            this.ensureLocalTailwind();
             this.injectSegmentedStyles();
             this.ensureInlineOverridesTag();
         } catch (error) {
@@ -51,20 +50,6 @@ const Styles = {
             (document.head || document.documentElement).appendChild(link);
             console.debug(`[OffersExt] Stylesheet injected: ${path}`);
         });
-    },
-    ensureLocalTailwind() {
-        if (document.querySelector('link[data-ext-tailwind]')) {
-            return;
-        }
-        const runtime = (typeof chrome !== 'undefined' && chrome.runtime)
-            ? chrome.runtime
-            : (typeof browser !== 'undefined' && browser.runtime ? browser.runtime : null);
-        const tailwindLink = document.createElement('link');
-        tailwindLink.rel = 'stylesheet';
-        tailwindLink.href = runtime ? runtime.getURL('styles/tailwind.min.css') : 'styles/tailwind.min.css';
-        tailwindLink.setAttribute('data-ext-tailwind', 'true');
-        (document.head || document.documentElement).appendChild(tailwindLink);
-        console.debug('[OffersExt] Tailwind CSS (local) injected');
     },
     ensureInlineOverridesTag() {
         if (document.querySelector('style[data-ext-inline-overrides]')) {

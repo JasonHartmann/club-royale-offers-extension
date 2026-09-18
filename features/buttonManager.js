@@ -1,124 +1,95 @@
 const ButtonManager = {
-  
+    _TIER_LABELS: ['CURRENT CLUB TIER', 'CURRENT TIER'],
+
+    _findTierHeading() {
+        try {
+            for (const label of this._TIER_LABELS) {
+                const xpath = `//*[translate(normalize-space(text()), "abcdefghijklmnopqrstuvwxyz", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")="${label}"]`;
+                const hit = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if (hit) return hit;
+            }
+        } catch (e) { /* ignore */ }
+        return null;
+    },
+
+    _navBottom() {
+        const nav = document.querySelector('header, [role="banner"], nav');
+        if (nav) {
+            const r = nav.getBoundingClientRect();
+            if (r.height > 0 && r.height <= 96) return r.bottom;
+            if (r.top >= -10 && r.top <= 40) return r.top + 80;
+        }
+        return 80;
+    },
+
+    _placeAboveTier(button, heading) {
+        const hr = heading.getBoundingClientRect();
+        button.style.position = 'fixed';
+        button.style.left = `${hr.left + hr.width / 2}px`;
+        button.style.top = `${this._navBottom() + 5}px`;
+        button.style.transform = 'translateX(-50%)';
+        button.style.visibility = 'visible';
+        button.dataset.goboPlaced = 'tier';
+    },
+
+    _bindReposition() {
+        if (this._repositionBound) return;
+        this._repositionBound = true;
+        window.addEventListener('resize', () => {
+            const btn = document.getElementById('gobo-offers-button');
+            const heading = this._findTierHeading();
+            if (btn && heading) this._placeAboveTier(btn, heading);
+        });
+    },
+
     isButtonCorrectlyPlaced() {
         const btn = document.getElementById('gobo-offers-button');
         if (!btn || !btn.isConnected) return false;
-        return !btn.classList.contains('gobo-button-fallback');
+        if (btn.parentElement !== document.body && btn.parentElement !== document.documentElement) return false;
+        return btn.dataset.goboPlaced === 'tier' && !!this._findTierHeading();
     },
-    addButton(maxAttempts = 10, attempt = 1) {
+
+    addButton() {
         try {
             const path = (location && location.pathname ? location.pathname : '').toLowerCase();
-            const onSignIn = /\/signin[^/]*\/?$/.test(path); // matches /signin, /signin-something, optional trailing slash
-            if (onSignIn) {
+            if (/\/signin[^/]*\/?$/.test(path)) {
                 const existingOnSignin = document.getElementById('gobo-offers-button');
                 if (existingOnSignin) existingOnSignin.remove();
+                const staleOnSignin = document.getElementById('gobo-offers-center-container');
+                if (staleOnSignin) staleOnSignin.remove();
                 return;
             }
 
-            const existingButton = document.getElementById('gobo-offers-button');
-            if (existingButton) {
-                if (existingButton.isConnected && !existingButton.classList.contains('gobo-button-fallback')) return;
-                existingButton.remove();
-            }
-            const button = document.createElement('button');
-            button.id = 'gobo-offers-button';
-            button.className = 'bg-blue-600 text-white font-semibold py-1 px-3 rounded-lg hover:bg-blue-700 ml-2';
-            button.textContent = 'Show All Offers';
-            button.addEventListener('click', () => {
-                console.debug('Show All Offers button clicked');
-                App.ApiClient.fetchOffers();
-            });
+            const staleContainer = document.getElementById('gobo-offers-center-container');
+            if (staleContainer) staleContainer.remove();
 
-            // Find the top navigation banner – look for the nav bar that contains sign-in/out
-            // or user greeting elements, to avoid targeting lower sections like "CURRENT CLUB TIER".
-            const bannerCandidates = document.querySelectorAll('div[class*="flex"][class*="items-center"][class*="justify-between"]');
-            let banner = null;
-            // First pass: find the candidate that contains nav-like content (sign-out link, user name, etc.)
-            bannerCandidates.forEach(el => {
-                try {
-                    if (banner) return;
-                    const html = el.innerHTML || '';
-                    // The top nav bar typically has sign-in/out links or a greeting like "Hi, NAME"
-                    if (/sign.?in|sign.?out|log.?in|log.?out|Hi,\s/i.test(html)) {
-                        banner = el;
-                    }
-                } catch(e) {}
-            });
-            // Second pass: fall back to the candidate closest to the top of the viewport
-            if (!banner && bannerCandidates.length > 0) {
-                let bestTop = Infinity;
-                bannerCandidates.forEach(el => {
-                    try {
-                        const rect = el.getBoundingClientRect();
-                        if (rect.top >= 0 && rect.top < bestTop) { bestTop = rect.top; banner = el; }
-                    } catch(e) {}
+            if (this.isButtonCorrectlyPlaced()) return;
+
+            let button = document.getElementById('gobo-offers-button');
+            if (button && button.parentElement !== document.body && button.parentElement !== document.documentElement) {
+                button.remove();
+                button = null;
+            }
+            if (!button) {
+                button = document.createElement('button');
+                button.id = 'gobo-offers-button';
+                button.type = 'button';
+                button.textContent = 'Show All Offers';
+                button.style.visibility = 'hidden';
+                button.addEventListener('click', () => {
+                    console.debug('Show All Offers button clicked');
+                    App.ApiClient.fetchOffers();
                 });
-                if (!banner) banner = bannerCandidates[0];
+                (document.body || document.documentElement).appendChild(button);
             }
-            if (!banner && attempt <= maxAttempts) {
-                setTimeout(() => this.addButton(maxAttempts, attempt + 1), 100);
-                return;
-            }
-            const narrowViewport = window.matchMedia && window.matchMedia('(max-width: 520px)').matches;
-            if (!banner) {
-                console.debug('Banner div not found after max attempts, using centered fixed position');
-                button.className = 'gobo-button-fallback fixed top-4 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:bg-blue-700 z-[2147483647]';
-                button.style.left = '50%';
-                button.style.transform = 'translateX(-50%)';
-                if (narrowViewport) {
-                    button.style.top = '72px';
-                }
-                document.body.appendChild(button);
-            } else if (narrowViewport) {
-                console.debug('Banner div found (narrow), inserting button inside banner');
-                // On narrow viewports, insert the button directly into the banner's flex flow
-                // so it stays in the top bar and remains clickable above page content.
-                button.style.position = 'absolute';
-                button.style.top = '50%';
-                button.style.left = '40px';
-                button.style.transform = 'translateY(-50%)';
-                button.style.flexShrink = '0';
-                button.style.fontSize = '12px';
-                button.style.padding = '4px 10px';
-                button.style.zIndex = '2147483647';
-                // Remove any stale absolute container from a previous wide→narrow transition
-                const staleContainer = document.getElementById('gobo-offers-center-container');
-                if (staleContainer) staleContainer.remove();
-                banner.style.position = 'relative';
-                banner.appendChild(button);
-                console.debug('Button inserted into banner (narrow)');
-            } else {
-                console.debug('Banner div found, adding button');
-                // Create a container for centering
-                let centerContainer = document.getElementById('gobo-offers-center-container');
-                if (!centerContainer) {
-                    centerContainer = document.createElement('div');
-                    centerContainer.id = 'gobo-offers-center-container';
-                    // Position container at center top of banner and center content via flex
-                    centerContainer.style.position = 'absolute';
-                    centerContainer.style.top = '0';
-                    centerContainer.style.left = '50%';
-                    centerContainer.style.transform = 'translateX(-50%)';
-                    centerContainer.style.height = '100%';
-                    centerContainer.style.zIndex = '9999';
-                    centerContainer.style.display = 'flex';
-                    centerContainer.style.justifyContent = 'center';
-                    centerContainer.style.alignItems = 'center';
-                    centerContainer.style.pointerEvents = 'none';
-                    banner.style.position = 'relative'; // ensure banner is positioned
-                    banner.appendChild(centerContainer);
-                }
-                button.style.pointerEvents = 'auto'; // allow button to be clickable
-                centerContainer.innerHTML = '';
-                centerContainer.appendChild(button);
-                button.style.margin = '0 auto';
-                button.style.position = 'relative';
-                button.style.zIndex = '2147483647';
-                // No automatic scrolling: leave layout and viewport unchanged.
-                console.debug('Button centered in banner div');
+
+            const heading = this._findTierHeading();
+            if (heading) {
+                this._placeAboveTier(button, heading);
+                this._bindReposition();
             }
             console.debug('Button added to DOM');
-         } catch (error) {
+        } catch (error) {
             console.debug('Failed to add button:', error.message);
             App.ErrorHandler.showError('Failed to add button. Please reload the page.');
         }
