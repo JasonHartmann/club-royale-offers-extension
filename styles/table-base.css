@@ -5,6 +5,7 @@
 #gobo-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999999; pointer-events:auto; }
 #gobo-offers-table .w-full { width:100%; }
 #gobo-offers-table .border { border:1px solid #e5e7eb; }
+#gobo-offers-table .border-collapse { border-collapse:collapse; }
 #gobo-offers-table .mb-2 { margin-bottom:0.5rem; }
 .table-scroll-container { flex:1 1 auto; overflow-y:auto; overflow-x:auto; max-height:calc(90vh - 60px); padding:8px; }
 .table-scroll-container::-webkit-scrollbar { width:12px; }
@@ -63,6 +64,7 @@ body.gobo-dark .accordion-table-header {
 }
 body.gobo-dark .table-header tr,
 body.gobo-dark .accordion-table-header tr { background:#111827; }
+body.gobo-dark #gobo-offers-table .border,
 body.gobo-dark .table-auto th,
 body.gobo-dark .table-auto td,
 body.gobo-dark .accordion-table th,
