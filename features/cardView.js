@@ -765,7 +765,11 @@
             try {
                 if (!state.advancedSearch.enabled) {
                     state.advancedSearch.enabled = true;
-                    try { App.AdvancedSearch.scaffoldPanel(state, document.body); } catch(e) {}
+                    // Scaffold into .breadcrumb-container: the sheet CSS only matches panels inside
+                    // #gobo-offers-table, and a body-level insertBefore throws on the nested crumb row.
+                    const advContainer = document.querySelector('.breadcrumb-container') || document.body;
+                    try { App.AdvancedSearch.scaffoldPanel(state, advContainer); } catch(e) {}
+                    try { App.AdvancedSearch.restorePredicates(state); } catch(e) {}
                     try { App.AdvancedSearch.updateBadge(state); } catch(e) {}
                 }
                 const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');

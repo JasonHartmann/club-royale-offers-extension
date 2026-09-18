@@ -1315,9 +1315,11 @@ const AdvancedSearch = {
                 this._logDebug('scaffoldPanel:created');
             }
             const crumbsRow = container.querySelector('.breadcrumb-crumb-row');
-            if (crumbsRow) {
-                if (panel.parentElement !== container || panel.nextSibling !== crumbsRow) {
-                    container.insertBefore(panel, crumbsRow);
+            // Anchor only when the crumb row is a direct child; a nested one would make insertBefore throw.
+            const anchor = (crumbsRow && crumbsRow.parentElement === container) ? crumbsRow : null;
+            if (anchor) {
+                if (panel.parentElement !== container || panel.nextSibling !== anchor) {
+                    container.insertBefore(panel, anchor);
                 }
             } else if (panel.parentElement !== container) {
                 container.appendChild(panel);

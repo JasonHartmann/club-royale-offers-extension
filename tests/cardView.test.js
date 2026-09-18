@@ -7,6 +7,7 @@ const path = require('path');
 //   - clicking the offer code button calls OfferPdf.open with that code;
 //   - the toolbar carries a .gobo-card-filter button;
 //   - openFilterSheet expands #advanced-search-panel (drops adv-collapsed, adds gobo-card-filter-sheet + backdrop);
+//   - openFilterSheet scaffolds the enabled panel into .breadcrumb-container (no stale disabled message, Add Field present);
 //   - closeFilterSheet re-collapses the panel and leaves state.advancedSearch.enabled true;
 //   - a committed filter chip's × button calls AdvancedSearch._removePredicate.
 describe('cardView mobile card layout', () => {
@@ -73,6 +74,7 @@ describe('cardView mobile card layout', () => {
             TableRenderer: { lastState: null, updateB2BDepthCell: jest.fn(), getHiddenColumnsSet: () => null },
             AdvancedSearch: {
                 scaffoldPanel: jest.fn(),
+                restorePredicates: jest.fn(),
                 updateBadge: jest.fn(),
                 _removePredicate: jest.fn(),
             },
@@ -151,6 +153,87 @@ describe('cardView mobile card layout', () => {
         expect(panel.classList.contains('adv-collapsed')).toBe(true);
         expect(document.querySelector('.gobo-card-filter-backdrop')).toBeNull();
         expect(state.advancedSearch.enabled).toBe(true);
+    });
+
+    test('openFilterSheet scaffolds the enabled panel into .breadcrumb-container (regression: disabled message, missing Add Field)', () => {
+        // Real app DOM: body > #gobo-offers-table > .table-scroll-container > .breadcrumb-container > .breadcrumb-crumb-row
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.classList.add('gobo-layout-cards');
+        const scroll = document.createElement('div');
+        scroll.className = 'table-scroll-container';
+        const bc = document.createElement('div');
+        bc.className = 'breadcrumb-container';
+        const crumbs = document.createElement('div');
+        crumbs.className = 'breadcrumb-crumb-row';
+        bc.appendChild(crumbs);
+        scroll.appendChild(bc);
+        shell.appendChild(scroll);
+        document.body.appendChild(shell);
+
+        // Real content-script reality: advancedSearch.js + advancedSearchAddField.js share one global lexical scope.
+        const advSrc = fs.readFileSync(path.resolve(__dirname, '..', 'features', 'advancedSearch.js'), 'utf8');
+        const addSrc = fs.readFileSync(path.resolve(__dirname, '..', 'features', 'advancedSearchAddField.js'), 'utf8');
+        const realAdvancedSearch = new Function(advSrc + '\n' + addSrc + '\nreturn AdvancedSearch;')();
+        AppStub.AdvancedSearch = realAdvancedSearch;
+
+        const state = makeState({
+            selectedProfileKey: 'test-profile',
+            headers: [
+                { key: 'offerDate', label: 'Offer Date' },
+                { key: 'sailDate', label: 'Sail Date' },
+                { key: 'ship', label: 'Ship' },
+            ],
+        });
+
+        // Existing app state: the breadcrumb render already scaffolded the panel (disabled) into the container.
+        realAdvancedSearch.scaffoldPanel(state, bc);
+        const panel = document.getElementById('advanced-search-panel');
+        expect(bc.contains(panel)).toBe(true);
+        expect(panel.querySelector('.adv-search-disabled-msg')).not.toBeNull();
+
+        // User clicks Filters.
+        CardView.openFilterSheet(state);
+
+        expect(state.advancedSearch.enabled).toBe(true);
+        expect(panel.classList.contains('gobo-card-filter-sheet')).toBe(true);
+        // Panel stays inside the breadcrumb container (descendant of #gobo-offers-table, where the sheet CSS matches).
+        expect(bc.contains(panel)).toBe(true);
+        // Stale disabled message is gone; the Add Field control is present.
+        expect(panel.querySelector('.adv-search-disabled-msg')).toBeNull();
+        expect(panel.querySelector('.adv-search-empty-inline')).not.toBeNull();
+        expect(panel.querySelector('button.adv-add-field-btn')).not.toBeNull();
+        expect(panel.querySelector('select.adv-add-field-select')).not.toBeNull();
+    });
+
+    test('scaffoldPanel keeps the enable pass when the crumb row is nested (regression: body-level call)', () => {
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        const scroll = document.createElement('div');
+        scroll.className = 'table-scroll-container';
+        const bc = document.createElement('div');
+        bc.className = 'breadcrumb-container';
+        const crumbs = document.createElement('div');
+        crumbs.className = 'breadcrumb-crumb-row';
+        bc.appendChild(crumbs);
+        scroll.appendChild(bc);
+        shell.appendChild(scroll);
+        document.body.appendChild(shell);
+
+        const advSrc = fs.readFileSync(path.resolve(__dirname, '..', 'features', 'advancedSearch.js'), 'utf8');
+        const addSrc = fs.readFileSync(path.resolve(__dirname, '..', 'features', 'advancedSearchAddField.js'), 'utf8');
+        const realAdvancedSearch = new Function(advSrc + '\n' + addSrc + '\nreturn AdvancedSearch;')();
+        const state = makeState({ selectedProfileKey: 'test-profile-2' });
+
+        realAdvancedSearch.scaffoldPanel(state, bc);
+        const panel = document.getElementById('advanced-search-panel');
+        expect(bc.contains(panel)).toBe(true);
+
+        // The old openFilterSheet call passed document.body: with a nested crumb row, insertBefore used to
+        // throw NotFoundError and skip the enable/render pass.
+        state.advancedSearch.enabled = true;
+        realAdvancedSearch.scaffoldPanel(state, document.body);
+        expect(panel.classList.contains('enabled')).toBe(true);
     });
 
     test('a committed filter chip renders and its × button calls _removePredicate', () => {
