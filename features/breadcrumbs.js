@@ -2,6 +2,57 @@
 // Responsible for rebuilding the breadcrumb container (tabs row + crumbs row + auxiliary panels).
 
 const Breadcrumbs = {
+    _ensureComboChevron(tabsRow) {
+        if (tabsRow.querySelector('.gobo-profile-select')) return;
+        const sel = document.createElement('button');
+        sel.type = 'button';
+        sel.className = 'gobo-profile-select';
+        sel.setAttribute('aria-label', 'Switch profile');
+        sel.setAttribute('title', 'Switch profile');
+        sel.setAttribute('aria-expanded', 'false');
+        sel.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = tabsRow.classList.toggle('gobo-profile-menu-open');
+            sel.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        tabsRow.appendChild(sel);
+    },
+    _syncProfileCombo() {
+        const table = document.getElementById('gobo-offers-table');
+        const row = document.querySelector('.breadcrumb-tabs-row');
+        const container = document.querySelector('.breadcrumb-container');
+        const tabs = row && row.querySelector('.profile-tabs');
+        if (!row || !container || !tabs) return;
+        if (tabs.querySelectorAll('.profile-tab').length <= 1) return;
+        const cards = !!(table && table.classList.contains('gobo-layout-cards'));
+        let natural = Number(row.dataset.tabsNatural) || 0;
+        if (!row.classList.contains('gobo-profile-combo')) {
+            const w = tabs.scrollWidth;
+            if (w) {
+                natural = w;
+                row.dataset.tabsNatural = String(w);
+            }
+        }
+        const want = cards || natural > container.clientWidth;
+        const on = row.classList.contains('gobo-profile-combo');
+        if (want && !on) {
+            row.classList.add('gobo-profile-combo');
+            this._ensureComboChevron(row);
+        } else if (!want && on) {
+            row.classList.remove('gobo-profile-combo', 'gobo-profile-menu-open');
+            const sel = row.querySelector('.gobo-profile-select');
+            if (sel) sel.remove();
+        }
+    },
+    _bindComboResize() {
+        if (this._comboResizeBound) return;
+        this._comboResizeBound = true;
+        let t = 0;
+        window.addEventListener('resize', () => {
+            clearTimeout(t);
+            t = setTimeout(() => this._syncProfileCombo(), 50);
+        });
+    },
     updateBreadcrumb(groupingStack, groupKeysStack) {
         // Guard against infinite recursion triggered by ID map writes
         if (window.__breadcrumbRendering) return; // simple reentrancy guard
@@ -32,6 +83,7 @@ const Breadcrumbs = {
             if (!state) return;
             const container = document.querySelector('.breadcrumb-container');
             if (!container) return;
+            const cards = !!(document.getElementById('gobo-offers-table') && document.getElementById('gobo-offers-table').classList.contains('gobo-layout-cards'));
             container.innerHTML = '';
             const tabsRow = document.createElement('div');
             tabsRow.className = 'breadcrumb-tabs-row';
@@ -508,6 +560,15 @@ const Breadcrumbs = {
                         }
                         btn.addEventListener('click', () => {
                             const clickedStorageKey = btn.getAttribute('data-storage-key') || storageKey;
+                            // In the collapsed profile combo, clicking the selected profile toggles the dropdown
+                            if (btn.classList.contains('active')) {
+                                const comboRow = btn.closest('.breadcrumb-tabs-row');
+                                const chevron = comboRow && comboRow.querySelector('.gobo-profile-select');
+                                if (comboRow && comboRow.classList.contains('gobo-profile-combo') && chevron) {
+                                    chevron.click();
+                                    return;
+                                }
+                            }
                             try {
                                 if (App.TableRenderer.lastState) App.TableRenderer.lastState.selectedProfileKey = clickedStorageKey;
                             } catch (e) {
@@ -635,6 +696,15 @@ const Breadcrumbs = {
                     });
                     tabsScroll.appendChild(tabs);
                     tabsRow.appendChild(tabsScroll);
+                    this._bindComboResize();
+                    const measure = () => {
+                        if (!tabsRow.isConnected) return;
+                        const w = tabs.scrollWidth;
+                        if (w) tabsRow.dataset.tabsNatural = String(w);
+                        this._syncProfileCombo();
+                    };
+                    measure();
+                    requestAnimationFrame(measure);
                 }
             } catch (e) {
                 console.warn('[breadcrumbs] Failed to render profile tabs', e);
@@ -702,11 +772,14 @@ const Breadcrumbs = {
             const hiddenGroupsPanel = document.createElement('div');
             hiddenGroupsPanel.className = 'tier-filter-toggle';
             hiddenGroupsPanel.style.marginLeft = 'auto';
-            // Advanced Search toggle (delegated)
+
+            // Advanced Search toggle (delegated) — cards uses Filters sheet instead
             try {
                 AdvancedSearch.ensureState(state);
-                const advButton = AdvancedSearch.buildToggleButton(state);
-                hiddenGroupsPanel.appendChild(advButton);
+                if (!cards) {
+                    const advButton = AdvancedSearch.buildToggleButton(state);
+                    hiddenGroupsPanel.appendChild(advButton);
+                }
             } catch (e) {
                 console.warn('[breadcrumbs] AdvancedSearch buildToggleButton failed', e);
             }
@@ -714,6 +787,8 @@ const Breadcrumbs = {
             // Add Settings gear button (moves controls into a centralized modal)
             let settingsBtn = null;
             try {
+                const staleGear = document.getElementById('gobo-settings-gear');
+                if (staleGear) staleGear.remove();
                 if (typeof Settings !== 'undefined' && Settings.buildGearButton) {
                     settingsBtn = Settings.buildGearButton();
                     settingsBtn.style.marginLeft = '8px';
@@ -723,6 +798,8 @@ const Breadcrumbs = {
             // Add a global itinerary refresh button beside the gear
             let refreshBtn = null;
             try {
+                const staleRefresh = document.getElementById('gobo-refresh-itins');
+                if (staleRefresh) staleRefresh.remove();
                 refreshBtn = document.createElement('button');
                 refreshBtn.id = 'gobo-refresh-itins';
                 refreshBtn.type = 'button';
@@ -771,18 +848,31 @@ const Breadcrumbs = {
                 Filtering.updateHiddenGroupsList(profileKey, hiddenGroupsDisplay, state);
             } catch (e) {
             }
-            hiddenGroupsPanel.appendChild(hiddenGroupsLabel);
-            hiddenGroupsPanel.appendChild(hiddenGroupsDisplay);
-            if (settingsBtn) {
+            const hasHiddenGroups = hiddenGroupsDisplay.children.length > 0;
+            const parkInFooter = (btn) => {
+                if (!cards || !btn) return false;
+                const footer = document.querySelector('.table-footer-container');
+                if (!footer) return false;
+                const close = footer.querySelector('.close-button');
+                footer.insertBefore(btn, close || null);
+                btn.style.marginLeft = '0';
+                return true;
+            };
+            if (!cards || hasHiddenGroups) {
+                hiddenGroupsPanel.appendChild(hiddenGroupsLabel);
+                hiddenGroupsPanel.appendChild(hiddenGroupsDisplay);
+            }
+            if (!parkInFooter(settingsBtn) && settingsBtn) {
                 try { settingsBtn.style.marginLeft = '8px'; } catch(e) {}
                 hiddenGroupsPanel.appendChild(settingsBtn);
             }
-            if (refreshBtn) {
+            if (!parkInFooter(refreshBtn) && refreshBtn) {
                 hiddenGroupsPanel.appendChild(refreshBtn);
             }
-            controlsRow.style.display = 'flex';
-            controlsRow.appendChild(hiddenGroupsPanel);
-
+            if (hiddenGroupsPanel.childNodes.length) {
+                controlsRow.style.display = 'flex';
+                controlsRow.appendChild(hiddenGroupsPanel);
+            }
             // What's New button
             try {
                 if (!document.getElementById('gobo-whatsnew-btn')) {
