@@ -618,7 +618,7 @@ body.gobo-dark #gobo-offers-table.gobo-layout-cards #advanced-search-panel.gobo-
 #gobo-offers-table.gobo-layout-cards .adv-predicate-box { flex-direction: row; flex-wrap: wrap; align-items: center; width: 100%; max-width: none; }
 @media (min-width: 560px) {
     #gobo-offers-table.gobo-layout-cards .adv-search-body { flex-direction: row; flex-wrap: wrap; }
-    #gobo-offers-table.gobo-layout-cards .adv-predicate-box { width: auto; max-width: 600px; flex: 1 1 260px; }
+    #gobo-offers-table.gobo-layout-cards .adv-predicate-box { width: auto; max-width: 600px; flex: 0 1 auto; }
 }
 #gobo-offers-table.gobo-layout-cards .adv-date-range-cals { flex-direction: column; }
 #gobo-offers-table.gobo-layout-cards .adv-date-range-popup {
