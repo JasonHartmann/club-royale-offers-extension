@@ -83,7 +83,7 @@
 .adv-popup-wrapper { position: relative; display: inline-flex; }
 .adv-add-field-btn { background: #ffffff; color: #111827; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 .adv-add-field-btn:disabled { opacity: .55; cursor: not-allowed; }
-.adv-add-field-popup { border-radius: 8px; overflow: hidden; --gobo-adv-popup-bg: #ffffff; --gobo-adv-popup-border: #e5e7eb; --gobo-adv-popup-shadow: 0 6px 18px rgba(15,23,42,0.08); position:absolute; z-index:2000; }
+.adv-add-field-popup { border-radius: 8px; overflow: hidden; --gobo-adv-popup-bg: #ffffff; --gobo-adv-popup-border: #e5e7eb; --gobo-adv-popup-shadow: 0 6px 18px rgba(15,23,42,0.08); position:absolute; left:0; top:calc(100% + 6px); min-width:390px; z-index:2000; background:var(--gobo-adv-popup-bg, #fff); border:1px solid var(--gobo-adv-popup-border, #e5e7eb); box-shadow:var(--gobo-adv-popup-shadow, 0 6px 18px rgba(15,23,42,0.08)); padding:8px; }
 .adv-add-section { padding: 6px 0; }
 .adv-add-section-title { font-size: 12px; color: #111827; margin: 4px 0 6px 0; }
 .adv-add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }

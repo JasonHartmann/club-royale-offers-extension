@@ -36,7 +36,9 @@ const Styles = {
             'styles/ui.css',
             'styles/tabs-badges.css',
             'styles/itinerary.css',
-            'styles/advanced-search.css'
+            'styles/advanced-search.css',
+            'styles/cards.css',
+            'styles/offerPdf.css'
         ];
         requiredFiles.forEach(path => {
             const selector = `link[rel="stylesheet"][href*="${path}"]`;

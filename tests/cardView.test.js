@@ -6,10 +6,10 @@ const path = require('path');
 //   - render emits a card with .b2b-depth-cell, .gobo-itinerary-link, .gobo-offer-pdf-link;
 //   - clicking the offer code button calls OfferPdf.open with that code;
 //   - the toolbar carries a .gobo-card-filter button;
-//   - openFilterSheet expands #advanced-search-panel (drops adv-collapsed, adds gobo-card-filter-sheet + backdrop);
-//   - openFilterSheet scaffolds the enabled panel into .breadcrumb-container (no stale disabled message, Add Field present);
-//   - closeFilterSheet re-collapses the panel and leaves state.advancedSearch.enabled true;
-//   - a committed filter chip's × button calls AdvancedSearch._removePredicate.
+//   - openFilterSheet shows the panel in the card bar with no backdrop;
+//   - openFilterSheet scaffolds the enabled panel (no stale disabled message, Add Field present);
+//   - closeFilterSheet hides an empty editor and leaves applied filters visible;
+//   - committed filters stay in the bar, not as pills and not behind a dimmer.
 describe('cardView mobile card layout', () => {
     let CardView;
     let OfferPdfStub;
@@ -51,6 +51,15 @@ describe('cardView mobile card layout', () => {
     }
 
     beforeEach(() => {
+        window.matchMedia = (q) => ({
+            matches: /max-width:\s*720px/.test(String(q)),
+            media: String(q),
+            addEventListener() {},
+            removeEventListener() {},
+            addListener() {},
+            removeListener() {},
+            dispatchEvent() { return false; },
+        });
         document.body.innerHTML = '';
         container = document.createElement('div');
         container.id = 'gobo-card-container';
@@ -112,6 +121,8 @@ describe('cardView mobile card layout', () => {
         expect(container.querySelector('.b2b-depth-cell')).not.toBeNull();
         expect(container.querySelector('.gobo-itinerary-link')).not.toBeNull();
         expect(container.querySelector('.gobo-card-code')).not.toBeNull();
+        expect(container.querySelector('.gobo-card-date').textContent).toMatch(/Guest/);
+        expect(container.querySelector('.gobo-card-details-toggle')).toBeNull();
     });
 
     test('clicking the offer code button calls OfferPdf.open with that code', () => {
@@ -123,35 +134,36 @@ describe('cardView mobile card layout', () => {
         expect(OfferPdfStub.open).toHaveBeenCalledWith('26TOR604', state);
     });
 
-    test('toolbar carries a .gobo-card-filter button', () => {
-        const state = makeState();
+    test('toolbar has no Filters button and no Close', () => {
+        const state = makeState({
+            advancedSearch: { enabled: true, predicates: [{ id: 'p1', fieldKey: 'visits', values: ['ARUBA'], complete: true }] },
+        });
         CardView.render(container, state);
-        expect(container.querySelector('.gobo-card-filter')).not.toBeNull();
+        expect(container.querySelector('.gobo-card-filter')).toBeNull();
+        expect(container.querySelector('.gobo-card-exit')).toBeNull();
+        expect(container.querySelector('.gobo-card-filter-chips')).toBeNull();
     });
 
-    test('openFilterSheet expands the panel and adds a backdrop; closeFilterSheet re-collapses and keeps advancedSearch enabled', () => {
+    test('openFilterSheet shows the panel with no backdrop; closeFilterSheet hides an empty editor', () => {
         const state = makeState();
         CardView.render(container, state);
 
-        // Scaffold the advanced-search panel (as App.AdvancedSearch would).
         const panel = document.createElement('div');
         panel.id = 'advanced-search-panel';
         panel.classList.add('adv-collapsed');
         const header = document.createElement('div');
         header.className = 'adv-search-header';
-        header.textContent = 'Advanced Search';
         panel.appendChild(header);
         document.body.appendChild(panel);
 
         CardView.openFilterSheet(state);
         expect(panel.classList.contains('gobo-card-filter-sheet')).toBe(true);
         expect(panel.classList.contains('adv-collapsed')).toBe(false);
-        expect(document.querySelector('.gobo-card-filter-backdrop')).not.toBeNull();
-        expect(panel.querySelector('.gobo-card-filter-done')).not.toBeNull();
+        expect(document.querySelector('.gobo-card-filter-backdrop')).toBeNull();
+        expect(panel.parentElement).not.toBeNull();
 
         CardView.closeFilterSheet(state);
         expect(panel.classList.contains('adv-collapsed')).toBe(true);
-        expect(document.querySelector('.gobo-card-filter-backdrop')).toBeNull();
         expect(state.advancedSearch.enabled).toBe(true);
     });
 
@@ -190,20 +202,50 @@ describe('cardView mobile card layout', () => {
         realAdvancedSearch.scaffoldPanel(state, bc);
         const panel = document.getElementById('advanced-search-panel');
         expect(bc.contains(panel)).toBe(true);
-        expect(panel.querySelector('.adv-search-disabled-msg')).not.toBeNull();
+        expect(panel.classList.contains('adv-collapsed')).toBe(false);
 
-        // User clicks Filters.
         CardView.openFilterSheet(state);
 
         expect(state.advancedSearch.enabled).toBe(true);
         expect(panel.classList.contains('gobo-card-filter-sheet')).toBe(true);
-        // Panel stays inside the breadcrumb container (descendant of #gobo-offers-table, where the sheet CSS matches).
-        expect(bc.contains(panel)).toBe(true);
+        expect(panel.parentElement).toBe(bc);
         // Stale disabled message is gone; the Add Field control is present.
         expect(panel.querySelector('.adv-search-disabled-msg')).toBeNull();
         expect(panel.querySelector('.adv-search-empty-inline')).not.toBeNull();
         expect(panel.querySelector('button.adv-add-field-btn')).not.toBeNull();
+        const addBtn = panel.querySelector('button.adv-add-field-btn');
+        addBtn.click();
+        const popup = document.querySelector('.adv-add-field-popup');
+        expect(popup).not.toBeNull();
+        expect(popup.style.display).toBe('block');
+        expect(popup.parentElement).toBe(shell);
         expect(panel.querySelector('select.adv-add-field-select')).not.toBeNull();
+    });
+
+    test('wide screens open the same in-flow filter bar', () => {
+        window.matchMedia = (q) => ({
+            matches: false,
+            media: String(q),
+            addEventListener() {},
+            removeEventListener() {},
+        });
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.classList.add('gobo-layout-cards');
+        const bc = document.createElement('div');
+        bc.className = 'breadcrumb-container';
+        const panel = document.createElement('div');
+        panel.id = 'advanced-search-panel';
+        panel.classList.add('adv-collapsed');
+        bc.appendChild(panel);
+        shell.appendChild(bc);
+        document.body.appendChild(shell);
+
+        CardView.openFilterSheet(makeState());
+
+        expect(panel.classList.contains('gobo-card-filter-sheet')).toBe(true);
+        expect(panel.classList.contains('adv-collapsed')).toBe(false);
+        expect(document.querySelector('.gobo-card-filter-backdrop')).toBeNull();
     });
 
     test('scaffoldPanel keeps the enable pass when the crumb row is nested (regression: body-level call)', () => {
@@ -236,15 +278,55 @@ describe('cardView mobile card layout', () => {
         expect(panel.classList.contains('enabled')).toBe(true);
     });
 
-    test('a committed filter chip renders and its × button calls _removePredicate', () => {
-        const pred = { id: 'p1', field: 'ship', values: [{ label: 'Test Ship' }], complete: true };
-        const state = makeState({ advancedSearch: { enabled: true, predicates: [pred] } });
-        CardView.render(container, state);
-        const chip = container.querySelector('.gobo-card-filter-chip');
-        expect(chip).not.toBeNull();
-        const x = chip.querySelector('.gobo-card-filter-chip-x');
-        expect(x).not.toBeNull();
-        x.click();
-        expect(AppStub.AdvancedSearch._removePredicate).toHaveBeenCalledWith(pred, state);
+
+    test('scaffoldPanel parks the card sheet under the profile row', () => {
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.classList.add('gobo-layout-cards');
+        const bc = document.createElement('div');
+        bc.className = 'breadcrumb-container';
+        const tabs = document.createElement('div');
+        tabs.className = 'breadcrumb-tabs-row gobo-profile-combo';
+        bc.appendChild(tabs);
+        shell.appendChild(bc);
+        document.body.appendChild(shell);
+
+        const advSrc = fs.readFileSync(path.resolve(__dirname, '..', 'features', 'advancedSearch.js'), 'utf8');
+        const addSrc = fs.readFileSync(path.resolve(__dirname, '..', 'features', 'advancedSearchAddField.js'), 'utf8');
+        const realAdvancedSearch = new Function(advSrc + '\n' + addSrc + '\nreturn AdvancedSearch;')();
+
+        const panel = document.createElement('div');
+        panel.id = 'advanced-search-panel';
+        shell.appendChild(panel);
+
+        realAdvancedSearch.scaffoldPanel(makeState({ advancedSearch: { enabled: false, predicates: [] } }), bc);
+        expect(panel.previousSibling).toBe(tabs);
+        expect(panel.classList.contains('gobo-card-filter-sheet')).toBe(true);
+        expect(panel.classList.contains('adv-collapsed')).toBe(false);
+    });
+
+    test('card render does not hide an open filter sheet', () => {
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.classList.add('gobo-layout-cards');
+        const bc = document.createElement('div');
+        bc.className = 'breadcrumb-container';
+        const tabs = document.createElement('div');
+        tabs.className = 'breadcrumb-tabs-row';
+        bc.appendChild(tabs);
+        shell.appendChild(bc);
+        const cards = document.createElement('div');
+        shell.appendChild(cards);
+        const panel = document.createElement('div');
+        panel.id = 'advanced-search-panel';
+        panel.classList.add('gobo-card-filter-sheet');
+        bc.appendChild(panel);
+
+        CardView.render(cards, makeState({
+            advancedSearch: { enabled: true, predicates: [{ id: 'p1', fieldKey: 'visits', values: ['ARUBA'], complete: true }] },
+        }));
+        expect(cards.querySelector('.gobo-card-filter')).toBeNull();
+        expect(panel.parentElement).toBe(bc);
+        expect(panel.classList.contains('adv-collapsed')).toBe(false);
     });
 });

@@ -46,8 +46,7 @@ const AdvancedSearchAddField = {
             wrapper.appendChild(btn);
 
             const popup = document.createElement('div'); popup.className = 'adv-add-field-popup';
-            popup.style.position = 'absolute'; popup.style.left = '0'; popup.style.top = 'calc(100% + 6px)'; popup.style.minWidth = '390px';
-            popup.style.background = 'var(--gobo-adv-popup-bg, #fff)'; popup.style.border = '1px solid var(--gobo-adv-popup-border, #e5e7eb)'; popup.style.boxShadow = 'var(--gobo-adv-popup-shadow, 0 6px 18px rgba(15,23,42,0.08))'; popup.style.padding = '8px'; popup.style.borderRadius = '8px'; popup.style.zIndex = 9999; popup.style.display = 'none';
+            popup.style.display = 'none';
 
             const buildSection = (title, items, sectionClass) => {
                 const sec = document.createElement('div'); sec.className = 'adv-add-section' + (sectionClass? ' '+sectionClass : '');
@@ -107,7 +106,15 @@ const AdvancedSearchAddField = {
             body.appendChild(wrapper);
 
             // Open popup; only focus first item when requested (keyboard open)
+            const cardsHost = () => {
+                const t = document.getElementById('gobo-offers-table');
+                if (!t || !t.classList.contains('gobo-layout-cards')) return null;
+                if (!(typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 720px)').matches)) return null;
+                return t;
+            };
             const openPopup = (focusFirst) => {
+                const host = cardsHost();
+                if (host) host.appendChild(popup);
                 popup.style.display = 'block';
                 btn.setAttribute('aria-expanded', 'true');
                 if (focusFirst) {
@@ -117,14 +124,22 @@ const AdvancedSearchAddField = {
                     }, 10);
                 }
             };
-            const closePopup = () => { popup.style.display = 'none'; btn.setAttribute('aria-expanded', 'false'); };
+            const closePopup = () => {
+                popup.style.display = 'none';
+                btn.setAttribute('aria-expanded', 'false');
+                if (popup.parentElement !== wrapper) wrapper.appendChild(popup);
+            };
             let onDocClick;
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (popup.style.display === 'block') { closePopup(); }
                 else {
                     openPopup(false);
-                    onDocClick = (ev) => { if (!wrapper.contains(ev.target)) { closePopup(); document.removeEventListener('click', onDocClick); } };
+                    onDocClick = (ev) => {
+                        if (wrapper.contains(ev.target) || popup.contains(ev.target)) return;
+                        closePopup();
+                        document.removeEventListener('click', onDocClick);
+                    };
                     document.addEventListener('click', onDocClick);
                 }
             });

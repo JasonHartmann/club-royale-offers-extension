@@ -1,5 +1,6 @@
 const ButtonManager = {
     _TIER_LABELS: ['CURRENT CLUB TIER', 'CURRENT TIER'],
+    _followGen: 0,
 
     _findTierHeading() {
         try {
@@ -13,10 +14,11 @@ const ButtonManager = {
     },
 
     _navBottom() {
-        const nav = document.querySelector('header, [role="banner"], nav');
+        const nav = document.querySelector('#global-head') || document.querySelector('header, [role="banner"], nav');
         if (nav) {
             const r = nav.getBoundingClientRect();
-            if (r.height > 0 && r.height <= 96) return r.bottom;
+            // ponytail: cap below hero-wrapping headers; RCL chrome is ~96–97px
+            if (r.height > 0 && r.height <= 128) return r.bottom;
             if (r.top >= -10 && r.top <= 40) return r.top + 80;
         }
         return 80;
@@ -24,22 +26,45 @@ const ButtonManager = {
 
     _placeAboveTier(button, heading) {
         const hr = heading.getBoundingClientRect();
+        const navBottom = this._navBottom();
         button.style.position = 'fixed';
         button.style.left = `${hr.left + hr.width / 2}px`;
-        button.style.top = `${this._navBottom() + 5}px`;
         button.style.transform = 'translateX(-50%)';
-        button.style.visibility = 'visible';
         button.dataset.goboPlaced = 'tier';
+        if (navBottom <= 8) {
+            button.style.visibility = 'hidden';
+            return;
+        }
+        button.style.top = `${navBottom + 5}px`;
+        button.style.visibility = 'visible';
+    },
+
+    _reposition() {
+        const btn = document.getElementById('gobo-offers-button');
+        const heading = this._findTierHeading();
+        if (btn && heading) this._placeAboveTier(btn, heading);
     },
 
     _bindReposition() {
         if (this._repositionBound) return;
         this._repositionBound = true;
-        window.addEventListener('resize', () => {
-            const btn = document.getElementById('gobo-offers-button');
-            const heading = this._findTierHeading();
-            if (btn && heading) this._placeAboveTier(btn, heading);
-        });
+        const place = () => this._reposition();
+        window.addEventListener('resize', place);
+        window.addEventListener('scroll', place, { passive: true });
+        const header = document.querySelector('header');
+        if (!header) return;
+        header.addEventListener('transitionend', place);
+        // ponytail: rAF tracks RCL's 0.4s hide-header transform; drop if they hide without CSS
+        new MutationObserver(() => {
+            const id = ++this._followGen;
+            const end = performance.now() + 450;
+            const tick = (now) => {
+                if (id !== this._followGen) return;
+                place();
+                if (now < end) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }).observe(header, { attributes: true, attributeFilter: ['class'] });
     },
 
     isButtonCorrectlyPlaced() {

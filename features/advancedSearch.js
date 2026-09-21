@@ -1314,22 +1314,36 @@ const AdvancedSearch = {
                 panel.className = 'advanced-search-panel';
                 this._logDebug('scaffoldPanel:created');
             }
-            const crumbsRow = container.querySelector('.breadcrumb-crumb-row');
-            // Anchor only when the crumb row is a direct child; a nested one would make insertBefore throw.
-            const anchor = (crumbsRow && crumbsRow.parentElement === container) ? crumbsRow : null;
-            if (anchor) {
-                if (panel.parentElement !== container || panel.nextSibling !== anchor) {
-                    container.insertBefore(panel, anchor);
-                }
-            } else if (panel.parentElement !== container) {
-                container.appendChild(panel);
-            }
+            const table = document.getElementById('gobo-offers-table');
+            const cards = !!(table && table.classList.contains('gobo-layout-cards'));
+            if (cards) state.advancedSearch.enabled = true;
             const enabled = !!state.advancedSearch.enabled;
-            const shouldOpen = enabled;
+            if (cards) {
+                panel.classList.add('gobo-card-filter-sheet');
+                panel.classList.remove('adv-collapsed');
+                const combo = container.querySelector('.breadcrumb-tabs-row') || container.querySelector('.gobo-profile-combo');
+                if (combo && combo.parentElement === container) {
+                    if (panel.previousSibling !== combo) container.insertBefore(panel, combo.nextSibling);
+                } else if (panel.parentElement !== container) {
+                    container.appendChild(panel);
+                }
+            } else {
+                const crumbsRow = container.querySelector('.breadcrumb-crumb-row');
+                const anchor = (crumbsRow && crumbsRow.parentElement === container) ? crumbsRow : null;
+                if (anchor) {
+                    if (panel.parentElement !== container || panel.nextSibling !== anchor) {
+                        container.insertBefore(panel, anchor);
+                    }
+                } else if (panel.parentElement !== container) {
+                    container.appendChild(panel);
+                }
+            }
             if (enabled) {
                 panel.classList.remove('adv-hidden');
             }
-            if (shouldOpen) {
+            if (cards) {
+                panel.classList.remove('adv-collapsed');
+            } else if (enabled) {
                 if (created || panel.classList.contains('adv-collapsed')) {
                     panel.classList.add('adv-collapsed');
                     try { panel.getBoundingClientRect(); } catch(e) {}

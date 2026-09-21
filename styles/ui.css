@@ -961,9 +961,9 @@ body.gobo-dark .b2b-chain-card.b2b-chain-region-link .b2b-timeline .dot { backgr
 .breadcrumb-arrow { display:none; }
 .accordion-view .breadcrumb-arrow { display:inline; }
 .breadcrumb-arrow::after { content:'→'; margin:0 8px; }
-/* Offer rows highlighting */
-.newest-offer-row { background:#DFD !important; }
-.expiring-soon-row { background:#FDD !important; }
+/* Offer rows highlighting (table rows only — cards use a gold/amber border) */
+tr.newest-offer-row { background:#DFD !important; }
+tr.expiring-soon-row { background:#FDD !important; }
 
 /* Offer highlight legend (footer color key) */
 .gobo-legend-box { display:inline-block; width:14px; height:14px; border:1px solid #ccc; margin-right:4px; vertical-align:middle; border-radius:3px; }
@@ -977,16 +977,16 @@ body.gobo-dark .gobo-legend-box-newest { background:#064e3b; }
 body.gobo-dark .gobo-legend-label-expiring { color:#e9c1c8; }
 body.gobo-dark .gobo-legend-label-newest { color:#ecfdf5; }
 
-body.gobo-dark .newest-offer-row {
+body.gobo-dark tr.newest-offer-row {
     background:#064e3b !important;
     color:#ecfdf5;
 }
-body.gobo-dark .newest-offer-row a { color:inherit; }
-body.gobo-dark .expiring-soon-row {
+body.gobo-dark tr.newest-offer-row a { color:inherit; }
+body.gobo-dark tr.expiring-soon-row {
     background:#231015 !important;
     color:#e9c1c8;
 }
-body.gobo-dark .expiring-soon-row a { color:inherit; }
+body.gobo-dark tr.expiring-soon-row a { color:inherit; }
 
 /* Group icon interactivity for headers (table + accordion) */
 .group-icon { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:6px; cursor:pointer; opacity:0.95; transition:background .12s, transform .08s, box-shadow .12s; }

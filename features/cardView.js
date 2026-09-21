@@ -10,20 +10,21 @@
         _vs: null,
 
         render(container, state, globalMaxOfferDate = null) {
+            const parked = document.getElementById('advanced-search-panel');
+            if (parked && container.contains(parked)) {
+                (document.getElementById('gobo-offers-table') || document.body).appendChild(parked);
+            }
             this._cleanup();
             container.innerHTML = '';
             container.classList.add('gobo-card-view');
 
             const total = (state.sortedOffers || []).length;
 
-            // Toolbar (sticky, not virtualized)
-            container.appendChild(this._buildToolbar(state));
+            const chrome = document.createElement('div');
+            chrome.className = 'gobo-card-chrome';
+            chrome.appendChild(this._buildToolbar(state));
+            container.appendChild(chrome);
 
-            // Active filter chips (hidden when count is 0)
-            const chips = this._buildFilterChips(state);
-            if (chips) container.appendChild(chips);
-
-            // Grid (the scrollable content)
             const grid = document.createElement('div');
             grid.className = 'gobo-card-grid';
             container.appendChild(grid);
@@ -38,7 +39,7 @@
             }
 
             const soonestExpDate = this._computeSoonestExpDate(state.sortedOffers);
-            const columns = this._columnsFor(container.clientWidth);
+            const columns = Math.max(1, Math.min(this._columnsFor(container.clientWidth), total));
             container._goboCardCols = columns;
             container.style.setProperty('--gobo-card-cols', String(columns));
 
@@ -66,7 +67,9 @@
         _columnsFor(width) {
             if (width < 640) return 1;
             if (width < 980) return 2;
-            return 3;
+            if (width < 1600) return 3;
+            if (width < 2100) return 4;
+            return 5;
         },
 
         _computeSoonestExpDate(sortedOffers) {
@@ -97,54 +100,77 @@
             const toolbar = document.createElement('div');
             toolbar.className = 'gobo-card-toolbar';
 
-            const exit = document.createElement('button');
-            exit.type = 'button';
-            exit.className = 'gobo-card-exit';
-            exit.textContent = 'Close';
-            exit.setAttribute('aria-label', 'Close offers and return to the site');
-            exit.title = 'Back to site';
-            exit.addEventListener('click', () => {
-                const closeBtn = document.querySelector('#gobo-offers-table .close-button');
-                if (closeBtn) closeBtn.click();
-            });
-            toolbar.appendChild(exit);
-
             const count = document.createElement('span');
             count.className = 'gobo-card-count';
             const n = (state.sortedOffers || []).length;
             count.textContent = `${n} sailing${n === 1 ? '' : 's'}`;
             toolbar.appendChild(count);
 
-            const filterBtn = document.createElement('button');
-            filterBtn.type = 'button';
-            filterBtn.className = 'gobo-card-filter';
-            filterBtn.textContent = 'Filters';
-            filterBtn.setAttribute('aria-expanded', 'false');
-            filterBtn.addEventListener('click', () => this.openFilterSheet(state));
-            toolbar.appendChild(filterBtn);
 
-            const select = document.createElement('select');
-            select.className = 'gobo-card-sort';
-            select.setAttribute('aria-label', 'Sort by');
+            const wrap = document.createElement('div');
+            wrap.className = 'gobo-card-sort-wrap';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'gobo-card-sort';
+            btn.setAttribute('aria-label', 'Sort by');
+            btn.setAttribute('aria-haspopup', 'listbox');
+            btn.setAttribute('aria-expanded', 'false');
             const hiddenSet = this._hiddenColumnsSet(state);
+            const items = [];
             state.headers.forEach(header => {
                 if (header.key === 'favorite') return;
                 if (hiddenSet && hiddenSet.has(header.key)) return;
-                const opt = document.createElement('option');
-                opt.value = header.key;
-                opt.textContent = header.label;
-                if (state.currentSortColumn === header.key) opt.selected = true;
-                select.appendChild(opt);
+                items.push(header);
             });
-            select.addEventListener('change', () => this._applySort(state, select.value, 'asc'));
-            toolbar.appendChild(select);
+            const current = items.find(h => h.key === state.currentSortColumn) || items[0];
+            btn.textContent = current ? current.label : 'Sort';
+            const menu = document.createElement('div');
+            menu.className = 'gobo-card-sort-menu';
+            menu.setAttribute('role', 'listbox');
+            menu.hidden = true;
+            items.forEach(header => {
+                const opt = document.createElement('button');
+                opt.type = 'button';
+                opt.className = 'gobo-card-sort-option';
+                opt.setAttribute('role', 'option');
+                opt.textContent = header.label;
+                if (current && header.key === current.key) opt.setAttribute('aria-selected', 'true');
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    menu.hidden = true;
+                    btn.setAttribute('aria-expanded', 'false');
+                    this._applySort(state, header.key, 'asc');
+                });
+                menu.appendChild(opt);
+            });
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const willOpen = menu.hidden;
+                if (willOpen) {
+                    menu.hidden = false;
+                    btn.setAttribute('aria-expanded', 'true');
+                    const close = (ev) => {
+                        if (wrap.contains(ev.target)) return;
+                        menu.hidden = true;
+                        btn.setAttribute('aria-expanded', 'false');
+                        document.removeEventListener('click', close);
+                    };
+                    setTimeout(() => document.addEventListener('click', close), 0);
+                } else {
+                    menu.hidden = true;
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+            });
+            wrap.appendChild(btn);
+            wrap.appendChild(menu);
+            toolbar.appendChild(wrap);
 
             const dirBtn = document.createElement('button');
             dirBtn.type = 'button';
             dirBtn.className = 'gobo-card-sort-dir';
             this._updateDirButton(dirBtn, state);
             dirBtn.addEventListener('click', () => {
-                const key = state.currentSortColumn || select.value;
+                const key = state.currentSortColumn || (current && current.key);
                 let newOrder = 'asc';
                 if (state.currentSortColumn === key) {
                     newOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
@@ -212,46 +238,6 @@
             requestAnimationFrame(() => setTimeout(doWork, 0));
         },
 
-        _buildFilterChips(state) {
-            const predicates = (state.advancedSearch && state.advancedSearch.predicates) || [];
-            const committed = predicates.filter(p => p && p.complete);
-            if (committed.length === 0) return null;
-            const wrap = document.createElement('div');
-            wrap.className = 'gobo-card-filter-chips';
-            committed.forEach(pred => {
-                const chip = document.createElement('span');
-                chip.className = 'gobo-card-filter-chip';
-                const label = this._predicateLabel(pred);
-                const text = document.createElement('span');
-                text.className = 'gobo-card-filter-chip-text';
-                text.textContent = label;
-                chip.appendChild(text);
-                const x = document.createElement('button');
-                x.type = 'button';
-                x.className = 'gobo-card-filter-chip-x';
-                x.textContent = '\u00d7';
-                x.setAttribute('aria-label', 'Remove filter ' + label);
-                x.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    try { App.AdvancedSearch._removePredicate(pred, state); } catch(err) {}
-                });
-                chip.appendChild(x);
-                chip.addEventListener('click', () => this.openFilterSheet(state));
-                wrap.appendChild(chip);
-            });
-            return wrap;
-        },
-
-        _predicateLabel(pred) {
-            try {
-                const field = pred.field || '';
-                const values = (pred.values || []).map(v => (v && v.label) || v).join(', ');
-                return values ? `${field}: ${values}` : field;
-            } catch(e) {
-                return 'filter';
-            }
-        },
-
         _createCard(state, idx, globalMaxOfferDate, soonestExpDate) {
             const pair = state.sortedOffers[idx];
             if (!pair) return null;
@@ -297,14 +283,6 @@
             } catch(e) { itineraryKey = 'SD_UNKNOWN'; }
             const perksStr = Utils.computePerks(offer, sailing);
             const codeCell = offer.campaignOffer?.offerCode || '-';
-            const shipClass = Utils.getShipClass(sailing.shipName);
-            let tradeDisplay = '-';
-            try { tradeDisplay = App.Utils.formatTradeValue(offer.campaignOffer?.tradeInValue); } catch(e) {}
-            let valueDisplay;
-            try {
-                const rawVal = App.Utils.computeOfferValue(offer, sailing);
-                valueDisplay = App.Utils.formatOfferValue(rawVal);
-            } catch(e){ valueDisplay = undefined; }
             let includeTaxesAndFees = true;
             try { includeTaxesAndFees = App.Utils.getIncludeTaxesAndFeesPreference(App.TableRenderer.lastState); } catch(e){}
             const upgradeOptions = { includeTaxes: includeTaxesAndFees, state: App.TableRenderer ? App.TableRenderer.lastState : null };
@@ -378,11 +356,19 @@
             const dateParts = [];
             if (!isHiddenCol('sailDate')) dateParts.push(Utils.formatDate(sailing.sailDate));
             if (!isHiddenCol('departurePort')) dateParts.push(sailing.departurePort?.name || '-');
+            if (!isHiddenCol('guests')) dateParts.push(guestsText);
+            if (!isHiddenCol('category') && room) dateParts.push(room);
             if (dateParts.length) {
                 const dateLine = document.createElement('div');
                 dateLine.className = 'gobo-card-date';
                 dateLine.textContent = dateParts.join(' \u00b7 ');
                 main.appendChild(dateLine);
+            }
+            if (!isHiddenCol('perks') && perksStr) {
+                const perks = document.createElement('div');
+                perks.className = 'gobo-card-date';
+                perks.textContent = perksStr;
+                main.appendChild(perks);
             }
 
             // Prices — the value prop (clean columns)
@@ -471,47 +457,6 @@
             actions.appendChild(this._buildFavoriteControl(offer, sailing, idx, isFavoritesView));
             main.appendChild(actions);
 
-            // Details expand (one tap): the secondary fields
-            const detailRows = [];
-            if (!isHiddenCol('offerName')) detailRows.push(['Offer', offer.campaignOffer.name || '-']);
-            if (!isHiddenCol('shipClass')) detailRows.push(['Class', shipClass]);
-            if (!isHiddenCol('category') && room) detailRows.push(['Category', room]);
-            if (!isHiddenCol('guests')) detailRows.push(['Guests', guestsText]);
-            if (!isHiddenCol('perks') && perksStr) detailRows.push(['Perks', perksStr]);
-            if (!isHiddenCol('tradeInValue') && tradeDisplay !== '-') detailRows.push(['Trade', tradeDisplay]);
-            if (!isHiddenCol('offerValue') && valueDisplay !== undefined) detailRows.push(['Value', valueDisplay]);
-            if (!isHiddenCol('offerDate')) detailRows.push(['Received', Utils.formatDate(offer.campaignOffer?.startDate)]);
-            if (detailRows.length) {
-                const detailsToggle = document.createElement('button');
-                detailsToggle.type = 'button';
-                detailsToggle.className = 'gobo-card-details-toggle';
-                detailsToggle.textContent = 'Details';
-                detailsToggle.setAttribute('aria-expanded', 'false');
-                const details = document.createElement('div');
-                details.className = 'gobo-card-details';
-                details.hidden = true;
-                detailRows.forEach(([label, val]) => {
-                    const row = document.createElement('div');
-                    row.className = 'gobo-card-detail-row';
-                    const l = document.createElement('span');
-                    l.className = 'gobo-card-detail-label';
-                    l.textContent = label;
-                    const v = document.createElement('span');
-                    v.className = 'gobo-card-detail-val';
-                    v.textContent = val;
-                    row.appendChild(l);
-                    row.appendChild(v);
-                    details.appendChild(row);
-                });
-                detailsToggle.addEventListener('click', () => {
-                    const nowOpen = details.hidden;
-                    details.hidden = !nowOpen;
-                    detailsToggle.setAttribute('aria-expanded', String(nowOpen));
-                    detailsToggle.textContent = nowOpen ? 'Hide' : 'Details';
-                });
-                main.appendChild(detailsToggle);
-                main.appendChild(details);
-            }
 
             article.appendChild(main);
             return article;
@@ -761,49 +706,39 @@
             } catch(e) {}
         },
 
+        mountFilterBar(state) {
+            const preds = (state.advancedSearch && state.advancedSearch.predicates) || [];
+            const panel = (state.advancedSearchPanel) || document.getElementById('advanced-search-panel');
+            const open = preds.length > 0 || (panel && panel.classList.contains('gobo-card-filter-sheet') && !panel.classList.contains('adv-collapsed'));
+            if (!open) return;
+            this.openFilterSheet(state);
+        },
+
         openFilterSheet(state) {
             try {
-                if (!state.advancedSearch.enabled) {
-                    state.advancedSearch.enabled = true;
-                    // Scaffold into .breadcrumb-container: the sheet CSS only matches panels inside
-                    // #gobo-offers-table, and a body-level insertBefore throws on the nested crumb row.
-                    const advContainer = document.querySelector('.breadcrumb-container') || document.body;
-                    try { App.AdvancedSearch.scaffoldPanel(state, advContainer); } catch(e) {}
-                    try { App.AdvancedSearch.restorePredicates(state); } catch(e) {}
-                    try { App.AdvancedSearch.updateBadge(state); } catch(e) {}
-                }
+                state.advancedSearch.enabled = true;
+                const advContainer = document.querySelector('.breadcrumb-container') || document.body;
+                try { App.AdvancedSearch.scaffoldPanel(state, advContainer); } catch(e) {}
+                try { App.AdvancedSearch.restorePredicates(state); } catch(e) {}
+                try { App.AdvancedSearch.updateBadge(state); } catch(e) {}
                 const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
                 if (panel) {
                     panel.classList.add('gobo-card-filter-sheet');
                     panel.classList.remove('adv-collapsed');
-                    const header = panel.querySelector('.adv-search-header');
-                    if (header && !header.querySelector('.gobo-card-filter-done')) {
-                        const done = document.createElement('button');
-                        done.type = 'button';
-                        done.className = 'gobo-card-filter-done';
-                        done.textContent = 'Done';
-                        done.addEventListener('click', () => this.closeFilterSheet(state));
-                        header.appendChild(done);
-                    }
                 }
-                let backdrop = document.querySelector('.gobo-card-filter-backdrop');
-                if (!backdrop) {
-                    backdrop = document.createElement('div');
-                    backdrop.className = 'gobo-card-filter-backdrop';
-                    backdrop.addEventListener('click', () => this.closeFilterSheet(state));
-                    document.body.appendChild(backdrop);
-                }
-                const filterBtn = document.querySelector('.gobo-card-filter');
-                if (filterBtn) filterBtn.setAttribute('aria-expanded', 'true');
+                const backdrop = document.querySelector('.gobo-card-filter-backdrop');
+                if (backdrop) backdrop.remove();
             } catch(e) { console.debug('[cardView] openFilterSheet error', e); }
         },
 
         closeFilterSheet(state) {
             try {
-                const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
-                if (panel) panel.classList.add('adv-collapsed');
+                const preds = (state.advancedSearch && state.advancedSearch.predicates) || [];
                 const backdrop = document.querySelector('.gobo-card-filter-backdrop');
                 if (backdrop) backdrop.remove();
+                if (preds.length) return;
+                const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
+                if (panel) panel.classList.add('adv-collapsed');
                 const filterBtn = document.querySelector('.gobo-card-filter');
                 if (filterBtn) filterBtn.setAttribute('aria-expanded', 'false');
             } catch(e) { console.debug('[cardView] closeFilterSheet error', e); }
@@ -813,7 +748,11 @@
             try {
                 this.closeFilterSheet(state);
                 const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
-                if (panel) panel.classList.remove('gobo-card-filter-sheet');
+                if (panel) {
+                    panel.classList.remove('gobo-card-filter-sheet');
+                    const home = document.querySelector('.breadcrumb-container');
+                    if (home && panel.parentElement !== home) home.appendChild(panel);
+                }
             } catch(e) {}
         },
     };
