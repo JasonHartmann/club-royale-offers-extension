@@ -272,6 +272,20 @@ const Modal = {
         }
         if (wnBtn) footerContainer.appendChild(wnBtn);
 
+        // Sign Out button (between What's New and Export)
+        const signOutButton = document.createElement('button');
+        signOutButton.className = 'signout-btn';
+        signOutButton.type = 'button';
+        signOutButton.textContent = 'Sign Out';
+        signOutButton.setAttribute('aria-label', 'Sign out of your account');
+        signOutButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.confirm('Sign out of your account?')) {
+                try { App.SignOut.signOut(); } catch (err) { console.error('[SignOut] button error:', err); }
+            }
+        });
+        footerContainer.appendChild(signOutButton);
+
         footerContainer.appendChild(exportButton);
         footerContainer.appendChild(closeButton);
 

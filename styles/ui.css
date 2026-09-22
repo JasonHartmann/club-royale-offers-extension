@@ -63,7 +63,7 @@
 
 /* Consolidated action button styles: keep padding, font, spacings and sizing consistent
    across primary footer/action buttons while allowing each to keep its own color. */
-.action-btn, .close-button, .export-csv-button, .whatsnew-btn, .donate-button {
+.action-btn, .close-button, .export-csv-button, .whatsnew-btn, .donate-button, .signout-btn {
     color: #fff;
     font-weight: 600;
     /* horizontal padding only; use fixed height to ensure exact match */
@@ -86,6 +86,9 @@
 
 .whatsnew-btn { background:#6922c5; transition:background .2s; }
 .whatsnew-btn:hover { background:#845bba; }
+
+.signout-btn { background:#2563eb; transition:background .2s; }
+.signout-btn:hover { background:#1d4ed8; }
 
 /* Donate button + panel (color-only; sizing/typography come from consolidated action rule) */
 .donate-button {

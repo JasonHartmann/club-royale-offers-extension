@@ -41,6 +41,49 @@
         Settings,
         CardView,
         OfferPdf,
+        SignOut: {
+            // Sign the user out of the RCL/Celebrity session and navigate to the sign-in page.
+            // Replicates the site's own sign-out: revoke the OAuth token, log out the AEM session,
+            // clear the auth cookies, then navigate to <origin>/signin.
+            async signOut() {
+                const go = () => { try { window.location.href = window.location.origin + '/signin'; } catch (e) {} };
+                try {
+                    const getCookie = (name) => {
+                        const m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+                        return m ? decodeURIComponent(m[2]) : null;
+                    };
+                    const feSso = getCookie('fe_sso');
+                    const accessToken = getCookie('accessToken');
+                    const clientId = 'g9S023t74473ZUk909FN68F0b4N67PSOh92o04vL0BR6537pI2y2h94M6BbU7D6J';
+                    const authId = 'W66846kPQv1750975oodH5M8zC6Ta7m30kH2Q78l2WmU50FCgqpP13w77377k7IB';
+                    const basic = btoa(clientId + ':' + authId);
+                    const posts = [];
+                    if (accessToken) {
+                        posts.push(fetch('/auth/oauth2/token/revoke?token=' + encodeURIComponent(accessToken) + '&client_id=' + clientId, {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Basic ' + basic, 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                        }).catch(() => {}));
+                    }
+                    if (feSso) {
+                        posts.push(fetch('/auth/json/sessions?_action=logout', {
+                            method: 'POST',
+                            credentials: 'omit',
+                            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept-API-Version': 'resource=4.0', 'rcclssocookie': feSso }
+                        }).catch(() => {}));
+                    }
+                    await Promise.all(posts);
+                    const domain = '.' + window.location.hostname;
+                    for (const name of ['fe_sso', 'accessToken', 'loyaltyData']) {
+                        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + domain;
+                        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+                    }
+                    go();
+                } catch (e) {
+                    console.error('[SignOut] Error:', e);
+                    go();
+                }
+            }
+        },
         SettingsStore: {
             getSettings() {
                 try {
