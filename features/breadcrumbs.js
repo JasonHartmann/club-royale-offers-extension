@@ -16,9 +16,7 @@ const Breadcrumbs = {
     },
     _signOutClick(e) {
         e.stopPropagation();
-        if (window.confirm('Sign out of your account?')) {
-            try { App.SignOut.signOut(); } catch (err) { console.error('[SignOut] button error:', err); }
-        }
+        try { App.SignOut.signOut(); } catch (err) { console.error('[SignOut] button error:', err); }
     },
     _ensureTopActions(tabsRow) {
         const logout = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>';
