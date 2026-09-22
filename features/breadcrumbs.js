@@ -2,20 +2,56 @@
 // Responsible for rebuilding the breadcrumb container (tabs row + crumbs row + auxiliary panels).
 
 const Breadcrumbs = {
-    _ensureComboChevron(tabsRow) {
-        if (tabsRow.querySelector('.gobo-profile-select')) return;
-        const sel = document.createElement('button');
-        sel.type = 'button';
-        sel.className = 'gobo-profile-select';
-        sel.setAttribute('aria-label', 'Switch profile');
-        sel.setAttribute('title', 'Switch profile');
-        sel.setAttribute('aria-expanded', 'false');
-        sel.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const open = tabsRow.classList.toggle('gobo-profile-menu-open');
-            sel.setAttribute('aria-expanded', open ? 'true' : 'false');
+    _topAction(parent, cls, label, html, onClick) {
+        if (parent.querySelector('.' + cls)) return null;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = cls;
+        btn.setAttribute('aria-label', label);
+        btn.title = label;
+        btn.innerHTML = html;
+        btn.addEventListener('click', onClick);
+        parent.appendChild(btn);
+        return btn;
+    },
+    _signOutClick(e) {
+        e.stopPropagation();
+        if (window.confirm('Sign out of your account?')) {
+            try { App.SignOut.signOut(); } catch (err) { console.error('[SignOut] button error:', err); }
+        }
+    },
+    _ensureTopActions(tabsRow) {
+        const logout = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>';
+        this._topAction(tabsRow, 'gobo-top-signout', 'Sign Out', logout, (e) => this._signOutClick(e));
+        if (tabsRow.querySelector('.gobo-top-gear') || tabsRow.querySelector('#gobo-settings-gear')) return;
+        const gearBtn = document.createElement('button');
+        gearBtn.type = 'button';
+        gearBtn.className = 'gobo-top-gear gobo-settings-gear';
+        gearBtn.id = 'gobo-settings-gear';
+        gearBtn.setAttribute('aria-label', 'Settings');
+        gearBtn.title = 'Settings';
+        gearBtn.textContent = '⚙️';
+        gearBtn.addEventListener('click', () => {
+            try { Settings.openSettingsModal(); } catch (err) { console.warn('Settings open failed:', err); }
         });
-        tabsRow.appendChild(sel);
+        tabsRow.appendChild(gearBtn);
+    },
+    _ensureComboChevron(tabsRow) {
+        if (!tabsRow.querySelector('.gobo-profile-select')) {
+            const sel = document.createElement('button');
+            sel.type = 'button';
+            sel.className = 'gobo-profile-select';
+            sel.setAttribute('aria-label', 'Switch profile');
+            sel.setAttribute('title', 'Switch profile');
+            sel.setAttribute('aria-expanded', 'false');
+            sel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = tabsRow.classList.toggle('gobo-profile-menu-open');
+                sel.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+            tabsRow.appendChild(sel);
+        }
+        this._ensureTopActions(tabsRow);
     },
     _syncProfileCombo() {
         const table = document.getElementById('gobo-offers-table');
@@ -37,8 +73,11 @@ const Breadcrumbs = {
         const on = row.classList.contains('gobo-profile-combo');
         if (want && !on) {
             row.classList.add('gobo-profile-combo');
+        }
+        if (want) {
             this._ensureComboChevron(row);
-        } else if (!want && on) {
+        }
+        else if (!want && on) {
             row.classList.remove('gobo-profile-combo', 'gobo-profile-menu-open');
             const sel = row.querySelector('.gobo-profile-select');
             if (sel) sel.remove();
@@ -87,7 +126,7 @@ const Breadcrumbs = {
             container.innerHTML = '';
             const tabsRow = document.createElement('div');
             tabsRow.className = 'breadcrumb-tabs-row';
-            tabsRow.style.cssText = 'display:block; margin-bottom:8px; overflow:hidden;';
+            tabsRow.style.cssText = 'display:flex; align-items:center; gap:12px; margin-bottom:8px; overflow:hidden;';
             const controlsRow = document.createElement('div');
             controlsRow.className = 'breadcrumb-controls-row';
             controlsRow.style.cssText = 'display:none; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; width:100%; box-sizing:border-box;';
@@ -285,7 +324,7 @@ const Breadcrumbs = {
                     const tabsScroll = document.createElement('div');
                     tabsScroll.className = 'profile-tabs-scroll';
                     // Do not force overflow via inline styles; allow CSS and the outer .table-scroll-container to control scrolling
-                    tabsScroll.style.cssText = 'overflow-x:visible; width:100%; -webkit-overflow-scrolling:touch;';
+                    tabsScroll.style.cssText = 'overflow-x:visible; flex:1; min-width:0; -webkit-overflow-scrolling:touch;';
                     tabs.style.cssText = 'display:inline-flex; flex-direction:row; gap:8px; flex-wrap:nowrap;';
                     let activeKey = (App.CurrentProfile && App.CurrentProfile.key) ? App.CurrentProfile.key : state.selectedProfileKey;
                     if (TableRenderer._initialOpenPending && !TableRenderer.hasSelectedDefaultTab && profiles.length) {
@@ -709,6 +748,7 @@ const Breadcrumbs = {
             } catch (e) {
                 console.warn('[breadcrumbs] Failed to render profile tabs', e);
             }
+            this._ensureTopActions(tabsRow);
 
             // All Offers crumb
             const all = document.createElement('span');
@@ -784,16 +824,6 @@ const Breadcrumbs = {
                 console.warn('[breadcrumbs] AdvancedSearch buildToggleButton failed', e);
             }
 
-            // Add Settings gear button (moves controls into a centralized modal)
-            let settingsBtn = null;
-            try {
-                const staleGear = document.getElementById('gobo-settings-gear');
-                if (staleGear) staleGear.remove();
-                if (typeof Settings !== 'undefined' && Settings.buildGearButton) {
-                    settingsBtn = Settings.buildGearButton();
-                    settingsBtn.style.marginLeft = '8px';
-                }
-            } catch(e) { /* ignore */ }
 
             // Add a global itinerary refresh button beside the gear
             let refreshBtn = null;
@@ -861,10 +891,6 @@ const Breadcrumbs = {
             if (!cards || hasHiddenGroups) {
                 hiddenGroupsPanel.appendChild(hiddenGroupsLabel);
                 hiddenGroupsPanel.appendChild(hiddenGroupsDisplay);
-            }
-            if (!parkInFooter(settingsBtn) && settingsBtn) {
-                try { settingsBtn.style.marginLeft = '8px'; } catch(e) {}
-                hiddenGroupsPanel.appendChild(settingsBtn);
             }
             if (!parkInFooter(refreshBtn) && refreshBtn) {
                 hiddenGroupsPanel.appendChild(refreshBtn);

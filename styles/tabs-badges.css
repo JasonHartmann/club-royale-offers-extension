@@ -135,6 +135,40 @@ body.gobo-dark .profile-tabs .profile-tab.active {
 	border-bottom-color: transparent;
 	box-shadow:0 8px 20px rgba(0,0,0,0.45);
 }
+
+/* Table layout: put sign-out and gear to the right of the profile tabs row */
+.breadcrumb-tabs-row {
+  display: flex;
+  align-items: center;
+}
+.breadcrumb-tabs-row .profile-tabs-scroll {
+  flex: 1;
+  min-width: 0;
+}
+.breadcrumb-tabs-row .gobo-top-signout,
+.breadcrumb-tabs-row .gobo-top-gear {
+  flex: 0 0 auto;
+  margin-left: 6px;
+  font-size: 16px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+body.gobo-dark .breadcrumb-tabs-row .gobo-top-signout,
+body.gobo-dark .breadcrumb-tabs-row .gobo-top-gear {
+  color: #94a3b8;
+}
+.gobo-top-signout svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
 body.gobo-dark .profile-tab-loyalty,
 body.gobo-dark .profile-tab-refreshed { color:#94a3b8; }
 body.gobo-dark #hidden-groups-display {

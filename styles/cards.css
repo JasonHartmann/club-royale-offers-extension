@@ -409,7 +409,7 @@ body.gobo-dark .gobo-card-detail-val { color: #e2e8f0; }
 #gobo-offers-table .gobo-profile-combo {
     overflow: hidden !important;
     display: grid !important;
-    grid-template-columns: 1fr 44px;
+    grid-template-columns: 1fr 44px 44px 44px;
     gap: 0;
     align-items: stretch;
     background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.22)) !important;
@@ -556,6 +556,32 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed { c
     border-radius: 0;
     background: transparent;
     color: #64748b;
+}
+#gobo-offers-table .gobo-profile-combo .gobo-top-signout,
+#gobo-offers-table .gobo-profile-combo .gobo-top-gear {
+    grid-row: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-left: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 16px;
+    cursor: pointer;
+}
+#gobo-offers-table .gobo-profile-combo .gobo-top-signout { grid-column: 3; }
+#gobo-offers-table .gobo-profile-combo .gobo-top-gear { grid-column: 4; }
+body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-signout,
+body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-gear {
+    color: #94a3b8;
+    border-left-color: rgba(255,255,255,0.14);
 }
 body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-profile-select {
     color: #94a3b8;
