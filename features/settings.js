@@ -3,6 +3,46 @@ const Settings = {
         if (!state.settings) state.settings = {};
         return state;
     },
+    mountPanes(body) {
+        const shell = document.createElement('div');
+        shell.className = 'gobo-settings-shell';
+        const nav = document.createElement('nav');
+        nav.className = 'gobo-settings-nav';
+        nav.setAttribute('aria-label', 'Settings categories');
+        const panels = document.createElement('div');
+        panels.className = 'gobo-settings-panels';
+        const panes = {};
+        const tabs = [];
+        const show = (id) => {
+            tabs.forEach(t => {
+                const on = t.dataset.pane === id;
+                t.classList.toggle('is-active', on);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            Object.keys(panes).forEach(k => { panes[k].hidden = k !== id; });
+        };
+        [['b2b', 'Back-to-Back'], ['pricing', 'Pricing'], ['display', 'Display'], ['columns', 'Columns']].forEach(([id, label]) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'gobo-settings-tab';
+            btn.dataset.pane = id;
+            btn.setAttribute('role', 'tab');
+            btn.textContent = label;
+            btn.addEventListener('click', () => show(id));
+            nav.appendChild(btn);
+            tabs.push(btn);
+            const pane = document.createElement('section');
+            pane.className = 'gobo-settings-pane';
+            pane.dataset.pane = id;
+            panes[id] = pane;
+            panels.appendChild(pane);
+        });
+        show('b2b');
+        shell.appendChild(nav);
+        shell.appendChild(panels);
+        body.appendChild(shell);
+        return panes;
+    },
     buildDateFormatSetting(body) {
         const area = document.createElement('div');
         area.className = 'gobo-setting-area';
@@ -161,14 +201,10 @@ const Settings = {
             header.appendChild(closeBtnHeader);
             modal.appendChild(header);
 
-            // Body: single-column variant of the B2B body so content lays out nicely
             const body = document.createElement('div');
             body.className = 'b2b-visualizer-body gobo-settings-body';
-            body.style.gridTemplateColumns = '1fr';
-            body.style.padding = '20px 28px';
             body.style.overflow = 'auto';
-            body.style.overflowY = 'scroll';
-            body.style.overflowX = 'hidden';
+            const panes = Settings.mountPanes(body);
 
             // Include 
             // `Side-by-Sides setting
@@ -196,7 +232,7 @@ const Settings = {
             const autoDesc = document.createElement('div'); autoDesc.className = 'gobo-setting-desc'; autoDesc.style.cssText = 'font-size:12px; margin-left:28px;';
             autoDesc.textContent = 'When enabled, the extension will automatically compute back-to-back sailing chains for the Back-to-Back Builder. Disable this to avoid expensive calculations on large datasets.';
             autoArea.appendChild(autoLabel); autoArea.appendChild(autoDesc);
-            body.appendChild(autoArea);
+            panes.b2b.appendChild(autoArea);
 
             const sbsArea = document.createElement('div');
             sbsArea.className = 'gobo-setting-area';
@@ -356,7 +392,7 @@ const Settings = {
                     updateDrivingRangeState();
                 } catch(e){}
             });
-            body.appendChild(sbsArea);
+            panes.b2b.appendChild(sbsArea);
 
             // B2B Lag Days (independent setting)
             const lagArea = document.createElement('div');
@@ -365,7 +401,7 @@ const Settings = {
             lagArea.appendChild(lagLabel2);
             lagArea.appendChild(lagDesc);
             lagArea.appendChild(lagControlArea);
-            body.appendChild(lagArea);
+            panes.b2b.appendChild(lagArea);
 
             // Include Taxes & Fees in Price Filters setting
             const tAndFArea = document.createElement('div');
@@ -394,7 +430,7 @@ const Settings = {
             const tAndFDesc = document.createElement('div'); tAndFDesc.className = 'gobo-setting-desc'; tAndFDesc.style.cssText = 'font-size:12px; margin-left:28px;';
             tAndFDesc.textContent = 'If enabled, price-based filters will include Taxes & Fees when calculating matches and suggestions. Disable to use base prices only.';
             tAndFArea.appendChild(tAndFLabel); tAndFArea.appendChild(tAndFDesc);
-            body.appendChild(tAndFArea);
+            panes.pricing.appendChild(tAndFArea);
 
             // Solo Booking setting
             const soloArea = document.createElement('div');
@@ -423,7 +459,7 @@ const Settings = {
             const soloDesc = document.createElement('div'); soloDesc.className = 'gobo-setting-desc'; soloDesc.style.cssText = 'font-size:12px; margin-left:28px;';
             soloDesc.textContent = 'When enabled, price calculations use single-guest Taxes & Fees (instead of double occupancy).';
             soloArea.appendChild(soloLabel); soloArea.appendChild(soloDesc);
-            body.appendChild(soloArea);
+            panes.pricing.appendChild(soloArea);
 
             // Dark Mode setting
             const darkArea = document.createElement('div');
@@ -449,13 +485,13 @@ const Settings = {
             const darkDesc = document.createElement('div'); darkDesc.className = 'gobo-setting-desc'; darkDesc.style.cssText = 'font-size:12px; margin-left:28px;';
             darkDesc.textContent = 'Apply a darker theme to the offers table, modals, and panels.';
             darkArea.appendChild(darkLabel); darkArea.appendChild(darkDesc);
-            body.appendChild(darkArea);
+            panes.display.appendChild(darkArea);
 
-            // Date Format setting (YYYY-MM-DD vs MM/DD/YY)
-            Settings.buildDateFormatSetting(body);
-
-            // Layout setting (Table vs Cards)
-            Settings.buildLayoutModeSetting(body);
+            const pair = document.createElement('div');
+            pair.className = 'gobo-settings-pair';
+            Settings.buildDateFormatSetting(pair);
+            Settings.buildLayoutModeSetting(pair);
+            panes.display.appendChild(pair);
 
             // Column visibility settings
             const columnArea = document.createElement('div');
@@ -541,7 +577,7 @@ const Settings = {
             columnArea.appendChild(columnTitle);
             columnArea.appendChild(columnDesc);
             columnArea.appendChild(columnsGrid);
-            body.appendChild(columnArea);
+            panes.columns.appendChild(columnArea);
 
             // Footer-style close is not needed; header close button is used above
 

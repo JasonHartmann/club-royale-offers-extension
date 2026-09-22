@@ -59,15 +59,28 @@ const Breadcrumbs = {
         if (!row || !container || !tabs) return;
         if (tabs.querySelectorAll('.profile-tab').length <= 1) return;
         const cards = !!(table && table.classList.contains('gobo-layout-cards'));
-        let natural = Number(row.dataset.tabsNatural) || 0;
-        if (!row.classList.contains('gobo-profile-combo')) {
-            const w = tabs.scrollWidth;
-            if (w) {
-                natural = w;
-                row.dataset.tabsNatural = String(w);
-            }
+        const inCombo = row.classList.contains('gobo-profile-combo');
+        let want;
+        if (cards) {
+            want = true;
+        } else if (!inCombo) {
+            // Tabs are visible: switch to the dropdown the moment they would
+            // spill over the sign-out / settings buttons on the right.
+            const tabsRect = tabs.getBoundingClientRect();
+            const firstAction = row.querySelector('.gobo-top-signout, .gobo-top-gear, .gobo-profile-select');
+            const actionRect = firstAction && firstAction.getBoundingClientRect();
+            const actionLeft = actionRect ? actionRect.left : (row.getBoundingClientRect().right - 96);
+            want = tabsRect.right > actionLeft;
+            if (tabsRect.width) row.dataset.tabsNatural = String(Math.round(tabsRect.width));
+        } else {
+            // In the dropdown: widen back out only once the tabs + buttons fit.
+            const natural = Number(row.dataset.tabsNatural) || 0;
+            let actionW = 0;
+            row.querySelectorAll('.gobo-top-signout, .gobo-top-gear, .gobo-profile-select').forEach(el => {
+                actionW += el.offsetWidth;
+            });
+            want = (natural + actionW) > container.clientWidth;
         }
-        const want = cards || natural > container.clientWidth;
         const on = row.classList.contains('gobo-profile-combo');
         if (want && !on) {
             row.classList.add('gobo-profile-combo');
@@ -452,8 +465,11 @@ const Breadcrumbs = {
                         const labelContainer = document.createElement('div');
                         labelContainer.className = 'profile-tab-label-container';
                         labelContainer.appendChild(labelDiv);
-                        labelContainer.appendChild(loyaltyDiv);
-                        if (refreshedDiv) labelContainer.appendChild(refreshedDiv);
+                        const meta = document.createElement('div');
+                        meta.className = 'profile-tab-meta';
+                        meta.appendChild(loyaltyDiv);
+                        if (refreshedDiv) meta.appendChild(refreshedDiv);
+                        labelContainer.appendChild(meta);
                         btn.innerHTML = '';
                         btn.appendChild(labelContainer);
                         if (!p.isCombined && storageKey !== 'goob-favorites') {
@@ -734,6 +750,7 @@ const Breadcrumbs = {
                     tabsScroll.appendChild(tabs);
                     tabsRow.appendChild(tabsScroll);
                     this._bindComboResize();
+                    this._ensureTopActions(tabsRow);
                     const measure = () => {
                         if (!tabsRow.isConnected) return;
                         const w = tabs.scrollWidth;

@@ -409,13 +409,16 @@ body.gobo-dark .gobo-card-detail-val { color: #e2e8f0; }
 #gobo-offers-table .gobo-profile-combo {
     overflow: hidden !important;
     display: grid !important;
-    grid-template-columns: 1fr 44px 44px 44px;
-    gap: 0;
-    align-items: stretch;
+    grid-template-columns: 1fr 32px 32px 32px;
+    gap: 0 !important;
+    align-items: stretch !important;
     background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.22)) !important;
     border: 1px solid rgba(255,255,255,0.55) !important;
     border-radius: 14px;
     min-height: 0 !important;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
     white-space: normal;
     backdrop-filter: blur(20px) saturate(1.7);
     -webkit-backdrop-filter: blur(20px) saturate(1.7);
@@ -442,6 +445,8 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo {
     display: none !important;
 }
 #gobo-offers-table .gobo-profile-combo .profile-tab {
+    min-width: 0;
+    overflow: hidden;
     box-shadow: none !important;
     border: none !important;
     border-right: 1px solid rgba(148, 163, 184, 0.35) !important;
@@ -499,6 +504,7 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo.gobo-profile-menu-open .pr
     flex: 1;
     min-width: 0;
     text-align: left;
+    overflow: hidden !important;
 }
 #gobo-offers-table .gobo-profile-combo .profile-tab-label-container > div:first-child {
     display: flex !important;
@@ -506,12 +512,21 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo.gobo-profile-menu-open .pr
     min-width: 0;
 }
 #gobo-offers-table .gobo-profile-combo .profile-tab-label {
-    overflow: hidden;
+    overflow: hidden !important;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: 17px;
     font-weight: 700;
     letter-spacing: -0.01em;
+}
+#gobo-offers-table .gobo-profile-combo .profile-tab-meta {
+    overflow: hidden !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 100%;
 }
 #gobo-offers-table .gobo-profile-combo .profile-tab-loyalty,
 #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed {
@@ -547,8 +562,8 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed { c
 #gobo-offers-table .gobo-profile-combo .gobo-profile-select {
     grid-column: 2;
     grid-row: 1;
-    width: 44px;
-    min-width: 44px;
+    width: 32px;
+    min-width: 32px;
     min-height: 44px;
     margin: 0;
     padding: 0;
@@ -563,9 +578,10 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed { c
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 32px;
+    min-width: 32px;
+    height: auto !important;
+    align-self: stretch;
     margin: 0;
     padding: 0;
     border: none;
@@ -577,7 +593,7 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed { c
     cursor: pointer;
 }
 #gobo-offers-table .gobo-profile-combo .gobo-top-signout { grid-column: 3; }
-#gobo-offers-table .gobo-profile-combo .gobo-top-gear { grid-column: 4; }
+#gobo-offers-table .gobo-profile-combo .gobo-top-gear { grid-column: 4; width: 32px; min-width: 32px; }
 body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-signout,
 body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-gear {
     color: #94a3b8;
