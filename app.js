@@ -72,10 +72,12 @@
                         }).catch(() => {}));
                     }
                     await Promise.all(posts);
-                    const domain = '.' + window.location.hostname;
+                    const host = window.location.hostname;
+                    const base = host.replace(/^www\./, '');
                     for (const name of ['fe_sso', 'accessToken', 'loyaltyData']) {
-                        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + domain;
-                        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+                        for (const d of [base, '.' + base]) {
+                            document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + d;
+                        }
                     }
                     go();
                 } catch (e) {
