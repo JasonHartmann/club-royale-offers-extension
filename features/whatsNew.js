@@ -103,8 +103,8 @@
                 {
                     id:'cardLayout',
                     target:()=> document.querySelector('#gobo-setting-layout') || document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null,
-                    title:'Cards + Offer Flyers',
-                    body:'Settings → Layout now has a mobile card view with the same sort, B2B, and itinerary popups as the table. In Cards, tap Filters for a full-width search sheet, and tap an Offer Code to open a one-page flyer in a new tab (print or save from there).',
+                    title:'Cards + Offer Flyers (Beta)',
+                    body:'Beta — Settings → Layout now has a mobile card view with the same sort, B2B, and itinerary popups as the table. In Cards, tap Filters for a full-width search sheet, and tap an Offer Code to open a one-page flyer in a new tab (print or save from there). It is new and still in development, so expect rough edges and changes.',
                 },
                 {
                     id:'supportCoffee',
