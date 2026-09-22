@@ -44,9 +44,9 @@
         SignOut: {
             // Sign the user out of the RCL/Celebrity session and navigate to the sign-in page.
             // Replicates the site's own sign-out: revoke the OAuth token, log out the AEM session,
-            // clear the auth cookies, then navigate to <origin>/signin.
+            // clear the auth cookies, then navigate to the brand's signin page (relative path).
             async signOut() {
-                const go = () => { try { window.location.href = window.location.origin + '/signin'; } catch (e) {} };
+                const go = () => { try { window.location.href = window.location.pathname.replace(/[^/]*$/, 'signin'); } catch (e) {} };
                 try {
                     const getCookie = (name) => {
                         const m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
