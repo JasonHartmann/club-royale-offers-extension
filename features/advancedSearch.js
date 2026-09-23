@@ -979,6 +979,7 @@ const AdvancedSearch = {
             } catch(recErr){ /* ignore */ }
         } finally {
             try { delete state._advRendering; } catch(eClear){ /* ignore */ }
+            try { this._syncSaveButton(state); } catch(eSync){ /* ignore */ }
             try {
                 const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
                 const body = panel ? panel.querySelector('.adv-search-body') : null;
@@ -1458,11 +1459,9 @@ const AdvancedSearch = {
             saveBtn.type = 'button';
             saveBtn.className = 'adv-sets-save-btn';
             saveBtn.textContent = 'Save';
-            const hasSelected = !!(state._advAppliedSetId && sets.some(s => s.id === state._advAppliedSetId));
-            saveBtn.disabled = !hasSelected;
-            saveBtn.title = hasSelected ? 'Update the selected set with the current filters' : 'Select a set first to update it';
             saveBtn.addEventListener('click', () => this.updateSelectedFilterSet(state));
             header.appendChild(saveBtn);
+            state._advSaveBtn = saveBtn;
             const newBtn = document.createElement('button');
             newBtn.type = 'button';
             newBtn.className = 'adv-sets-new-btn';
@@ -1485,6 +1484,7 @@ const AdvancedSearch = {
                 this.deleteFilterSet(state, id);
             });
             header.appendChild(delBtn);
+            this._syncSaveButton(state);
         } catch (e) { this._logDebug('renderFilterSetsControls:error', e); }
     },
     saveCurrentFilterSet(state) {
@@ -1535,6 +1535,31 @@ const AdvancedSearch = {
             const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
             if (panel) this.buildHeader(state, panel);
         } catch (e) { this._logDebug('updateSelectedFilterSet:error', e); }
+    },
+    _syncSaveButton(state) {
+        try {
+            const saveBtn = state._advSaveBtn || document.querySelector('.adv-sets-save-btn');
+            if (!saveBtn) return;
+            const sets = this.loadFilterSets();
+            const selected = state._advAppliedSetId ? sets.find(s => s.id === state._advAppliedSetId) : null;
+            const committed = (state.advancedSearch && Array.isArray(state.advancedSearch.predicates) ? state.advancedSearch.predicates : [])
+                .filter(p => p && p.complete && p.fieldKey && p.operator);
+            let disabled, title;
+            if (!selected) { disabled = true; title = 'Select a set first to update it'; }
+            else if (!committed.length) { disabled = true; title = 'No active filters to save'; }
+            else if (this._predicatesMatch(committed, selected.predicates)) { disabled = true; title = 'No changes to save'; }
+            else { disabled = false; title = 'Update the selected set with the current filters'; }
+            saveBtn.disabled = disabled;
+            saveBtn.title = title;
+        } catch (e) { this._logDebug('_syncSaveButton:error', e); }
+    },
+    _predicatesMatch(a, b) {
+        if (!Array.isArray(a) || !Array.isArray(b)) return false;
+        if (a.length !== b.length) return false;
+        const key = (p) => JSON.stringify([p.fieldKey, p.operator, (p.values || []).slice().sort()]);
+        const aKeys = a.map(key).sort();
+        const bKeys = b.map(key).sort();
+        return aKeys.every((k, i) => k === bKeys[i]);
     },
     applyFilterSet(state, setId) {
         try {

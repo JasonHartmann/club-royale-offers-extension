@@ -153,15 +153,36 @@ describe('named filter sets', () => {
         expect(sets[0].predicates.map(p => p.fieldKey).sort()).toEqual(['class', 'nights']);
     });
 
-    test('the Save button is disabled until a set is selected, then enabled', () => {
+    test('the Save button is greyed out with no set, no filters, or no changes', () => {
         const header = document.createElement('div');
         header.className = 'adv-search-header';
         document.body.appendChild(header);
+        // no set selected -> greyed out
         AdvancedSearch.renderFilterSetsControls(state, header);
         expect(header.querySelector('.adv-sets-save-btn').disabled).toBe(true);
+        // create a set from the current filters -> they match, so "no changes" -> still greyed
         state.advancedSearch.predicates = [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }];
         AdvancedSearch.saveCurrentFilterSet(state);
         AdvancedSearch.renderFilterSetsControls(state, header);
+        expect(header.querySelector('.adv-sets-save-btn').disabled).toBe(true);
+        expect(header.querySelector('.adv-sets-save-btn').title).toBe('No changes to save');
+        // change a filter -> there are changes now -> enabled
+        state.advancedSearch.predicates = [{ id: 'b', fieldKey: 'nights', operator: 'greater than', values: ['9'], complete: true }];
+        AdvancedSearch._syncSaveButton(state);
         expect(header.querySelector('.adv-sets-save-btn').disabled).toBe(false);
+        expect(header.querySelector('.adv-sets-save-btn').title).toBe('Update the selected set with the current filters');
+    });
+
+    test('the Save button is greyed out when there are no active filters', () => {
+        const header = document.createElement('div');
+        header.className = 'adv-search-header';
+        document.body.appendChild(header);
+        state.advancedSearch.predicates = [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }];
+        AdvancedSearch.saveCurrentFilterSet(state); // a set is now selected
+        AdvancedSearch.renderFilterSetsControls(state, header);
+        state.advancedSearch.predicates = []; // clear the filters
+        AdvancedSearch._syncSaveButton(state);
+        expect(header.querySelector('.adv-sets-save-btn').disabled).toBe(true);
+        expect(header.querySelector('.adv-sets-save-btn').title).toBe('No active filters to save');
     });
 });
