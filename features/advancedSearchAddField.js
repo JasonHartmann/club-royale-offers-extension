@@ -109,7 +109,9 @@ const AdvancedSearchAddField = {
             const cardsHost = () => {
                 const t = document.getElementById('gobo-offers-table');
                 if (!t || !t.classList.contains('gobo-layout-cards')) return null;
-                if (!(typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 720px)').matches)) return null;
+                // The filter sheet's backdrop-filter is a containing block that
+                // breaks the popup's `position: fixed`, so it must live outside
+                // the panel at any width.
                 return t;
             };
             const openPopup = (focusFirst) => {
