@@ -89,6 +89,21 @@ describe('named filter sets', () => {
         expect(new Set(state.advancedSearch.predicates.map(p => p.id)).size).toBe(2);
     });
 
+    test('applyFilterSet marks the set applied and the dropdown pre-selects it', () => {
+        state.advancedSearch.predicates = [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }];
+        AdvancedSearch.saveCurrentFilterSet(state);
+        const setId = AdvancedSearch.loadFilterSets()[0].id;
+        AdvancedSearch.applyFilterSet(state, setId);
+        expect(state._advAppliedSetId).toBe(setId);
+        const header = document.createElement('div');
+        header.className = 'adv-search-header';
+        document.body.appendChild(header);
+        AdvancedSearch.renderFilterSetsControls(state, header);
+        const select = header.querySelector('.adv-sets-select');
+        expect(select.value).toBe(setId);
+        expect(select.selectedOptions[0].textContent).toBe('My set');
+    });
+
     test('deleteFilterSet removes the named set and keeps the rest', () => {
         state.advancedSearch.predicates = [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }];
         AdvancedSearch.saveCurrentFilterSet(state);

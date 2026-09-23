@@ -1416,6 +1416,7 @@ const AdvancedSearch = {
                 if (hadAny && !confirm('Clear all filters?')) return;
                 state.advancedSearch.predicates = [];
                 state._advPreviewPredicateId = null;
+                state._advAppliedSetId = null;
                 try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
                 this.renderPredicates(state);
                 this.updateBadge(state);
@@ -1449,6 +1450,10 @@ const AdvancedSearch = {
                 opt.textContent = s.name;
                 select.appendChild(opt);
             });
+            if (state._advAppliedSetId) {
+                const opt = select.querySelector('option[value="' + state._advAppliedSetId + '"]');
+                if (opt) select.value = state._advAppliedSetId;
+            }
             select.addEventListener('change', () => { if (select.value) this.applyFilterSet(state, select.value); });
             header.appendChild(select);
             const saveBtn = document.createElement('button');
@@ -1511,6 +1516,7 @@ const AdvancedSearch = {
             state.advancedSearch.predicates = (set.predicates || []).map(p => ({ id: this.newPredicateId(), fieldKey: p.fieldKey, operator: p.operator, values: (p.values || []).slice(), complete: true }));
             if (typeof set.includeTaxesAndFeesInPriceFilters === 'boolean') state.advancedSearch.includeTaxesAndFeesInPriceFilters = set.includeTaxesAndFeesInPriceFilters;
             state._advPreviewPredicateId = null;
+            state._advAppliedSetId = setId;
             this.renderPredicates(state);
             try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
             this.updateBadge(state);
@@ -1523,6 +1529,7 @@ const AdvancedSearch = {
         try {
             const remaining = this.loadFilterSets().filter(s => s.id !== setId);
             this.saveFilterSets(remaining);
+            if (state._advAppliedSetId === setId) state._advAppliedSetId = null;
             const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
             if (panel) this.buildHeader(state, panel);
         } catch (e) { this._logDebug('deleteFilterSet:error', e); }
