@@ -118,7 +118,7 @@ describe('named filter sets', () => {
         expect(remaining[0].name).toBe('My set');
     });
 
-    test('renderFilterSetsControls appends a select, save, and delete control listing the sets', () => {
+    test('renderFilterSetsControls appends a select, save, new, and delete control listing the sets', () => {
         state.advancedSearch.predicates = [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }];
         AdvancedSearch.saveCurrentFilterSet(state);
         const header = document.createElement('div');
@@ -127,8 +127,41 @@ describe('named filter sets', () => {
         AdvancedSearch.renderFilterSetsControls(state, header);
         expect(header.querySelector('.adv-sets-select')).not.toBeNull();
         expect(header.querySelector('.adv-sets-save-btn')).not.toBeNull();
+        expect(header.querySelector('.adv-sets-new-btn')).not.toBeNull();
         expect(header.querySelector('.adv-sets-del-btn')).not.toBeNull();
         const names = [...header.querySelector('.adv-sets-select').options].map(o => o.textContent);
         expect(names).toContain('My set');
+    });
+
+    test('updateSelectedFilterSet updates the selected set in place without prompting', () => {
+        state.advancedSearch.predicates = [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }];
+        AdvancedSearch.saveCurrentFilterSet(state); // creates "My set" and marks it applied
+        const setId = AdvancedSearch.loadFilterSets()[0].id;
+        expect(state._advAppliedSetId).toBe(setId);
+        state.advancedSearch.predicates = [
+            { id: 'x', fieldKey: 'class', operator: 'in', values: ['SUITE'], complete: true },
+            { id: 'y', fieldKey: 'nights', operator: 'less than', values: ['5'], complete: true },
+        ];
+        let prompted = false;
+        window.prompt = () => { prompted = true; return 'SHOULD NOT PROMPT'; };
+        AdvancedSearch.updateSelectedFilterSet(state);
+        expect(prompted).toBe(false);
+        const sets = AdvancedSearch.loadFilterSets();
+        expect(sets).toHaveLength(1);
+        expect(sets[0].id).toBe(setId);
+        expect(sets[0].predicates).toHaveLength(2);
+        expect(sets[0].predicates.map(p => p.fieldKey).sort()).toEqual(['class', 'nights']);
+    });
+
+    test('the Save button is disabled until a set is selected, then enabled', () => {
+        const header = document.createElement('div');
+        header.className = 'adv-search-header';
+        document.body.appendChild(header);
+        AdvancedSearch.renderFilterSetsControls(state, header);
+        expect(header.querySelector('.adv-sets-save-btn').disabled).toBe(true);
+        state.advancedSearch.predicates = [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }];
+        AdvancedSearch.saveCurrentFilterSet(state);
+        AdvancedSearch.renderFilterSetsControls(state, header);
+        expect(header.querySelector('.adv-sets-save-btn').disabled).toBe(false);
     });
 });

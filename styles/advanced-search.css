@@ -11,6 +11,8 @@
 .adv-sets-select { background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; border-radius:4px; padding:3px 6px; font-size:11px; font-weight:600; max-width:170px; cursor:pointer; }
 .adv-sets-save-btn { background:#2563eb; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
 .adv-sets-save-btn:hover { background:#1d4ed8; }
+.adv-sets-new-btn { background:#fff; color:#2563eb; border:1px solid #2563eb; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; }
+.adv-sets-new-btn:hover { background:#eff6ff; }
 .adv-sets-del-btn { background:#64748b; color:#fff; border:none; padding:4px 7px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; line-height:1; }
 .adv-sets-del-btn:hover { background:#475569; }
 .adv-sets-del-btn:disabled { opacity:0.4; cursor:default; }
@@ -110,6 +112,8 @@ body.gobo-dark .adv-search-header { border-bottom:1px solid rgba(148,163,184,0.2
 body.gobo-dark .adv-sets-select { background:#1e293b; color:#e2e8f0; border-color:rgba(148,163,184,0.3); }
 body.gobo-dark .adv-sets-del-btn { background:#475569; }
 body.gobo-dark .adv-sets-del-btn:hover { background:#334155; }
+body.gobo-dark .adv-sets-new-btn { background:#1e293b; color:#93c5fd; border-color:rgba(148,163,184,0.3); }
+body.gobo-dark .adv-sets-new-btn:hover { background:#334155; }
 body.gobo-dark .adv-predicate-box { background:#111827; border:1px solid rgba(148,163,184,0.2); color:#e2e8f0; }
 body.gobo-dark .adv-summary { color:#e2e8f0; }
 body.gobo-dark .adv-help-text { color:#94a3b8; }

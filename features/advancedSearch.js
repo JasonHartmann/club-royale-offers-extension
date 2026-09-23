@@ -1431,7 +1431,7 @@ const AdvancedSearch = {
     },
     renderFilterSetsControls(state, header) {
         try {
-            header.querySelectorAll('.adv-sets-select, .adv-sets-save-btn, .adv-sets-del-btn').forEach(el => el.remove());
+            header.querySelectorAll('.adv-sets-select, .adv-sets-save-btn, .adv-sets-new-btn, .adv-sets-del-btn').forEach(el => el.remove());
             const sets = this.loadFilterSets();
             const select = document.createElement('select');
             select.className = 'adv-sets-select';
@@ -1458,13 +1458,22 @@ const AdvancedSearch = {
             saveBtn.type = 'button';
             saveBtn.className = 'adv-sets-save-btn';
             saveBtn.textContent = 'Save';
-            saveBtn.title = 'Save current filters as a named set';
-            saveBtn.addEventListener('click', () => this.saveCurrentFilterSet(state));
+            const hasSelected = !!(state._advAppliedSetId && sets.some(s => s.id === state._advAppliedSetId));
+            saveBtn.disabled = !hasSelected;
+            saveBtn.title = hasSelected ? 'Update the selected set with the current filters' : 'Select a set first to update it';
+            saveBtn.addEventListener('click', () => this.updateSelectedFilterSet(state));
             header.appendChild(saveBtn);
+            const newBtn = document.createElement('button');
+            newBtn.type = 'button';
+            newBtn.className = 'adv-sets-new-btn';
+            newBtn.textContent = 'New';
+            newBtn.title = 'Save current filters as a new set';
+            newBtn.addEventListener('click', () => this.saveCurrentFilterSet(state));
+            header.appendChild(newBtn);
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'adv-sets-del-btn';
-            delBtn.textContent = '\u00d7';
+            delBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2V1.5C6 1.22 6.22 1 6.5 1H9.5C9.78 1 10 1.22 10 1.5V2M2 4H14M12.5 4V13.5C12.5 13.78 12.28 14 12 14H4C3.72 14 3.5 13.78 3.5 13.5V4M5.5 7V11M8 7V11M10.5 7V11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
             delBtn.title = 'Delete the set shown in the dropdown';
             delBtn.disabled = !sets.length;
             delBtn.addEventListener('click', () => {
@@ -1494,17 +1503,38 @@ const AdvancedSearch = {
             };
             const sets = this.loadFilterSets();
             const existing = sets.find(s => s.name === name);
+            let setId;
             if (existing) {
                 existing.predicates = payload.predicates;
                 existing.includeTaxesAndFeesInPriceFilters = payload.includeTaxesAndFeesInPriceFilters;
                 existing.savedAt = payload.savedAt;
+                setId = existing.id;
             } else {
-                sets.push(Object.assign({ id: this.newPredicateId(), name }, payload));
+                const newSet = Object.assign({ id: this.newPredicateId(), name }, payload);
+                sets.push(newSet);
+                setId = newSet.id;
             }
             this.saveFilterSets(sets);
+            state._advAppliedSetId = setId;
             const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
             if (panel) this.buildHeader(state, panel);
         } catch (e) { this._logDebug('saveCurrentFilterSet:error', e); }
+    },
+    updateSelectedFilterSet(state) {
+        try {
+            const committed = (state.advancedSearch && Array.isArray(state.advancedSearch.predicates) ? state.advancedSearch.predicates : [])
+                .filter(p => p && p.complete && p.fieldKey && p.operator);
+            if (!committed.length) { try { alert('No active filters to save.'); } catch(e){} return; }
+            const sets = this.loadFilterSets();
+            const selected = state._advAppliedSetId ? sets.find(s => s.id === state._advAppliedSetId) : null;
+            if (!selected) { try { alert('Select a set first.'); } catch(e){} return; }
+            selected.predicates = committed.map(p => ({ id: this.newPredicateId(), fieldKey: p.fieldKey, operator: p.operator, values: (p.values || []).slice(), complete: true }));
+            selected.includeTaxesAndFeesInPriceFilters = !!(state.advancedSearch && state.advancedSearch.includeTaxesAndFeesInPriceFilters);
+            selected.savedAt = Date.now();
+            this.saveFilterSets(sets);
+            const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
+            if (panel) this.buildHeader(state, panel);
+        } catch (e) { this._logDebug('updateSelectedFilterSet:error', e); }
     },
     applyFilterSet(state, setId) {
         try {
