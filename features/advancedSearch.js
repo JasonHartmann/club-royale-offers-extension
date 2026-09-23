@@ -1412,8 +1412,6 @@ const AdvancedSearch = {
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button'; clearBtn.className = 'adv-search-clear-btn'; clearBtn.textContent = 'Clear All';
             clearBtn.addEventListener('click', () => {
-                const hadAny = !!state.advancedSearch.predicates.length;
-                if (hadAny && !confirm('Clear all filters?')) return;
                 state.advancedSearch.predicates = [];
                 state._advPreviewPredicateId = null;
                 state._advAppliedSetId = null;
