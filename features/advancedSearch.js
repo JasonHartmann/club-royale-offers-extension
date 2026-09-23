@@ -53,6 +53,23 @@ const AdvancedSearch = {
     storageKey(profileKey) {
         return `advSearchPredicates::${profileKey || 'default'}`;
     },
+    FILTER_SETS_KEY: 'goboFilterSets',
+    loadFilterSets() {
+        try {
+            const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(this.FILTER_SETS_KEY) : localStorage.getItem(this.FILTER_SETS_KEY);
+            const arr = raw ? JSON.parse(raw) : null;
+            return Array.isArray(arr) ? arr.filter(s => s && s.id && s.name && Array.isArray(s.predicates)) : [];
+        } catch (e) { return []; }
+    },
+    saveFilterSets(sets) {
+        try {
+            const raw = JSON.stringify(sets || []);
+            if (typeof goboStorageSet === 'function') goboStorageSet(this.FILTER_SETS_KEY, raw); else localStorage.setItem(this.FILTER_SETS_KEY, raw);
+        } catch (e) { /* ignore */ }
+    },
+    newPredicateId() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    },
     persistPredicates(state) {
         try {
             if (!state) return;
@@ -1353,29 +1370,8 @@ const AdvancedSearch = {
                 panel.classList.add('adv-collapsed');
             }
             panel.classList.toggle('enabled', enabled);
-            let header = panel.querySelector('.adv-search-header');
-            if (!header) { header = document.createElement('div'); header.className = 'adv-search-header'; panel.appendChild(header); this._logDebug('scaffoldPanel:headerCreated'); }
-            header.innerHTML = '';
-            const clearBtn = document.createElement('button');
-            clearBtn.type = 'button'; clearBtn.className = 'adv-search-clear-btn'; clearBtn.textContent = 'Clear All';
-            clearBtn.addEventListener('click', () => {
-                const hadAny = !!state.advancedSearch.predicates.length;
-                if (hadAny && !confirm('Clear all filters?')) return;
-                state.advancedSearch.predicates = [];
-                state._advPreviewPredicateId = null;
-                try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
-                this.renderPredicates(state);
-                this.updateBadge(state);
-                try { const key = this.storageKey(state.selectedProfileKey); __advSession.removeItem(key); } catch(e){}
-                setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
-            });
-            header.appendChild(clearBtn);
-            // 'Include Taxes & Fees in Price Filters' has moved to Settings modal
-            const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
-            if (committedCount) {
-                const badge = document.createElement('span'); badge.className='adv-badge'; badge.textContent = committedCount + ' active'; header.appendChild(badge);
-            }
             state.advancedSearchPanel = panel;
+            this.buildHeader(state, panel);
             try {
                 const scheduleBuild = () => {
                     try { this.buildStaticFieldIndex(state); } catch(eIdx){ this._logDebug('buildStaticFieldIndex scaffold error', eIdx); }
@@ -1407,6 +1403,129 @@ const AdvancedSearch = {
             }
             this._logDebug('updateBadge:done', { committedCount });
         } catch(e){ this._logDebug('updateBadge:error', e); }
+    },
+    buildHeader(state, panel) {
+        try {
+            let header = panel.querySelector('.adv-search-header');
+            if (!header) { header = document.createElement('div'); header.className = 'adv-search-header'; panel.appendChild(header); }
+            header.innerHTML = '';
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button'; clearBtn.className = 'adv-search-clear-btn'; clearBtn.textContent = 'Clear All';
+            clearBtn.addEventListener('click', () => {
+                const hadAny = !!state.advancedSearch.predicates.length;
+                if (hadAny && !confirm('Clear all filters?')) return;
+                state.advancedSearch.predicates = [];
+                state._advPreviewPredicateId = null;
+                try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
+                this.renderPredicates(state);
+                this.updateBadge(state);
+                try { const key = this.storageKey(state.selectedProfileKey); __advSession.removeItem(key); } catch(e){}
+                setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
+            });
+            header.appendChild(clearBtn);
+            const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
+            if (committedCount) {
+                const badge = document.createElement('span'); badge.className='adv-badge'; badge.textContent = committedCount + ' active'; header.appendChild(badge);
+            }
+            this.renderFilterSetsControls(state, header);
+        } catch(e){ this._logDebug('buildHeader:error', e); }
+    },
+    renderFilterSetsControls(state, header) {
+        try {
+            header.querySelectorAll('.adv-sets-select, .adv-sets-save-btn, .adv-sets-del-btn').forEach(el => el.remove());
+            const sets = this.loadFilterSets();
+            const select = document.createElement('select');
+            select.className = 'adv-sets-select';
+            select.title = 'Apply a saved filter set';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = sets.length ? 'Saved sets…' : 'No saved sets';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            select.appendChild(placeholder);
+            sets.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                select.appendChild(opt);
+            });
+            select.addEventListener('change', () => { if (select.value) this.applyFilterSet(state, select.value); });
+            header.appendChild(select);
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'adv-sets-save-btn';
+            saveBtn.textContent = 'Save';
+            saveBtn.title = 'Save current filters as a named set';
+            saveBtn.addEventListener('click', () => this.saveCurrentFilterSet(state));
+            header.appendChild(saveBtn);
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'adv-sets-del-btn';
+            delBtn.textContent = '\u00d7';
+            delBtn.title = 'Delete the set shown in the dropdown';
+            delBtn.disabled = !sets.length;
+            delBtn.addEventListener('click', () => {
+                const id = select.value;
+                if (!id) { try { alert('Choose a set in the dropdown first.'); } catch(e){} return; }
+                const set = sets.find(s => s.id === id);
+                if (!set) return;
+                if (!confirm('Delete filter set "' + set.name + '"?')) return;
+                this.deleteFilterSet(state, id);
+            });
+            header.appendChild(delBtn);
+        } catch (e) { this._logDebug('renderFilterSetsControls:error', e); }
+    },
+    saveCurrentFilterSet(state) {
+        try {
+            const committed = (state.advancedSearch && Array.isArray(state.advancedSearch.predicates) ? state.advancedSearch.predicates : [])
+                .filter(p => p && p.complete && p.fieldKey && p.operator);
+            if (!committed.length) { try { alert('No active filters to save. Add some filters first.'); } catch(e){} return; }
+            let name;
+            try { name = prompt('Name this filter set:', 'My filters'); } catch(e){ name = 'My filters'; }
+            if (name === null) return; // user cancelled
+            name = (name || '').trim() || 'My filters';
+            const payload = {
+                predicates: committed.map(p => ({ id: this.newPredicateId(), fieldKey: p.fieldKey, operator: p.operator, values: (p.values || []).slice(), complete: true })),
+                includeTaxesAndFeesInPriceFilters: !!(state.advancedSearch && state.advancedSearch.includeTaxesAndFeesInPriceFilters),
+                savedAt: Date.now()
+            };
+            const sets = this.loadFilterSets();
+            const existing = sets.find(s => s.name === name);
+            if (existing) {
+                existing.predicates = payload.predicates;
+                existing.includeTaxesAndFeesInPriceFilters = payload.includeTaxesAndFeesInPriceFilters;
+                existing.savedAt = payload.savedAt;
+            } else {
+                sets.push(Object.assign({ id: this.newPredicateId(), name }, payload));
+            }
+            this.saveFilterSets(sets);
+            const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
+            if (panel) this.buildHeader(state, panel);
+        } catch (e) { this._logDebug('saveCurrentFilterSet:error', e); }
+    },
+    applyFilterSet(state, setId) {
+        try {
+            const set = this.loadFilterSets().find(s => s.id === setId);
+            if (!set) return;
+            state.advancedSearch.enabled = true;
+            state.advancedSearch.predicates = (set.predicates || []).map(p => ({ id: this.newPredicateId(), fieldKey: p.fieldKey, operator: p.operator, values: (p.values || []).slice(), complete: true }));
+            if (typeof set.includeTaxesAndFeesInPriceFilters === 'boolean') state.advancedSearch.includeTaxesAndFeesInPriceFilters = set.includeTaxesAndFeesInPriceFilters;
+            state._advPreviewPredicateId = null;
+            this.renderPredicates(state);
+            try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
+            this.updateBadge(state);
+            try { this.persistPredicates(state); } catch(e){}
+            const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
+            if (panel) this.buildHeader(state, panel);
+        } catch (e) { this._logDebug('applyFilterSet:error', e); }
+    },
+    deleteFilterSet(state, setId) {
+        try {
+            const remaining = this.loadFilterSets().filter(s => s.id !== setId);
+            this.saveFilterSets(remaining);
+            const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
+            if (panel) this.buildHeader(state, panel);
+        } catch (e) { this._logDebug('deleteFilterSet:error', e); }
     },
     renderCommittedFallback(state, bodyEl) {
         try {

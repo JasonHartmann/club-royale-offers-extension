@@ -8,6 +8,12 @@
 .adv-search-header .adv-badge { background:#2563eb; color:#fff; border-radius:12px; padding:2px 8px; font-size:11px; font-weight:600; }
 .adv-search-clear-btn { background:#dc2626; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
 .adv-search-clear-btn:hover { background:#b91c1c; }
+.adv-sets-select { background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; border-radius:4px; padding:3px 6px; font-size:11px; font-weight:600; max-width:170px; cursor:pointer; }
+.adv-sets-save-btn { background:#2563eb; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+.adv-sets-save-btn:hover { background:#1d4ed8; }
+.adv-sets-del-btn { background:#64748b; color:#fff; border:none; padding:4px 7px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; line-height:1; }
+.adv-sets-del-btn:hover { background:#475569; }
+.adv-sets-del-btn:disabled { opacity:0.4; cursor:default; }
 
 .adv-search-body { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; margin-top:6px; }
 .adv-predicate-box { display:flex; align-items:flex-start; gap:6px; padding:6px 8px; border-radius:6px; background:#f9fafb; color:#1f2937; font-size:12px; max-width:600px; position:relative; border:1px solid #e5e7eb; }
@@ -101,6 +107,9 @@
 /* Dark mode overrides */
 body.gobo-dark .advanced-search-panel { background:#0f172a; border:0; color:#e2e8f0; box-shadow:0 1px 2px rgba(0,0,0,0.35); }
 body.gobo-dark .adv-search-header { border-bottom:1px solid rgba(148,163,184,0.2); }
+body.gobo-dark .adv-sets-select { background:#1e293b; color:#e2e8f0; border-color:rgba(148,163,184,0.3); }
+body.gobo-dark .adv-sets-del-btn { background:#475569; }
+body.gobo-dark .adv-sets-del-btn:hover { background:#334155; }
 body.gobo-dark .adv-predicate-box { background:#111827; border:1px solid rgba(148,163,184,0.2); color:#e2e8f0; }
 body.gobo-dark .adv-summary { color:#e2e8f0; }
 body.gobo-dark .adv-help-text { color:#94a3b8; }
