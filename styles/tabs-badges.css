@@ -159,10 +159,22 @@ body.gobo-dark .profile-tabs .profile-tab.active {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  border-radius: 6px;
+  transition: background .15s ease, color .15s ease;
 }
 body.gobo-dark .breadcrumb-tabs-row .gobo-top-signout,
 body.gobo-dark .breadcrumb-tabs-row .gobo-top-gear {
   color: #94a3b8;
+}
+.breadcrumb-tabs-row .gobo-top-signout:hover,
+.breadcrumb-tabs-row .gobo-top-gear:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.06);
+}
+body.gobo-dark .breadcrumb-tabs-row .gobo-top-signout:hover,
+body.gobo-dark .breadcrumb-tabs-row .gobo-top-gear:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
 }
 .gobo-top-signout svg {
   width: 16px;
