@@ -87,6 +87,7 @@ body.gobo-dark .gobo-itinerary-footer { color:#94a3b8; }
   transition: color .15s ease-in-out, transform .15s ease-in-out;
 }
 .gobo-itinerary-refresh-inline {
+  display: none !important; /* hidden for now — refresh still available in the itinerary panel */
   position: static;
   top: auto;
   right: auto;
