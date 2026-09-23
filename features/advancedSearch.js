@@ -1453,7 +1453,7 @@ const AdvancedSearch = {
                 const opt = select.querySelector('option[value="' + state._advAppliedSetId + '"]');
                 if (opt) select.value = state._advAppliedSetId;
             }
-            select.addEventListener('change', () => { if (select.value) this.applyFilterSet(state, select.value); });
+            select.addEventListener('change', () => { const st = (typeof App !== 'undefined' && App.TableRenderer && App.TableRenderer.lastState) || state; if (select.value) this.applyFilterSet(st, select.value); });
             header.appendChild(select);
             const saveBtn = document.createElement('button');
             saveBtn.type = 'button';
