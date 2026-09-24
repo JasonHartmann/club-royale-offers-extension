@@ -488,7 +488,8 @@
             const body = document.createElement('div');
             body.className = 'gobo-card-body';
             body.appendChild(this._buildPriceBlock(anchor, urgent, state));
-            body.appendChild(this._buildSpec(state, group, parsed, sailing, isHiddenCol, merged.length));
+            const spec = this._buildSpec(state, group, parsed, sailing, isHiddenCol);
+            if (spec) body.appendChild(spec);
             const perks = this._buildPerkChips(state, group, isHiddenCol);
             if (perks) body.appendChild(perks);
 
@@ -551,24 +552,23 @@
             copy.appendChild(title);
             const sub = document.createElement('p');
             sub.className = 'gobo-hero-sub';
-            sub.textContent = sailing.shipName || '-';
+            const portName = (sailing.departurePort && sailing.departurePort.name) || '';
+            const nightsText = (parsed.nights && parsed.nights !== '-') ? (parsed.nights + (String(parsed.nights) === '1' ? ' night' : ' nights')) : '';
+            sub.textContent = [sailing.shipName || '-', portName, nightsText].filter(Boolean).join(' \u00b7 ');
             this._mark(sub, 'ship', state);
             copy.appendChild(sub);
             content.appendChild(copy);
-            const badge = document.createElement('span');
-            badge.className = 'gobo-hero-badge';
             if (urgent && urgent.cls === 'red') {
-                badge.classList.add('gobo-hero-badge-expiring');
+                const badge = document.createElement('span');
+                badge.className = 'gobo-hero-badge gobo-hero-badge-expiring';
                 badge.textContent = urgent.days < 0 ? 'Expired' : 'Expiring';
+                content.appendChild(badge);
             } else if (newest) {
-                badge.classList.add('gobo-hero-badge-newest');
+                const badge = document.createElement('span');
+                badge.className = 'gobo-hero-badge gobo-hero-badge-newest';
                 badge.textContent = 'Newest';
-            } else {
-                const n = parsed.nights;
-                badge.textContent = (n && n !== '-') ? (n + (String(n) === '1' ? ' night' : ' nights')) : 'Trip';
-                this._mark(badge, 'nights', state);
+                content.appendChild(badge);
             }
-            content.appendChild(badge);
             hero.appendChild(content);
             return hero;
         },
@@ -600,26 +600,20 @@
             return block;
         },
 
-        _buildSpec(state, group, parsed, sailing, isHiddenCol, dateCount) {
+        _buildSpec(state, group, parsed, sailing, isHiddenCol) {
+            if (isHiddenCol('offerName')) return null;
+            const first = state.sortedOffers[group.rows[0]];
+            const name = (first && first.offer.campaignOffer && first.offer.campaignOffer.name) || '';
+            if (!name || name === '-') return null;
             const spec = document.createElement('dl');
             spec.className = 'gobo-spec';
-            const add = (label, value, sortKey, extraClass) => {
-                if (value == null || value === '' || value === '-') return;
-                const dt = document.createElement('dt');
-                dt.textContent = label;
-                const dd = document.createElement('dd');
-                if (extraClass) dd.className = extraClass;
-                dd.textContent = value;
-                this._mark(dd, sortKey, state);
-                spec.appendChild(dt);
-                spec.appendChild(dd);
-            };
-            if (!isHiddenCol('nights') && parsed.nights && parsed.nights !== '-') {
-                add('Nights', parsed.nights + (String(parsed.nights) === '1' ? ' night' : ' nights'), 'nights');
-            }
-            if (!isHiddenCol('departurePort')) add('Port', (sailing.departurePort && sailing.departurePort.name) || '-', 'departurePort');
-            add('Dates', dateCount + (dateCount === 1 ? ' sailing' : ' sailings'));
-            if (!isHiddenCol('offerName')) add('Offer', (sailing && state.sortedOffers[group.rows[0]].offer.campaignOffer && state.sortedOffers[group.rows[0]].offer.campaignOffer.name) || '-', 'offerName');
+            const dt = document.createElement('dt');
+            dt.textContent = 'Offer';
+            const dd = document.createElement('dd');
+            dd.textContent = name;
+            this._mark(dd, 'offerName', state);
+            spec.appendChild(dt);
+            spec.appendChild(dd);
             return spec;
         },
 
