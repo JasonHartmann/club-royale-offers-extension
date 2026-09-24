@@ -1419,6 +1419,7 @@ const AdvancedSearch = {
                 try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
                 this.renderPredicates(state);
                 this.updateBadge(state);
+                try { this.buildHeader(state, panel); } catch(e){}
                 try { const key = this.storageKey(state.selectedProfileKey); __advSession.removeItem(key); } catch(e){}
                 setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
             });
