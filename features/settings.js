@@ -588,6 +588,10 @@ const Settings = {
             overlay.style.visibility = 'hidden';
             document.body.appendChild(backdrop);
             document.body.appendChild(overlay);
+            // Close on click of the dark area outside the modal (mirrors B2B overlay)
+            overlay.addEventListener('click', (ev) => {
+                if (ev.target === overlay) Modal.closeModal(overlay, backdrop, []);
+            });
             // allow ESC to close using Modal handlers
             Modal._container = overlay; Modal._backdrop = backdrop; Modal._escapeHandler = Modal.handleEscapeKey.bind(Modal);
             // Reveal overlay after a tick so layout can settle (mirrors B2B behavior)
