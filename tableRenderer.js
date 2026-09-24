@@ -1377,8 +1377,12 @@ const TableRenderer = {
             state.sortedOffers = [...filtered];
         }
         if (viewMode === 'table') {
-            // Skip full table rebuild if sort key, filter sig, and row count are unchanged
-            const renderSig = `${sortKey}|${state._filterCache?.sig ?? ''}|${state.sortedOffers.length}|${viewMode}|${layoutMode}`;
+            // Skip full rebuild if sort key, filter sig, row count, view/layout, and pricing flags are unchanged.
+            // Pricing flags (solo booking, include taxes&fees) change displayed prices without changing sort/filter/row count,
+            // so they must invalidate the signature or the cards (which have no in-place price patch) keep stale prices.
+            const soloSig = (App && App.SettingsStore && typeof App.SettingsStore.getSoloBooking === 'function') ? String(!!App.SettingsStore.getSoloBooking()) : '';
+            const tandfSig = (App && App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function') ? String(!!App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters()) : '';
+            const renderSig = `${sortKey}|${state._filterCache?.sig ?? ''}|${state.sortedOffers.length}|${viewMode}|${layoutMode}|${soloSig}|${tandfSig}`;
             if (showCards) {
                 // === Card view path ===
                 if (state._lastRenderSig === renderSig && state.cardContainer && state.cardContainer.children.length > 0) {
