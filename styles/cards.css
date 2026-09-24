@@ -698,3 +698,296 @@ body.gobo-dark #gobo-offers-table.gobo-layout-cards #advanced-search-panel.gobo-
     font-size: 16px;
     min-height: 44px;
 }
+
+/* Grouped trip cards */
+#gobo-offers-table.gobo-layout-cards .gobo-sailing-card {
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(160deg, rgba(255,255,255,0.78), rgba(255,255,255,0.55));
+    border: 1px solid rgba(15,23,42,0.10);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px -12px rgba(15,23,42,0.22);
+    backdrop-filter: blur(10px) saturate(1.35);
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-sailing-card {
+    background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+    border-color: rgba(255,255,255,0.09);
+    box-shadow: 0 18px 40px -18px rgba(0,0,0,0.7);
+}
+#gobo-offers-table.gobo-layout-cards .gobo-card-hero {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    aspect-ratio: auto;
+    height: auto;
+    min-height: 112px;
+    max-height: none;
+    background: linear-gradient(160deg, #0f172a 0%, #1e3a8a 55%, #38bdf8 100%);
+}
+#gobo-offers-table.gobo-layout-cards .gobo-card-hero-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-hero-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(2,6,23,0.05) 0%, rgba(2,6,23,0.72) 100%);
+}
+#gobo-offers-table.gobo-layout-cards .gobo-hero-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 28px 14px 12px;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-hero-copy { min-width: 0; }
+#gobo-offers-table.gobo-layout-cards .gobo-card-hero .gobo-card-ship {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 750;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: #fff;
+    text-shadow: 0 1px 10px rgba(0,0,0,0.45);
+    text-wrap: balance;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-hero-sub {
+    margin: 3px 0 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    text-shadow: 0 1px 8px rgba(0,0,0,0.45);
+}
+#gobo-offers-table.gobo-layout-cards .gobo-hero-badge {
+    flex: none;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+    background: rgba(2,6,23,0.35);
+    border: 1px solid rgba(255,255,255,0.28);
+    padding: 4px 9px;
+    border-radius: 999px;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-hero-badge-expiring { background: rgba(239,68,68,0.55); }
+#gobo-offers-table.gobo-layout-cards .gobo-hero-badge-newest { background: rgba(37,99,235,0.55); }
+#gobo-offers-table.gobo-layout-cards .gobo-card-body {
+    padding: 14px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-price-main {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-price-value {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-price-value { color: #f4f7fb; }
+#gobo-offers-table.gobo-layout-cards .gobo-price-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5b6472;
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-price-label { color: #9aa6b8; }
+#gobo-offers-table.gobo-layout-cards .gobo-urgency {
+    align-self: flex-start;
+    display: inline-flex;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 999px;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-urgency-red { color: #ef4444; background: rgba(239,68,68,0.13); }
+#gobo-offers-table.gobo-layout-cards .gobo-urgency-amber { color: #b45309; background: rgba(245,158,11,0.16); }
+#gobo-offers-table.gobo-layout-cards .gobo-urgency-green { color: #15803d; background: rgba(34,197,94,0.14); }
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-urgency-red { color: #f87171; }
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-urgency-amber { color: #fbbf24; }
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-urgency-green { color: #4ade80; }
+#gobo-offers-table.gobo-layout-cards .gobo-spec {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    row-gap: 8px;
+    column-gap: 12px;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-spec dt {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8a93a3;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-spec dd {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #0f172a;
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-spec dd { color: #e8edf5; }
+#gobo-offers-table.gobo-layout-cards .gobo-perks { display: flex; flex-wrap: wrap; gap: 6px; }
+#gobo-offers-table.gobo-layout-cards .gobo-perk {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #334155;
+    background: rgba(15,23,42,0.05);
+    border: 1px solid rgba(15,23,42,0.08);
+    padding: 4px 9px;
+    border-radius: 8px;
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-perk {
+    color: #c3ccda;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.08);
+}
+#gobo-offers-table.gobo-layout-cards .gobo-card-dates { border-top: 1px solid rgba(15,23,42,0.08); margin: 0 -14px -8px; }
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-card-dates { border-top-color: rgba(255,255,255,0.08); }
+#gobo-offers-table.gobo-layout-cards .gobo-month-toggle {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 9px 14px;
+    border: 0;
+    border-top: 1px solid rgba(15,23,42,0.08);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-month-toggle { border-top-color: rgba(255,255,255,0.08); }
+#gobo-offers-table.gobo-layout-cards .gobo-month-label { font-weight: 750; }
+#gobo-offers-table.gobo-layout-cards .gobo-month-count { color: #64748b; font-size: 13px; }
+#gobo-offers-table.gobo-layout-cards .gobo-month-from { margin-left: auto; font-weight: 750; font-variant-numeric: tabular-nums; }
+#gobo-offers-table.gobo-layout-cards .gobo-chev { color: #8a93a3; transition: transform .28s ease; }
+#gobo-offers-table.gobo-layout-cards .gobo-month-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .28s ease;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-month-panel.is-open { grid-template-rows: 1fr; }
+#gobo-offers-table.gobo-layout-cards .gobo-month-panel-inner { overflow: hidden; }
+#gobo-offers-table.gobo-layout-cards .gobo-date-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    align-items: center;
+    padding: 8px 14px;
+    border-top: 1px solid rgba(15,23,42,0.08);
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-date-row { border-top-color: rgba(255,255,255,0.08); }
+#gobo-offers-table.gobo-layout-cards .gobo-date-row.is-nested { background: rgba(15,23,42,0.03); }
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-date-row.is-nested { background: rgba(255,255,255,0.03); }
+#gobo-offers-table.gobo-layout-cards .gobo-date-row.gobo-b2b-selected { box-shadow: inset 3px 0 0 #3b82f6; background: rgba(59,130,246,0.10); }
+#gobo-offers-table.gobo-layout-cards .gobo-date-top,
+#gobo-offers-table.gobo-layout-cards .gobo-youpays {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: baseline;
+    min-width: 0;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-date-when { font-weight: 750; font-variant-numeric: tabular-nums; }
+#gobo-offers-table.gobo-layout-cards .gobo-date-room,
+#gobo-offers-table.gobo-layout-cards .gobo-card-date { color: #64748b; font-size: 13px; }
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-date-room,
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-card-date { color: #94a3b8; }
+#gobo-offers-table.gobo-layout-cards .gobo-youpay {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-youpay-val { font-weight: 800; color: #0f172a; }
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-youpay-val { color: #f4f7fb; }
+#gobo-offers-table.gobo-layout-cards .gobo-youpay-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #8a93a3;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-date-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#gobo-offers-table.gobo-layout-cards .gobo-itinerary-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-itinerary-link { color: #60a5fa; }
+#gobo-offers-table.gobo-layout-cards .gobo-itinerary-link:hover { text-decoration: underline; }
+#gobo-offers-table.gobo-layout-cards .gobo-card-footer {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    border-top: 1px solid rgba(15,23,42,0.08);
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-card-footer { border-top-color: rgba(255,255,255,0.08); }
+#gobo-offers-table.gobo-layout-cards .gobo-card-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 650;
+    color: #0f172a;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(15,23,42,0.12);
+    padding: 7px 11px;
+    border-radius: 9px;
+    cursor: pointer;
+}
+body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-card-code {
+    color: #dbe3ee;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+}
+#gobo-offers-table.gobo-layout-cards .gobo-sort-hit {
+    background: color-mix(in srgb, #facc15 42%, transparent);
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #eab308 80%, transparent);
+}
+#gobo-offers-table.gobo-layout-cards .gobo-card-hero .gobo-sort-hit {
+    padding: 0 4px;
+    color: #0f172a;
+    text-shadow: none;
+}
+@media (min-width: 900px) {
+    #gobo-offers-table.gobo-layout-cards .gobo-sailing-card { flex-direction: column; align-items: stretch; }
+    #gobo-offers-table.gobo-layout-cards .gobo-card-hero {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        aspect-ratio: auto;
+        min-height: 112px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    #gobo-offers-table.gobo-layout-cards .gobo-month-panel,
+    #gobo-offers-table.gobo-layout-cards .gobo-chev { transition: none; }
+}

@@ -13,6 +13,7 @@ const path = require('path');
 describe('cardView mobile card layout', () => {
     let CardView;
     let OfferPdfStub;
+    let ItineraryCacheStub;
     let AppStub;
     let container;
 
@@ -89,7 +90,7 @@ describe('cardView mobile card layout', () => {
             },
             SettingsStore: { getLayoutMode: () => 'cards' },
         };
-        const ItineraryCacheStub = { showModal: jest.fn() };
+        ItineraryCacheStub = { showModal: jest.fn() };
         const B2BUtilsStub = { buildB2BRowId: (offer, sailing, idx) => 'b2b-' + idx };
         OfferPdfStub = {
             heroFileUrl: () => '',
@@ -123,6 +124,53 @@ describe('cardView mobile card layout', () => {
         expect(container.querySelector('.gobo-card-code')).not.toBeNull();
         expect(container.querySelector('.gobo-card-date').textContent).toMatch(/Guest/);
         expect(container.querySelector('.gobo-card-details-toggle')).toBeNull();
+    });
+
+    test('same ship, destination, and offer share one card, and you-pay is not a delta', () => {
+        const offer = {
+            campaignOffer: {
+                offerCode: '26TOR604',
+                name: 'Play Your Way',
+                startDate: '2026-01-01',
+                reserveByDate: '2026-12-01',
+                category: 'TEST',
+            },
+        };
+        const sailing = (date) => ({
+            id: date,
+            shipName: 'Oasis of the Seas',
+            shipCode: 'OA',
+            departurePort: { name: 'Miami' },
+            totalNights: 7,
+            sailDate: date,
+            roomType: 'Interior',
+            isGTY: false,
+            itineraryDescription: '7 Night Western Caribbean',
+        });
+        const state = makeState({
+            sortedOffers: [
+                { offer, sailing: sailing('2026-11-16') },
+                { offer, sailing: sailing('2026-12-07') },
+            ],
+            currentSortColumn: 'interior',
+            currentSortOrder: 'asc',
+        });
+        CardView.render(container, state);
+        expect(container.querySelectorAll('.gobo-sailing-card')).toHaveLength(1);
+        expect(container.querySelectorAll('.gobo-date-row')).toHaveLength(2);
+        expect(container.querySelector('.gobo-perk')).toBeNull();
+        const amounts = [...container.querySelectorAll('.gobo-youpay-val')].map(node => node.textContent);
+        expect(amounts.length).toBeGreaterThan(0);
+        amounts.forEach(text => expect(text.startsWith('+')).toBe(false));
+        expect(container.querySelector('.gobo-youpay.gobo-sort-hit')).not.toBeNull();
+        expect(container.querySelector('.gobo-price-value.gobo-sort-hit')).not.toBeNull();
+    });
+
+    test('itinerary control opens the itinerary popup for that sailing', () => {
+        CardView.render(container, makeState());
+        const link = container.querySelector('.gobo-itinerary-link');
+        link.click();
+        expect(ItineraryCacheStub.showModal).toHaveBeenCalledWith('SD_TST_2026-11-16', link);
     });
 
     test('clicking the offer code button calls OfferPdf.open with that code', () => {

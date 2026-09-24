@@ -1401,8 +1401,8 @@ const TableRenderer = {
                         const cells = state.cardContainer.querySelectorAll('.gobo-sailing-card .b2b-depth-cell');
                         cells.forEach((cell) => {
                             try {
-                                const card = cell.closest('.gobo-sailing-card');
-                                const idx = (card && card.dataset && card.dataset.vsIdx !== undefined) ? Number(card.dataset.vsIdx) : NaN;
+                                const host = cell.closest('[data-vs-idx]');
+                                const idx = (host && host.dataset && host.dataset.vsIdx !== undefined) ? Number(host.dataset.vsIdx) : NaN;
                                 const pair = Number.isFinite(idx) ? state.sortedOffers[idx] : null;
                                 if (!pair) return;
                                 const depth = (pair.sailing && typeof pair.sailing.__b2bDepth === 'number') ? pair.sailing.__b2bDepth : 1;
