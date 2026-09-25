@@ -63,8 +63,8 @@ describe('offerPdf flyer grouping', () => {
         expect(sections[0].ships[0].itineraries[0].dates).toEqual(['2026-11-16', '2026-11-30', '2027-01-04', '2027-01-11']);
         expect(OfferPdf.formatDateGroups(sections[0].ships[0].itineraries[0].dates)).toEqual(['2026: 11/16, 11/30', '2027: 1/4, 1/11']);
         const cell = OfferPdf._dateCellHtml(sections[0].ships[0].itineraries[0].dates, '2026');
-        expect(cell).toContain('2026: 11/16, 11/30');
-        expect(cell).toContain('2027: 1/4, 1/11');
+        expect(cell).toContain('<span class="gobo-flyer-year">2026:</span> 11/16, 11/30');
+        expect(cell).toContain('<span class="gobo-flyer-year">2027:</span> 1/4, 1/11');
         expect(cell).toContain('gobo-flyer-yearline');
         expect(OfferPdf._dateCellHtml(['2026-11-16', '2026-11-30'], '2026')).toBe('<div>11/16, 11/30</div>');
     });

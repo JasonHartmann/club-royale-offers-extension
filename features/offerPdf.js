@@ -3,7 +3,7 @@
 
     const OFFER_PDF_CSS = `* { box-sizing: border-box; }
 html { background: #e7e2d6; }
-body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family: Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family: Barlow, 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 .gobo-flyer-exit { position: sticky; top: 0; z-index: 20; padding: 8px 16px; background: rgba(231,226,214,0.92); backdrop-filter: blur(8px); }
 .gobo-flyer-back { min-height: 44px; min-width: 44px; padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; font-size: 14px; font-family: inherit; cursor: pointer; }
 .gobo-flyer-sheet { max-width: 1360px; margin: 0 auto; padding: 8px 8px 24px; container-type: inline-size; container-name: flyer; }
@@ -11,7 +11,7 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 .gobo-flyer-gold { background: #c99600; color: #fff; text-align: center; padding: 26px 22px 16px; display: flex; flex-direction: column; align-items: center; gap: 13px; }
 .gobo-flyer-kicker { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; line-height: 1.35; }
 .gobo-flyer-suits { letter-spacing: 2px; font-weight: 500; font-size: 12px; }
-.gobo-flyer-h1 { margin: 2px 0 0; font-family: Oswald, Montserrat, 'Arial Narrow', sans-serif; font-size: 30px; font-weight: 600; line-height: 1.02; letter-spacing: 0.3px; text-transform: uppercase; }
+.gobo-flyer-h1 { margin: 2px 0 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 34px; font-weight: 700; line-height: 0.98; letter-spacing: 0.2px; text-transform: uppercase; }
 .gobo-flyer-h1-sub { display: block; margin-top: 7px; font-size: 0.58em; font-weight: 500; letter-spacing: 0.4px; line-height: 1.15; }
 .gobo-flyer-perk { width: min(100%, 292px); margin-top: 4px; }
 .gobo-flyer-perk-label { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; margin: 0 8px -11px; position: relative; z-index: 1; }
@@ -34,13 +34,13 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 .gobo-flyer-wordmark { margin-top: 10px; font-family: 'Libre Bodoni', 'Bodoni MT', Didot, Georgia, serif; font-weight: 600; font-size: 38px; line-height: 0.9; text-transform: uppercase; color: #fff; }
 .gobo-flyer-wm-top { display: block; letter-spacing: 0.16em; border-bottom: 1.5px solid rgba(255,255,255,0.9); padding: 0 10px 5px; }
 .gobo-flyer-wm-bot { display: block; margin-top: 5px; font-size: 0.62em; letter-spacing: 0.34em; font-weight: 500; }
-.gobo-flyer-sm { font-family: Montserrat, 'Segoe UI', sans-serif; font-size: 0.28em; font-weight: 700; letter-spacing: 0; vertical-align: super; margin-left: 1px; }
+.gobo-flyer-sm { font-family: Barlow, 'Helvetica Neue', sans-serif; font-size: 0.28em; font-weight: 700; letter-spacing: 0; vertical-align: super; margin-left: 1px; }
 .gobo-flyer-main { background: #fff; padding: 10px 12px 14px; min-width: 0; }
 .gobo-flyer-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .gobo-flyer-table th { position: sticky; top: 60px; z-index: 2; background: #fff; text-align: center; padding: 4px 6px 8px; font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #8b9096; }
 .gobo-flyer-table td { padding: 6px 8px; vertical-align: middle; background: #fff; }
 .gobo-flyer-star, .gobo-flyer-star-h { width: 26px; text-align: center; padding-left: 0; padding-right: 0; }
-.gobo-flyer-room td { background: #6d6e70; color: #fff; text-align: center; font-weight: 700; letter-spacing: 1.8px; font-size: 12px; padding: 5px 8px; }
+.gobo-flyer-room td { background: #6d6e70; color: #fff; text-align: center; font-family: 'Barlow Condensed', Barlow, sans-serif; font-weight: 700; letter-spacing: 1.6px; font-size: 15px; padding: 4px 8px; }
 .gobo-flyer-room[data-room="Interior"] td { background: #2a8a87; }
 .gobo-flyer-room[data-room="Ocean View"] td { background: #3e6d84; }
 .gobo-flyer-room[data-room="Suite"] td { background: #3c4a62; }
@@ -51,7 +51,8 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 .gobo-flyer-itin { color: #1f2937; line-height: 1.25; }
 .gobo-flyer-dates { color: #374151; line-height: 1.35; text-align: right; font-variant-numeric: tabular-nums; width: 34%; vertical-align: top; }
 .gobo-flyer-dates div { line-height: 1.35; }
-.gobo-flyer-yearline { display: block; text-align: left; padding-left: 6ch; text-indent: -6ch; }
+.gobo-flyer-yearline { display: grid; grid-template-columns: auto 1fr; column-gap: 0.35em; text-align: left; }
+.gobo-flyer-year { font-weight: 700; }
 .gobo-flyer-pd { display: inline-block; color: #d0127a; font-weight: 700; font-style: normal; font-size: 15px; line-height: 1; }
 .gobo-flyer-pd::before { content: '\\2731'; }
 .gobo-flyer-legend { margin-top: 8px; font-size: 11px; color: #4b5563; line-height: 1.4; }
@@ -68,8 +69,8 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 .gobo-flyer-coco, .gobo-flyer-hideaway { width: min(88%, 280px); color: #fff; text-align: center; padding: 14px 14px 12px; box-shadow: 0 8px 18px rgba(0,0,0,0.18); }
 .gobo-flyer-coco { background: #f0a63f; }
 .gobo-flyer-coco-kicker { font-size: 11px; font-weight: 700; letter-spacing: 2.4px; text-transform: uppercase; }
-.gobo-flyer-coco-logo { font-family: Allura, 'Segoe Script', cursive; font-size: 58px; line-height: 0.8; margin: 0 0 4px; font-weight: 400; }
-.gobo-flyer-cay { font-family: Montserrat, 'Segoe UI', sans-serif; font-weight: 800; font-size: 34px; letter-spacing: -0.5px; margin-left: 1px; }
+.gobo-flyer-coco-logo { font-family: Pacifico, Allura, 'Segoe Script', cursive; font-size: 42px; line-height: 0.85; margin: 2px 0 2px; font-weight: 400; }
+.gobo-flyer-cay { font-family: Barlow, 'Helvetica Neue', sans-serif; font-weight: 700; font-size: 34px; letter-spacing: -0.5px; margin-left: 1px; }
 
 .gobo-flyer-hideaway-title { font-family: Allura, 'Segoe Script', cursive; font-size: 48px; line-height: 0.9; }
 .gobo-flyer-legal { margin: 8px 2px 0; font-size: 9px; line-height: 1.35; color: #6b7280; }
@@ -458,9 +459,11 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
             const spansYears = lines.length > 1;
             return lines.map(line => {
                 const keepYear = spansYears || !headerYear;
-                const text = keepYear ? line : String(line).replace(/^\d{4}:\s*/, '');
-                const cls = keepYear ? ' class="gobo-flyer-yearline"' : '';
-                return `<div${cls}>${this._esc(text)}</div>`;
+                if (!keepYear) return `<div>${this._esc(String(line).replace(/^\d{4}:\s*/, ''))}</div>`;
+                const parts = String(line).match(/^(\d{4}:)\s*(.*)$/);
+                const year = parts ? parts[1] : line;
+                const rest = parts ? parts[2] : '';
+                return `<div class="gobo-flyer-yearline"><span class="gobo-flyer-year">${this._esc(year)}</span> ${this._esc(rest)}</div>`;
             }).join('');
         },
 
@@ -570,7 +573,7 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this._esc(offerCode)} \u2014 ${this._esc(name)}</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&amp;family=Libre+Bodoni:wght@500;600&amp;family=Montserrat:wght@500;600;700;800&amp;family=Oswald:wght@500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&amp;family=Barlow:ital,wght@0,400;0,600;0,700;1,600;1,700&amp;family=Barlow+Condensed:wght@600;700&amp;family=Libre+Bodoni:wght@500;600&amp;family=Pacifico&amp;display=swap">
 <style>${OFFER_PDF_CSS}</style>
 </head>
 <body class="gobo-flyer-root">
