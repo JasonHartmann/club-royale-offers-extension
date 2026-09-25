@@ -164,7 +164,7 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
             let dark = false;
             try { dark = !!App.SettingsStore.getDarkMode(); } catch(e) {}
             const heroUrl = this.heroFileUrl(offer);
-            const html = this.buildHtml(offer, pairs, { dark, heroUrl });
+            const html = this.buildHtml(offer, pairs, { dark, heroUrl, celebrity: this._isCelebrity(state) });
             try {
                 win.document.open();
                 win.document.write(html);
@@ -386,7 +386,10 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
             return false;
         },
 
-        _isCelebrity() {
+        _isCelebrity(state) {
+            const key = state && state.selectedProfileKey;
+            const m = key && String(key).match(/^gobo-([A-Za-z])-/);
+            if (m) return m[1].toUpperCase() === 'C';
             try {
                 return !!(typeof Utils !== 'undefined' && Utils && typeof Utils.isCelebrity === 'function' && Utils.isCelebrity());
             } catch(e) {
@@ -496,15 +499,15 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
             return `<div class="gobo-flyer-perk"><div class="gobo-flyer-perk-label"><span>${label}</span></div><div class="gobo-flyer-perk-box">${items}</div></div>`;
         },
 
-        _callHtml() {
-            if (this._isCelebrity()) {
+        _callHtml(celebrity) {
+            if (celebrity) {
                 return `<div class="gobo-flyer-call"><div>CALL YOUR BLUE CHIP CLUB<br>REPRESENTATIVE</div><div class="gobo-flyer-or">- OR -</div><div>CONTACT YOUR TRAVEL ADVISOR</div></div>`;
             }
             return `<div class="gobo-flyer-call"><div>CALL YOUR CASINO ROYALE<br>REPRESENTATIVE AT</div><div class="gobo-flyer-phone">1-888-561-2234</div><div class="gobo-flyer-or">- OR -</div><div>CONTACT YOUR TRAVEL ADVISOR OR<br>INDEPENDENT CASINO REPRESENTATIVE</div></div>`;
         },
 
-        _wordmarkHtml() {
-            if (this._isCelebrity()) return '<div class="gobo-flyer-wordmark"><span class="gobo-flyer-wm-top">Blue Chip</span><span class="gobo-flyer-wm-bot">Club</span></div>';
+        _wordmarkHtml(celebrity) {
+            if (celebrity) return '<div class="gobo-flyer-wordmark"><span class="gobo-flyer-wm-top">Blue Chip</span><span class="gobo-flyer-wm-bot">Club</span></div>';
             return '<div class="gobo-flyer-wordmark"><span class="gobo-flyer-wm-top">Casino<span class="gobo-flyer-sm">SM</span></span><span class="gobo-flyer-wm-bot">Royale</span></div>';
         },
 
@@ -561,7 +564,8 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
             const perks = this.flyerPerks(offer, pairs, hasPerfectDay);
             const anyGTY = sections.some(s => s.isGTY);
             const redeem = reserveByDate ? this._formatRedeemBy(reserveByDate) : '';
-            const who = this._isCelebrity() ? 'Blue Chip Club representative' : 'Casino Royale representative';
+            const celebrity = opts.celebrity != null ? !!opts.celebrity : this._isCelebrity();
+            const who = celebrity ? 'Blue Chip Club representative' : 'Casino Royale representative';
             const legal = `Itinerary details can vary by sailing date.${redeem ? ` Book by ${redeem}.` : ''} Taxes and fees are per person. Contact your ${who} with questions about this offer.`;
             const heroImg = (heroUrl || heroSrc)
                 ? `<img class="gobo-flyer-hero-img" alt=""${heroUrl ? ' data-hero="1"' : ''}${heroSrc ? ` src="${this._esc(heroSrc)}"` : ''}>`
@@ -588,13 +592,13 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
             ${this._perkHtml(perks)}
             ${taxes ? `<div class="gobo-flyer-taxes">${this._esc(taxes)}</div>` : ''}
             ${redeem ? `<div class="gobo-flyer-redeem">REDEEM BY ${this._esc(redeem)}</div>` : ''}
-            ${this._callHtml()}
+            ${this._callHtml(celebrity)}
             <div class="gobo-flyer-codeblock">
                 <div class="gobo-flyer-codelabel">YOUR UNIQUE OFFER CODE</div>
                 <div class="gobo-flyer-code">${this._esc(offerCode)}</div>
                 <div class="gobo-flyer-upgrade">ASK ABOUT YOUR UPGRADE OPTIONS WHEN YOU BOOK</div>
             </div>
-            ${this._wordmarkHtml()}
+            ${this._wordmarkHtml(celebrity)}
         </section>
         <section class="gobo-flyer-main" aria-label="Sailings">
             ${this._sailingTableHtml(sections, dateHeader.label, dateHeader.year)}

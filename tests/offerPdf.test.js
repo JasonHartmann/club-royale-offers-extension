@@ -146,4 +146,18 @@ describe('offerPdf flyer grouping', () => {
         const sections = OfferPdf.groupByCategory([makePair(sailing)]);
         expect(sections[0].ships[0].itineraries[0].perfectDay).toBe(true);
     });
+
+    test('flyer brand follows the profile key, not the site', () => {
+        expect(OfferPdf._isCelebrity({ selectedProfileKey: 'gobo-R-jason' })).toBe(false);
+        expect(OfferPdf._isCelebrity({ selectedProfileKey: 'gobo-C-jason' })).toBe(true);
+        const offer = { campaignOffer: { offerCode: '26RCL904', name: 'Test' } };
+        const pairs = [makePair(makeSailing(), '26RCL904')];
+        const royal = OfferPdf.buildHtml(offer, pairs, { celebrity: false });
+        expect(royal).toContain('Casino');
+        expect(royal).toContain('Royale');
+        expect(royal).not.toContain('Blue Chip');
+        const cel = OfferPdf.buildHtml(offer, pairs, { celebrity: true });
+        expect(cel).toContain('Blue Chip');
+        expect(cel).not.toContain('Casino');
+    });
 });
