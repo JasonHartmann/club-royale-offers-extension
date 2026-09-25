@@ -1,19 +1,25 @@
 /* Itinerary modal & link styles */
 
-.gobo-itinerary-link {
+.gobo-itinerary-link,
+.gobo-offer-view-link {
   color: #2563eb !important; /* same blue used for offer codes */
   text-decoration: underline;
   cursor: pointer;
 }
 .gobo-itinerary-link:hover,
-.gobo-itinerary-link:focus {
+.gobo-itinerary-link:focus,
+.gobo-offer-view-link:hover,
+.gobo-offer-view-link:focus {
   text-decoration: none;
   color: #1d4ed8 !important; /* slightly darker on hover */
 }
 
-body.gobo-dark .gobo-itinerary-link { color:#93c5fd !important; }
+body.gobo-dark .gobo-itinerary-link,
+body.gobo-dark .gobo-offer-view-link { color:#93c5fd !important; }
 body.gobo-dark .gobo-itinerary-link:hover,
-body.gobo-dark .gobo-itinerary-link:focus { color:#bfdbfe !important; }
+body.gobo-dark .gobo-itinerary-link:focus,
+body.gobo-dark .gobo-offer-view-link:hover,
+body.gobo-dark .gobo-offer-view-link:focus { color:#bfdbfe !important; }
 
 /* Backdrop */
 #gobo-itinerary-modal.gobo-itinerary-backdrop {

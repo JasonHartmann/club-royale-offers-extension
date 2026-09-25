@@ -231,6 +231,27 @@
                 itinCell.appendChild(a);
             }
         } catch(e){ /* ignore itinerary link wrapping errors */ }
+        try {
+            const code = (offer.campaignOffer && offer.campaignOffer.offerCode) ? String(offer.campaignOffer.offerCode).trim() : '';
+            const codeTd = row.querySelector('td[data-col="offerCode"]');
+            if (code && codeTd && !codeTd.querySelector('a.gobo-offer-view-link')) {
+                codeTd.textContent = '';
+                const a = document.createElement('a');
+                a.href = '#';
+                a.className = 'gobo-offer-view-link';
+                a.dataset.offerCode = code;
+                a.textContent = code;
+                a.setAttribute('aria-label', 'Open flyer for offer ' + code);
+                a.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    try {
+                        const state = App.TableRenderer && App.TableRenderer.lastState;
+                        if (window.OfferPdf && typeof OfferPdf.open === 'function') OfferPdf.open(code, state);
+                    } catch (e) {}
+                });
+                codeTd.appendChild(a);
+            }
+        } catch (e) {}
         // Attach favorite toggle handler only when not in favorites overview
         if (!isFavoritesView) {
             try {
