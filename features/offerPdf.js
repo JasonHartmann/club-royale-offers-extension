@@ -49,8 +49,9 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 .gobo-flyer-ship sup { font-style: normal; font-size: 0.62em; }
 .gobo-flyer-from { display: block; font-style: normal; font-weight: 400; color: #6b7280; font-size: 11px; margin-top: 1px; }
 .gobo-flyer-itin { color: #1f2937; line-height: 1.25; }
-.gobo-flyer-dates { color: #374151; line-height: 1.3; text-align: right; font-variant-numeric: tabular-nums; }
-.gobo-flyer-dates div { line-height: 1.3; }
+.gobo-flyer-dates { color: #374151; line-height: 1.35; text-align: right; font-variant-numeric: tabular-nums; width: 34%; vertical-align: top; }
+.gobo-flyer-dates div { line-height: 1.35; }
+.gobo-flyer-yearline { display: block; text-align: left; padding-left: 6ch; text-indent: -6ch; }
 .gobo-flyer-pd { display: inline-block; color: #d0127a; font-weight: 700; font-style: normal; font-size: 15px; line-height: 1; }
 .gobo-flyer-pd::before { content: '\\2731'; }
 .gobo-flyer-legend { margin-top: 8px; font-size: 11px; color: #4b5563; line-height: 1.4; }
@@ -69,8 +70,7 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 .gobo-flyer-coco-kicker { font-size: 11px; font-weight: 700; letter-spacing: 2.4px; text-transform: uppercase; }
 .gobo-flyer-coco-logo { font-family: Allura, 'Segoe Script', cursive; font-size: 58px; line-height: 0.8; margin: 0 0 4px; font-weight: 400; }
 .gobo-flyer-cay { font-family: Montserrat, 'Segoe UI', sans-serif; font-weight: 800; font-size: 34px; letter-spacing: -0.5px; margin-left: 1px; }
-.gobo-flyer-coco p, .gobo-flyer-hideaway p { margin: 4px 0 0; font-size: 12.5px; font-weight: 500; line-height: 1.3; }
-.gobo-flyer-hideaway { background: #48bfb5; }
+
 .gobo-flyer-hideaway-title { font-family: Allura, 'Segoe Script', cursive; font-size: 48px; line-height: 0.9; }
 .gobo-flyer-legal { margin: 8px 2px 0; font-size: 9px; line-height: 1.35; color: #6b7280; }
 @container flyer (min-width: 900px) {
@@ -455,9 +455,12 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
         _dateCellHtml(dates, headerYear) {
             const list = Array.isArray(dates) ? dates : [];
             const lines = this.formatDateGroups(list);
+            const spansYears = lines.length > 1;
             return lines.map(line => {
-                const text = headerYear ? String(line).replace(/^\d{4}:\s*/, '') : line;
-                return `<div>${this._esc(text)}</div>`;
+                const keepYear = spansYears || !headerYear;
+                const text = keepYear ? line : String(line).replace(/^\d{4}:\s*/, '');
+                const cls = keepYear ? ' class="gobo-flyer-yearline"' : '';
+                return `<div${cls}>${this._esc(text)}</div>`;
             }).join('');
         },
 
