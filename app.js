@@ -186,6 +186,21 @@
             },
             setLayoutMode(val) {
                 try { const s = this.getSettings() || {}; s.layoutMode = (val === 'cards') ? 'cards' : 'table'; this.setSettings(s); try { window.App.LayoutMode = s.layoutMode; } catch(e) {} } catch(e) {}
+            },
+            getCardSort() {
+                try {
+                    const s = this.getSettings() || {};
+                    const order = s.cardSortOrder;
+                    return { column: s.cardSortColumn || 'destination', order: (order === 'desc' || order === 'original') ? order : 'asc' };
+                } catch(e) { return { column: 'destination', order: 'asc' }; }
+            },
+            setCardSort(column, order) {
+                try {
+                    const s = this.getSettings() || {};
+                    s.cardSortColumn = column || 'destination';
+                    s.cardSortOrder = (order === 'desc' || order === 'original') ? order : 'asc';
+                    this.setSettings(s);
+                } catch(e) {}
             }
         },
         // runtime flag to control expensive B2B computations; default true for backwards compatibility

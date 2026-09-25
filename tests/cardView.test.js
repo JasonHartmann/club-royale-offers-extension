@@ -166,6 +166,19 @@ describe('cardView mobile card layout', () => {
         expect(container.querySelector('.gobo-price-value.gobo-sort-hit')).not.toBeNull();
     });
 
+    test('changing the card sort is saved', () => {
+        AppStub.SettingsStore.setCardSort = jest.fn();
+        AppStub.TableRenderer.updateView = jest.fn();
+        const prev = global.requestAnimationFrame;
+        global.requestAnimationFrame = (fn) => fn();
+        jest.useFakeTimers();
+        CardView._applySort(makeState(), 'ship', 'desc');
+        jest.runAllTimers();
+        jest.useRealTimers();
+        global.requestAnimationFrame = prev;
+        expect(AppStub.SettingsStore.setCardSort).toHaveBeenCalledWith('ship', 'desc');
+    });
+
     test('itinerary control opens the itinerary popup for that sailing', () => {
         CardView.render(container, makeState());
         const link = container.querySelector('.gobo-itinerary-link');

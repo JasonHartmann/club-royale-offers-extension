@@ -1253,6 +1253,7 @@ const TableRenderer = {
             }
             return true;
         };
+        this._applyLayoutSort(state);
         const { table, accordionContainer, currentSortOrder, currentSortColumn, viewMode, groupSortStates, thead, tbody, headers } = state;
         const allowSideBySidePref = (typeof this.getSideBySidePreference === 'function') ? this.getSideBySidePreference() : true;
         const autoRunB2B = (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') ? !!App.BackToBackAutoRun : true;
@@ -1633,6 +1634,28 @@ const TableRenderer = {
                 } catch(inner) { /* ignore single element errors */ }
             });
         } catch(e) { /* ignore overall errors */ }
+    },
+    _applyLayoutSort(state) {
+        if (!state) return;
+        let cards = false;
+        try {
+            cards = state.viewMode !== 'accordion' && App && App.SettingsStore && typeof App.SettingsStore.getLayoutMode === 'function' && App.SettingsStore.getLayoutMode() === 'cards';
+        } catch(e) {}
+        if (cards) {
+            if (!state._tableSort) state._tableSort = { column: state.currentSortColumn, order: state.currentSortOrder };
+            let card = { column: 'destination', order: 'asc' };
+            try {
+                if (typeof App.SettingsStore.getCardSort === 'function') card = App.SettingsStore.getCardSort() || card;
+            } catch(e) {}
+            state.currentSortColumn = card.column || 'destination';
+            state.currentSortOrder = card.order || 'asc';
+            return;
+        }
+        if (state._tableSort) {
+            state.currentSortColumn = state._tableSort.column;
+            state.currentSortOrder = state._tableSort.order;
+            delete state._tableSort;
+        }
     }
 };
 // Backward-compatible shim so existing callers (other modules) still work

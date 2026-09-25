@@ -203,12 +203,12 @@
             } catch(e) {}
 
             const doWork = () => {
+                try {
+                    if (App && App.SettingsStore && typeof App.SettingsStore.setCardSort === 'function') App.SettingsStore.setCardSort(key, order);
+                } catch(e) {}
+                if (!state._tableSort) state._tableSort = { column: state.currentSortColumn, order: state.currentSortOrder };
                 state.currentSortColumn = key;
                 state.currentSortOrder = order;
-                if (!state.groupingStack || state.groupingStack.length === 0) {
-                    state.baseSortColumn = key;
-                    state.baseSortOrder = order;
-                }
                 state.viewMode = 'table';
                 state.currentGroupColumn = null;
                 state.groupingStack = [];
