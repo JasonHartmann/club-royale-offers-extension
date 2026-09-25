@@ -1,5 +1,5 @@
 const ButtonManager = {
-    _TIER_LABELS: ['CURRENT CLUB TIER', 'CURRENT TIER'],
+    _TIER_LABELS: ['CURRENT CLUB TIER', 'CURRENT TIER', 'BLUE CHIP CLUB'],
     _followGen: 0,
 
     _findTierHeading() {

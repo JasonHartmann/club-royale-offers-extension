@@ -150,6 +150,20 @@ describe('ButtonManager placement', () => {
         expect(document.getElementById('gobo-offers-button').style.top).toBe('85px');
     });
 
+    test('places on the Celebrity BLUE CHIP CLUB heading', () => {
+        document.body.innerHTML = `<header id="hdr"></header><div class="heading1">BLUE CHIP CLUB</div>`;
+        const zero = { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, toJSON() {} };
+        document.getElementById('hdr').getBoundingClientRect = () => ({ ...zero, top: 0, bottom: 87, height: 87, width: 1440 });
+        document.querySelector('.heading1').getBoundingClientRect = () => ({ ...zero, top: 193, left: 1120, width: 496, height: 72, right: 1616, bottom: 265 });
+
+        ButtonManager.addButton();
+
+        const btn = document.getElementById('gobo-offers-button');
+        expect(btn.style.visibility).toBe('visible');
+        expect(btn.style.top).toBe('92px');
+        expect(btn.style.left).toBe('1368px');
+    });
+
     test('relocates a button that landed in the overlay', () => {
         document.body.innerHTML = `
             <h2>CURRENT CLUB TIER</h2>
