@@ -535,13 +535,16 @@
             copy.className = 'gobo-hero-copy';
             const title = document.createElement('h2');
             title.className = 'gobo-card-ship';
-            title.textContent = parsed.label || sailing.shipName || '-';
+            const byShip = state && state.currentSortColumn === 'ship';
+            const dest = parsed.label || sailing.shipName || '-';
+            const shipName = sailing.shipName || '-';
+            title.textContent = byShip ? shipName : dest;
             copy.appendChild(title);
             const sub = document.createElement('p');
             sub.className = 'gobo-hero-sub';
             const portName = (sailing.departurePort && sailing.departurePort.name) || '';
             const nightsText = (parsed.nights && parsed.nights !== '-') ? (parsed.nights + (String(parsed.nights) === '1' ? ' night' : ' nights')) : '';
-            sub.textContent = [sailing.shipName || '-', portName, nightsText].filter(Boolean).join(' \u00b7 ');
+            sub.textContent = [byShip ? dest : shipName, portName, nightsText].filter(Boolean).join(' \u00b7 ');
             copy.appendChild(sub);
             content.appendChild(copy);
             if (urgent && urgent.cls === 'red') {

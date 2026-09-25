@@ -198,6 +198,19 @@ describe('cardView mobile card layout', () => {
         global.requestAnimationFrame = prev;
     });
 
+    test('hero leads with destination or ship, whichever is the sort', () => {
+        CardView.render(container, makeState({ currentSortColumn: 'destination' }));
+        expect(container.querySelector('.gobo-card-ship').textContent).toBe('Test Destination');
+        expect(container.querySelector('.gobo-hero-sub').textContent).toMatch(/^Test Ship/);
+        container.innerHTML = '';
+        CardView.render(container, makeState({ currentSortColumn: 'ship' }));
+        expect(container.querySelector('.gobo-card-ship').textContent).toBe('Test Ship');
+        expect(container.querySelector('.gobo-hero-sub').textContent).toMatch(/^Test Destination/);
+        container.innerHTML = '';
+        CardView.render(container, makeState({ currentSortColumn: 'offerDate' }));
+        expect(container.querySelector('.gobo-card-ship').textContent).toBe('Test Destination');
+    });
+
     test('itinerary control opens the itinerary popup for that sailing', () => {
         CardView.render(container, makeState());
         const link = container.querySelector('.gobo-itinerary-link');
