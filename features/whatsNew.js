@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '18'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes, r14 B2B lag days, r15 date format setting, r16 updated offer retrieval, r17 2.3.5 performance fixes, r18 card layout + offer PDF
+    const TOUR_REVISION = '19'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes, r14 B2B lag days, r15 date format setting, r16 updated offer retrieval, r17 2.3.5 performance fixes, r18 card layout + offer PDF, r19 sign out
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
@@ -100,6 +100,12 @@
         },
         _initSteps(){
             this._steps = [
+                {
+                    id:'signOut',
+                    target:()=> document.querySelector('.gobo-top-signout'),
+                    title:'Sign Out',
+                    body:'The door icon on the right of the profile row signs you out of Royal Caribbean or Celebrity and returns you to the sign-in page. No confirmation.',
+                },
                 {
                     id:'cardLayout',
                     target:()=> { const layout = document.querySelector('#gobo-setting-layout'); if (layout) { const tab = document.querySelector('.gobo-settings-tab[data-pane="display"]'); if (tab && layout.closest('[hidden]')) tab.click(); return layout; } return document.querySelector('#gobo-settings-gear') || document.querySelector('.gobo-settings-gear') || null; },
