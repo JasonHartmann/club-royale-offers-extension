@@ -2,51 +2,101 @@
     'use strict';
 
     const OFFER_PDF_CSS = `* { box-sizing: border-box; }
-html { background: #f8fafc; }
-html.gobo-dark { background: #0f172a; }
-body { margin: 0; font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif; color: #0f172a; min-height: 100vh; position: relative; }
-html.gobo-dark body { color: #e2e8f0; }
-.gobo-flyer-aurora { position: fixed; inset: -20%; z-index: -1; pointer-events: none; filter: blur(40px); background: radial-gradient(60% 50% at 20% 30%, rgba(201,162,39,0.18), transparent 70%), radial-gradient(50% 40% at 80% 20%, rgba(56,189,248,0.14), transparent 70%), radial-gradient(60% 50% at 60% 80%, rgba(99,102,241,0.12), transparent 70%); animation: gobo-aurora 22s ease-in-out infinite alternate; }
-html.gobo-dark .gobo-flyer-aurora { background: radial-gradient(60% 50% at 20% 30%, rgba(250,204,21,0.16), transparent 70%), radial-gradient(50% 40% at 80% 20%, rgba(56,189,248,0.12), transparent 70%), radial-gradient(60% 50% at 60% 80%, rgba(129,140,248,0.18), transparent 70%); }
-@keyframes gobo-aurora { from { transform: translate3d(-2%,-1%,0) scale(1); } to { transform: translate3d(2%,2%,0) scale(1.06); } }
-@media (prefers-reduced-motion: reduce) { .gobo-flyer-aurora { animation: none; } }
-.gobo-flyer-exit { position: sticky; top: 0; z-index: 10; padding: 10px 16px; background: rgba(248,250,252,0.86); backdrop-filter: blur(8px); }
-html.gobo-dark .gobo-flyer-exit { background: rgba(15,23,42,0.86); }
-.gobo-flyer-back { min-height: 44px; min-width: 44px; padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; font-size: 14px; cursor: pointer; }
-html.gobo-dark .gobo-flyer-back { background: #1e293b; color: #e2e8f0; border-color: #334155; }
-.gobo-flyer-sheet { max-width: 8.5in; margin: 0 auto; padding: 16px; }
-.gobo-flyer-gold-band { background: #c9a227; color: #fff; border-radius: 8px; padding: 20px 24px; text-align: center; }
-.gobo-flyer-kicker { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #7a5b12; font-weight: 700; }
-.gobo-flyer-h1 { margin: 12px 0 8px; font-size: 22px; line-height: 1.3; color: #fff; text-transform: uppercase; }
-.gobo-flyer-taxes { font-size: 13px; font-weight: 600; color: #7a5b12; }
-.gobo-flyer-redeem { margin-top: 10px; font-size: 14px; font-weight: 700; color: #7a5b12; }
-.gobo-flyer-body-title { margin: 24px 0 12px; font-size: 20px; text-align: center; color: #d97706; text-transform: uppercase; }
-html.gobo-dark .gobo-flyer-body-title { color: #fbbf24; }
-.gobo-flyer-section { margin-bottom: 20px; }
-.gobo-flyer-section-header { background: #4b5563; color: #fff; padding: 8px 12px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; border-radius: 6px 6px 0 0; }
-html.gobo-dark .gobo-flyer-section-header { background: #334155; }
-.gobo-flyer-section-header[data-room="Suite"] { background: #6d28d9; }
-.gobo-flyer-section-header[data-room="Balcony"] { background: #1d4ed8; }
-.gobo-flyer-section-header[data-room="Ocean View"] { background: #4b5563; }
-.gobo-flyer-section-header[data-room="Interior"] { background: #4d7c5f; }
-html.gobo-dark .gobo-flyer-section-header[data-room="Suite"] { background: #7c3aed; }
-html.gobo-dark .gobo-flyer-section-header[data-room="Balcony"] { background: #2563eb; }
-html.gobo-dark .gobo-flyer-section-header[data-room="Ocean View"] { background: #475569; }
-html.gobo-dark .gobo-flyer-section-header[data-room="Interior"] { background: #5f8a6f; }
-.gobo-flyer-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.gobo-flyer-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #e2e8f0; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #64748b; }
-html.gobo-dark .gobo-flyer-table th { border-bottom-color: #334155; color: #94a3b8; }
-.gobo-flyer-table td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-html.gobo-dark .gobo-flyer-table td { border-bottom-color: #1e293b; }
-.gobo-flyer-ship { font-weight: 700; font-style: italic; }
-.gobo-flyer-from { display: block; font-weight: 400; color: #64748b; font-size: 12px; }
-html.gobo-dark .gobo-flyer-from { color: #94a3b8; }
-.gobo-flyer-dates div { white-space: nowrap; }
-.gobo-flyer-gty-footer { margin-top: 24px; padding: 16px; background: #f1f5f9; border-radius: 8px; font-size: 13px; }
-html.gobo-dark .gobo-flyer-gty-footer { background: #1e293b; }
-.gobo-flyer-gty-footer h3 { margin: 0 0 8px; font-size: 14px; text-transform: uppercase; }
-@page { size: letter; margin: 0.5in; }
-@media print { .gobo-flyer-exit, .gobo-flyer-aurora { display: none !important; } body { background: #fff; } }`;
+html { background: #e7e2d6; }
+body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family: Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+.gobo-flyer-exit { position: sticky; top: 0; z-index: 20; padding: 8px 16px; background: rgba(231,226,214,0.92); backdrop-filter: blur(8px); }
+.gobo-flyer-back { min-height: 44px; min-width: 44px; padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; font-size: 14px; font-family: inherit; cursor: pointer; }
+.gobo-flyer-sheet { max-width: 1360px; margin: 0 auto; padding: 8px 8px 24px; container-type: inline-size; container-name: flyer; }
+.gobo-flyer-tri { display: flex; flex-direction: column; background: #fff; box-shadow: 0 12px 32px rgba(15,23,42,0.14); }
+.gobo-flyer-gold { background: #c99600; color: #fff; text-align: center; padding: 26px 22px 16px; display: flex; flex-direction: column; align-items: center; gap: 13px; }
+.gobo-flyer-kicker { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; line-height: 1.35; }
+.gobo-flyer-suits { letter-spacing: 2px; font-weight: 500; font-size: 12px; }
+.gobo-flyer-h1 { margin: 2px 0 0; font-family: Oswald, Montserrat, 'Arial Narrow', sans-serif; font-size: 30px; font-weight: 600; line-height: 1.02; letter-spacing: 0.3px; text-transform: uppercase; }
+.gobo-flyer-h1-sub { display: block; margin-top: 7px; font-size: 0.58em; font-weight: 500; letter-spacing: 0.4px; line-height: 1.15; }
+.gobo-flyer-perk { width: min(100%, 292px); margin-top: 4px; }
+.gobo-flyer-perk-label { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; margin: 0 8px -11px; position: relative; z-index: 1; }
+.gobo-flyer-perk-label span { background: #c99600; padding: 0 8px; }
+.gobo-flyer-perk-label::before, .gobo-flyer-perk-label::after { content: ''; flex: 1; height: 1.5px; background: #fff; }
+.gobo-flyer-perk-box { border: 1.5px solid #fff; padding: 16px 12px 10px; display: flex; flex-direction: column; gap: 8px; }
+.gobo-flyer-perk-item { display: flex; align-items: center; justify-content: center; gap: 10px; text-align: left; }
+.gobo-flyer-umbrella { flex: 0 0 auto; }
+.gobo-flyer-perk-name { font-size: 13px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.2; }
+.gobo-flyer-perk-note { margin-top: 3px; font-size: 11px; font-weight: 500; font-style: italic; letter-spacing: 0; text-transform: none; line-height: 1.25; }
+.gobo-flyer-taxes { font-size: 11px; font-weight: 700; letter-spacing: 0.55px; line-height: 1.35; max-width: 280px; }
+.gobo-flyer-redeem { background: #fff; color: #c99600; font-size: 13px; font-weight: 800; letter-spacing: 0.6px; padding: 8px 18px; text-transform: uppercase; }
+.gobo-flyer-call { margin-top: auto; padding-top: 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.55px; line-height: 1.35; }
+.gobo-flyer-phone { margin: 6px 0 2px; font-size: 28px; font-weight: 800; letter-spacing: 0.3px; }
+.gobo-flyer-or { margin: 6px 0; font-size: 13px; font-weight: 600; letter-spacing: 1px; }
+.gobo-flyer-codeblock { width: min(100%, 292px); margin-top: 6px; }
+.gobo-flyer-codelabel { font-size: 13px; font-weight: 800; letter-spacing: 0.7px; margin-bottom: 8px; }
+.gobo-flyer-code { background: #fff; color: #c99600; font-size: 28px; font-weight: 800; letter-spacing: 1px; padding: 7px 12px; }
+.gobo-flyer-upgrade { background: #f65b37; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.35px; line-height: 1.25; padding: 7px 10px; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.13) 0 8px, rgba(255,255,255,0.04) 8px 16px); }
+.gobo-flyer-wordmark { margin-top: 10px; font-family: 'Libre Bodoni', 'Bodoni MT', Didot, Georgia, serif; font-weight: 600; font-size: 38px; line-height: 0.9; text-transform: uppercase; color: #fff; }
+.gobo-flyer-wm-top { display: block; letter-spacing: 0.16em; border-bottom: 1.5px solid rgba(255,255,255,0.9); padding: 0 10px 5px; }
+.gobo-flyer-wm-bot { display: block; margin-top: 5px; font-size: 0.62em; letter-spacing: 0.34em; font-weight: 500; }
+.gobo-flyer-sm { font-family: Montserrat, 'Segoe UI', sans-serif; font-size: 0.28em; font-weight: 700; letter-spacing: 0; vertical-align: super; margin-left: 1px; }
+.gobo-flyer-main { background: #fff; padding: 10px 12px 14px; min-width: 0; }
+.gobo-flyer-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.gobo-flyer-table th { position: sticky; top: 60px; z-index: 2; background: #fff; text-align: center; padding: 4px 6px 8px; font-size: 11px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: #8b9096; }
+.gobo-flyer-table td { padding: 6px 8px; vertical-align: middle; background: #fff; }
+.gobo-flyer-star, .gobo-flyer-star-h { width: 26px; text-align: center; padding-left: 0; padding-right: 0; }
+.gobo-flyer-room td { background: #6d6e70; color: #fff; text-align: center; font-weight: 700; letter-spacing: 1.8px; font-size: 12px; padding: 5px 8px; }
+.gobo-flyer-room[data-room="Interior"] td { background: #2a8a87; }
+.gobo-flyer-room[data-room="Ocean View"] td { background: #3e6d84; }
+.gobo-flyer-room[data-room="Suite"] td { background: #3c4a62; }
+.gobo-flyer-root tr.gobo-flyer-band td { background: #f3f3f3; }
+.gobo-flyer-table td.gobo-flyer-ship { font-weight: 700; font-style: italic; color: #1f2937; line-height: 1.2; vertical-align: top; width: 34%; }
+.gobo-flyer-ship sup { font-style: normal; font-size: 0.62em; }
+.gobo-flyer-from { display: block; font-style: normal; font-weight: 400; color: #6b7280; font-size: 11px; margin-top: 1px; }
+.gobo-flyer-itin { color: #1f2937; line-height: 1.25; }
+.gobo-flyer-dates { color: #374151; line-height: 1.3; text-align: right; font-variant-numeric: tabular-nums; }
+.gobo-flyer-dates div { line-height: 1.3; }
+.gobo-flyer-pd { display: inline-block; color: #d0127a; font-weight: 700; font-style: normal; font-size: 15px; line-height: 1; }
+.gobo-flyer-pd::before { content: '\\2731'; }
+.gobo-flyer-legend { margin-top: 8px; font-size: 11px; color: #4b5563; line-height: 1.4; }
+.gobo-flyer-legend-line { margin-top: 2px; }
+.gobo-flyer-legend .gobo-flyer-pd { font-size: 13px; margin-right: 4px; }
+.gobo-flyer-gty { margin-top: 14px; font-size: 12px; color: #374151; line-height: 1.4; }
+.gobo-flyer-gty h3 { margin: 0 0 4px; font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; }
+.gobo-flyer-gty p { margin: 0; }
+.gobo-flyer-hero { position: relative; display: flex; min-height: 520px; overflow: hidden; background: #0e2a32; }
+.gobo-flyer-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 28%; }
+.gobo-flyer-hero-cards { position: relative; z-index: 1; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; align-items: center; width: 100%; padding: 18px 14px 22px; gap: 16px; }
+.gobo-flyer-hero:not(.has-cards) .gobo-flyer-hero-cards { display: none; }
+.gobo-flyer-hero:not(.has-cards):not(:has(img)) { display: none; }
+.gobo-flyer-coco, .gobo-flyer-hideaway { width: min(88%, 280px); color: #fff; text-align: center; padding: 14px 14px 12px; box-shadow: 0 8px 18px rgba(0,0,0,0.18); }
+.gobo-flyer-coco { background: #f0a63f; }
+.gobo-flyer-coco-kicker { font-size: 11px; font-weight: 700; letter-spacing: 2.4px; text-transform: uppercase; }
+.gobo-flyer-coco-logo { font-family: Allura, 'Segoe Script', cursive; font-size: 58px; line-height: 0.8; margin: 0 0 4px; font-weight: 400; }
+.gobo-flyer-cay { font-family: Montserrat, 'Segoe UI', sans-serif; font-weight: 800; font-size: 34px; letter-spacing: -0.5px; margin-left: 1px; }
+.gobo-flyer-coco p, .gobo-flyer-hideaway p { margin: 4px 0 0; font-size: 12.5px; font-weight: 500; line-height: 1.3; }
+.gobo-flyer-hideaway { background: #48bfb5; }
+.gobo-flyer-hideaway-title { font-family: Allura, 'Segoe Script', cursive; font-size: 48px; line-height: 0.9; }
+.gobo-flyer-legal { margin: 8px 2px 0; font-size: 9px; line-height: 1.35; color: #6b7280; }
+@container flyer (min-width: 900px) {
+  .gobo-flyer-tri { flex-direction: row; align-items: flex-start; }
+  .gobo-flyer-gold, .gobo-flyer-hero { position: sticky; top: 60px; height: calc(100vh - 76px); overflow: auto; }
+  .gobo-flyer-gold { flex: 0 0 27%; }
+  .gobo-flyer-main { flex: 1 1 auto; }
+  .gobo-flyer-hero { flex: 0 0 30%; min-height: 0; }
+}
+@media (min-width: 900px) {
+  .gobo-flyer-tri { flex-direction: row; align-items: flex-start; }
+  .gobo-flyer-gold, .gobo-flyer-hero { position: sticky; top: 60px; height: calc(100vh - 76px); overflow: auto; }
+  .gobo-flyer-gold { flex: 0 0 27%; }
+  .gobo-flyer-main { flex: 1 1 auto; }
+  .gobo-flyer-hero { flex: 0 0 30%; min-height: 0; }
+}
+@page { size: landscape; margin: 0.3in; }
+@media print {
+  .gobo-flyer-exit { display: none !important; }
+  html, body.gobo-flyer-root { background: #fff; }
+  .gobo-flyer-sheet { max-width: none; padding: 0; }
+  .gobo-flyer-tri { flex-direction: row !important; align-items: stretch !important; box-shadow: none; }
+  .gobo-flyer-gold, .gobo-flyer-hero { position: static !important; height: auto !important; overflow: visible !important; }
+  .gobo-flyer-hero { min-height: 640px; }
+  .gobo-flyer-gold, .gobo-flyer-hero, .gobo-flyer-room td, .gobo-flyer-coco, .gobo-flyer-hideaway, .gobo-flyer-upgrade, .gobo-flyer-redeem, tr.gobo-flyer-band td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}`;
 
     const _heroCache = new Map();
 
@@ -112,13 +162,27 @@ html.gobo-dark .gobo-flyer-gty-footer { background: #1e293b; }
             const offer = pairs[0].offer;
             let dark = false;
             try { dark = !!App.SettingsStore.getDarkMode(); } catch(e) {}
-            const html = this.buildHtml(offer, pairs, { dark });
+            const heroUrl = this.heroFileUrl(offer);
+            const html = this.buildHtml(offer, pairs, { dark, heroUrl });
             try {
                 win.document.open();
                 win.document.write(html);
                 win.document.close();
                 if (!win.document.title) win.document.title = `${offerCode} \u2014 ${offer.campaignOffer.name}`;
             } catch(e) {}
+            if (heroUrl) {
+                this.heroSrc(heroUrl).then(src => {
+                    try {
+                        const imgs = win.document.querySelectorAll('.gobo-flyer-hero-img');
+                        imgs.forEach(img => {
+                            if (!src) return;
+                            img.addEventListener('error', () => { try { img.remove(); } catch(err) {} });
+                            img.src = src;
+                            img.hidden = false;
+                        });
+                    } catch(e) {}
+                }).catch(() => {});
+            }
             try { win.opener = null; } catch(e) {}
         },
 
@@ -176,9 +240,10 @@ html.gobo-dark .gobo-flyer-gty-footer { background: #1e293b; }
                     if (!ships.has(shipKey)) ships.set(shipKey, { ship: sailing.shipName, port, itineraries: new Map() });
                     const ship = ships.get(shipKey);
                     const itinKey = `${nights}|${itinerary}`;
-                    if (!ship.itineraries.has(itinKey)) ship.itineraries.set(itinKey, { nights, itinerary, dates: new Set() });
+                    if (!ship.itineraries.has(itinKey)) ship.itineraries.set(itinKey, { nights, itinerary, dates: new Set(), perfectDay: false });
                     const itin = ship.itineraries.get(itinKey);
                     if (sailing.sailDate) itin.dates.add(String(sailing.sailDate).trim().slice(0, 10));
+                    if (this.visitsPerfectDay(sailing)) itin.perfectDay = true;
                 }
                 const shipList = Array.from(ships.values()).map(s => ({
                     ship: s.ship,
@@ -187,6 +252,7 @@ html.gobo-dark .gobo-flyer-gty-footer { background: #1e293b; }
                         nights: i.nights,
                         itinerary: i.itinerary,
                         dates: Array.from(i.dates).sort(),
+                        perfectDay: !!i.perfectDay,
                     })),
                 }));
                 result.push({ room, title, isGTY, ships: shipList });
@@ -276,79 +342,267 @@ html.gobo-dark .gobo-flyer-gty-footer { background: #1e293b; }
             }
         },
 
+        _esc(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        },
+
+        _textHitsPerfectDay(text) {
+            return /perfect\s*day|coco\s*cay|cococay/i.test(String(text || ''));
+        },
+
+        // A sailing "goes there" when its own title says so, or the cached
+        // itinerary lists Perfect Day / CocoCay as a port. Marketing for that
+        // island is omitted otherwise.
+        visitsPerfectDay(sailing) {
+            if (!sailing) return false;
+            const fields = [
+                sailing.itineraryName,
+                sailing.itineraryDescription,
+                sailing.sailingType && sailing.sailingType.name,
+            ];
+            if (fields.some(text => this._textHitsPerfectDay(text))) return true;
+            try {
+                if (typeof ItineraryCache === 'undefined' || !ItineraryCache || typeof ItineraryCache.getByShipDate !== 'function') return false;
+                const date = sailing.sailDate ? String(sailing.sailDate).trim().slice(0, 10) : '';
+                const entry = ItineraryCache.getByShipDate(sailing.shipCode, date);
+                if (!entry) return false;
+                if (this._textHitsPerfectDay(entry.portSequence) || this._textHitsPerfectDay(entry.itineraryDescription) || this._textHitsPerfectDay(entry.destinationName) || this._textHitsPerfectDay(entry.itineraryName)) return true;
+                const days = Array.isArray(entry.days) ? entry.days : [];
+                for (const day of days) {
+                    const ports = Array.isArray(day && day.ports) ? day.ports : [];
+                    for (const stop of ports) {
+                        const port = (stop && (stop.port || stop)) || {};
+                        if (this._textHitsPerfectDay(port.name || port.portName)) return true;
+                        const code = String(port.code || port.portCode || '').toUpperCase();
+                        if (code === 'CCO' || code === 'PCC') return true;
+                    }
+                }
+            } catch(e) {}
+            return false;
+        },
+
+        _isCelebrity() {
+            try {
+                return !!(typeof Utils !== 'undefined' && Utils && typeof Utils.isCelebrity === 'function' && Utils.isCelebrity());
+            } catch(e) {
+                return false;
+            }
+        },
+
+        _kickerText(offer) {
+            let label = String((offer && offer.campaignOffer && offer.campaignOffer.name) || 'Offer').trim() || 'Offer';
+            if (!/offer$/i.test(label)) label += ' Offer';
+            return 'YOUR ' + label.toUpperCase();
+        },
+
+        _headline(offer) {
+            const co = (offer && offer.campaignOffer) || {};
+            return String(co.description || co.name || '').trim();
+        },
+        _headlineHtml(offer) {
+            const text = this._headline(offer);
+            const plus = text.match(/^([\s\S]+?)\s*\+\s*([\s\S]+)$/);
+            if (!plus) return this._esc(text);
+            return `${this._esc(plus[1])}<span class="gobo-flyer-h1-sub">+ ${this._esc(plus[2])}</span>`;
+        },
+
+        flyerPerks(offer, pairs, hasPerfectDay) {
+            const names = [];
+            const seen = new Set();
+            const add = (name) => {
+                const n = String(name || '').trim();
+                if (!n || n === '-') return;
+                const key = n.toLowerCase();
+                if (seen.has(key)) return;
+                if (/hideaway\s*beach/i.test(n) && !hasPerfectDay) return;
+                seen.add(key);
+                names.push(n);
+            };
+            const codes = offer && offer.campaignOffer && offer.campaignOffer.perkCodes;
+            if (Array.isArray(codes)) {
+                codes.forEach(p => add(typeof p === 'string' ? p : (p && (p.perkName || p.perkCode))));
+            }
+            (pairs || []).forEach(pair => {
+                const sailing = pair && pair.sailing;
+                if (!sailing) return;
+                const bonus = sailing.nextCruiseBonusPerkCode || sailing.nextCruiseBonus;
+                if (bonus) add(typeof bonus === 'string' ? bonus : (bonus.perkName || bonus.perkCode));
+                if (Array.isArray(sailing.perks)) {
+                    sailing.perks.forEach(p => add(typeof p === 'string' ? p : (p && (p.perkName || p.perkCode))));
+                }
+            });
+            return names;
+        },
+
+        _datesHeader(pairs) {
+            const years = new Set();
+            (pairs || []).forEach(pair => {
+                const raw = pair && pair.sailing && pair.sailing.sailDate;
+                const year = raw ? String(raw).trim().slice(0, 4) : '';
+                if (/^\d{4}$/.test(year)) years.add(year);
+            });
+            if (years.size === 1) {
+                const year = [...years][0];
+                return { label: year + ' DATES', year };
+            }
+            return { label: 'DATES', year: '' };
+        },
+
+        _dateCellHtml(dates, headerYear) {
+            const list = Array.isArray(dates) ? dates : [];
+            const lines = this.formatDateGroups(list);
+            return lines.map(line => {
+                const text = headerYear ? String(line).replace(/^\d{4}:\s*/, '') : line;
+                return `<div>${this._esc(text)}</div>`;
+            }).join('');
+        },
+
+        _itinLabel(itin) {
+            let dest = String((itin && itin.itinerary) || '').trim().replace(/\s+cruises?$/i, '').trim();
+            if (dest && dest === dest.toUpperCase() && /[A-Z]/.test(dest)) {
+                dest = dest.toLowerCase().replace(/(^|[^a-z])([a-z])/g, (m, lead, ch) => lead + ch.toUpperCase());
+            }
+            dest = dest.replace(/\bCococay\b/g, 'CocoCay').replace(/\bCoco Cay\b/gi, 'CocoCay');
+            const nights = itin && itin.nights;
+            if (nights !== undefined && nights !== null && String(nights) !== '' && String(nights) !== '-') {
+                return `${nights} Night ${dest}`.trim();
+            }
+            return dest;
+        },
+
+        _shipHtml(name) {
+            return this._esc(name || '').replace(/of the Seas(?:®|&reg;)?/gi, 'of the Seas<sup>®</sup>');
+        },
+
+        _perkHtml(perks) {
+            if (!perks || perks.length === 0) return '';
+            const icon = '<svg class="gobo-flyer-umbrella" viewBox="0 0 48 40" width="42" height="36" aria-hidden="true"><path fill="none" stroke="#fff" stroke-width="1.6" d="M6 20c0-10 8-18 18-18s18 8 18 18H6z"/><path fill="none" stroke="#fff" stroke-width="1.6" d="M24 20v8a4 4 0 0 1-8 0M14 20c2 3 5 3 7 0M24 20c2 3 5 3 7 0M33 20c2 3 5 3 7 0"/><path fill="none" stroke="#fff" stroke-width="1.6" d="M34 26h8v3h-5l-1 6"/></svg>';
+            const items = perks.map(name => {
+                const hideaway = /hideaway\s*beach/i.test(name);
+                const note = hideaway ? '<div class="gobo-flyer-perk-note">*When selecting a Perfect Day at CocoCay sailing</div>' : '';
+                return `<div class="gobo-flyer-perk-item">${hideaway ? icon : ''}<div><div class="gobo-flyer-perk-name">${this._esc(name)}</div>${note}</div></div>`;
+            }).join('');
+            const label = perks.length > 1 ? 'Plus VIP perks' : 'Plus a VIP perk';
+            return `<div class="gobo-flyer-perk"><div class="gobo-flyer-perk-label"><span>${label}</span></div><div class="gobo-flyer-perk-box">${items}</div></div>`;
+        },
+
+        _callHtml() {
+            if (this._isCelebrity()) {
+                return `<div class="gobo-flyer-call"><div>CALL YOUR BLUE CHIP CLUB<br>REPRESENTATIVE</div><div class="gobo-flyer-or">- OR -</div><div>CONTACT YOUR TRAVEL ADVISOR</div></div>`;
+            }
+            return `<div class="gobo-flyer-call"><div>CALL YOUR CASINO ROYALE<br>REPRESENTATIVE AT</div><div class="gobo-flyer-phone">1-888-561-2234</div><div class="gobo-flyer-or">- OR -</div><div>CONTACT YOUR TRAVEL ADVISOR OR<br>INDEPENDENT CASINO REPRESENTATIVE</div></div>`;
+        },
+
+        _wordmarkHtml() {
+            if (this._isCelebrity()) return '<div class="gobo-flyer-wordmark"><span class="gobo-flyer-wm-top">Blue Chip</span><span class="gobo-flyer-wm-bot">Club</span></div>';
+            return '<div class="gobo-flyer-wordmark"><span class="gobo-flyer-wm-top">Casino<span class="gobo-flyer-sm">SM</span></span><span class="gobo-flyer-wm-bot">Royale</span></div>';
+        },
+
+        _heroCardsHtml() {
+            return `<div class="gobo-flyer-hero-cards">
+    <div class="gobo-flyer-coco">
+        <div class="gobo-flyer-coco-kicker">Perfect Day at</div>
+        <div class="gobo-flyer-coco-logo">Coco<span class="gobo-flyer-cay">Cay</span></div>
+        <p>Voted Best Private Island by <em>Travel Weekly</em> readers for five years running.</p>
+    </div>
+    <div class="gobo-flyer-hideaway">
+        <div class="gobo-flyer-hideaway-title">Hideaway Beach</div>
+        <p>Dance the day away in our adults-only paradise at Perfect Day at CocoCay.</p>
+    </div>
+</div>`;
+        },
+
+        _sailingTableHtml(sections, dateHeader, headerYear) {
+            let shipBand = 0;
+            const body = sections.map(sec => {
+                const roomRow = `<tr class="gobo-flyer-room" data-room="${this._esc(sec.room)}"><td colspan="4">${this._esc(sec.title)}</td></tr>`;
+                const ships = sec.ships.map(ship => {
+                    shipBand += 1;
+                    const band = shipBand % 2 === 0 ? 'gobo-flyer-band' : '';
+                    const span = ship.itineraries.length || 1;
+                    return ship.itineraries.map((itin, idx) => {
+                        const shipCell = idx === 0
+                            ? `<td class="gobo-flyer-ship" rowspan="${span}">${this._shipHtml(ship.ship)}${ship.port ? `<span class="gobo-flyer-from">from ${this._esc(ship.port)}</span>` : ''}</td>`
+                            : '';
+                        const star = itin.perfectDay
+                            ? '<span class="gobo-flyer-pd" title="Visits Perfect Day at CocoCay"></span>'
+                            : '';
+                        return `<tr class="${band}">${shipCell}<td class="gobo-flyer-star">${star}</td><td class="gobo-flyer-itin">${this._esc(this._itinLabel(itin))}</td><td class="gobo-flyer-dates">${this._dateCellHtml(itin.dates, headerYear)}</td></tr>`;
+                    }).join('');
+                }).join('');
+                return roomRow + ships;
+            }).join('');
+            const anyPerfectDay = sections.some(sec => sec.ships.some(ship => ship.itineraries.some(itin => itin.perfectDay)));
+            const legend = `<div class="gobo-flyer-legend">${anyPerfectDay ? '<div class="gobo-flyer-legend-line"><span class="gobo-flyer-pd" aria-hidden="true"></span> Visits our award-winning private island Perfect Day at CocoCay</div>' : ''}<div class="gobo-flyer-legend-line">New slot machines are featured on all our ships</div></div>`;
+            return `<table class="gobo-flyer-table"><thead><tr><th>Ship</th><th class="gobo-flyer-star-h"><span class="gobo-flyer-sr"> </span></th><th>Itinerary</th><th>${this._esc(dateHeader)}</th></tr></thead><tbody>${body}</tbody></table>${legend}`;
+        },
+
         buildHtml(offer, pairs, opts = {}) {
             const dark = !!opts.dark;
+            const heroUrl = opts.heroUrl || '';
+            const heroSrc = opts.heroSrc || '';
             const offerCode = offer.campaignOffer?.offerCode || '';
             const name = offer.campaignOffer?.name || '';
-            const description = (offer.campaignOffer?.description || '').toUpperCase();
             const reserveByDate = offer.campaignOffer?.reserveByDate;
-            const campaignName = (offer.campaign && offer.campaign.name) || name;
-
             const sections = this.groupByCategory(pairs);
-            const kicker = this.kicker(pairs);
+            const dateHeader = this._datesHeader(pairs);
+            const hasPerfectDay = (pairs || []).some(pair => pair && this.visitsPerfectDay(pair.sailing));
             const taxes = this.taxesRange(pairs);
+            const perks = this.flyerPerks(offer, pairs, hasPerfectDay);
             const anyGTY = sections.some(s => s.isGTY);
+            const redeem = reserveByDate ? this._formatRedeemBy(reserveByDate) : '';
+            const who = this._isCelebrity() ? 'Blue Chip Club representative' : 'Casino Royale representative';
+            const legal = `Itinerary details can vary by sailing date.${redeem ? ` Book by ${redeem}.` : ''} Taxes and fees are per person. Contact your ${who} with questions about this offer.`;
+            const heroImg = (heroUrl || heroSrc)
+                ? `<img class="gobo-flyer-hero-img" alt=""${heroUrl ? ' data-hero="1"' : ''}${heroSrc ? ` src="${this._esc(heroSrc)}"` : ''}>`
+                : '';
 
-            let html = `<!doctype html>
+            return `<!doctype html>
 <html class="${dark ? 'gobo-dark' : ''}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${offerCode} \u2014 ${name}</title>
+<title>${this._esc(offerCode)} \u2014 ${this._esc(name)}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&amp;family=Libre+Bodoni:wght@500;600&amp;family=Montserrat:wght@500;600;700;800&amp;family=Oswald:wght@500;600&amp;display=swap">
 <style>${OFFER_PDF_CSS}</style>
 </head>
-<body>
-<div class="gobo-flyer-aurora" aria-hidden="true"></div>
+<body class="gobo-flyer-root">
 <div class="gobo-flyer-exit">
     <button type="button" class="gobo-flyer-back" aria-label="Close flyer and return to offers" onclick="window.close()">\u2190 Back to offers</button>
 </div>
 <div class="gobo-flyer-sheet">
-    <div class="gobo-flyer-gold-band">
-        <div class="gobo-flyer-kicker">\u25c6 ${kicker} \u25c6</div>
-        <h1 class="gobo-flyer-h1">${description}</h1>
-        ${taxes ? `<div class="gobo-flyer-taxes">${taxes}</div>` : ''}
-        ${reserveByDate ? `<div class="gobo-flyer-redeem">REDEEM BY ${this._formatRedeemBy(reserveByDate)}</div>` : ''}
+    <div class="gobo-flyer-tri">
+        <section class="gobo-flyer-gold" aria-label="Offer">
+            <div class="gobo-flyer-kicker"><span class="gobo-flyer-suits" aria-hidden="true">\u2663 \u25c6</span> ${this._esc(this._kickerText(offer))} <span class="gobo-flyer-suits" aria-hidden="true">\u2665 \u2660</span></div>
+            <h1 class="gobo-flyer-h1">${this._headlineHtml(offer)}</h1>
+            ${this._perkHtml(perks)}
+            ${taxes ? `<div class="gobo-flyer-taxes">${this._esc(taxes)}</div>` : ''}
+            ${redeem ? `<div class="gobo-flyer-redeem">REDEEM BY ${this._esc(redeem)}</div>` : ''}
+            ${this._callHtml()}
+            <div class="gobo-flyer-codeblock">
+                <div class="gobo-flyer-codelabel">YOUR UNIQUE OFFER CODE</div>
+                <div class="gobo-flyer-code">${this._esc(offerCode)}</div>
+                <div class="gobo-flyer-upgrade">ASK ABOUT YOUR UPGRADE OPTIONS WHEN YOU BOOK</div>
+            </div>
+            ${this._wordmarkHtml()}
+        </section>
+        <section class="gobo-flyer-main" aria-label="Sailings">
+            ${this._sailingTableHtml(sections, dateHeader.label, dateHeader.year)}
+            ${anyGTY ? `<div class="gobo-flyer-gty"><h3>What is a guarantee stateroom?</h3><p>For these sailings, you choose the ship and date and let us choose your stateroom later on. You're guaranteed to receive this stateroom category \u2014 or you might even get an upgrade.</p></div>` : ''}
+        </section>
+        <aside class="gobo-flyer-hero${hasPerfectDay ? ' has-cards' : ''}" aria-label="Offer photo">
+            ${heroImg}
+            ${hasPerfectDay ? this._heroCardsHtml() : ''}
+        </aside>
     </div>
-    <div class="gobo-flyer-body">
-        <h2 class="gobo-flyer-body-title">${campaignName.toUpperCase()}</h2>
-        ${sections.map(sec => this._sectionHtml(sec)).join('')}
-        ${anyGTY ? `
-        <div class="gobo-flyer-gty-footer">
-            <h3>WHAT IS A GUARANTEE STATEROOM?</h3>
-            <p>For these sailings, you choose the ship and date and let us choose your stateroom later on. You're guaranteed to receive this stateroom category \u2014 or you might even get an upgrade.</p>
-        </div>` : ''}
-    </div>
+    <p class="gobo-flyer-legal">${this._esc(legal)}</p>
 </div>
 </body>
 </html>`;
-            return html;
-        },
-
-        _sectionHtml(sec) {
-            const shipBlocks = sec.ships.map(s => {
-                const n = s.itineraries.length;
-                const rows = s.itineraries.map((i, idx) => {
-                    const dateGroups = this.formatDateGroups(i.dates);
-                    const shipCell = idx === 0
-                        ? `<td class="gobo-flyer-ship" rowspan="${n}">${s.ship}${s.port ? `<span class="gobo-flyer-from">from ${s.port}</span>` : ''}</td>`
-                        : '';
-                    return `<tr>
-    ${shipCell}
-    <td class="gobo-flyer-itin">${i.nights} Night ${i.itinerary}</td>
-    <td class="gobo-flyer-dates">${dateGroups.map(d => `<div>${d}</div>`).join('')}</td>
-</tr>`;
-                }).join('');
-                return rows;
-            }).join('');
-            return `<div class="gobo-flyer-section">
-    <div class="gobo-flyer-section-header" data-room="${sec.room}">${sec.title}</div>
-    <table class="gobo-flyer-table">
-        <thead>
-            <tr><th>SHIP</th><th>ITINERARY</th><th>DATES</th></tr>
-        </thead>
-        <tbody>${shipBlocks}</tbody>
-    </table>
-</div>`;
         },
     };
 
