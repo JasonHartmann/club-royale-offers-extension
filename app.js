@@ -191,14 +191,14 @@
                 try {
                     const s = this.getSettings() || {};
                     const order = s.cardSortOrder;
-                    return { column: s.cardSortColumn || 'destination', order: (order === 'desc' || order === 'original') ? order : 'asc' };
+                    return { column: s.cardSortColumn || 'destination', order: order === 'desc' ? 'desc' : 'asc' };
                 } catch(e) { return { column: 'destination', order: 'asc' }; }
             },
             setCardSort(column, order) {
                 try {
                     const s = this.getSettings() || {};
                     s.cardSortColumn = column || 'destination';
-                    s.cardSortOrder = (order === 'desc' || order === 'original') ? order : 'asc';
+                    s.cardSortOrder = order === 'desc' ? 'desc' : 'asc';
                     this.setSettings(s);
                 } catch(e) {}
             }

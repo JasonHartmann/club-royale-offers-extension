@@ -162,8 +162,6 @@ describe('cardView mobile card layout', () => {
         const amounts = [...container.querySelectorAll('.gobo-youpay-val')].map(node => node.textContent);
         expect(amounts.length).toBeGreaterThan(0);
         amounts.forEach(text => expect(text.startsWith('+')).toBe(false));
-        expect(container.querySelector('.gobo-youpay.gobo-sort-hit')).not.toBeNull();
-        expect(container.querySelector('.gobo-price-value.gobo-sort-hit')).not.toBeNull();
     });
 
     test('changing the card sort is saved', () => {
@@ -177,6 +175,27 @@ describe('cardView mobile card layout', () => {
         jest.useRealTimers();
         global.requestAnimationFrame = prev;
         expect(AppStub.SettingsStore.setCardSort).toHaveBeenCalledWith('ship', 'desc');
+    });
+
+    test('sort arrow toggles only up and down', () => {
+        AppStub.SettingsStore.setCardSort = jest.fn();
+        AppStub.TableRenderer.updateView = jest.fn();
+        const prev = global.requestAnimationFrame;
+        global.requestAnimationFrame = (fn) => fn();
+        jest.useFakeTimers();
+        CardView.render(container, makeState());
+        const dir = container.querySelector('.gobo-card-sort-dir');
+        expect(dir.textContent).toBe('\u2191');
+        dir.click();
+        jest.runAllTimers();
+        expect(dir.textContent).toBe('\u2193');
+        expect(AppStub.SettingsStore.setCardSort).toHaveBeenCalledWith('offerDate', 'desc');
+        dir.click();
+        jest.runAllTimers();
+        expect(dir.textContent).toBe('\u2191');
+        expect(AppStub.SettingsStore.setCardSort).toHaveBeenLastCalledWith('offerDate', 'asc');
+        jest.useRealTimers();
+        global.requestAnimationFrame = prev;
     });
 
     test('itinerary control opens the itinerary popup for that sailing', () => {

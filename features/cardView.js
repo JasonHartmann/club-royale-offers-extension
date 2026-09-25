@@ -170,26 +170,22 @@
             const dirBtn = document.createElement('button');
             dirBtn.type = 'button';
             dirBtn.className = 'gobo-card-sort-dir';
-            this._updateDirButton(dirBtn, state);
+            this._updateDirButton(dirBtn, state.currentSortOrder);
             dirBtn.addEventListener('click', () => {
                 const key = state.currentSortColumn || (current && current.key);
-                let newOrder = 'asc';
-                if (state.currentSortColumn === key) {
-                    newOrder = state.currentSortOrder === 'asc' ? 'desc' : (state.currentSortOrder === 'desc' ? 'original' : 'asc');
-                }
+                const newOrder = state.currentSortOrder === 'desc' ? 'asc' : 'desc';
                 this._applySort(state, key, newOrder);
-                this._updateDirButton(dirBtn, state);
+                this._updateDirButton(dirBtn, newOrder);
             });
             toolbar.appendChild(dirBtn);
 
             return toolbar;
         },
 
-        _updateDirButton(dirBtn, state) {
-            const order = state.currentSortOrder;
-            if (order === 'asc') { dirBtn.textContent = '\u2191'; dirBtn.setAttribute('aria-label', 'Ascending'); }
-            else if (order === 'desc') { dirBtn.textContent = '\u2193'; dirBtn.setAttribute('aria-label', 'Descending'); }
-            else { dirBtn.textContent = '\u21ba'; dirBtn.setAttribute('aria-label', 'Original order'); }
+        _updateDirButton(dirBtn, order) {
+            const desc = order === 'desc';
+            dirBtn.textContent = desc ? '\u2193' : '\u2191';
+            dirBtn.setAttribute('aria-label', desc ? 'Descending' : 'Ascending');
         },
 
         _applySort(state, key, order) {
@@ -392,13 +388,6 @@
             return out;
         },
 
-        _mark(node, key, state) {
-            if (!node || !state) return node;
-            if (state.currentSortOrder === 'original') return node;
-            if (state.currentSortColumn === key) node.classList.add('gobo-sort-hit');
-            return node;
-        },
-
         _urgency(reserveIso) {
             if (!reserveIso) return null;
             const day = String(reserveIso).slice(0, 10);
@@ -511,7 +500,6 @@
                 codeBtn.className = 'gobo-card-code';
                 codeBtn.textContent = code;
                 codeBtn.setAttribute('aria-label', 'Open flyer for offer ' + code);
-                this._mark(codeBtn, 'offerCode', state);
                 codeBtn.addEventListener('click', (ev) => {
                     ev.preventDefault();
                     try { OfferPdf.open(code, state); } catch(e) {}
@@ -548,14 +536,12 @@
             const title = document.createElement('h2');
             title.className = 'gobo-card-ship';
             title.textContent = parsed.label || sailing.shipName || '-';
-            this._mark(title, 'destination', state);
             copy.appendChild(title);
             const sub = document.createElement('p');
             sub.className = 'gobo-hero-sub';
             const portName = (sailing.departurePort && sailing.departurePort.name) || '';
             const nightsText = (parsed.nights && parsed.nights !== '-') ? (parsed.nights + (String(parsed.nights) === '1' ? ' night' : ' nights')) : '';
             sub.textContent = [sailing.shipName || '-', portName, nightsText].filter(Boolean).join(' \u00b7 ');
-            this._mark(sub, 'ship', state);
             copy.appendChild(sub);
             content.appendChild(copy);
             if (urgent && urgent.cls === 'red') {
@@ -582,7 +568,6 @@
                 const value = document.createElement('span');
                 value.className = 'gobo-price-value';
                 value.textContent = anchor.text;
-                this._mark(value, anchor.key, state);
                 const label = document.createElement('span');
                 label.className = 'gobo-price-label';
                 label.textContent = anchor.label + ' you-pay';
@@ -594,7 +579,6 @@
                 const chip = document.createElement('span');
                 chip.className = 'gobo-urgency gobo-urgency-' + urgent.cls;
                 chip.textContent = urgent.label;
-                this._mark(chip, 'expiration', state);
                 block.appendChild(chip);
             }
             return block;
@@ -611,7 +595,6 @@
             dt.textContent = 'Offer';
             const dd = document.createElement('dd');
             dd.textContent = name;
-            this._mark(dd, 'offerName', state);
             spec.appendChild(dt);
             spec.appendChild(dd);
             return spec;
@@ -637,7 +620,6 @@
                 const chip = document.createElement('span');
                 chip.className = 'gobo-perk';
                 chip.textContent = name;
-                this._mark(chip, 'perks', state);
                 wrap.appendChild(chip);
             });
             return wrap;
@@ -684,7 +666,6 @@
                     const fromEl = document.createElement('span');
                     fromEl.className = 'gobo-month-from';
                     fromEl.textContent = 'from ' + from.text;
-                    this._mark(fromEl, anchorKey, state);
                     btn.appendChild(fromEl);
                 }
                 const panel = document.createElement('div');
@@ -733,21 +714,18 @@
             const when = document.createElement('span');
             when.className = 'gobo-date-when';
             when.textContent = this._formatDay(sailing.sailDate);
-            this._mark(when, 'sailDate', state);
             top.appendChild(when);
             const room = this._roomLabel(sailing);
             if (room && !isHiddenCol('category')) {
                 const roomEl = document.createElement('span');
                 roomEl.className = 'gobo-date-room';
                 roomEl.textContent = room;
-                this._mark(roomEl, 'category', state);
                 top.appendChild(roomEl);
             }
             if (!isHiddenCol('guests')) {
                 const guests = document.createElement('span');
                 guests.className = 'gobo-card-date';
                 guests.textContent = this._guestsText(sailing);
-                this._mark(guests, 'guests', state);
                 top.appendChild(guests);
             }
             main.appendChild(top);
@@ -759,7 +737,6 @@
                 cabins.forEach(cabin => {
                     const item = document.createElement('span');
                     item.className = 'gobo-youpay';
-                    this._mark(item, cabin.key, state);
                     const lab = document.createElement('span');
                     lab.className = 'gobo-youpay-label';
                     lab.textContent = cabin.shortLabel;
@@ -776,14 +753,12 @@
             const actions = document.createElement('div');
             actions.className = 'gobo-date-actions';
             const itineraryLink = this._buildItineraryLink(offer, sailing);
-            this._mark(itineraryLink, 'itinerary', state);
             actions.appendChild(itineraryLink);
             let isFavoritesView = false;
             try { isFavoritesView = App.CurrentProfile && App.CurrentProfile.key === 'goob-favorites'; } catch(e) {}
             actions.appendChild(this._buildFavoriteControl(offer, sailing, idx, isFavoritesView));
             if (!isHiddenCol('b2bDepth')) {
                 const b2b = this._buildB2BCell(offer, sailing, idx);
-                this._mark(b2b, 'b2bDepth', state);
                 actions.appendChild(b2b);
             }
             row.appendChild(main);

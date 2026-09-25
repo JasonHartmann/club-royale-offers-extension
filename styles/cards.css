@@ -967,16 +967,6 @@ body.gobo-dark #gobo-offers-table.gobo-layout-cards .gobo-card-code {
     background: rgba(255,255,255,0.06);
     border-color: rgba(255,255,255,0.12);
 }
-#gobo-offers-table.gobo-layout-cards .gobo-sort-hit {
-    background: color-mix(in srgb, #facc15 42%, transparent);
-    border-radius: 6px;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, #eab308 80%, transparent);
-}
-#gobo-offers-table.gobo-layout-cards .gobo-card-hero .gobo-sort-hit {
-    padding: 0 4px;
-    color: #0f172a;
-    text-shadow: none;
-}
 @media (min-width: 900px) {
     #gobo-offers-table.gobo-layout-cards .gobo-sailing-card { flex-direction: column; align-items: stretch; }
     #gobo-offers-table.gobo-layout-cards .gobo-card-hero {
