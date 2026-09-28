@@ -1,6 +1,6 @@
 // storageShim.js
-// Provides a synchronous-feeling facade (GoboStore) backed by extension storage
-// for all keys beginning with gobo- / gobohidden / goob- plus specific gobo* keys.
+// Provides a synchronous-feeling facade (GoboStore) backed by durable extension storage
+// for keys beginning with gobo- / gobohidden / goob- plus specific gobo* keys.
 // This lets existing volatile logic keep sequence without broad async refactors.
 (function() {
     const DEBUG_STORAGE = false; // deprecated; use window.GOBO_DEBUG_LOGS instead
@@ -169,48 +169,164 @@
             infoStore('env', { isIOS, isSafari, userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'unknown' });
         } catch(e) { /* ignore */ }
     const idbStorage = createIndexedDbStorage();
-    extStorage = (function() {
-        if (isSafari && idbStorage) return idbStorage;
+    function runtimeApi() {
+        try {
+            if (typeof browser !== 'undefined' && browser.runtime && typeof browser.runtime.sendMessage === 'function') return browser.runtime;
+            if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.sendMessage === 'function') return chrome.runtime;
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+    function createBridgeTransport(runtime) {
+        const send = (message, attempt) => new Promise((resolve, reject) => {
+            let settled = false;
+            const fail = (err) => {
+                if (settled) return;
+                settled = true;
+                const next = (attempt || 0) + 1;
+                if (next <= 2) {
+                    setTimeout(() => { send(message, next).then(resolve, reject); }, 40 * next);
+                    return;
+                }
+                reject(err || new Error('gobo-storage bridge failed'));
+            };
+            const ok = (response) => {
+                if (settled) return;
+                if (response == null) return;
+                clearTimeout(timer);
+                if (response.error) { fail(new Error(response.error)); return; }
+                settled = true;
+                resolve(response);
+            };
+            const timer = setTimeout(() => fail(new Error('gobo-storage bridge timeout')), 700);
+            const finishOk = (response) => { ok(response); };
+            const finishErr = (err) => { clearTimeout(timer); fail(err); };
+            try {
+                const maybe = runtime.sendMessage(message, (response) => {
+                    let lastError = null;
+                    try { lastError = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) ? chrome.runtime.lastError : null; } catch (e) { /* ignore */ }
+                    if (lastError) { finishErr(lastError); return; }
+                    finishOk(response);
+                });
+                if (maybe && typeof maybe.then === 'function') maybe.then(finishOk, finishErr);
+            } catch (e) { finishErr(e); }
+        });
+        const callbackOrPromise = (promise, callback, fallbackValue) => {
+            if (typeof callback === 'function') {
+                promise.then((value) => callback(value)).catch(() => callback(fallbackValue));
+                return undefined;
+            }
+            return promise;
+        };
+        return { send, callbackOrPromise };
+    }
+    function createBridgeStorage(runtime, localApi, pageIdb) {
+        const transport = createBridgeTransport(runtime);
+        let bridgeDown = false;
+        const fallbackApi = () => localApi || pageIdb || null;
+        const bridgeSend = (message) => {
+            if (bridgeDown) return Promise.reject(new Error('bridge down'));
+            return transport.send(message).catch((err) => {
+                bridgeDown = true;
+                throw err;
+            });
+        };
+        const useFallback = (method, arg) => {
+            const api = fallbackApi();
+            if (!api) return Promise.reject(new Error('no fallback storage'));
+            return new Promise((resolve, reject) => {
+                try {
+                    const maybe = method === 'clear'
+                        ? api.clear((value) => resolve(value))
+                        : api[method](arg, (value) => resolve(value));
+                    if (maybe && typeof maybe.then === 'function') maybe.then(resolve, reject);
+                } catch (e) {
+                    try {
+                        const pending = method === 'clear' ? api.clear() : api[method](arg);
+                        if (pending && typeof pending.then === 'function') pending.then(resolve, reject);
+                        else reject(e);
+                    } catch (e2) { reject(e2); }
+                }
+            });
+        };
+        return {
+            get(keys, callback) {
+                const query = keys == null ? null : keys;
+                const promise = bridgeSend({ channel: 'gobo-storage', op: 'get', keys: query })
+                    .then((response) => (response && response.result) || {})
+                    .catch(() => useFallback('get', query).then((value) => value || {}));
+                return transport.callbackOrPromise(promise, callback, {});
+            },
+            set(items, callback) {
+                const payload = items || {};
+                const promise = bridgeSend({ channel: 'gobo-storage', op: 'set', entries: payload })
+                    .then(() => ({}))
+                    .catch(() => useFallback('set', payload).then(() => ({})));
+                return transport.callbackOrPromise(promise, callback, null);
+            },
+            remove(keys, callback) {
+                const keyList = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys || {}));
+                const promise = bridgeSend({ channel: 'gobo-storage', op: 'remove', keys: keyList })
+                    .then(() => ({}))
+                    .catch(() => useFallback('remove', keyList).then(() => ({})));
+                return transport.callbackOrPromise(promise, callback, null);
+            },
+            clear(callback) {
+                const promise = bridgeSend({ channel: 'gobo-storage', op: 'clear' })
+                    .then(() => ({}))
+                    .catch(() => useFallback('clear').then(() => ({})));
+                return transport.callbackOrPromise(promise, callback, null);
+            }
+        };
+    }
+    const extensionLocal = (function() {
         if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) return browser.storage.local;
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) return chrome.storage.local;
-        if (idbStorage) return idbStorage;
         return null;
     })();
+    const runtime = runtimeApi();
+    // Content-script IndexedDB is the page origin. Safari drops it across sessions, and iOS
+    // content scripts often have no storage.local. The background owns the durable store.
+    const bridgeStorage = (isSafari && runtime) ? createBridgeStorage(runtime, extensionLocal, idbStorage) : null;
+    extStorage = bridgeStorage || extensionLocal || idbStorage;
     try {
-        const backend = extStorage === idbStorage ? 'indexeddb' : (extStorage ? 'browser.storage.local' : 'none');
-        infoStore('backend', backend, { isIOS });
-        if (isIOS && backend !== 'indexeddb') infoStore('iosStorageFallback', backend);
+        const backend = (bridgeStorage && extStorage === bridgeStorage) ? 'safari-background' : (extStorage === idbStorage ? 'indexeddb' : (extStorage ? 'browser.storage.local' : 'none'));
+        infoStore('backend', backend, { isIOS, isSafari });
+        if (isSafari && extStorage === idbStorage) {
+            console.warn('[GoboStore] Safari has no background storage bridge; page IndexedDB will not persist across sessions');
+        }
     } catch(e) { /* ignore */ }
     const internal = new Map();
     const pendingWrites = new Map();
     let flushScheduled = false;
 
+    let flushAttempts = 0;
     function flushNow() {
         if (!extStorage) return;
         if (pendingWrites.size === 0) return;
         const batch = {};
         pendingWrites.forEach((v, k) => { batch[k] = v; });
         pendingWrites.clear();
+        const restore = () => {
+            flushAttempts += 1;
+            if (flushAttempts > 8) return;
+            Object.keys(batch).forEach((k) => { if (!pendingWrites.has(k)) pendingWrites.set(k, batch[k]); });
+            setTimeout(() => { flushScheduled = false; scheduleFlush(true); }, 80 * flushAttempts);
+        };
         try {
             debugStore('flush: writing batch', Object.keys(batch));
-            try {
-                const maybePromise = extStorage.set(batch, () => {
-                    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
-                        debugStore('flush: lastError', chrome.runtime.lastError);
-                    }
-                });
-                if (maybePromise && typeof maybePromise.then === 'function') {
-                    maybePromise.catch(e => debugStore('flush: promise error', e));
-                }
-            } catch(cbErr) {
-                try {
-                    const p = extStorage.set(batch);
-                    if (p && typeof p.then === 'function') p.catch(e => debugStore('flush: promise error', e));
-                } catch(pErr) {
-                    debugStore('flush: exception', pErr);
-                }
+            let pending = null;
+            try { pending = extStorage.set(batch); } catch (e) { pending = null; }
+            if (pending && typeof pending.then === 'function') {
+                pending.then(() => { flushAttempts = 0; }).catch(() => restore());
+                return;
             }
-        } catch(e) { debugStore('flush: exception', e); }
+            extStorage.set(batch, () => {
+                let lastError = null;
+                try { lastError = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) ? chrome.runtime.lastError : null; } catch (e) { /* ignore */ }
+                if (lastError) { debugStore('flush: lastError', lastError); restore(); return; }
+                flushAttempts = 0;
+            });
+        } catch(e) { debugStore('flush: exception', e); restore(); }
     }
 
     function scheduleFlush(immediate) {
@@ -272,21 +388,74 @@
         } catch(e) { resolve(); }
     }
 
+    function storageCall(api, method, arg) {
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const finish = (err, value) => {
+                if (settled) return;
+                settled = true;
+                if (err) reject(err); else resolve(value);
+            };
+            const timer = setTimeout(() => finish(new Error('storage call timeout')), 8000);
+            const accept = (value) => {
+                clearTimeout(timer);
+                finish(null, method === 'get' ? (value || {}) : value);
+            };
+            const fail = (err) => { clearTimeout(timer); finish(err || new Error('storage call failed')); };
+            try {
+                const maybe = api[method](arg, accept);
+                if (maybe && typeof maybe.then === 'function') {
+                    maybe.then(accept, fail);
+                    return;
+                }
+            } catch (e) {
+                try {
+                    const pending = api[method](arg);
+                    if (pending && typeof pending.then === 'function') {
+                        pending.then(accept, fail);
+                        return;
+                    }
+                } catch (e2) { fail(e2); return; }
+                fail(e);
+            }
+        });
+    }
+
+    function migratePageIdb(done) {
+        if (!idbStorage || !extStorage || extStorage === idbStorage) { done(); return; }
+        storageCall(extStorage, 'get', null).then((existing) => {
+            return storageCall(idbStorage, 'get', null).then((fromIdb) => {
+                const entries = {};
+                Object.keys(fromIdb || {}).forEach((key) => {
+                    if (!shouldManage(key)) return;
+                    if (existing && Object.prototype.hasOwnProperty.call(existing, key)) return;
+                    entries[key] = fromIdb[key];
+                });
+                if (!Object.keys(entries).length) { done(); return; }
+                try { infoStore('migratePageIdb', Object.keys(entries).length); } catch (e) { /* ignore */ }
+                return storageCall(extStorage, 'set', entries).then(() => done());
+            });
+        }).catch(() => done());
+    }
+
     const GoboStore = {
         ready: false,
         _initPromise: null,
         init() {
             if (this._initPromise) return this._initPromise;
-            this._initPromise = new Promise(res => loadAll(() => {
-                this.ready = true;
-                try {
-                    window.__goboStorageReady = true;
-                    if (typeof document !== 'undefined') {
-                        document.dispatchEvent(new Event('goboStorageReady'));
-                    }
-                } catch(e) { /* ignore */ }
-                res();
-            }));
+            this._initPromise = new Promise(res => {
+                const finish = () => loadAll(() => {
+                    this.ready = true;
+                    try {
+                        window.__goboStorageReady = true;
+                        if (typeof document !== 'undefined') {
+                            document.dispatchEvent(new Event('goboStorageReady'));
+                        }
+                    } catch(e) { /* ignore */ }
+                    res();
+                });
+                migratePageIdb(finish);
+            });
             return this._initPromise;
         },
         // Mimic localStorage.getItem returning a string or null

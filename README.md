@@ -91,6 +91,7 @@ Runs the Jest harness across all test suites. The GitHub Action workflow runs th
 
 - **Content script not loading**: Confirm the offers URL matches `manifest.json` `matches` entries, then reload the extension and tab.
 - **Stale data**: Run `chrome.storage.local.clear()` in DevTools or delete the relevant `gobo-*` keys.
+- **Safari data missing after quit**: Profiles are stored by the extension background, not the page. Rebuild/reload the Safari app so `background.js` is packaged, then reopen the offers page once to copy any leftover page data. Each Safari profile keeps its own copy.
 - **CSS not applying**: Check that `styles.js` is injecting your stylesheet; syntax errors surface as `ERR_FILE_NOT_FOUND` or parsing errors in the console.
 
 ## Customization
