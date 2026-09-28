@@ -114,6 +114,59 @@ describe('cardView mobile card layout', () => {
         delete window.CardView;
     });
 
+    test('resize observer keeps the button when the capped column count is unchanged', () => {
+        const previous = global.ResizeObserver;
+        const callbacks = [];
+        global.ResizeObserver = class {
+            constructor(cb) { callbacks.push(cb); }
+            observe() {}
+            disconnect() {}
+        };
+        let width = 2724;
+        Object.defineProperty(container, 'clientWidth', { configurable: true, get: () => width });
+        const offer = makeState().sortedOffers[0].offer;
+        const sailing = (date) => ({
+            id: date,
+            shipName: 'Rhapsody Of The Seas',
+            shipCode: 'RH',
+            departurePort: { name: 'San Juan' },
+            totalNights: 7,
+            sailDate: date,
+            roomType: 'Interior',
+            isGTY: false,
+            itineraryDescription: '7 Night Southern Caribbean',
+        });
+        const state = makeState({
+            sortedOffers: [
+                { offer, sailing: sailing('2026-10-17') },
+                { offer, sailing: sailing('2026-11-07') },
+                { offer, sailing: sailing('2026-12-05') },
+            ],
+        });
+        try {
+            CardView.render(container, state);
+            const button = container.querySelector('.gobo-itinerary-link');
+            expect(container._goboCardCols).toBe(3);
+            expect(callbacks).toHaveLength(1);
+            callbacks[0]([{ contentRect: { width: 2724 } }]);
+            expect(container.querySelector('.gobo-itinerary-link')).toBe(button);
+            expect(callbacks).toHaveLength(1);
+
+            const wide = [];
+            for (let i = 0; i < 10; i++) wide.push({ offer, sailing: sailing('2026-10-' + String(i + 1).padStart(2, '0')) });
+            CardView.render(container, makeState({ sortedOffers: wide }));
+            const wideButton = container.querySelector('.gobo-itinerary-link');
+            expect(container._goboCardCols).toBe(5);
+            width = 1000;
+            callbacks[callbacks.length - 1]([]);
+            expect(container._goboCardCols).toBe(3);
+            expect(container.querySelector('.gobo-itinerary-link')).not.toBe(wideButton);
+        } finally {
+            if (previous) global.ResizeObserver = previous;
+            else delete global.ResizeObserver;
+        }
+    });
+
     test('render emits a card with b2b-depth-cell, itinerary link, and offer-code link', () => {
         const state = makeState();
         CardView.render(container, state);

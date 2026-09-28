@@ -39,7 +39,7 @@
             }
 
             const soonestExpDate = this._computeSoonestExpDate(state.sortedOffers);
-            const columns = Math.max(1, Math.min(this._columnsFor(container.clientWidth), total));
+            const columns = this._columnCount(container.clientWidth, total);
             container._goboCardCols = columns;
             container.style.setProperty('--gobo-card-cols', String(columns));
 
@@ -72,6 +72,12 @@
             if (width < 1600) return 3;
             if (width < 2100) return 4;
             return 5;
+        },
+
+        // Same count render stores. An uncapped width bucket (5) against a sailing cap (3)
+        // never matches, so the observer re-renders forever and drops clicks.
+        _columnCount(width, total) {
+            return Math.max(1, Math.min(this._columnsFor(width), total));
         },
 
         _computeSoonestExpDate(sortedOffers) {
@@ -901,13 +907,11 @@
         _attachResizeObserver(container, state, globalMaxOfferDate) {
             if (typeof ResizeObserver !== 'function') return;
             const self = this;
-            const ro = new ResizeObserver((entries) => {
+            const ro = new ResizeObserver(() => {
                 try {
-                    const w = entries[0] && entries[0].contentRect ? entries[0].contentRect.width : container.clientWidth;
-                    const cols = self._columnsFor(w);
-                    const last = container._goboCardCols;
-                    if (last !== undefined && cols === last) return;
-                    container._goboCardCols = cols;
+                    const total = (state.sortedOffers || []).length;
+                    const cols = self._columnCount(container.clientWidth, total);
+                    if (container._goboCardCols !== undefined && cols === container._goboCardCols) return;
                     self.render(container, state, globalMaxOfferDate);
                 } catch(e) {}
             });

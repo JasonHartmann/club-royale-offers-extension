@@ -1,4 +1,5 @@
-/* Offer flyer — standalone tab document (also inlined into the flyer tab by offerPdf.js) */
+/* Host-page rules. The offer flyer tab inlines its own document styles from features/offerPdf.js.
+   Keep the body font here: extension UI inherits it. Do not add unscoped flyer layout rules. */
 * { box-sizing: border-box; }
 html { background: #f8fafc; }
 html.gobo-dark { background: #0f172a; }
