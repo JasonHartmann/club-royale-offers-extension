@@ -576,4 +576,20 @@ describe('cardView mobile card layout', () => {
             removeSpy.mockRestore();
         }
     });
+
+    test('fitShell keeps the cards footer inside the visual viewport', () => {
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.classList.add('gobo-layout-cards');
+        document.body.appendChild(shell);
+        window.visualViewport = { offsetTop: 12, height: 500, width: 390, addEventListener() {}, removeEventListener() {} };
+        CardView.fitShell();
+        expect(shell.style.top).toBe('12px');
+        expect(shell.style.height).toBe('500px');
+        expect(shell.style.bottom).toBe('auto');
+        shell.classList.remove('gobo-layout-cards');
+        CardView.fitShell();
+        expect(shell.style.height).toBe('');
+        expect(shell.style.bottom).toBe('');
+    });
 });

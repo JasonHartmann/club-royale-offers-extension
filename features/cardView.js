@@ -8,8 +8,38 @@
 
         _resizeObserver: null,
         _vs: null,
+        _shellFitBound: false,
 
+        fitShell() {
+            const shell = document.getElementById('gobo-offers-table');
+            if (!shell) return;
+            if (!shell.classList.contains('gobo-layout-cards')) {
+                shell.style.top = '';
+                shell.style.height = '';
+                shell.style.maxHeight = '';
+                shell.style.bottom = '';
+                return;
+            }
+            const vv = window.visualViewport;
+            if (!vv) return;
+            shell.style.bottom = 'auto';
+            shell.style.top = vv.offsetTop + 'px';
+            shell.style.height = vv.height + 'px';
+            shell.style.maxHeight = vv.height + 'px';
+        },
+
+        bindShellFit() {
+            if (this._shellFitBound) return;
+            this._shellFitBound = true;
+            const run = () => { try { this.fitShell(); } catch (e) {} };
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', run);
+                window.visualViewport.addEventListener('scroll', run);
+            }
+            window.addEventListener('resize', run);
+        },
         render(container, state, globalMaxOfferDate = null) {
+            try { this.bindShellFit(); this.fitShell(); } catch (e) {}
             const parked = document.getElementById('advanced-search-panel');
             if (parked && container.contains(parked)) {
                 (document.getElementById('gobo-offers-table') || document.body).appendChild(parked);

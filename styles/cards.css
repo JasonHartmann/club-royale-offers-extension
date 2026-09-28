@@ -1,9 +1,15 @@
 /* Mobile card view — fullscreen, aurora background, one card per sailing */
 
-/* Fullscreen shell (cards only; table layout keeps table-base.css 90vw box) */
+/* Fullscreen shell. Do not pin bottom: Safari's address bar covers inset:0 / 100vh. */
 #gobo-offers-table.gobo-layout-cards {
-    max-width: 100vw; max-height: 100vh; width: 100vw; height: 100vh;
-    inset: 0; margin: 0; border-radius: 0; border: none;
+    top: 0; right: 0; left: 0; bottom: auto;
+    width: 100vw; max-width: 100vw;
+    height: 100svh; height: 100dvh;
+    max-height: 100dvh;
+    margin: 0; border-radius: 0; border: none;
+}
+#gobo-offers-table.gobo-layout-cards .table-footer-container {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
 }
 #gobo-offers-table.gobo-layout-cards .table-scroll-container { max-height: none; flex: 1 1 auto; min-height: 0; height: auto; overflow-y: auto; }
 

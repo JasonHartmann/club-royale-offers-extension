@@ -1312,6 +1312,10 @@ const TableRenderer = {
                 else if (!showCards && typeof App.CardView.pauseResizeObserver === 'function') App.CardView.pauseResizeObserver();
             }
         } catch(e) {}
+        try {
+            if (window.CardView && typeof CardView.bindShellFit === 'function') CardView.bindShellFit();
+            if (window.CardView && typeof CardView.fitShell === 'function') CardView.fitShell();
+        } catch (e) {}
 
         const breadcrumbContainer = document.querySelector('.breadcrumb-container');
         if (breadcrumbContainer) breadcrumbContainer.style.display = '';

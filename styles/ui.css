@@ -909,7 +909,7 @@ body.gobo-dark .b2b-chain-card.b2b-chain-region-link .b2b-timeline .dot { backgr
 
 /* Extra-tight rules for very narrow modals (<=420px) to reduce gaps and padding further */
 @media (max-width: 420px) {
-    .table-footer-container { gap: 6px !important; padding: 8px 10px !important; }
+    .table-footer-container { gap: 6px !important; padding: 8px 10px !important; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important; }
     #gobo-footer-left { gap:6px !important; }
     .table-footer-container .export-csv-button,
     .table-footer-container .close-button,
