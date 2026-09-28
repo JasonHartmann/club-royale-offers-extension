@@ -72,6 +72,33 @@ describe('createOfferRow HTML escaping', () => {
         expect(row.querySelector('[data-col="perks"]').textContent).toBe(perk);
     });
 
+    test('trade-in value and room are inserted as text', () => {
+        const trade = '<img src=t onerror=alert()>';
+        const room = '<img src=r onerror=alert()>';
+        const offer = {
+            campaignOffer: {
+                offerCode: '26TOR604',
+                name: 'Play Your Way',
+                startDate: '2026-01-01',
+                reserveByDate: '2026-09-16',
+                tradeInValue: trade,
+            },
+        };
+        const sailing = {
+            shipName: 'Oasis of the Seas',
+            shipCode: 'OA',
+            sailDate: '2026-11-16',
+            departurePort: { name: 'Miami' },
+            itineraryDescription: '7 Night Western Caribbean',
+            roomType: room,
+        };
+        const row = rowFor(offer, sailing);
+        expect(row.querySelector('img')).toBeNull();
+        expect(row.querySelector('[data-col="tradeInValue"]').textContent).toBe(trade);
+        expect(row.querySelector('[data-col="category"]').textContent).toBe(room);
+        expect(row.querySelector('[data-col="destination"]').id).toBe('SD_OA_2026-11-16');
+    });
+
     test('plain offer fields still render', () => {
         const offer = {
             campaignOffer: {

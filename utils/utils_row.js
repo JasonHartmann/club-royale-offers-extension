@@ -135,7 +135,7 @@
             <td class="${tdClass('offerCode','border p-2')}" data-col="offerCode">${esc(codeCell)}</td>
             <td class="${tdClass('offerDate','border p-2')}" data-col="offerDate">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="${tdClass('expiration','border p-2')}" data-col="expiration">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
-            <td class="${tdClass('tradeInValue','border p-2')}" data-col="tradeInValue">${tradeDisplay}</td>
+            <td class="${tdClass('tradeInValue','border p-2')}" data-col="tradeInValue">${esc(tradeDisplay)}</td>
             <td class="${tdClass('offerValue','border p-2')}" data-col="offerValue">${valueDisplay}</td>
             <td class="${tdClass('interior','border p-2')}" data-col="interior">${interiorDisplay}</td>
             <td class="${tdClass('oceanViewUpgrade','border p-2')}" data-col="oceanViewUpgrade">${oceanViewUpgradeDisplay}</td>
@@ -147,9 +147,9 @@
             <td class="${tdClass('sailDate','border p-2')}" data-col="sailDate">${Utils.formatDate(sailing.sailDate)}</td>
             <td class="${tdClass('departurePort','border p-2')}" data-col="departurePort">${esc(sailing.departurePort?.name || '-')}</td>
             <td class="${tdClass('nights','border p-2')}" data-col="nights">${nights}</td>
-            <td class="${tdClass('destination','border p-2 itinerary')}" data-col="destination" id="${itineraryKey}">${esc(destination)}</td>
-            <td class="${tdClass('category','border p-2')}" data-col="category">${room || '-'}</td>
-            <td class="${tdClass('guests','border p-2')}" data-col="guests">${guestsText}</td>
+            <td class="${tdClass('destination','border p-2 itinerary')}" data-col="destination" id="${esc(itineraryKey)}">${esc(destination)}</td>
+            <td class="${tdClass('category','border p-2')}" data-col="category">${esc(room || '-')}</td>
+            <td class="${tdClass('guests','border p-2')}" data-col="guests">${esc(guestsText)}</td>
             <td class="${tdClass('perks','border p-2')}" data-col="perks">${esc(perksStr)}</td>
         `;
             try {
