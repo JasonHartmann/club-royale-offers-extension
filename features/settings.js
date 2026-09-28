@@ -176,6 +176,17 @@ const Settings = {
             overlay.className = 'b2b-visualizer-overlay';
             overlay.id = 'gobo-settings-modal';
             const backdrop = Modal.createBackdrop();
+            // Settings keeps its own close state. Modal.closeModal would erase the
+            // offers popup's Escape handler, session watcher, and scroll lock.
+            let settingsKeyHandler = null;
+            const closeSettings = () => {
+                if (settingsKeyHandler) {
+                    try { document.removeEventListener('keydown', settingsKeyHandler, true); } catch(e) {}
+                    settingsKeyHandler = null;
+                }
+                try { overlay.remove(); } catch(e) {}
+                try { backdrop.remove(); } catch(e) {}
+            };
             // Build modal using the B2B modal classes so the header spans full width
             const modal = document.createElement('div');
             modal.className = 'b2b-visualizer-modal gobo-settings-modal';
@@ -196,7 +207,11 @@ const Settings = {
             closeBtnHeader.className = 'b2b-visualizer-close';
             closeBtnHeader.setAttribute('aria-label', 'Close Settings');
             closeBtnHeader.innerHTML = '&times;';
-            closeBtnHeader.addEventListener('click', () => Modal.closeModal(overlay, backdrop, []));
+            closeBtnHeader.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                closeSettings();
+            });
             header.appendChild(headText);
             header.appendChild(closeBtnHeader);
             modal.appendChild(header);
@@ -590,13 +605,18 @@ const Settings = {
             document.body.appendChild(overlay);
             // Close on click of the dark area outside the modal (mirrors B2B overlay)
             overlay.addEventListener('click', (ev) => {
-                if (ev.target === overlay) Modal.closeModal(overlay, backdrop, []);
+                if (ev.target === overlay) closeSettings();
             });
-            // allow ESC to close using Modal handlers
-            Modal._container = overlay; Modal._backdrop = backdrop; Modal._escapeHandler = Modal.handleEscapeKey.bind(Modal);
+            // Capture-phase Escape closes Settings before the offers popup handler.
+            settingsKeyHandler = (event) => {
+                if (event.key !== 'Escape') return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                closeSettings();
+            };
+            document.addEventListener('keydown', settingsKeyHandler, true);
             // Reveal overlay after a tick so layout can settle (mirrors B2B behavior)
             setTimeout(() => { try { overlay.style.visibility = ''; } catch(e){} }, 0);
-            document.addEventListener('keydown', Modal._escapeHandler);
         } catch (e) { console.warn('openSettingsModal error', e); }
     }
 };

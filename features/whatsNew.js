@@ -38,6 +38,8 @@
         _nav:{},
         _starting:false,
         _hasRenderedOnce:false,
+        _pendingNext:0,
+        _motionToken:0,
         isAlreadyCompleted(){
             return storageGet(STORAGE_KEY) === 'true';
         },
@@ -174,9 +176,20 @@
             btnBack.addEventListener('click', ()=> this.prev());
             btnNext.addEventListener('click', ()=> this.next());
             document.addEventListener('keydown', this._keyHandler = (e)=>{
+                if (!this._overlay) return;
                 if (e.key==='Escape') { this.finish(true); }
-                else if (e.key==='ArrowRight' || e.key==='Enter') { this.next(); }
+                else if (e.key==='ArrowRight') { this.next(); }
                 else if (e.key==='ArrowLeft') { this.prev(); }
+                else if (e.key==='Enter') {
+                    const candidates = [document.activeElement, e.target];
+                    const focused = candidates.find((node) => node && node.nodeType === 1 && this._overlay.contains(node));
+                    if (!focused) return;
+                    const tag = (focused.tagName || '').toUpperCase();
+                    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || focused.isContentEditable) return;
+                    // preventDefault so a focused Next/Done button does not also click.
+                    e.preventDefault();
+                    this.next();
+                }
             });
             window.addEventListener('resize', this._repositionHandler = ()=> this._positionCurrent());
             window.addEventListener('scroll', this._repositionHandler, true);
@@ -284,25 +297,48 @@
             });
         },
         async next(){
-            if (this._animating) return;
-            this._animating = true;
-            // Only fade out if we've rendered at least once (avoid initial blank fade)
-            if (this._hasRenderedOnce) await this._fadeOutTooltip();
-
-            // Advance until we find a valid target or run out of steps
-            while (true) {
-                this._currentStepIndex++;
-                if (this._currentStepIndex >= this._steps.length) { this.finish(); this._animating = false; return; }
-                try {
-                    const ok = await this._renderStep();
-                    if (ok) break; // rendered successfully
-                } catch(e) { /* on error, try next */ }
+            if (!this._overlay) return;
+            const steps = this._steps || [];
+            const onLast = steps.length > 0 && this._currentStepIndex === steps.length - 1;
+            // Done must finish even when a fade is still running.
+            if (onLast && this._animating) {
+                this.finish();
+                return;
             }
+            if (this._animating) {
+                this._pendingNext = (this._pendingNext || 0) + 1;
+                return;
+            }
+            this._animating = true;
+            const token = this._motionToken || 0;
+            const alive = () => (this._motionToken || 0) === token && this._overlay;
+            try {
+                // Only fade out if we've rendered at least once (avoid initial blank fade)
+                if (this._hasRenderedOnce) await this._fadeOutTooltip();
+                if (!alive()) return;
 
-            // Mark that we've shown a step at least once and fade in tooltip for the rendered step
-            this._hasRenderedOnce = true;
-            await this._fadeInTooltip();
-            this._animating = false;
+                // Advance until we find a valid target or run out of steps
+                while (true) {
+                    this._currentStepIndex++;
+                    if (this._currentStepIndex >= steps.length) { this.finish(); return; }
+                    try {
+                        const ok = await this._renderStep();
+                        if (!alive()) return;
+                        if (ok) break; // rendered successfully
+                    } catch(e) { /* on error, try next */ }
+                }
+
+                // Mark that we've shown a step at least once and fade in tooltip for the rendered step
+                this._hasRenderedOnce = true;
+                await this._fadeInTooltip();
+                if (!alive()) return;
+            } finally {
+                if ((this._motionToken || 0) === token) this._animating = false;
+            }
+            if ((this._motionToken || 0) === token && this._pendingNext > 0 && this._overlay) {
+                this._pendingNext -= 1;
+                return this.next();
+            }
         },
         async prev(){
             if (this._animating) return;
@@ -325,6 +361,9 @@
             this._animating = false;
         },
         finish(){
+            this._pendingNext = 0;
+            this._animating = false;
+            this._motionToken = (this._motionToken || 0) + 1;
             this.markDone();
             this._cleanup();
         },

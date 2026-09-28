@@ -62,6 +62,8 @@
 
         _cleanup() {
             if (this._resizeObserver) { try { this._resizeObserver.disconnect(); } catch(e) {} this._resizeObserver = null; }
+            this._resizeTarget = null;
+            this._resizePaused = false;
             if (this._vs && this._vs.cleanup) { try { this._vs.cleanup(); } catch(e) {} }
             this._vs = null;
         },
@@ -136,6 +138,15 @@
             menu.className = 'gobo-card-sort-menu';
             menu.setAttribute('role', 'listbox');
             menu.hidden = true;
+            let outsideClose = null;
+            const closeMenu = () => {
+                menu.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+                if (!outsideClose) return;
+                const fn = outsideClose;
+                outsideClose = null;
+                document.removeEventListener('click', fn);
+            };
             items.forEach(header => {
                 const opt = document.createElement('button');
                 opt.type = 'button';
@@ -145,8 +156,7 @@
                 if (current && header.key === current.key) opt.setAttribute('aria-selected', 'true');
                 opt.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    menu.hidden = true;
-                    btn.setAttribute('aria-expanded', 'false');
+                    closeMenu();
                     this._applySort(state, header.key, 'asc');
                 });
                 menu.appendChild(opt);
@@ -159,14 +169,14 @@
                     btn.setAttribute('aria-expanded', 'true');
                     const close = (ev) => {
                         if (wrap.contains(ev.target)) return;
-                        menu.hidden = true;
-                        btn.setAttribute('aria-expanded', 'false');
-                        document.removeEventListener('click', close);
+                        closeMenu();
                     };
-                    setTimeout(() => document.addEventListener('click', close), 0);
+                    outsideClose = close;
+                    setTimeout(() => {
+                        if (outsideClose === close) document.addEventListener('click', close);
+                    }, 0);
                 } else {
-                    menu.hidden = true;
-                    btn.setAttribute('aria-expanded', 'false');
+                    closeMenu();
                 }
             });
             wrap.appendChild(btn);
@@ -907,16 +917,40 @@
         _attachResizeObserver(container, state, globalMaxOfferDate) {
             if (typeof ResizeObserver !== 'function') return;
             const self = this;
-            const ro = new ResizeObserver(() => {
+            const ro = new ResizeObserver((entries) => {
                 try {
+                    if (self._resizePaused) return;
+                    // display:none reports a 0-width box and would rebuild the grid at 1 column.
+                    if (entries && entries.length) {
+                        const hasWidth = entries.some((entry) => entry && entry.contentRect && entry.contentRect.width > 0);
+                        if (!hasWidth) return;
+                    }
+                    const width = container.clientWidth;
+                    if (!width) return;
                     const total = (state.sortedOffers || []).length;
-                    const cols = self._columnCount(container.clientWidth, total);
+                    const cols = self._columnCount(width, total);
                     if (container._goboCardCols !== undefined && cols === container._goboCardCols) return;
                     self.render(container, state, globalMaxOfferDate);
                 } catch(e) {}
             });
             ro.observe(container);
             this._resizeObserver = ro;
+            this._resizeTarget = container;
+            this._resizePaused = false;
+        },
+
+        pauseResizeObserver() {
+            this._resizePaused = true;
+            if (this._resizeObserver) {
+                try { this._resizeObserver.disconnect(); } catch(e) {}
+            }
+        },
+
+        resumeResizeObserver(container) {
+            if (container) this._resizeTarget = container;
+            this._resizePaused = false;
+            if (!this._resizeObserver || !this._resizeTarget) return;
+            try { this._resizeObserver.observe(this._resizeTarget); } catch(e) {}
         },
 
         _dispatchComplete(state, total) {
@@ -978,6 +1012,7 @@
                     if (home && panel.parentElement !== home) home.appendChild(panel);
                 }
             } catch(e) {}
+            this.pauseResizeObserver();
         },
     };
 

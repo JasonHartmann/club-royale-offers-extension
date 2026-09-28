@@ -124,10 +124,15 @@
                 <button type="button" class="favorite-toggle" aria-label="${isFav ? 'Unfavorite' : 'Favorite'} sailing" title="${isFav ? 'Remove from Favorites' : 'Add to Favorites'}" style="cursor:pointer; background:none; border:none; font-size:14px; line-height:1; color:${isFav ? '#f5c518' : '#bbb'};">${isFav ? '\u2605' : '\u2606'}</button>
             </td>`;
         }
+        const esc = (value) => String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
         row.innerHTML = `
             ${favCellHtml}
             <td class="${tdClass('b2bDepth','border p-2 b2b-depth-cell')}" data-col="b2bDepth"></td>
-            <td class="${tdClass('offerCode','border p-2')}" data-col="offerCode">${codeCell}</td>
+            <td class="${tdClass('offerCode','border p-2')}" data-col="offerCode">${esc(codeCell)}</td>
             <td class="${tdClass('offerDate','border p-2')}" data-col="offerDate">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>
             <td class="${tdClass('expiration','border p-2')}" data-col="expiration">${Utils.formatDate(offer.campaignOffer?.reserveByDate)}</td>
             <td class="${tdClass('tradeInValue','border p-2')}" data-col="tradeInValue">${tradeDisplay}</td>
@@ -136,16 +141,16 @@
             <td class="${tdClass('oceanViewUpgrade','border p-2')}" data-col="oceanViewUpgrade">${oceanViewUpgradeDisplay}</td>
             <td class="${tdClass('balconyUpgrade','border p-2')}" data-col="balconyUpgrade">${balconyUpgradeDisplay}</td>
             <td class="${tdClass('suiteUpgrade','border p-2')}" data-col="suiteUpgrade">${suiteUpgradeDisplay}</td>
-            <td class="${tdClass('offerName','border p-2')}" data-col="offerName">${offer.campaignOffer.name || '-'}</td>
+            <td class="${tdClass('offerName','border p-2')}" data-col="offerName">${esc(offer.campaignOffer.name || '-')}</td>
             <td class="${tdClass('shipClass','border p-2')}" data-col="shipClass">${shipClass}</td>
-            <td class="${tdClass('ship','border p-2')}" data-col="ship">${sailing.shipName || '-'}</td>
+            <td class="${tdClass('ship','border p-2')}" data-col="ship">${esc(sailing.shipName || '-')}</td>
             <td class="${tdClass('sailDate','border p-2')}" data-col="sailDate">${Utils.formatDate(sailing.sailDate)}</td>
-            <td class="${tdClass('departurePort','border p-2')}" data-col="departurePort">${sailing.departurePort?.name || '-'}</td>
+            <td class="${tdClass('departurePort','border p-2')}" data-col="departurePort">${esc(sailing.departurePort?.name || '-')}</td>
             <td class="${tdClass('nights','border p-2')}" data-col="nights">${nights}</td>
-            <td class="${tdClass('destination','border p-2 itinerary')}" data-col="destination" id="${itineraryKey}">${destination}</td>
+            <td class="${tdClass('destination','border p-2 itinerary')}" data-col="destination" id="${itineraryKey}">${esc(destination)}</td>
             <td class="${tdClass('category','border p-2')}" data-col="category">${room || '-'}</td>
             <td class="${tdClass('guests','border p-2')}" data-col="guests">${guestsText}</td>
-            <td class="${tdClass('perks','border p-2')}" data-col="perks">${perksStr}</td>
+            <td class="${tdClass('perks','border p-2')}" data-col="perks">${esc(perksStr)}</td>
         `;
             try {
                 // If BackToBackTool has a persisted selection, apply persistent highlight

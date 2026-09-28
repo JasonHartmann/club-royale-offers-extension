@@ -1305,6 +1305,13 @@ const TableRenderer = {
         if (state.cardContainer) state.cardContainer.style.display = showCards ? 'block' : 'none';
         const shell = document.getElementById('gobo-offers-table');
         if (shell) shell.classList.toggle('gobo-layout-cards', !!showCards);
+        // A hidden card grid is 0px wide. Pause its observer until cards are shown again.
+        try {
+            if (App && App.CardView) {
+                if (showCards && typeof App.CardView.resumeResizeObserver === 'function') App.CardView.resumeResizeObserver(state.cardContainer);
+                else if (!showCards && typeof App.CardView.pauseResizeObserver === 'function') App.CardView.pauseResizeObserver();
+            }
+        } catch(e) {}
 
         const breadcrumbContainer = document.querySelector('.breadcrumb-container');
         if (breadcrumbContainer) breadcrumbContainer.style.display = '';
@@ -1422,7 +1429,7 @@ const TableRenderer = {
                     const chunkHandler = (chunkEv) => {
                         try { if (chunkEv && chunkEv.detail && token && chunkEv.detail.token && chunkEv.detail.token !== token) return; applyB2BToCards(); } catch(e) {}
                     };
-                    try { document.addEventListener('tableChunkRendered', chunkHandler); } catch(e) {}
+                    this._replaceTableChunkListener(chunkHandler);
                     try { document.addEventListener('tableRenderComplete', (ev) => { try { if (ev && ev.detail && token && ev.detail.token && ev.detail.token !== token) return; applyB2BToCards(); } catch(e) {} }, { once: true }); } catch(e) {}
                 } catch(e) {}
                 // Common tail (same as the table/accordion paths)
@@ -1488,7 +1495,7 @@ const TableRenderer = {
                         applyB2BToVisibleRows();
                     } catch(e) {}
                 };
-                try { document.addEventListener('tableChunkRendered', chunkHandler); } catch(e) {}
+                this._replaceTableChunkListener(chunkHandler);
                 try { document.addEventListener('tableRenderComplete', (ev) => {
                     try { if (ev && ev.detail && token && ev.detail.token && ev.detail.token !== token) return; applyB2BToVisibleRows(); } catch(e) {}
                 }, { once: true }); } catch(e) {}
@@ -1634,6 +1641,15 @@ const TableRenderer = {
                 } catch(inner) { /* ignore single element errors */ }
             });
         } catch(e) { /* ignore overall errors */ }
+    },
+    _replaceTableChunkListener(handler) {
+        if (this._tableChunkListener) {
+            try { document.removeEventListener('tableChunkRendered', this._tableChunkListener); } catch(e) {}
+            this._tableChunkListener = null;
+        }
+        if (typeof handler !== 'function') return;
+        this._tableChunkListener = handler;
+        try { document.addEventListener('tableChunkRendered', handler); } catch(e) {}
     },
     _applyLayoutSort(state) {
         if (!state) return;

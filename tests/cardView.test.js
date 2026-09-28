@@ -475,4 +475,105 @@ describe('cardView mobile card layout', () => {
         expect(panel.parentElement).toBe(bc);
         expect(panel.classList.contains('adv-collapsed')).toBe(false);
     });
+
+    test('resize observer ignores a zero-width entry and does not rebuild', () => {
+        const previous = global.ResizeObserver;
+        const callbacks = [];
+        global.ResizeObserver = class {
+            constructor(cb) { callbacks.push(cb); }
+            observe() {}
+            disconnect() {}
+        };
+        let width = 2724;
+        Object.defineProperty(container, 'clientWidth', { configurable: true, get: () => width });
+        const state = makeState();
+        try {
+            CardView.render(container, state);
+            const button = container.querySelector('.gobo-itinerary-link');
+            const cols = container._goboCardCols;
+            width = 400;
+            callbacks[0]([{ contentRect: { width: 0 } }]);
+            expect(container.querySelector('.gobo-itinerary-link')).toBe(button);
+            expect(container._goboCardCols).toBe(cols);
+            callbacks[0]([]);
+            expect(container._goboCardCols).toBe(1);
+        } finally {
+            if (previous) global.ResizeObserver = previous;
+            else delete global.ResizeObserver;
+        }
+    });
+
+    test('hideCards disconnects the resize observer and show reconnects it', () => {
+        const previous = global.ResizeObserver;
+        const callbacks = [];
+        const observes = [];
+        const disconnects = [];
+        global.ResizeObserver = class {
+            constructor(cb) { callbacks.push(cb); }
+            observe() { observes.push(1); }
+            disconnect() { disconnects.push(1); }
+        };
+        Object.defineProperty(container, 'clientWidth', { configurable: true, get: () => 1400 });
+        const state = makeState();
+        try {
+            CardView.render(container, state);
+            const button = container.querySelector('.gobo-itinerary-link');
+            expect(observes).toHaveLength(1);
+            CardView.hideCards(state);
+            expect(disconnects).toHaveLength(1);
+            callbacks[0]([{ contentRect: { width: 400 } }]);
+            expect(container.querySelector('.gobo-itinerary-link')).toBe(button);
+            CardView.resumeResizeObserver(container);
+            expect(observes).toHaveLength(2);
+            expect(CardView._resizePaused).toBe(false);
+        } finally {
+            if (previous) global.ResizeObserver = previous;
+            else delete global.ResizeObserver;
+        }
+    });
+
+    test('sort menu removes the outside-click listener on every close path', async () => {
+        AppStub.TableRenderer.updateView = jest.fn();
+        AppStub.SettingsStore.setCardSort = jest.fn();
+        CardView.render(container, makeState());
+        const btn = container.querySelector('.gobo-card-sort');
+        const menu = container.querySelector('.gobo-card-sort-menu');
+        const added = [];
+        const removed = [];
+        const origAdd = document.addEventListener.bind(document);
+        const origRemove = document.removeEventListener.bind(document);
+        const addSpy = jest.spyOn(document, 'addEventListener').mockImplementation((type, fn, opts) => {
+            if (type === 'click') added.push(fn);
+            return origAdd(type, fn, opts);
+        });
+        const removeSpy = jest.spyOn(document, 'removeEventListener').mockImplementation((type, fn, opts) => {
+            if (type === 'click') removed.push(fn);
+            return origRemove(type, fn, opts);
+        });
+        try {
+            btn.click();
+            btn.click();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(menu.hidden).toBe(true);
+            expect(added).toHaveLength(0);
+
+            btn.click();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(menu.hidden).toBe(false);
+            expect(added).toHaveLength(1);
+            btn.click();
+            expect(menu.hidden).toBe(true);
+            expect(removed).toContain(added[0]);
+
+            btn.click();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(added).toHaveLength(2);
+            menu.querySelector('.gobo-card-sort-option').click();
+            expect(menu.hidden).toBe(true);
+            expect(removed).toContain(added[1]);
+        } finally {
+            addSpy.mockRestore();
+            removeSpy.mockRestore();
+        }
+    });
 });
