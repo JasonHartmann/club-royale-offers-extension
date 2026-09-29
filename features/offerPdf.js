@@ -138,7 +138,74 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
             }
         },
 
+        _isFirefox() {
+            try { return /Firefox\//.test(navigator.userAgent || ''); } catch (e) { return false; }
+        },
+
+        _openViaBackground(html) {
+            const rt = (typeof browser !== 'undefined' && browser.runtime) ? browser.runtime : (typeof chrome !== 'undefined' ? chrome.runtime : null);
+            if (!rt || typeof rt.sendMessage !== 'function') return Promise.reject(new Error('no runtime'));
+            try {
+                const ret = rt.sendMessage({ channel: 'gobo-flyer', html });
+                if (ret && typeof ret.then === 'function') return ret;
+            } catch (e) {
+                return Promise.reject(e);
+            }
+            return new Promise((resolve, reject) => {
+                try {
+                    rt.sendMessage({ channel: 'gobo-flyer', html }, (resp) => {
+                        const err = rt.lastError;
+                        if (err) reject(new Error(err.message));
+                        else resolve(resp);
+                    });
+                } catch (e) { reject(e); }
+            });
+        },
+
+        _blobToData(blobUrl) {
+            return fetch(blobUrl).then(r => r.blob()).then(blob => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(blob);
+            }));
+        },
+
+        // Firefox content scripts cannot document.write into about:blank (the tab stays blank).
+        // The event-page background opens a blob URL, which does not inherit the site CSP.
+        _openFirefox(offerCode, state) {
+            const pairs = this._pairsForCode(offerCode, state);
+            const fail = (text) => {
+                const html = '<!doctype html><title>Offer flyer</title><p style="font-family:sans-serif;padding:24px">' + text + '</p>';
+                this._openViaBackground(html).catch(() => {});
+                try { ErrorHandler.showError(text); } catch (e) {}
+            };
+            if (!pairs.length) { fail('No sailings found for this offer.'); return; }
+            const offer = pairs[0].offer;
+            let dark = false;
+            try { dark = !!App.SettingsStore.getDarkMode(); } catch (e) {}
+            const heroUrl = this.heroFileUrl(offer);
+            const celebrity = this._isCelebrity(state);
+            const finish = (heroSrc) => {
+                const html = this.buildHtml(offer, pairs, { dark, heroSrc: heroSrc || '', celebrity });
+                this._openViaBackground(html).catch(() => {
+                    try {
+                        const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+                        if (!window.open(url, '_blank')) throw new Error('blocked');
+                    } catch (e) {
+                        try { ErrorHandler.showError('Could not open the offer flyer.'); } catch (err) {}
+                    }
+                });
+            };
+            if (!heroUrl) { finish(''); return; }
+            this.heroSrc(heroUrl).then(src => {
+                if (src && String(src).startsWith('blob:')) return this._blobToData(src);
+                return src || '';
+            }).then(finish).catch(() => finish(''));
+        },
+
         open(offerCode, state) {
+            if (this._isFirefox()) { this._openFirefox(offerCode, state); return; }
             const win = window.open('about:blank', '_blank');
             if (!win) {
                 try { ErrorHandler.showError('Pop-up blocked. Allow pop-ups for this site to open the flyer.'); } catch(e) {}

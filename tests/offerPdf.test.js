@@ -163,4 +163,23 @@ describe('offerPdf flyer grouping', () => {
         expect(cel).toContain('<html class="gobo-flyer-cel">');
         expect(cel).toContain('--flyer-ink: #004275');
     });
+
+    test('Firefox opens the flyer from the background instead of about:blank', () => {
+        jest.spyOn(OfferPdf, '_isFirefox').mockReturnValue(true);
+        const sent = [];
+        global.browser = {
+            runtime: {
+                sendMessage: (msg) => { sent.push(msg); return Promise.resolve({ ok: true }); }
+            }
+        };
+        window.open = jest.fn();
+        const pair = makePair(makeSailing({ id: 's1' }), '26RCL904');
+        OfferPdf.open('26RCL904', { selectedProfileKey: 'gobo-R-x', fullOriginalOffers: [pair] });
+        expect(window.open).not.toHaveBeenCalled();
+        expect(sent).toHaveLength(1);
+        expect(sent[0].channel).toBe('gobo-flyer');
+        expect(sent[0].html).toContain('26RCL904');
+        expect(sent[0].html).toContain('<!doctype html>');
+        delete global.browser;
+    });
 });

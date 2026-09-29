@@ -183,4 +183,25 @@ describe('Safari background storage owner', () => {
       } catch (e) { done(e); }
     });
   });
+
+  test('flyer message opens a blob tab', (done) => {
+    let listener = null;
+    const created = [];
+    global.navigator = { userAgent: 'Mozilla/5.0 Firefox/156.0' };
+    global.URL.createObjectURL = () => 'blob:flyer';
+    global.URL.revokeObjectURL = () => {};
+    global.browser = {
+      runtime: { onMessage: { addListener: (fn) => { listener = fn; } } },
+      tabs: { create: (opts) => { created.push(opts); return Promise.resolve({}); } }
+    };
+    jest.resetModules();
+    require('../background');
+    listener({ channel: 'gobo-flyer', html: '<!doctype html><p>hi</p>' }, {}, (resp) => {
+      try {
+        expect(resp.ok).toBe(true);
+        expect(created[0].url).toBe('blob:flyer');
+        done();
+      } catch (e) { done(e); }
+    });
+  });
 });

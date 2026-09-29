@@ -244,6 +244,19 @@
         const runtime = runtimeApi();
         if (runtime && runtime.onMessage && runtime.onMessage.addListener) {
             runtime.onMessage.addListener((message, sender, sendResponse) => {
+                if (message && message.channel === 'gobo-flyer' && typeof message.html === 'string') {
+                    try {
+                        const blob = new Blob([message.html], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        const tabs = (typeof browser !== 'undefined' && browser.tabs) ? browser.tabs : chrome.tabs;
+                        tabs.create({ url });
+                        setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 60000);
+                        sendResponse({ ok: true });
+                    } catch (e) {
+                        sendResponse({ error: String(e && e.message ? e.message : e) });
+                    }
+                    return false;
+                }
                 const result = handleMessage(message);
                 if (!result) return false;
                 result.then((payload) => sendResponse(payload)).catch((err) => {
