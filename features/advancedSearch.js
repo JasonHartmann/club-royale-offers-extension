@@ -470,8 +470,12 @@ const AdvancedSearch = {
             if (nextIncomplete) this.schedulePreview(state, nextIncomplete);
             try { this.lightRefresh(state, { showSpinner: true }); } catch (e) {}
             try { this.renderPredicates(state); } catch (e) {}
-            if (state.advancedSearch.enabled && state.advancedSearch.predicates.length === 0) {
-                setTimeout(() => { try { const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); } catch (err) {} }, 0);
+            if (state.advancedSearch.predicates.length === 0) {
+                state._advAppliedSetId = null;
+                this._resetSavedSetSelect(state);
+                if (state.advancedSearch.enabled) {
+                    setTimeout(() => { try { const sel = state.advancedSearchPanel?.querySelector('select.adv-add-field-select'); if (sel) sel.focus(); } catch (err) {} }, 0);
+                }
             }
             this.debouncedPersist(state);
         } catch (e) { /* ignore removal errors */ }
@@ -1419,7 +1423,7 @@ const AdvancedSearch = {
                 try { this.lightRefresh(state, { showSpinner: true }); } catch(e){}
                 this.renderPredicates(state);
                 this.updateBadge(state);
-                try { this.buildHeader(state, panel); } catch(e){}
+                this._resetSavedSetSelect(state, panel);
                 try { const key = this.storageKey(state.selectedProfileKey); __advSession.removeItem(key); } catch(e){}
                 setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
             });
@@ -1430,6 +1434,24 @@ const AdvancedSearch = {
             }
             this.renderFilterSetsControls(state, header);
         } catch(e){ this._logDebug('buildHeader:error', e); }
+    },
+    // Chrome will not re-select a disabled placeholder on a live <select>, so emptying
+    // the filters has to rebuild the control (and force any select that rebuild missed).
+    _resetSavedSetSelect(state, panel) {
+        const host = panel || (state && state.advancedSearchPanel) || document.getElementById('advanced-search-panel');
+        if (host) {
+            try { this.buildHeader(state, host); } catch (e) {}
+        }
+        if (state && state._advAppliedSetId) return;
+        try {
+            document.querySelectorAll('select.adv-sets-select').forEach((select) => {
+                const placeholder = select.querySelector('option[value=""]');
+                if (!placeholder) return;
+                placeholder.disabled = false;
+                select.value = '';
+                placeholder.disabled = true;
+            });
+        } catch (e) {}
     },
     renderFilterSetsControls(state, header) {
         try {

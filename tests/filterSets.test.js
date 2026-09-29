@@ -185,4 +185,54 @@ describe('named filter sets', () => {
         expect(header.querySelector('.adv-sets-save-btn').disabled).toBe(true);
         expect(header.querySelector('.adv-sets-save-btn').title).toBe('No active filters to save');
     });
+
+    test('Clear All and removing the last filter reset the saved-set dropdown', () => {
+        const AS = loadAdvancedSearch(
+            (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
+            (k, v) => { store[k] = String(v); }
+        );
+        AS.lightRefresh = () => {};
+        AS.renderPredicates = () => {};
+        AS.updateBadge = () => {};
+        AS.persistPredicates = () => {};
+        AS.debouncedPersist = () => {};
+        const panel = document.createElement('div');
+        panel.id = 'advanced-search-panel';
+        document.body.appendChild(panel);
+        const st = {
+            selectedProfileKey: 'gobo-R-test',
+            advancedSearch: {
+                enabled: true,
+                includeTaxesAndFeesInPriceFilters: true,
+                predicates: [{ id: 'a', fieldKey: 'nights', operator: 'greater than', values: ['6'], complete: true }],
+            },
+            advancedSearchPanel: panel,
+        };
+        window.prompt = () => 'Oasis';
+        AS.saveCurrentFilterSet(st);
+        const setId = AS.loadFilterSets()[0].id;
+        AS.applyFilterSet(st, setId);
+        const shown = () => panel.querySelector('.adv-sets-select');
+        expect(shown().value).toBe(setId);
+        expect(shown().selectedOptions[0].textContent).toBe('Oasis');
+
+        panel.querySelector('.adv-search-clear-btn').click();
+        expect(st._advAppliedSetId).toBeNull();
+        expect(shown().value).toBe('');
+        expect(shown().selectedOptions[0].textContent).toBe('Saved sets…');
+        expect(shown().selectedOptions[0].disabled).toBe(true);
+
+        AS.applyFilterSet(st, setId);
+        st.advancedSearch.predicates.push({ id: 'b', fieldKey: 'ship', operator: 'in', values: ['Oasis'], complete: true });
+        AS._removePredicate(st.advancedSearch.predicates[0], st);
+        expect(st._advAppliedSetId).toBe(setId);
+        expect(shown().value).toBe(setId);
+
+        AS._removePredicate(st.advancedSearch.predicates[0], st);
+        expect(st.advancedSearch.predicates).toHaveLength(0);
+        expect(st._advAppliedSetId).toBeNull();
+        expect(shown().value).toBe('');
+        expect(shown().selectedOptions[0].textContent).toBe('Saved sets…');
+        panel.remove();
+    });
 });
