@@ -25,13 +25,70 @@ const __advSession = (() => {
 const AdvancedSearch = {
     // Debug flag (set AdvancedSearch._debug = true or window.ADV_SEARCH_DEBUG = true to enable)
     _debug: false, // default false to reduce console overhead / potential perf impact
-    // Firefox content scripts do not share bare const bindings. window and globalThis
-    // are different objects there, so check both or IN lists come back empty.
+    // Firefox content scripts do not share bare const bindings, and a dark OS theme
+    // paints listbox option text the same color as our forced white background.
     _filtering() {
         try { if (typeof Filtering !== 'undefined' && Filtering) return Filtering; } catch (e) {}
         try { if (typeof globalThis !== 'undefined' && globalThis.Filtering) return globalThis.Filtering; } catch (e) {}
         try { if (typeof window !== 'undefined' && window.Filtering) return window.Filtering; } catch (e) {}
+        try { if (document.documentElement && document.documentElement.__goboFiltering) return document.documentElement.__goboFiltering; } catch (e) {}
         return null;
+    },
+    _inDark() {
+        try { return !!(document.body && document.body.classList.contains('gobo-dark')); } catch (e) { return false; }
+    },
+    _paintInSelect(sel) {
+        const dark = this._inDark();
+        try {
+            sel.style.setProperty('color-scheme', dark ? 'only dark' : 'only light');
+            sel.style.setProperty('color', dark ? '#e2e8f0' : '#1f2937', 'important');
+            sel.style.setProperty('background-color', dark ? '#0b1220' : '#ffffff', 'important');
+        } catch (e) {}
+    },
+    _paintInOption(opt) {
+        const dark = this._inDark();
+        try {
+            opt.style.setProperty('color', dark ? '#e2e8f0' : '#1f2937', 'important');
+            opt.style.setProperty('background-color', dark ? '#0b1220' : '#ffffff', 'important');
+        } catch (e) {}
+    },
+    _fallbackFieldValues(fieldKey, source) {
+        const set = new Set();
+        const add = (v) => {
+            if (v == null) return;
+            const s = String(v).trim();
+            if (!s || s === '-' || s === 'undefined') return;
+            set.add(s);
+        };
+        const rows = Array.isArray(source) ? source : [];
+        for (let i = 0; i < rows.length; i++) {
+            const w = rows[i];
+            if (!w) continue;
+            let offer = null;
+            let sailing = null;
+            try { offer = w.offer || (w.campaignOffer ? w : null); } catch (e) {}
+            try { sailing = w.sailing; } catch (e) {}
+            try {
+                if (!sailing && offer && offer.campaignOffer && Array.isArray(offer.campaignOffer.sailings)) sailing = offer.campaignOffer.sailings[0];
+            } catch (e) {}
+            try {
+                if (fieldKey === 'shipClass' && App && App.Utils && typeof App.Utils.getShipClass === 'function') add(App.Utils.getShipClass(sailing && sailing.shipName));
+                else if (fieldKey === 'ship') add(sailing && sailing.shipName);
+                else if (fieldKey === 'departurePort') add(sailing && sailing.departurePort && sailing.departurePort.name);
+                else if (fieldKey === 'nights') add(sailing && (sailing.totalNights != null ? sailing.totalNights : sailing.nights));
+                else if (fieldKey === 'offerCode') add(offer && offer.campaignOffer && offer.campaignOffer.offerCode);
+                else if (fieldKey === 'offerName') add(offer && offer.campaignOffer && offer.campaignOffer.name);
+                else if (fieldKey === 'category') add(sailing && sailing.roomType);
+                else if (fieldKey === 'destination') add(sailing && (sailing.destination || sailing.itineraryName));
+                else if (fieldKey === 'guests') add(sailing && sailing.isGOBO ? '1 Guest' : (sailing ? '2 Guests' : null));
+            } catch (e) {}
+        }
+        if (!set.size && typeof document !== 'undefined') {
+            try {
+                document.querySelectorAll('#gobo-offers-table td[data-col="' + fieldKey + '"]').forEach(td => add(td.textContent));
+            } catch (e) {}
+        }
+        return Array.from(set).sort();
     },
     _logDebug(...args) {
         try {
@@ -435,6 +492,10 @@ const AdvancedSearch = {
             } else {
                 arr = Array.from(set).sort();
             }
+            if (!arr.length) {
+                const alt = this._fallbackFieldValues(fieldKey, (source && source.length) ? source : (state.sortedOffers || state.fullOriginalOffers || state.originalOffers || []));
+                if (alt.length) arr = alt;
+            }
             // Avoid poisoning cache with empty array when source has data (Firefox global-resolution failures)
             if (arr.length > 0 || (Array.isArray(source) && !source.length)) {
                 state._advFieldCache[cacheKey] = arr;
@@ -754,7 +815,7 @@ const AdvancedSearch = {
                             this._renderDateRangeEditor(box, pred, state);
                         } else if (pred.operator === 'in' || pred.operator === 'not in') {
                             const selectWrap = document.createElement('div'); selectWrap.className = 'adv-stack-col';
-                            const sel = document.createElement('select'); sel.multiple = true; sel.size = 6; sel.className = 'adv-values-multiselect';
+                            const sel = document.createElement('select'); sel.multiple = true; sel.size = 6; sel.className = 'adv-values-multiselect'; this._paintInSelect(sel);
                             const values = this.getCachedFieldValues(pred.fieldKey, state) || [];
                             if (pred.fieldKey === 'visits' && (!values || !values.length)) {
                                 // Increment poll attempts
@@ -792,12 +853,12 @@ const AdvancedSearch = {
                                  const alreadySelected = new Set((pred.values || []).map(normVal));
                                  const CHUNK_SYNC_THRESHOLD = 250, CHUNK_SIZE = 300;
                                  if (values.length <= CHUNK_SYNC_THRESHOLD) {
-                                     values.forEach(v => { const opt = document.createElement('option'); const label = displayOpt(v); opt.value = v; opt.textContent = label; opt.label = label; opt.selected = alreadySelected.has(normVal(v)); sel.appendChild(opt); });
+                                     values.forEach(v => { const opt = document.createElement('option'); const label = String(displayOpt(v) == null ? '' : displayOpt(v)); opt.value = label; opt.text = label; opt.textContent = label; this._paintInOption(opt); opt.selected = alreadySelected.has(normVal(v)); sel.appendChild(opt); });
                                  } else {
                                      sel.classList.add('loading'); let idx = 0;
                                      const addChunk = () => {
                                          const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
-                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); const label = displayOpt(v); opt.value = v; opt.textContent = label; opt.label = label; opt.selected = alreadySelected.has(normVal(v)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
+                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); const label = String(displayOpt(v) == null ? '' : displayOpt(v)); opt.value = label; opt.text = label; opt.textContent = label; this._paintInOption(opt); opt.selected = alreadySelected.has(normVal(v)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
                                          sel.appendChild(frag);
                                          if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else { sel.classList.remove('loading'); }
                                      }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
@@ -860,7 +921,7 @@ const AdvancedSearch = {
                                         }
                                     } catch(e){ /* ignore chip update errors */ }
                                 });
-                                selectWrap.appendChild(sel);
+                                selectWrap.appendChild(sel); sel.size = 6;
                                 const help = document.createElement('div'); help.className = 'adv-help-text';
                                 if (pred.fieldKey === 'visits') {
                                     help.textContent = 'Select one or more ports visited by the sailing.';

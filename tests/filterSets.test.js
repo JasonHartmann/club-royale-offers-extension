@@ -256,4 +256,25 @@ describe('named filter sets', () => {
             else globalThis.Filtering = prev;
         }
     });
+
+    test('IN list uses App.Utils when Filtering is missing', () => {
+        const prevA = global.App;
+        global.App = { Utils: { getShipClass: (n) => (n && n.indexOf('Oasis') !== -1) ? 'Oasis' : '-' } };
+        try {
+            const AS = loadAdvancedSearch(() => null, () => {});
+            AS._filtering = () => null;
+            const row = { offer: { campaignOffer: {} }, sailing: { shipName: 'Oasis Of The Seas' } };
+            const state = {
+                selectedProfileKey: 'gobo-R-test',
+                headers: [{ key: 'shipClass', label: 'Class' }],
+                fullOriginalOffers: [row],
+                originalOffers: [row],
+                sortedOffers: [row],
+                advancedSearch: { predicates: [], includeTaxesAndFeesInPriceFilters: true },
+            };
+            expect(AS.getCachedFieldValues('shipClass', state)).toEqual(['Oasis']);
+        } finally {
+            global.App = prevA;
+        }
+    });
 });

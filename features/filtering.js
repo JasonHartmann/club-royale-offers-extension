@@ -387,7 +387,7 @@ function computeAdvancedMinPrice(offer, sailing, key, includeTaxes) {
 }
 
 
-const Filtering = {
+var Filtering = {
     // Debug flag (toggle below to enable/disable debug logging by editing this file)
     DEBUG: false,
     _dbg(){ if (Filtering.DEBUG) { try { console.debug('[Filtering]', ...arguments); } catch(e){} } },
@@ -1316,3 +1316,4 @@ const Filtering = {
 try { if (typeof module !== 'undefined' && module.exports) module.exports = Filtering; } catch(e) {}
 try { if (typeof globalThis !== 'undefined') globalThis.Filtering = Filtering; } catch(e) {}
 try { if (typeof window !== 'undefined') window.Filtering = Filtering; } catch(e) {}
+try { if (typeof document !== 'undefined' && document.documentElement) document.documentElement.__goboFiltering = Filtering; } catch(e) {}
