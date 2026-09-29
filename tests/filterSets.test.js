@@ -235,4 +235,25 @@ describe('named filter sets', () => {
         expect(shown().selectedOptions[0].textContent).toBe('Saved sets…');
         panel.remove();
     });
+
+    test('IN list lookup uses globalThis.Filtering when the bare binding is missing', () => {
+        const prev = globalThis.Filtering;
+        const stub = { normalizePredicateValue: (v) => String(v).trim().toUpperCase(), getOfferColumnValue: () => 'Miami' };
+        globalThis.Filtering = stub;
+        try {
+            const AS = loadAdvancedSearch(() => null, () => {});
+            expect(AS._filtering()).toBe(stub);
+            const state = {
+                selectedProfileKey: 'gobo-R-test',
+                headers: [{ key: 'departurePort', label: 'Port' }],
+                fullOriginalOffers: [{ offer: {}, sailing: { departurePort: { name: 'Miami' } } }],
+                originalOffers: [{ offer: {}, sailing: { departurePort: { name: 'Miami' } } }],
+                advancedSearch: { predicates: [], includeTaxesAndFeesInPriceFilters: true },
+            };
+            expect(AS.getCachedFieldValues('departurePort', state)).toEqual(['Miami']);
+        } finally {
+            if (prev === undefined) delete globalThis.Filtering;
+            else globalThis.Filtering = prev;
+        }
+    });
 });

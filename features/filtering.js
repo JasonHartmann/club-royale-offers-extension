@@ -1315,3 +1315,4 @@ const Filtering = {
 
 try { if (typeof module !== 'undefined' && module.exports) module.exports = Filtering; } catch(e) {}
 try { if (typeof globalThis !== 'undefined') globalThis.Filtering = Filtering; } catch(e) {}
+try { if (typeof window !== 'undefined') window.Filtering = Filtering; } catch(e) {}

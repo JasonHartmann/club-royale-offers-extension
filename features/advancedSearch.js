@@ -25,6 +25,14 @@ const __advSession = (() => {
 const AdvancedSearch = {
     // Debug flag (set AdvancedSearch._debug = true or window.ADV_SEARCH_DEBUG = true to enable)
     _debug: false, // default false to reduce console overhead / potential perf impact
+    // Firefox content scripts do not share bare const bindings. window and globalThis
+    // are different objects there, so check both or IN lists come back empty.
+    _filtering() {
+        try { if (typeof Filtering !== 'undefined' && Filtering) return Filtering; } catch (e) {}
+        try { if (typeof globalThis !== 'undefined' && globalThis.Filtering) return globalThis.Filtering; } catch (e) {}
+        try { if (typeof window !== 'undefined' && window.Filtering) return window.Filtering; } catch (e) {}
+        return null;
+    },
     _logDebug(...args) {
         try {
             const enabled = AdvancedSearch && (AdvancedSearch._debug || (typeof window !== 'undefined' && window.ADV_SEARCH_DEBUG));
@@ -282,8 +290,9 @@ const AdvancedSearch = {
                 } catch (e) { /* ignore */ }
             };
             // Hidden groups signature (exclude hidden group offers from value aggregation)
+            const F = this._filtering();
             let hiddenGroups = [];
-            try { hiddenGroups = (typeof Filtering !== 'undefined' && Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
+            try { hiddenGroups = (F && typeof F.loadHiddenGroups === 'function') ? F.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
             const hgSig = Array.isArray(hiddenGroups) && hiddenGroups.length ? hiddenGroups.slice().sort().join('|') : 'NONE';
             const filterHiddenOffers = (arr) => {
                 if (!Array.isArray(hiddenGroups) || !hiddenGroups.length) return arr;
@@ -302,7 +311,7 @@ const AdvancedSearch = {
                                 if (!label || !value) continue;
                                 const key = labelToKey[label.toLowerCase()];
                                 if (!key) continue;
-                                const colVal = (Filtering && typeof Filtering.getOfferColumnValue === 'function') ? Filtering.getOfferColumnValue(offer, sailing, key) : null;
+                                const colVal = (F && typeof F.getOfferColumnValue === 'function') ? F.getOfferColumnValue(offer, sailing, key) : null;
                                 if (colVal != null && (''+colVal).toUpperCase() === value.toUpperCase()) return false; // exclude hidden
                             }
                         } catch(eRow){ /* ignore row error */ }
@@ -395,7 +404,7 @@ const AdvancedSearch = {
                     const committedOnly = {...state, _advPreviewPredicateId: null};
                     const base = state.fullOriginalOffers || state.originalOffers || [];
                     // Apply advanced search committed predicates first, then hidden group filter
-                    source = Filtering.applyAdvancedSearch(base, committedOnly);
+                    source = F.applyAdvancedSearch(base, committedOnly);
                 }
             } catch (e) { /* fallback below */ }
             if (!source || !Array.isArray(source) || !source.length) {
@@ -408,9 +417,9 @@ const AdvancedSearch = {
             for (let i = 0; i < source.length; i++) {
                 const w = source[i];
                 try {
-                    const raw = (Filtering.getOfferColumnValueForFiltering ? Filtering.getOfferColumnValueForFiltering(w.offer, w.sailing, fieldKey, state) : Filtering.getOfferColumnValue(w.offer, w.sailing, fieldKey));
+                    const raw = (F && (F.getOfferColumnValueForFiltering ? F.getOfferColumnValueForFiltering(w.offer, w.sailing, fieldKey, state) : F.getOfferColumnValue(w.offer, w.sailing, fieldKey)));
                     if (raw == null) continue;
-                    const norm = Filtering.normalizePredicateValue(raw, fieldKey);
+                    const norm = F.normalizePredicateValue(raw, fieldKey);
                     if (!norm || normSet.has(norm)) continue;
                     normSet.add(norm);
                     set.add(raw);
@@ -779,22 +788,23 @@ const AdvancedSearch = {
                             } else {
                                  const dateFields = new Set(['offerDate', 'expiration', 'sailDate', 'endDate']);
                                  const displayOpt = (v) => (dateFields.has(pred.fieldKey) && v && String(v).length >= 7) ? (App.Utils.formatDate(String(v).trim()) || v) : v;
-                                 const alreadySelected = new Set(pred.values.map(v => Filtering.normalizePredicateValue(v, pred.fieldKey)));
+                                 const normVal = (v) => { const F = this._filtering(); try { return F ? F.normalizePredicateValue(v, pred.fieldKey) : String(v == null ? '' : v).trim().toUpperCase(); } catch (e) { return ''; } };
+                                 const alreadySelected = new Set((pred.values || []).map(normVal));
                                  const CHUNK_SYNC_THRESHOLD = 250, CHUNK_SIZE = 300;
                                  if (values.length <= CHUNK_SYNC_THRESHOLD) {
-                                     values.forEach(v => { const opt = document.createElement('option'); opt.value = v; opt.textContent = displayOpt(v); opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); sel.appendChild(opt); });
+                                     values.forEach(v => { const opt = document.createElement('option'); const label = displayOpt(v); opt.value = v; opt.textContent = label; opt.label = label; opt.selected = alreadySelected.has(normVal(v)); sel.appendChild(opt); });
                                  } else {
                                      sel.classList.add('loading'); let idx = 0;
                                      const addChunk = () => {
-                                         if (!sel.isConnected) return; const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
-                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); opt.value = v; opt.textContent = displayOpt(v); opt.selected = alreadySelected.has(Filtering.normalizePredicateValue(v,pred.fieldKey)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
+                                         const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
+                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); const label = displayOpt(v); opt.value = v; opt.textContent = label; opt.label = label; opt.selected = alreadySelected.has(normVal(v)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
                                          sel.appendChild(frag);
                                          if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else { sel.classList.remove('loading'); }
                                      }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
                                  }
                                 sel.addEventListener('change', () => {
                                     // Inline update without full render to prevent scroll jump
-                                    const chosen = Array.from(sel.selectedOptions).map(o => Filtering.normalizePredicateValue(o.value, pred.fieldKey));
+                                    const chosen = Array.from(sel.selectedOptions).map(o => { const F = this._filtering(); return F ? F.normalizePredicateValue(o.value, pred.fieldKey) : String(o.value || '').trim().toUpperCase(); });
                                     pred.values = Array.from(new Set(chosen));
                                     this.schedulePreview(state, pred);
                                     // Update commit button enabled state
@@ -1005,8 +1015,9 @@ const AdvancedSearch = {
             state._advIndexBuilding = true;
             try {
             // Hidden groups signature collected up-front; static index excludes hidden offers
+            const F = this._filtering();
             let hiddenGroups = [];
-            try { hiddenGroups = (typeof Filtering !== 'undefined' && Filtering && typeof Filtering.loadHiddenGroups === 'function') ? Filtering.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
+            try { hiddenGroups = (F && typeof F.loadHiddenGroups === 'function') ? F.loadHiddenGroups() : []; } catch(eHg){ hiddenGroups = []; }
             const hgSig = Array.isArray(hiddenGroups) && hiddenGroups.length ? hiddenGroups.slice().sort().join('|') : 'NONE';
             const baseAll = state.fullOriginalOffers || state.originalOffers || [];
             const offerCount = Array.isArray(baseAll) ? baseAll.length : 0;
@@ -1031,7 +1042,7 @@ const AdvancedSearch = {
                             if (!label || !value) continue;
                             const key = labelToKey[label.toLowerCase()];
                             if (!key) continue;
-                            const colVal = (Filtering && typeof Filtering.getOfferColumnValue === 'function') ? Filtering.getOfferColumnValue(offer, sailing, key) : null;
+                            const colVal = (F && typeof F.getOfferColumnValue === 'function') ? F.getOfferColumnValue(offer, sailing, key) : null;
                             if (colVal != null && (''+colVal).toUpperCase() === value.toUpperCase()) return false;
                         }
                     } catch(eRow){ /* ignore row */ }
@@ -1061,7 +1072,7 @@ const AdvancedSearch = {
                         const w = base[i];
                         const sailings = w?.campaignOffer?.sailings || [w?.sailing].filter(Boolean);
                         const sailing = Array.isArray(sailings) ? sailings[0] : w?.sailing;
-                        const raw = (Filtering && (Filtering.getOfferColumnValueForFiltering ? Filtering.getOfferColumnValueForFiltering(w.offer, sailing, k, state) : Filtering.getOfferColumnValue(w.offer, sailing, k)));
+                        const raw = (F && (F.getOfferColumnValueForFiltering ? F.getOfferColumnValueForFiltering(w.offer, sailing, k, state) : F.getOfferColumnValue(w.offer, sailing, k)));
                         if (raw == null) continue;
                         set.add(raw);
                     } catch(eRow){ /* ignore row */ }
