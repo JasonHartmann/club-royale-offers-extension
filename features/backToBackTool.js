@@ -1190,6 +1190,29 @@
             } catch (e) { /* ignore */ }
         },
 
+        _scrollOptionsToTop() {
+            const scrollTo = (el, top) => {
+                if (typeof el.scrollTo === 'function') el.scrollTo({ top, behavior: 'smooth' });
+                else el.scrollTop = top;
+            };
+            try {
+                if (!this._activeSession || !this._activeSession.ui) return;
+                const list = this._activeSession.ui.optionList;
+                if (!list) return;
+                scrollTo(list, 0);
+                const anchor = list.parentElement || list;
+                let node = anchor.parentElement;
+                while (node && node !== document.body) {
+                    if (node.scrollHeight > node.clientHeight + 1) {
+                        const pad = parseFloat(getComputedStyle(node).paddingTop) || 0;
+                        const top = anchor.getBoundingClientRect().top - node.getBoundingClientRect().top - pad;
+                        if (top) scrollTo(node, node.scrollTop + top);
+                    }
+                    node = node.parentElement;
+                }
+            } catch (e) { /* ignore */ }
+        },
+
         _setStatusText() {
             if (!this._activeSession || !this._activeSession.ui) return;
             const depth = this._activeSession.chain.length;
@@ -1995,6 +2018,7 @@
                 this._renderChain();
                 try { this._scrollChainToBottom(); } catch(e) {}
                 this._renderOptions();
+                try { this._scrollOptionsToTop(); } catch(e) {}
                 // Snapshot after mutation to detect what changed the document
                 try { this._logLayoutState && this._logLayoutState(); } catch(e){}
                 const meta = this._getMeta(rowId);
