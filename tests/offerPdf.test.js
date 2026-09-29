@@ -159,5 +159,8 @@ describe('offerPdf flyer grouping', () => {
         const cel = OfferPdf.buildHtml(offer, pairs, { celebrity: true });
         expect(cel).toContain('Blue Chip');
         expect(cel).not.toContain('Casino');
+        expect(royal).toContain('<html class="">');
+        expect(cel).toContain('<html class="gobo-flyer-cel">');
+        expect(cel).toContain('--flyer-ink: #004275');
     });
 });

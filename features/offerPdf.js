@@ -2,20 +2,21 @@
     'use strict';
 
     const OFFER_PDF_CSS = `* { box-sizing: border-box; }
-html { background: #e7e2d6; }
+html { --flyer-ink: #c99600; --flyer-paper: #e7e2d6; --flyer-bar: rgba(231,226,214,0.92); background: var(--flyer-paper); }
+html.gobo-flyer-cel { --flyer-ink: #004275; --flyer-paper: #eaf0f4; --flyer-bar: rgba(234,240,244,0.92); }
 body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family: Barlow, 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.gobo-flyer-exit { position: sticky; top: 0; z-index: 20; padding: 8px 16px; background: rgba(231,226,214,0.92); backdrop-filter: blur(8px); }
+.gobo-flyer-exit { position: sticky; top: 0; z-index: 20; padding: 8px 16px; background: var(--flyer-bar); backdrop-filter: blur(8px); }
 .gobo-flyer-back { min-height: 44px; min-width: 44px; padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; font-size: 14px; font-family: inherit; cursor: pointer; }
 .gobo-flyer-sheet { max-width: 1360px; margin: 0 auto; padding: 8px 8px 24px; container-type: inline-size; container-name: flyer; }
 .gobo-flyer-tri { display: flex; flex-direction: column; background: #fff; box-shadow: 0 12px 32px rgba(15,23,42,0.14); }
-.gobo-flyer-gold { background: #c99600; color: #fff; text-align: center; padding: 26px 22px 16px; display: flex; flex-direction: column; align-items: center; gap: 13px; }
+.gobo-flyer-gold { background: var(--flyer-ink); color: #fff; text-align: center; padding: 26px 22px 16px; display: flex; flex-direction: column; align-items: center; gap: 13px; }
 .gobo-flyer-kicker { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; line-height: 1.35; }
 .gobo-flyer-suits { letter-spacing: 2px; font-weight: 500; font-size: 12px; }
 .gobo-flyer-h1 { margin: 2px 0 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 34px; font-weight: 700; line-height: 0.98; letter-spacing: 0.2px; text-transform: uppercase; }
 .gobo-flyer-h1-sub { display: block; margin-top: 7px; font-size: 0.58em; font-weight: 500; letter-spacing: 0.4px; line-height: 1.15; }
 .gobo-flyer-perk { width: min(100%, 292px); margin-top: 4px; }
 .gobo-flyer-perk-label { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; margin: 0 8px -11px; position: relative; z-index: 1; }
-.gobo-flyer-perk-label span { background: #c99600; padding: 0 8px; }
+.gobo-flyer-perk-label span { background: var(--flyer-ink); padding: 0 8px; }
 .gobo-flyer-perk-label::before, .gobo-flyer-perk-label::after { content: ''; flex: 1; height: 1.5px; background: #fff; }
 .gobo-flyer-perk-box { border: 1.5px solid #fff; padding: 16px 12px 10px; display: flex; flex-direction: column; gap: 8px; }
 .gobo-flyer-perk-item { display: flex; align-items: center; justify-content: center; gap: 10px; text-align: left; }
@@ -23,13 +24,13 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
 .gobo-flyer-perk-name { font-size: 13px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.2; }
 .gobo-flyer-perk-note { margin-top: 3px; font-size: 11px; font-weight: 500; font-style: italic; letter-spacing: 0; text-transform: none; line-height: 1.25; }
 .gobo-flyer-taxes { font-size: 11px; font-weight: 700; letter-spacing: 0.55px; line-height: 1.35; max-width: 280px; }
-.gobo-flyer-redeem { background: #fff; color: #c99600; font-size: 13px; font-weight: 800; letter-spacing: 0.6px; padding: 8px 18px; text-transform: uppercase; }
+.gobo-flyer-redeem { background: #fff; color: var(--flyer-ink); font-size: 13px; font-weight: 800; letter-spacing: 0.6px; padding: 8px 18px; text-transform: uppercase; }
 .gobo-flyer-call { margin-top: auto; padding-top: 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.55px; line-height: 1.35; }
 .gobo-flyer-phone { margin: 6px 0 2px; font-size: 28px; font-weight: 800; letter-spacing: 0.3px; }
 .gobo-flyer-or { margin: 6px 0; font-size: 13px; font-weight: 600; letter-spacing: 1px; }
 .gobo-flyer-codeblock { width: min(100%, 292px); margin-top: 6px; }
 .gobo-flyer-codelabel { font-size: 13px; font-weight: 800; letter-spacing: 0.7px; margin-bottom: 8px; }
-.gobo-flyer-code { background: #fff; color: #c99600; font-size: 28px; font-weight: 800; letter-spacing: 1px; padding: 7px 12px; }
+.gobo-flyer-code { background: #fff; color: var(--flyer-ink); font-size: 28px; font-weight: 800; letter-spacing: 1px; padding: 7px 12px; }
 .gobo-flyer-upgrade { background: #f65b37; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.35px; line-height: 1.25; padding: 7px 10px; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.13) 0 8px, rgba(255,255,255,0.04) 8px 16px); }
 .gobo-flyer-wordmark { margin-top: 10px; font-family: 'Libre Bodoni', 'Bodoni MT', Didot, Georgia, serif; font-weight: 600; font-size: 38px; line-height: 0.9; text-transform: uppercase; color: #fff; }
 .gobo-flyer-wm-top { display: block; letter-spacing: 0.16em; border-bottom: 1.5px solid rgba(255,255,255,0.9); padding: 0 10px 5px; }
@@ -572,7 +573,7 @@ body.gobo-flyer-root { margin: 0; color: #1f2937; min-height: 100vh; font-family
                 : '';
 
             return `<!doctype html>
-<html class="${dark ? 'gobo-dark' : ''}">
+<html class="${[dark ? 'gobo-dark' : '', celebrity ? 'gobo-flyer-cel' : ''].filter(Boolean).join(' ')}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
