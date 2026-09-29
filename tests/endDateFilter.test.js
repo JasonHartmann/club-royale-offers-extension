@@ -35,4 +35,29 @@ describe('End Date advanced filter', () => {
         const codes = result.map(r => r.offer.campaignOffer.offerCode);
         expect(codes).toEqual(['A','B']);
     });
+
+    it('class IN Oasis matches when only globalThis.Utils is visible and row access throws', () => {
+        const prevUtils = global.Utils;
+        const prevAppUtils = App.Utils;
+        App.Utils = { formatDate: prevAppUtils.formatDate };
+        const getShipClass = (n) => (n && String(n).toLowerCase().indexOf('oasis') !== -1) ? 'Oasis' : '-';
+        global.Utils = { getShipClass };
+        const sailing = { shipName: 'Oasis of the Seas' };
+        Object.defineProperty(sailing, 'isGOBO', { get() { throw new Error('xray'); } });
+        const offers = [
+            { offer: { campaignOffer: { offerCode: 'A' } }, sailing },
+            { offer: { campaignOffer: { offerCode: 'B' } }, sailing: { shipName: 'Freedom of the Seas', isGOBO: false } },
+        ];
+        const state = {
+            advancedSearch: { enabled: true, predicates: [{ fieldKey: 'shipClass', operator: 'in', values: ['OASIS'], complete: true }] },
+            headers: [{ key: 'shipClass', label: 'Class' }],
+        };
+        try {
+            const result = Filtering.applyAdvancedSearch(offers, state);
+            expect(result.map(r => r.offer.campaignOffer.offerCode)).toEqual(['A']);
+        } finally {
+            global.Utils = prevUtils;
+            App.Utils = prevAppUtils;
+        }
+    });
 });

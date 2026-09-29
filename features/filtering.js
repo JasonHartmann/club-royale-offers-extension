@@ -68,6 +68,23 @@ function getItineraryParser() {
     } catch (e) { /* ignore */ }
     return null;
 }
+function resolveUtils() {
+    // Firefox content scripts do not share bare const/var bindings. window.Utils can also be
+    // an Xray wrapper, so prefer the documentElement handle published by utils_core.js.
+    try { if (typeof Utils !== 'undefined' && Utils && typeof Utils.getShipClass === 'function') return Utils; } catch (e) {}
+    try {
+        const el = typeof document !== 'undefined' && document.documentElement;
+        if (el && el.__goboUtils && typeof el.__goboUtils.getShipClass === 'function') return el.__goboUtils;
+    } catch (e) {}
+    try { if (typeof globalThis !== 'undefined' && globalThis.Utils && typeof globalThis.Utils.getShipClass === 'function') return globalThis.Utils; } catch (e) {}
+    try { if (typeof window !== 'undefined' && window.Utils && typeof window.Utils.getShipClass === 'function') return window.Utils; } catch (e) {}
+    try { if (typeof App !== 'undefined' && App && App.Utils && typeof App.Utils.getShipClass === 'function') return App.Utils; } catch (e) {}
+    try {
+        const g = typeof globalThis !== 'undefined' ? globalThis : null;
+        if (g && g.App && g.App.Utils && typeof g.App.Utils.getShipClass === 'function') return g.App.Utils;
+    } catch (e) {}
+    return null;
+}
 
 function resolveItineraryMeta(sailing) {
     if (!sailing) return { nightsText: '-', destination: '-', nightsCount: null };
@@ -97,7 +114,7 @@ function resolveItineraryMeta(sailing) {
     if (!meta.destination || meta.destination === '-') {
         meta.destination = sailing.destination || sailing.region || '-';
     }
-    sailing.__itineraryMeta = meta;
+    try { sailing.__itineraryMeta = meta; } catch (e) {}
     return meta;
 }
 
@@ -106,7 +123,7 @@ function deriveEndDateIso(sailing) {
     if (typeof sailing.__computedEndDateIso === 'string' && sailing.__computedEndDateIso) return sailing.__computedEndDateIso;
     const direct = normalizeIsoDateString(sailing.endDate || sailing.disembarkDate || sailing.arrivalDate);
     if (direct) {
-        sailing.__computedEndDateIso = direct;
+        try { sailing.__computedEndDateIso = direct; } catch (e) {}
         return direct;
     }
     const sailIso = normalizeIsoDateString(sailing.sailDate || sailing.startDate);
@@ -122,7 +139,7 @@ function deriveEndDateIso(sailing) {
     if ([year, month, day].some(v => Number.isNaN(v))) return null;
     const endMs = Date.UTC(year, month, day) + nights * MS_PER_DAY;
     const iso = new Date(endMs).toISOString().slice(0, 10);
-    sailing.__computedEndDateIso = iso;
+    try { sailing.__computedEndDateIso = iso; } catch (e) {}
     return iso;
 }
 
@@ -798,23 +815,31 @@ var Filtering = {
         try { return (''+raw).trim().toUpperCase(); } catch(e){ return ''; }
     },
     getOfferColumnValue(offer, sailing, key) {
-        let guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests';
-        if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) guestsText += ` + $${sailing.DOLLARSOFF_AMT} off`;
-        if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) guestsText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
-        let room = sailing.roomType;
-        if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
-        const itineraryMeta = resolveItineraryMeta(sailing);
-        const nights = itineraryMeta.nightsText;
-        const destination = itineraryMeta.destination;
-        const computedEndIso = deriveEndDateIso(sailing);
+        let guestsText = '2 Guests';
+        let room;
+        let nights = '-';
+        let destination = '-';
+        let computedEndIso = null;
         let perksStr = '-';
         try {
-            if (typeof Utils !== 'undefined' && Utils && typeof Utils.computePerks === 'function') {
-                perksStr = Utils.computePerks(offer, sailing);
-            } else if (typeof App !== 'undefined' && App && App.Utils && typeof App.Utils.computePerks === 'function') {
-                perksStr = App.Utils.computePerks(offer, sailing);
+            if (sailing) {
+                guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests';
+                if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) guestsText += ` + $${sailing.DOLLARSOFF_AMT} off`;
+                if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) guestsText += ` + $${sailing.FREEPLAY_AMT} freeplay`;
+                room = sailing.roomType;
+                if (sailing.isGTY) room = room ? room + ' GTY' : 'GTY';
             }
-        } catch (perksErr) { perksStr = '-'; }
+        } catch (e) {}
+        try {
+            const itineraryMeta = resolveItineraryMeta(sailing);
+            nights = itineraryMeta.nightsText;
+            destination = itineraryMeta.destination;
+            computedEndIso = deriveEndDateIso(sailing);
+        } catch (e) {}
+        try {
+            const U = resolveUtils();
+            if (U && typeof U.computePerks === 'function') perksStr = U.computePerks(offer, sailing);
+        } catch (e) { perksStr = '-'; }
         switch (key) {
             case 'offerCode':
                 return offer.campaignOffer?.offerCode;
@@ -826,11 +851,10 @@ var Filtering = {
                 return offer.campaignOffer?.name || '-';
             case 'shipClass': {
                 try {
-                    const name = sailing?.shipName;
-                    if (App && App.Utils && typeof App.Utils.getShipClass === 'function') return App.Utils.getShipClass(name);
-                    if (typeof Utils !== 'undefined' && Utils && typeof Utils.getShipClass === 'function') return Utils.getShipClass(name);
-                    return '-';
-                } catch (e) { return '-'; }
+                    const U = resolveUtils();
+                    if (U) return U.getShipClass(sailing && sailing.shipName);
+                } catch (e) {}
+                return '-';
             }
             case 'ship':
                 return sailing?.shipName || '-';

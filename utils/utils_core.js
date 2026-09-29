@@ -650,6 +650,7 @@ const Utils = {
 if (typeof window !== 'undefined') {
     try { window.Utils = Utils; } catch(e) { /* ignore in strict environments */ }
     try { globalThis.Utils = Utils; } catch(e) { /* ignore in strict environments */ }
+    try { if (typeof document !== 'undefined' && document.documentElement) document.documentElement.__goboUtils = Utils; } catch(e) {}
     // Attach post-render listeners once
     try {
         if (!window._offerValueListenersAttached) {
