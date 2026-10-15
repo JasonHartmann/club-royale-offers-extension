@@ -271,12 +271,14 @@
                 } catch (e) { /* ignore */ }
             }
             let bit = 0;
+            let ki = -1;
             if (allow) {
-                let ki = pidIndex.get(offerKey);
-                if (ki === undefined) {
-                    ki = kCount++;
-                    pidIndex.set(offerKey, ki);
+                let found = pidIndex.get(offerKey);
+                if (found === undefined) {
+                    found = kCount++;
+                    pidIndex.set(offerKey, found);
                 }
+                ki = found;
                 if (ki < 31) bit = 1 << ki;
             }
             meta[i] = {
@@ -287,7 +289,8 @@
                 shipKey,
                 offerKey,
                 allow,
-                bit
+                bit,
+                ki
             };
         }
 
@@ -342,22 +345,34 @@
 
         const depthMap = new Map();
         const K = kCount;
-        // ponytail: 30-bit mask covers typical 15-20 offer codes; Set memo if more
-        if (K <= 30) {
+        const deadline = Date.now() + (typeof options.deadlineMs === 'number' ? options.deadlineMs : 800);
+        const aborting = () => {
+            try { if (typeof options.shouldAbort === 'function' && options.shouldAbort()) return true; } catch (e) {}
+            return Date.now() > deadline;
+        };
+
+        // ponytail: exact 20-bit DP, 200k state budget. More offer keys → beam of 4. Raise the beam if a badge under-counts.
+        const MASK_MAX = 20;
+        const STATE_BUDGET = 200000;
+        let usedExact = false;
+        if (K <= MASK_MAX) {
             const MOD = K === 0 ? 1 : (1 << K);
             const fullMask = K === 0 ? 0 : (MOD - 1);
             let seedMask = 0;
             for (let s = 0; s < initialUsedOfferCodes.length; s++) {
                 const c = initialUsedOfferCodes[s];
                 if (!c) continue;
-                const ki = pidIndex.get(c);
-                if (ki !== undefined && ki < 31) seedMask |= (1 << ki);
+                const si = pidIndex.get(c);
+                if (si !== undefined && si < 31) seedMask |= (1 << si);
             }
             const memo = new Map();
+            let states = 0;
+            let blown = false;
             const dfs = (i, avail) => {
                 const key = i * MOD + avail;
                 const hit = memo.get(key);
                 if (hit !== undefined) return hit;
+                if (blown || ++states > STATE_BUDGET || aborting()) { blown = true; return 1; }
                 let best = 0;
                 const list = adj[i];
                 for (let a = 0; a < list.length; a++) {
@@ -372,31 +387,64 @@
                 return val;
             };
             for (let i = 0; i < n; i++) {
-                if (!meta[i].allow) continue;
+                if (!meta[i].allow || blown) continue;
                 depthMap.set(i, dfs(i, fullMask & ~(seedMask | meta[i].bit)));
             }
-        } else {
-            const seedSet = new Set(initialUsedOfferCodes.filter(Boolean));
-            const memo = new Map();
-            const dfs = (i, used) => {
-                const key = i + '|' + Array.from(used).sort().join(',');
-                if (memo.has(key)) return memo.get(key);
-                const usedHere = new Set(used);
-                usedHere.add(meta[i].offerKey);
-                let best = 1;
-                const list = adj[i];
-                for (let a = 0; a < list.length; a++) {
-                    const j = list[a];
-                    if (usedHere.has(meta[j].offerKey)) continue;
-                    const d = 1 + dfs(j, usedHere);
-                    if (d > best) best = d;
-                }
-                memo.set(key, best);
-                return best;
+            usedExact = !blown;
+            if (blown) depthMap.clear();
+        }
+
+        if (!usedExact) {
+            const words = Math.max(1, (K + 31) >> 5);
+            const seedBits = new Array(words).fill(0);
+            for (let s = 0; s < initialUsedOfferCodes.length; s++) {
+                const si = pidIndex.get(initialUsedOfferCodes[s]);
+                if (si == null || si < 0) continue;
+                seedBits[si >> 5] |= (1 << (si & 31));
+            }
+            const hasKi = (bits, ki) => ki >= 0 && ((bits[ki >> 5] & (1 << (ki & 31))) !== 0);
+            const copyAdd = (bits, ki) => {
+                const next = bits.slice();
+                if (ki >= 0) next[ki >> 5] |= (1 << (ki & 31));
+                return next;
             };
-            for (let i = 0; i < n; i++) {
-                if (!meta[i].allow) continue;
-                depthMap.set(i, dfs(i, seedSet));
+            const order = [];
+            for (let i = 0; i < n; i++) if (meta[i].allow && meta[i].sn != null) order.push(i);
+            order.sort((a, b) => (meta[b].sn - meta[a].sn) || (b - a));
+            const BEAM = 4;
+            const paths = new Array(n);
+            let pending = true;
+            let passes = 0;
+            while (pending && passes < 4 && !aborting()) {
+                pending = false;
+                passes++;
+                for (let oi = 0; oi < order.length; oi++) {
+                    if ((oi & 127) === 0 && aborting()) { pending = false; break; }
+                    const i = order[oi];
+                    const ki = meta[i].ki;
+                    const list = adj[i];
+                    const beam = [{ depth: 1, bits: copyAdd(seedBits, ki) }];
+                    for (let a = 0; a < list.length; a++) {
+                        const j = list[a];
+                        const jp = paths[j];
+                        if (!jp) { pending = true; continue; }
+                        for (let p = 0; p < jp.length; p++) {
+                            if (hasKi(jp[p].bits, ki)) continue;
+                            beam.push({ depth: 1 + jp[p].depth, bits: copyAdd(jp[p].bits, ki) });
+                        }
+                    }
+                    beam.sort((x, y) => y.depth - x.depth);
+                    const kept = [];
+                    const seen = new Set();
+                    for (let p = 0; p < beam.length && kept.length < BEAM; p++) {
+                        const sig = beam[p].bits.join(',');
+                        if (seen.has(sig)) continue;
+                        seen.add(sig);
+                        kept.push(beam[p]);
+                    }
+                    paths[i] = kept;
+                    depthMap.set(i, kept[0].depth);
+                }
             }
         }
         return depthMap;
@@ -416,7 +464,7 @@
                 try { console.debug('[B2BUtils] computeLongestB2BPath throttled due to rapid calls', computeLongestB2BPath._dbg); } catch(e){}
                 return [];
             }
-            try { console.debug('[B2BUtils] computeLongestB2BPath ENTRY', { dbg: computeLongestB2BPath._dbg }); console.debug(new Error('Breadcrumb: computeLongestB2BPath').stack.split('\n').slice(0,6).join('\n')); } catch(e){}
+            try { console.debug('[B2BUtils] computeLongestB2BPath ENTRY', { dbg: computeLongestB2BPath._dbg, rows: rows.length }); } catch(e){}
         } catch(e) {}
         const allowSideBySide = !!options.allowSideBySide;
         const filterPredicate = typeof options.filterPredicate === 'function' ? options.filterPredicate : null;
@@ -495,8 +543,11 @@
         });
 
         let bestPath = [];
+        let visits = 0;
+        const VISIT_CAP = 8000;
 
         function dfsPath(rootIdx, usedSet, path) {
+            if (++visits > VISIT_CAP) return;
             const rootInfo = meta[rootIdx];
             if (!rootInfo) return;
             const curPath = path.concat(rootInfo.offerCode || '');
@@ -632,7 +683,9 @@
             });
 
             let best = [];
+            let chainVisits = 0;
             function dfsLocal(rootIdx, usedSet, path) {
+                if (++chainVisits > 8000) return;
                 const rootInfo = meta[rootIdx];
                 if (!rootInfo) return;
                 const node = {

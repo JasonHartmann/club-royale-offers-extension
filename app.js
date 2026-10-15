@@ -117,7 +117,18 @@
                 try { const s = this.getSettings(); return (typeof s.autoRunB2B !== 'undefined') ? !!s.autoRunB2B : true; } catch(e) { return true; }
             },
             setAutoRunB2B(val) {
-                try { const s = this.getSettings() || {}; s.autoRunB2B = !!val; this.setSettings(s); try { window.App.BackToBackAutoRun = !!val; } catch(e) {} } catch(e) {}
+                try {
+                    const s = this.getSettings() || {};
+                    s.autoRunB2B = !!val;
+                    this.setSettings(s);
+                    try { window.App.BackToBackAutoRun = !!val; } catch(e) {}
+                    try {
+                        if (window.App && App.TableRenderer) {
+                            App.TableRenderer._b2bHold = !val;
+                            if (!val) App.TableRenderer._b2bGen = (App.TableRenderer._b2bGen || 0) + 1;
+                        }
+                    } catch(e) {}
+                } catch(e) {}
             },
             getB2BDrivingRangeHours() {
                 try { const s = this.getSettings(); return (typeof s.b2bDrivingRangeHours !== 'undefined') ? parseInt(s.b2bDrivingRangeHours, 10) || 0 : 0; } catch(e) { return 0; }

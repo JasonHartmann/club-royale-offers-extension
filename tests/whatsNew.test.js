@@ -125,4 +125,17 @@ describe("What's New next() and Enter", () => {
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
         expect(spy).not.toHaveBeenCalled();
     });
+
+    test('Skip persists an opt-out and does not auto-start again', () => {
+        const wn = loadWhatsNew();
+        armTour(wn);
+        wn._nav.btnSkip.click();
+        expect(wn.isOptedOut()).toBe(true);
+        expect(localStorage.getItem('goboWhatsNewOptOut')).toBe('true');
+        expect(document.getElementById('gobo-whatsnew-overlay')).toBeNull();
+        wn._shown = false;
+        wn._starting = false;
+        wn.maybeAutoStart();
+        expect(document.getElementById('gobo-whatsnew-overlay')).toBeNull();
+    });
 });

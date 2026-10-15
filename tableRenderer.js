@@ -307,8 +307,65 @@ const TableRenderer = {
             try { finish(); } catch(e) { /* ignore */ }
         }
     },
+    _b2bGen: 0,
+    _b2bHold: false,
+    _hideB2BChip() {
+        try { const el = document.getElementById('gobo-b2b-progress'); if (el) el.remove(); } catch (e) {}
+    },
+    _showB2BChip(gen) {
+        try {
+            if (this._b2bGen !== gen || this._b2bHold) return;
+            if (document.getElementById('gobo-b2b-progress')) return;
+            const el = document.createElement('div');
+            el.id = 'gobo-b2b-progress';
+            el.setAttribute('role', 'status');
+            el.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483646;background:#111;color:#fff;padding:8px 10px;border-radius:8px;font:13px/1.3 sans-serif;display:flex;gap:8px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35);';
+            const label = document.createElement('span');
+            label.textContent = 'Computing back-to-backs…';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = 'Cancel';
+            btn.style.cssText = 'background:#6b7280;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:600;';
+            btn.addEventListener('click', () => {
+                this._b2bHold = true;
+                this._b2bGen++;
+                this._hideB2BChip();
+            });
+            el.appendChild(label);
+            el.appendChild(btn);
+            document.body.appendChild(el);
+        } catch (e) {}
+    },
+    _deferAutoB2B(rows, options, apply) {
+        if (this._b2bHold) { if (apply) apply(); return; }
+        let autoRun = true;
+        try {
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getAutoRunB2B === 'function') autoRun = !!App.SettingsStore.getAutoRunB2B();
+            else if (typeof App !== 'undefined' && typeof App.BackToBackAutoRun !== 'undefined') autoRun = !!App.BackToBackAutoRun;
+        } catch (e) { autoRun = true; }
+        if (!autoRun) { if (apply) apply(); return; }
+        const gen = ++this._b2bGen;
+        const chip = setTimeout(() => this._showB2BChip(gen), 280);
+        const run = () => {
+            clearTimeout(chip);
+            if (this._b2bGen !== gen || this._b2bHold) { this._hideB2BChip(); return; }
+            try {
+                this._computeB2BDepths(rows, Object.assign({}, options, {
+                    shouldAbort: () => this._b2bGen !== gen || this._b2bHold
+                }));
+            } catch (e) {}
+            this._hideB2BChip();
+            if (this._b2bGen !== gen || this._b2bHold) return;
+            if (apply) apply();
+        };
+        try {
+            if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 400 });
+            else setTimeout(run, 0);
+        } catch (e) { setTimeout(run, 0); }
+    },
     _ensureRowsHaveB2BDepth(rows, options) {
         if (!Array.isArray(rows) || !rows.length) return null;
+        if (this._b2bHold) return null;
         const needsDepth = rows.some(row => row && row.sailing && typeof row.sailing.__b2bDepth !== 'number');
         if (!needsDepth) return null;
         try {
@@ -1407,7 +1464,6 @@ const TableRenderer = {
                 state._lastRenderSig = renderSig;
                 // Cancel table virtual scroll when entering cards so a hidden table is not scrolling
                 try { if (state._vsCleanup) { state._vsCleanup(); state._vsCleanup = null; } } catch(e) {}
-                try { this._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide: allowSideBySidePref, filterPredicate: allowRowForDepth }); } catch(e) {}
                 if (App.CardView && typeof App.CardView.render === 'function') {
                     App.CardView.render(state.cardContainer, state, globalMaxOfferDate);
                 }
@@ -1428,7 +1484,7 @@ const TableRenderer = {
                             } catch(e) {}
                         });
                     };
-                    applyB2BToCards();
+                    this._deferAutoB2B(state.sortedOffers, { allowSideBySide: allowSideBySidePref, filterPredicate: allowRowForDepth }, applyB2BToCards);
                     const token = state._rowRenderToken || null;
                     const chunkHandler = (chunkEv) => {
                         try { if (chunkEv && chunkEv.detail && token && chunkEv.detail.token && chunkEv.detail.token !== token) return; applyB2BToCards(); } catch(e) {}
@@ -1453,10 +1509,6 @@ const TableRenderer = {
             App.TableBuilder.renderTable(tbody, state, globalMaxOfferDate);
             let _b2bApply = null; // hoisted reference for post-DOM-attach re-apply
             try {
-                this._ensureRowsHaveB2BDepth(state.sortedOffers, {
-                    allowSideBySide: allowSideBySidePref,
-                    filterPredicate: allowRowForDepth
-                });
                 // Helper: apply B2B depth badges to currently-rendered DOM rows
                 const applyB2BToVisibleRows = () => {
                     const domRows = Array.from(tbody.querySelectorAll('tr[data-vs-idx], tr[data-b2b-row-id]'));
@@ -1488,9 +1540,11 @@ const TableRenderer = {
                         } catch(e) { /* ignore per-row errors */ }
                     });
                 };
-                // Apply to initially rendered rows
-                applyB2BToVisibleRows();
                 _b2bApply = applyB2BToVisibleRows;
+                this._deferAutoB2B(state.sortedOffers, {
+                    allowSideBySide: allowSideBySidePref,
+                    filterPredicate: allowRowForDepth
+                }, applyB2BToVisibleRows);
                 // Listen for chunk/scroll events to apply to newly rendered rows
                 const token = state._rowRenderToken || null;
                 const chunkHandler = (chunkEv) => {

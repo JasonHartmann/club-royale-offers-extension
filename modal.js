@@ -477,7 +477,7 @@ const Modal = {
             return shorten(key);
         }
 
-        const csvRows = rows.map(({ offer, sailing }) => {
+        const buildCsvRow = ({ offer, sailing }) => {
             // Determine profile label per row
             let profileLabel;
             if (activeKey === 'goob-favorites') {
@@ -553,27 +553,44 @@ const Modal = {
                 (() => { let guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests'; if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) guestsText += ` + $${sailing.DOLLARSOFF_AMT} off`; if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) guestsText += ` + $${sailing.FREEPLAY_AMT} freeplay`; return guestsText; })(),
                 perksStr
             ];
-        });
-
-        let csvContent = [csvHeaders, ...csvRows]
-            .map(row => row.map(field => '"' + String(field).replace(/"/g, '""') + '"').join(','))
-            .join('\r\n');
-
-        if (usedSubset) {
-            const parts = ['All Offers'];
-            for (let i = 0; i < state.groupKeysStack.length && i < state.groupingStack.length; i++) {
-                const colKey = state.groupingStack[i];
-                const label = (state.headers.find(h => h.key === colKey)?.label) || colKey;
-                const val = state.groupKeysStack[i];
-                parts.push(label, val);
+        };
+        const emitCsv = (csvRows) => {
+            let csvContent = [csvHeaders, ...csvRows]
+                .map(row => row.map(field => '"' + String(field).replace(/"/g, '""') + '"').join(','))
+                .join('\r\n');
+            if (usedSubset) {
+                const parts = ['All Offers'];
+                for (let i = 0; i < state.groupKeysStack.length && i < state.groupingStack.length; i++) {
+                    const colKey = state.groupingStack[i];
+                    const label = (state.headers.find(h => h.key === colKey)?.label) || colKey;
+                    const val = state.groupKeysStack[i];
+                    parts.push(label, val);
+                }
+                csvContent += '\r\n\r\n' + 'Filters: ' + parts.join(' -> ');
             }
-            csvContent += '\r\n\r\n' + 'Filters: ' + parts.join(' -> ');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'offers.csv';
+            document.body.appendChild(a); a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+        };
+        // Large exports yield so price math cannot freeze the page. Does not recompute B2B.
+        if (rows.length > 400) {
+            const csvRows = new Array(rows.length);
+            let i = 0;
+            const btn = document.querySelector('.export-csv-button');
+            const prevLabel = btn ? btn.textContent : 'CSV Export';
+            if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
+            const step = () => {
+                const end = Math.min(i + 150, rows.length);
+                for (; i < end; i++) csvRows[i] = buildCsvRow(rows[i]);
+                if (i < rows.length) { setTimeout(step, 0); return; }
+                if (btn) { btn.disabled = false; btn.textContent = prevLabel; }
+                emitCsv(csvRows);
+            };
+            setTimeout(step, 0);
+            return;
         }
-
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'offers.csv';
-        document.body.appendChild(a); a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+        emitCsv(rows.map(buildCsvRow));
     },
 };

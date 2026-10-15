@@ -912,48 +912,7 @@ var Filtering = {
                         } catch (e) { return true; }
                     };
 
-                    // If AdvancedSearch is building its static index, prime depths without diagnostics
-                    if (typeof window !== 'undefined' && window.__ADV_INDEX_BUILDING) {
-                        try { App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate }); } catch (ignore) {}
-                        return (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : 1;
-                    }
-
-                    const depthsMap = App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate });
-
-                    // Compute longest path for diagnostics (best-effort, swallow errors)
-                    try {
-                        let longestPath = [];
-                        try {
-                            if (typeof B2BUtils !== 'undefined' && typeof B2BUtils.computeLongestB2BPath === 'function') {
-                                longestPath = B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate });
-                            } else if (typeof window !== 'undefined' && window.B2BUtils && typeof window.B2BUtils.computeLongestB2BPath === 'function') {
-                                longestPath = window.B2BUtils.computeLongestB2BPath(state.sortedOffers, { allowSideBySide, filterPredicate });
-                            }
-                        } catch (ignore) { longestPath = []; }
-
-                        let maxDepth = 1;
-                        if (depthsMap instanceof Map) {
-                            for (const v of depthsMap.values()) if (typeof v === 'number' && v > maxDepth) maxDepth = v;
-                        } else if (Array.isArray(state.sortedOffers)) {
-                            for (const r of state.sortedOffers) {
-                                const d = r && r.sailing && typeof r.sailing.__b2bDepth === 'number' ? r.sailing.__b2bDepth : 1;
-                                if (d > maxDepth) maxDepth = d;
-                            }
-                        }
-
-                        // Throttled diagnostic logging
-                        try {
-                            if (!Filtering._longestPathDbg) Filtering._longestPathDbg = { count:0, last:0 };
-                            const tNow = Date.now();
-                            Filtering._longestPathDbg.count += 1;
-                            if (tNow - Filtering._longestPathDbg.last < 200) Filtering._longestPathDbg.rapid = (Filtering._longestPathDbg.rapid || 0) + 1; else Filtering._longestPathDbg.rapid = 0;
-                            Filtering._longestPathDbg.last = tNow;
-                            if (typeof console !== 'undefined' && console.info) {
-                                console.info('[Filtering] Longest B2B chain path', { path: longestPath, pathLength: longestPath.length, maxDepthFound: maxDepth, expectedPathLen: Math.max(0, maxDepth - 1), dbg: Filtering._longestPathDbg });
-                                try { console.debug(new Error('Breadcrumb: LongestB2BPath called').stack.split('\n').slice(0,6).join('\n')); } catch(e){}
-                            }
-                        } catch (ignore) {}
-                    } catch (ignore) {}
+                    try { App.TableRenderer._ensureRowsHaveB2BDepth(state.sortedOffers, { allowSideBySide, filterPredicate }); } catch (ignore) {}
                 } catch (ignore) {}
 
                 return (sailing && typeof sailing.__b2bDepth === 'number') ? sailing.__b2bDepth : 1;

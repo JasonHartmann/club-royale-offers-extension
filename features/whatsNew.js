@@ -16,6 +16,7 @@
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
     const TOUR_REVISION = '19'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes, r14 B2B lag days, r15 date format setting, r16 updated offer retrieval, r17 2.3.5 performance fixes, r18 card layout + offer PDF, r19 sign out
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
+    const OPT_OUT_KEY = 'goboWhatsNewOptOut';
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
 
     function storageGet(key){
@@ -43,6 +44,9 @@
         isAlreadyCompleted(){
             return storageGet(STORAGE_KEY) === 'true';
         },
+        isOptedOut(){
+            return storageGet(OPT_OUT_KEY) === 'true';
+        },
         markDone(){
             storageSet(STORAGE_KEY,'true');
             this._shown = true;
@@ -61,7 +65,7 @@
                     return;
                 }
             } catch(e) { /* ignore */ }
-            if (this.isAlreadyCompleted()) return; // user completed previously
+            if (this.isOptedOut() || this.isAlreadyCompleted()) return; // skipped or finished; do not auto-start
             // Only auto start once per page view & only after modal (tabs) present
             this.start(false);
         },
@@ -69,7 +73,7 @@
             // Prevent multiple concurrent starts (page may fire multiple triggers during load).
             if (this._starting && !force) return;
             if (this._shown && !force) return;
-            if (this.isAlreadyCompleted() && !force) return;
+            if (!force && (this.isOptedOut() || this.isAlreadyCompleted())) return;
             this._starting = true;
             this._forced = !!force;
             // Ensure offers modal is open (needs #gobo-offers-table)
@@ -360,10 +364,11 @@
             await this._fadeInTooltip();
             this._animating = false;
         },
-        finish(){
+        finish(skipped){
             this._pendingNext = 0;
             this._animating = false;
             this._motionToken = (this._motionToken || 0) + 1;
+            if (skipped) storageSet(OPT_OUT_KEY, 'true');
             this.markDone();
             this._cleanup();
         },
