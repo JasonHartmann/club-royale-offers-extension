@@ -307,21 +307,27 @@
                     let respJson = null;
                     try {
                         let resp;
+                        const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: paginationCount, skip: 0 } } });
+                        const headers = {
+                            'content-type': 'application/json',
+                            'accept': 'application/json',
+                            'apollographql-client-name': 'rci-NextGen-Cruise-Search',
+                            'apollographql-query-name': 'cruiseSearch_Cruises',
+                            'skip_authentication': 'true'
+                        };
+                        const runtime = (!isSimDomain && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) ? chrome.runtime
+                            : (!isSimDomain && typeof browser !== 'undefined' && browser.runtime && browser.runtime.sendMessage) ? browser.runtime : null;
+                        if (runtime) {
+                            const msg = await runtime.sendMessage({ channel: 'gobo-graph', url: endpoint, method: 'POST', headers, body });
+                            if (!msg || msg.error || !msg.ok || !msg.body) return null;
+                            respJson = JSON.parse(msg.body);
+                            self._fetchCount++;
+                            return respJson?.data?.cruiseSearch?.results?.cruises || [];
+                        }
                         if (isSimDomain) {
                             resp = await fetch(endpoint);
                         } else {
-                            const body = JSON.stringify({ query, variables: { filters: filtersValue, pagination: { count: paginationCount, skip: 0 } } });
-                            resp = await fetch(endpoint, {
-                                method: 'POST',
-                                headers: {
-                                    'content-type': 'application/json',
-                                    'accept': 'application/json',
-                                    'apollographql-client-name': 'rci-NextGen-Cruise-Search',
-                                    'apollographql-query-name': 'cruiseSearch_Cruises',
-                                    'skip_authentication': 'true'
-                                },
-                                body
-                            });
+                            resp = await fetch(endpoint, { method: 'POST', headers, body });
                         }
                         if (!resp.ok) return null;
                         respJson = await resp.json();

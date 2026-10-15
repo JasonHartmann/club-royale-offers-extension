@@ -292,6 +292,8 @@ const TableRenderer = {
         const finish = this._startB2BDepthComputation();
         try {
             const depthsMap = B2BUtils.computeB2BDepth(rows, opts);
+            const cancelled = (typeof opts.shouldAbort === 'function' && opts.shouldAbort()) || (depthsMap && depthsMap.incomplete);
+            if (cancelled) return null;
             rows.forEach((row, idx) => {
                 if (!row || !row.sailing) return;
                 row.sailing.__b2bDepth = (depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;

@@ -60,4 +60,22 @@ describe('retail booking host follows the open profile', () => {
         expect(fetch).toHaveBeenCalled();
         expect(String(fetch.mock.calls[0][0])).toBe('https://www.celebritycruises.com/graph');
     });
+
+    test('cross-brand graph refresh goes through the background, not page fetch', async () => {
+        const sent = [];
+        global.chrome = {
+            runtime: {
+                sendMessage: jest.fn(async (msg) => {
+                    sent.push(msg);
+                    return { ok: true, body: JSON.stringify({ data: { cruiseSearch: { results: { cruises: [] } } } }) };
+                })
+            }
+        };
+        fetch.mockClear();
+        await window.ItineraryCache.hydrateAlways(['SD_EQ_2026-10-02']);
+        expect(sent[0].url).toBe('https://www.celebritycruises.com/graph');
+        expect(sent[0].channel).toBe('gobo-graph');
+        expect(fetch).not.toHaveBeenCalled();
+        delete global.chrome;
+    });
 });

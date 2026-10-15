@@ -124,8 +124,25 @@
                     try { window.App.BackToBackAutoRun = !!val; } catch(e) {}
                     try {
                         if (window.App && App.TableRenderer) {
-                            App.TableRenderer._b2bHold = !val;
-                            if (!val) App.TableRenderer._b2bGen = (App.TableRenderer._b2bGen || 0) + 1;
+                            const tr = App.TableRenderer;
+                            tr._b2bHold = !val;
+                            if (!val) tr._b2bGen = (tr._b2bGen || 0) + 1;
+                            if (val) {
+                                try {
+                                    const cache = tr._metaCache;
+                                    if (cache && typeof cache.forEach === 'function') {
+                                        const drop = [];
+                                        cache.forEach((_, k) => { if (String(k).indexOf('b2bDepth:') === 0) drop.push(k); });
+                                        drop.forEach(k => cache.delete(k));
+                                    }
+                                    const st = tr.lastState;
+                                    if (st) ['sortedOffers', 'originalOffers', 'fullOriginalOffers'].forEach((key) => {
+                                        const rows = st[key];
+                                        if (!Array.isArray(rows)) return;
+                                        rows.forEach(r => { if (r && r.sailing) delete r.sailing.__b2bDepth; });
+                                    });
+                                } catch (e) {}
+                            }
                         }
                     } catch(e) {}
                 } catch(e) {}

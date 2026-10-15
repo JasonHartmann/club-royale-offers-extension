@@ -244,6 +244,23 @@
         const runtime = runtimeApi();
         if (runtime && runtime.onMessage && runtime.onMessage.addListener) {
             runtime.onMessage.addListener((message, sender, sendResponse) => {
+                if (message && message.channel === 'gobo-graph' && typeof message.url === 'string') {
+                    if (!/^https:\/\/(www\.)?(royalcaribbean|celebritycruises)\.com\/graph$/.test(message.url)) {
+                        sendResponse({ error: 'host' });
+                        return false;
+                    }
+                    fetch(message.url, {
+                        method: message.method || 'POST',
+                        headers: message.headers || { 'content-type': 'application/json' },
+                        body: message.body
+                    }).then(async (resp) => {
+                        const body = await resp.text();
+                        sendResponse({ ok: resp.ok, status: resp.status, body });
+                    }).catch((err) => {
+                        sendResponse({ error: String(err && err.message ? err.message : err) });
+                    });
+                    return true;
+                }
                 if (message && message.channel === 'gobo-flyer' && typeof message.html === 'string') {
                     try {
                         const blob = new Blob([message.html], { type: 'text/html' });

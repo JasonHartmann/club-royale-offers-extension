@@ -43,6 +43,20 @@ describe('B2B large offer set', () => {
         expect(depths.size).toBeGreaterThan(1000);
     });
 
+    test('a spent deadline still returns beam depths instead of an empty map', () => {
+        const rows = largeFixture();
+        const depths = B2BUtils.computeB2BDepth(rows, { allowSideBySide: true, lagDays: 3, force: true, deadlineMs: -1 });
+        expect(depths.incomplete).toBeFalsy();
+        expect(depths.get(0)).toBeGreaterThanOrEqual(5);
+        expect(depths.size).toBeGreaterThan(1000);
+    });
+
+    test('cancel does not look like a finished map of ones', () => {
+        const depths = B2BUtils.computeB2BDepth(largeFixture().slice(0, 40), { force: true, shouldAbort: () => true });
+        expect(depths.incomplete).toBe(true);
+        expect(depths.size).toBe(0);
+    });
+
     test('longest-path diagnostic cannot hang a dense set', () => {
         const rows = [];
         for (let i = 0; i < 300; i++) {

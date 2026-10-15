@@ -346,10 +346,10 @@
         const depthMap = new Map();
         const K = kCount;
         const deadline = Date.now() + (typeof options.deadlineMs === 'number' ? options.deadlineMs : 800);
-        const aborting = () => {
-            try { if (typeof options.shouldAbort === 'function' && options.shouldAbort()) return true; } catch (e) {}
-            return Date.now() > deadline;
+        const userAbort = () => {
+            try { return typeof options.shouldAbort === 'function' && options.shouldAbort(); } catch (e) { return false; }
         };
+        const pastDeadline = () => Date.now() > deadline;
 
         // ponytail: exact 20-bit DP, 200k state budget. More offer keys → beam of 4. Raise the beam if a badge under-counts.
         const MASK_MAX = 20;
@@ -372,7 +372,7 @@
                 const key = i * MOD + avail;
                 const hit = memo.get(key);
                 if (hit !== undefined) return hit;
-                if (blown || ++states > STATE_BUDGET || aborting()) { blown = true; return 1; }
+                if (blown || ++states > STATE_BUDGET || userAbort() || pastDeadline()) { blown = true; return 1; }
                 let best = 0;
                 const list = adj[i];
                 for (let a = 0; a < list.length; a++) {
@@ -394,7 +394,7 @@
             if (blown) depthMap.clear();
         }
 
-        if (!usedExact) {
+        if (!usedExact && !userAbort()) {
             const words = Math.max(1, (K + 31) >> 5);
             const seedBits = new Array(words).fill(0);
             for (let s = 0; s < initialUsedOfferCodes.length; s++) {
@@ -415,11 +415,11 @@
             const paths = new Array(n);
             let pending = true;
             let passes = 0;
-            while (pending && passes < 4 && !aborting()) {
+            while (pending && passes < 4 && !userAbort()) {
                 pending = false;
                 passes++;
                 for (let oi = 0; oi < order.length; oi++) {
-                    if ((oi & 127) === 0 && aborting()) { pending = false; break; }
+                    if ((oi & 127) === 0 && userAbort()) { pending = false; break; }
                     const i = order[oi];
                     const ki = meta[i].ki;
                     const list = adj[i];
@@ -447,6 +447,7 @@
                 }
             }
         }
+        if (userAbort()) depthMap.incomplete = true;
         return depthMap;
     }
 
