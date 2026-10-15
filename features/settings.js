@@ -428,14 +428,13 @@ const Settings = {
             tAndFCb.addEventListener('change', () => {
                 try {
                     const v = !!tAndFCb.checked;
+                    if (App && App.AdvancedSearch) App.AdvancedSearch._taxesTouched = true;
                     if (App && App.SettingsStore && typeof App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters === 'function') {
                         App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters(v);
                     }
-                    // Update the live AdvancedSearch state if available
                     const state = App && App.AdvancedSearch && App.AdvancedSearch._lastState ? App.AdvancedSearch._lastState : null;
                     if (state && state.advancedSearch) {
                         state.advancedSearch.includeTaxesAndFeesInPriceFilters = v;
-                        try { App.AdvancedSearch.debouncedPersist(state); } catch(e){}
                         try { App.AdvancedSearch.lightRefresh(state, { showSpinner: true }); } catch(e){}
                     }
                 } catch(e){}

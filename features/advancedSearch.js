@@ -98,6 +98,51 @@ const AdvancedSearch = {
             console.debug('[AdvancedSearch][DBG][' + ts + ']', ...args);
         } catch (e) { /* ignore */ }
     },
+    _taxesStoreReady() {
+        try {
+            if (typeof GoboStore === 'undefined' || !GoboStore) return true;
+            return !!GoboStore.ready;
+        } catch (e) { return true; }
+    },
+    // undefined until chrome.storage has loaded. A boolean default here sticks and hides the saved value.
+    _readTaxesFlag() {
+        if (!this._taxesStoreReady()) return undefined;
+        try {
+            if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function') {
+                return !!App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters();
+            }
+        } catch (e) { /* ignore */ }
+        return undefined;
+    },
+    applyStoredTaxesFlag() {
+        if (this._taxesTouched) return;
+        const flag = this._readTaxesFlag();
+        if (typeof flag !== 'boolean') return;
+        const states = [];
+        try { if (this._lastState) states.push(this._lastState); } catch (e) {}
+        try {
+            const live = (typeof App !== 'undefined' && App && App.TableRenderer) ? App.TableRenderer.lastState : null;
+            if (live && states.indexOf(live) === -1) states.push(live);
+        } catch (e) {}
+        let changed = false;
+        for (let i = 0; i < states.length; i++) {
+            const st = states[i];
+            if (!st || !st.advancedSearch) continue;
+            if (st.advancedSearch.includeTaxesAndFeesInPriceFilters === flag) continue;
+            st.advancedSearch.includeTaxesAndFeesInPriceFilters = flag;
+            changed = true;
+        }
+        try {
+            const cb = (typeof document !== 'undefined') ? document.getElementById('gobo-setting-tandf') : null;
+            if (cb) cb.checked = flag;
+        } catch (e) {}
+        if (!changed) return;
+        try {
+            const live = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : this._lastState;
+            if (live && typeof TableRenderer !== 'undefined' && TableRenderer.updateView) TableRenderer.updateView(live);
+            else if (live && typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.updateView) App.TableRenderer.updateView(live);
+        } catch (e) {}
+    },
     ensureState(state) {
         if (!state.advancedSearch || typeof state.advancedSearch !== 'object') {
             state.advancedSearch = {enabled: false, predicates: []};
@@ -105,13 +150,9 @@ const AdvancedSearch = {
             if (!Array.isArray(state.advancedSearch.predicates)) state.advancedSearch.predicates = [];
             if (typeof state.advancedSearch.masterEnabled !== 'undefined') delete state.advancedSearch.masterEnabled; // legacy cleanup
         }
-        // Hydrate includeTaxesAndFeesInPriceFilters from SettingsStore when not yet set
         if (typeof state.advancedSearch.includeTaxesAndFeesInPriceFilters !== 'boolean') {
-            try {
-                if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters === 'function') {
-                    state.advancedSearch.includeTaxesAndFeesInPriceFilters = !!App.SettingsStore.getIncludeTaxesAndFeesInPriceFilters();
-                }
-            } catch(e) { /* ignore */ }
+            const flag = this._readTaxesFlag();
+            if (typeof flag === 'boolean') state.advancedSearch.includeTaxesAndFeesInPriceFilters = flag;
         }
         return state.advancedSearch;
     },
@@ -158,17 +199,8 @@ const AdvancedSearch = {
             // Use 'default' when no profile key is available so user preferences still persist
             const key = this.storageKey(state.selectedProfileKey || 'default');
             __advSession.setItem(key, JSON.stringify(payload));
-            // Also persist a global unbranded flag for includeTaxes so it's truly global across brands
-            try {
-                // Persist under the unified SettingsStore when available
-                if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters === 'function') {
-                    App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters(!!payload.includeTaxesAndFeesInPriceFilters);
-                } else {
-                    const globalFlagKey = 'advPriceIncludeTF';
-                    const flagVal = payload.includeTaxesAndFeesInPriceFilters ? '1' : '0';
-                    if (typeof goboStorageSet === 'function') goboStorageSet(globalFlagKey, flagVal); else localStorage.setItem(globalFlagKey, flagVal);
-                }
-            } catch(e) { /* ignore */ }
+            // Session only. Do not write this flag into goboSettings — a stale in-memory copy
+            // (often the pre-load default) was racing the settings toggle and winning on reload.
         } catch (e) { /* ignore persistence errors */ }
     },
     restorePredicates(state) {
@@ -189,7 +221,8 @@ const AdvancedSearch = {
                 state._advRestoredProfiles.add(state.selectedProfileKey);
                 return;
             }
-            // Restore includeTaxes flag (default true)
+            // Restore includeTaxes flag. Skip until storage is ready — the getter's default (true) would stick.
+            if (this._taxesStoreReady()) {
             try {
                 const globalFlagKey = 'advPriceIncludeTF';
                 let resolved = undefined;
@@ -243,6 +276,7 @@ const AdvancedSearch = {
                 state.advancedSearch.includeTaxesAndFeesInPriceFilters = !!resolved;
             } catch (e) {
                 state.advancedSearch.includeTaxesAndFeesInPriceFilters = parsed.includeTaxesAndFeesInPriceFilters !== false;
+            }
             }
             const allowedOps = new Set(['in', 'not in', 'contains', 'not contains', 'date range', 'less than', 'greater than']);
             state.advancedSearch.predicates = (Array.isArray(parsed.predicates) ? parsed.predicates
@@ -1662,7 +1696,15 @@ const AdvancedSearch = {
             if (!set) return;
             state.advancedSearch.enabled = true;
             state.advancedSearch.predicates = (set.predicates || []).map(p => ({ id: this.newPredicateId(), fieldKey: p.fieldKey, operator: p.operator, values: (p.values || []).slice(), complete: true }));
-            if (typeof set.includeTaxesAndFeesInPriceFilters === 'boolean') state.advancedSearch.includeTaxesAndFeesInPriceFilters = set.includeTaxesAndFeesInPriceFilters;
+            if (typeof set.includeTaxesAndFeesInPriceFilters === 'boolean') {
+                state.advancedSearch.includeTaxesAndFeesInPriceFilters = set.includeTaxesAndFeesInPriceFilters;
+                this._taxesTouched = true;
+                try {
+                    if (typeof App !== 'undefined' && App && App.SettingsStore && typeof App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters === 'function') {
+                        App.SettingsStore.setIncludeTaxesAndFeesInPriceFilters(set.includeTaxesAndFeesInPriceFilters);
+                    }
+                } catch (e) {}
+            }
             state._advPreviewPredicateId = null;
             state._advAppliedSetId = setId;
             this.renderPredicates(state);
@@ -1807,5 +1849,12 @@ const AdvancedSearch = {
         } catch(e) { /* ignore date range UI errors */ }
     }
 };
+try {
+    if (typeof document !== 'undefined') {
+        document.addEventListener('goboStorageReady', () => {
+            try { AdvancedSearch.applyStoredTaxesFlag(); } catch (e) {}
+        });
+    }
+} catch (e) {}
 
 

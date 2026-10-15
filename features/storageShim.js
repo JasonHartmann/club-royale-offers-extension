@@ -297,6 +297,8 @@
     } catch(e) { /* ignore */ }
     const internal = new Map();
     const pendingWrites = new Map();
+    const writtenAt = new Map();
+    let storageClock = 0;
     let flushScheduled = false;
 
     let flushAttempts = 0;
@@ -340,17 +342,24 @@
         }, delay);
     }
 
+    function applyLoaded(items, started) {
+        Object.keys(items || {}).forEach(k => {
+            if (!shouldManage(k)) return;
+            if (pendingWrites.has(k) || (writtenAt.get(k) || 0) > started) return;
+            internal.set(k, items[k]);
+        });
+    }
+
     function loadAll(resolve) {
         if (!extStorage) { resolve(); return; }
+        const started = storageClock;
         try { infoStore('loadAll.start'); } catch(e) {}
         try {
             // Support both callback-style and Promise-style get
             try {
                 const maybePromise = extStorage.get(null, (items) => {
                     try {
-                        Object.keys(items || {}).forEach(k => {
-                            if (shouldManage(k)) internal.set(k, items[k]);
-                        });
+                        applyLoaded(items, started);
                     } catch(e) { /* ignore */ }
                     try { infoStore('loadAll.done', internal.size); } catch(e) {}
                     resolve();
@@ -358,9 +367,7 @@
                 if (maybePromise && typeof maybePromise.then === 'function') {
                     maybePromise.then((items) => {
                         try {
-                            Object.keys(items || {}).forEach(k => {
-                                if (shouldManage(k)) internal.set(k, items[k]);
-                            });
+                            applyLoaded(items, started);
                         } catch(e) { /* ignore */ }
                         try { infoStore('loadAll.done', internal.size); } catch(e) {}
                         resolve();
@@ -373,9 +380,7 @@
                     if (p && typeof p.then === 'function') {
                         p.then((items) => {
                             try {
-                                Object.keys(items || {}).forEach(k => {
-                                    if (shouldManage(k)) internal.set(k, items[k]);
-                                });
+                                applyLoaded(items, started);
                             } catch(e) { /* ignore */ }
                             try { infoStore('loadAll.done', internal.size); } catch(e) {}
                             resolve();
@@ -467,6 +472,8 @@
             try { return JSON.stringify(val); } catch(e) { return null; }
         },
         setItem(key, value) {
+            storageClock += 1;
+            writtenAt.set(key, storageClock);
             internal.set(key, value);
             pendingWrites.set(key, value);
             debugStore('setItem queued', key);
@@ -534,6 +541,7 @@
                 const keys = Object.keys(changes || {});
                 keys.forEach(k => {
                     if (!shouldManage(k)) return;
+                    if (pendingWrites.has(k)) return;
                     const newVal = changes[k] && Object.prototype.hasOwnProperty.call(changes[k], 'newValue') ? changes[k].newValue : undefined;
                     if (newVal === undefined) {
                         internal.delete(k);
