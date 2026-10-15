@@ -82,14 +82,16 @@ Runs the Jest harness across all test suites. The GitHub Action workflow runs th
 ### Release Checklist
 
 1. Update `manifest.json` → `version` and ensure icons reference the latest assets.
-2. Pack or zip the extension for upload to the Chrome Web Store / Firefox Add‑ons / Edge Add‑ons portals.
-3. Clear `chrome.storage.local` to verify first‑run onboarding.
-4. Run the full test suite and spot‑check key flows (Show All Offers, Favorites, Combined Offers, Advanced Search).
-5. Tag the release: `git tag vX.Y.Z && git push --tags`.
+2. Update the landing site (`../comproyale-site/index.html`): hero badge, What's New, and the version history. Same notes go on the GitHub release.
+3. Pack or zip the extension for upload to the Chrome Web Store / Firefox Add‑ons / Edge Add‑ons portals.
+4. Clear `chrome.storage.local` to verify first‑run onboarding. Skip on the tour writes `goboWhatsNewOptOut` and should not auto-start again.
+5. Run the full test suite and spot‑check key flows (Show All Offers, Favorites, Combined Offers, Advanced Search, CSV Export on a large profile).
+6. Tag the release: `git tag release/X.Y.Z && git push origin release/X.Y.Z`, then `gh release create release/X.Y.Z --title vX.Y.Z --notes-file …`.
 
 ### Troubleshooting
 
 - **Content script not loading**: Confirm the offers URL matches `manifest.json` `matches` entries, then reload the extension and tab.
+- **Page freezes on load or Export** (Chrome “Page Unresponsive”): Auto run Back-to-back on a large account. v2.4.2 caps that search and runs it after first paint. On an older copy, Settings → turn off Auto run Back-to-back.
 - **Stale data**: Run `chrome.storage.local.clear()` in DevTools or delete the relevant `gobo-*` keys.
 - **Safari data missing after quit**: Profiles are stored by the extension background, not the page. Rebuild/reload the Safari app so `background.js` is packaged, then reopen the offers page once to copy any leftover page data. Each Safari profile keeps its own copy.
 - **CSS not applying**: Check that `styles.js` is injecting your stylesheet; syntax errors surface as `ERR_FILE_NOT_FOUND` or parsing errors in the console.
