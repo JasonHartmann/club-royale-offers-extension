@@ -8,6 +8,28 @@
         }
     }
 
+    function _openProfileKey() {
+        try {
+            const app = (typeof App !== 'undefined' && App) ? App : null;
+            const cur = app && app.CurrentProfile && app.CurrentProfile.key;
+            if (cur && /^gobo-[A-Za-z]-/.test(cur)) return cur;
+            const sel = app && app.TableRenderer && app.TableRenderer.lastState && app.TableRenderer.lastState.selectedProfileKey;
+            if (sel && /^gobo-[A-Za-z]-/.test(sel)) return sel;
+        } catch (e) {}
+        return '';
+    }
+    function _bookingHost() {
+        const key = _openProfileKey();
+        try {
+            const published = (typeof document !== 'undefined' && document.documentElement) ? document.documentElement.__goboUtils : null;
+            const U = (typeof App !== 'undefined' && App && App.Utils && typeof App.Utils.bookingHost === 'function') ? App.Utils
+                : (published && typeof published.bookingHost === 'function') ? published
+                : (typeof Utils !== 'undefined' && Utils && typeof Utils.bookingHost === 'function') ? Utils : null;
+            if (U) return U.bookingHost(key);
+        } catch (e) {}
+        return /^gobo-C-/i.test(key) ? 'www.celebritycruises.com' : 'www.royalcaribbean.com';
+    }
+
     function _parseComposite(key) {
         // Returns { shipCode:null|string, sailDate:null|string } for SD_<shipCode>_<YYYY-MM-DD>
         if (typeof key !== 'string') return { shipCode: null, sailDate: null };
@@ -276,15 +298,12 @@
                 });
                 const shipGroups = Object.values(shipGroupsMap);
                 if (!shipGroups.length) { dbg('No ship groups to hydrate'); return; }
-                let brandHost = 'www.royalcaribbean.com';
-                try { if (typeof App !== 'undefined' && App.Utils && typeof App.Utils.detectBrand === 'function') brandHost = App.Utils.detectBrand() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com'; } catch (e) {}
                 const currentHost = (location && location.hostname) ? location.hostname : '';
                 const isSimDomain = currentHost.includes('comproyale.com');
-                const endpoint = isSimDomain ? '/canned/graph-one-ship.json' : `https://${brandHost}/graph`;
                 const query = 'query cruiseSearch_Cruises($filters:String,$qualifiers:String,$sort:CruiseSearchSort,$pagination:CruiseSearchPagination,$nlSearch:String){cruiseSearch(filters:$filters,qualifiers:$qualifiers,sort:$sort,pagination:$pagination,nlSearch:$nlSearch){results{cruises{id productViewLink masterSailing{itinerary{name code days{number type ports{activity arrivalTime departureTime port{code name region}}}departurePort{code name region}destination{code name}portSequence sailingNights ship{code name}totalNights type}}sailings{bookingLink id itinerary{code}sailDate startDate endDate taxesAndFees{value}taxesAndFeesIncluded stateroomClassPricing{price{value currency{code}}stateroomClass{id content{code}}}}}cruiseRecommendationId total}}}';
                 let anyUpdated = false;
                 const self = this;
-                async function postFilters(filtersValue, paginationCount) {
+                async function postFilters(filtersValue, paginationCount, endpoint) {
                     let respJson = null;
                     try {
                         let resp;
@@ -315,7 +334,7 @@
                     if (!group.shipCode || !group.minDate || !group.maxDate) return { localUpdated };
                     const filtersValue = `startDate:${group.minDate}~${group.maxDate}|ship:${group.shipCode}`;
                     const expectedKeysSet = new Set(group.keys);
-                    const cruises = await postFilters(filtersValue, group.keys.length * 3) || [];
+                    const cruises = await postFilters(filtersValue, group.keys.length * 3, isSimDomain ? '/canned/graph-one-ship.json' : `https://${_bookingHost()}/graph`) || [];
                     cruises.forEach(c => {
                         try {
                             const itin = c?.masterSailing?.itinerary || {};
@@ -682,7 +701,7 @@
                 if (data.bookingLink) {
                     const linkWrap = document.createElement('div');
                     const a = document.createElement('a');
-                    const host = (function () { try { if (App && App.Utils && typeof App.Utils.detectBrand === 'function') return App.Utils.detectBrand() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com'; } catch (e) {} return 'www.royalcaribbean.com'; })();
+                    const host = _bookingHost();
                     a.href = `https://${host}${data.bookingLink}`;
                     a.target = '_blank';
                     a.rel = 'noopener noreferrer';

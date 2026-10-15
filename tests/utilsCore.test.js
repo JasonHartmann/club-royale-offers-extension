@@ -392,6 +392,23 @@ describe('Utils (utils_core)', () => {
         });
     });
 
+    describe('bookingHost', () => {
+        test('follows the open profile, not the page', () => {
+            global.location.hostname = 'www.royalcaribbean.com';
+            expect(Utils.bookingHost('gobo-C-jason')).toBe('www.celebritycruises.com');
+            global.location.hostname = 'www.celebritycruises.com';
+            expect(Utils.bookingHost('gobo-R-jason')).toBe('www.royalcaribbean.com');
+            global.location.hostname = 'www.royalcaribbean.com';
+        });
+
+        test('unbranded key follows the page', () => {
+            global.location.hostname = 'www.celebritycruises.com';
+            expect(Utils.bookingHost('goob-favorites')).toBe('www.celebritycruises.com');
+            expect(Utils.bookingHost('')).toBe('www.celebritycruises.com');
+            global.location.hostname = 'www.royalcaribbean.com';
+        });
+    });
+
     describe('getIncludeTaxesAndFeesPreference', () => {
         test('returns true by default', () => {
             expect(Utils.getIncludeTaxesAndFeesPreference(null)).toBe(true);

@@ -643,6 +643,12 @@ const Utils = {
             'flora': 'Expedition',
         };
         return map[key] || '-';
+    },
+    // Retail host follows the open profile (gobo-C- / gobo-R-), not the page.
+    bookingHost(profileKey) {
+        const m = profileKey && String(profileKey).match(/^gobo-([A-Za-z])-/);
+        if (m) return m[1].toUpperCase() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com';
+        return this.detectBrand() === 'C' ? 'www.celebritycruises.com' : 'www.royalcaribbean.com';
     }
 };
 
