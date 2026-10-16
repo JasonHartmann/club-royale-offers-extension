@@ -1495,25 +1495,169 @@ const AdvancedSearch = {
     },
     updateBadge(state) {
         try {
+            if (!state?.advancedSearch) return;
             const btn = document.querySelector('button.adv-search-button');
-            if (!btn || !state?.advancedSearch) return;
             const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
-            btn.textContent = committedCount ? `Advanced Search (${committedCount})` : 'Advanced Search';
-            btn.setAttribute('aria-label', committedCount ? `Advanced Search with ${committedCount} filters` : 'Advanced Search');
+            if (btn) {
+                btn.textContent = committedCount ? `Advanced Search (${committedCount})` : 'Advanced Search';
+                btn.setAttribute('aria-label', committedCount ? `Advanced Search with ${committedCount} filters` : 'Advanced Search');
+            }
             const cardFilterBtn = document.querySelector('.gobo-card-filter');
             if (cardFilterBtn) cardFilterBtn.textContent = committedCount ? `Filters (${committedCount})` : 'Filters';
             const panel = state.advancedSearchPanel || document.getElementById('advanced-search-panel');
-            if (panel) {
-                const header = panel.querySelector('.adv-search-header');
-                if (header) {
-                    let badge = header.querySelector('.adv-badge');
-                    if (badge && !committedCount) { badge.remove(); badge = null; }
-                    if (!badge && committedCount) { badge = document.createElement('span'); badge.className='adv-badge'; header.appendChild(badge); }
-                    if (badge) badge.textContent = committedCount + ' active';
-                }
-            }
+            const header = panel && panel.querySelector('.adv-search-header');
+            if (header) this._syncActiveBadge(state, header);
             this._logDebug('updateBadge:done', { committedCount });
         } catch(e){ this._logDebug('updateBadge:error', e); }
+    },
+    _syncActiveBadge(state, header) {
+        this._lastState = state;
+        this._ensureScrollCollapse();
+        const count = state.advancedSearch.predicates.filter(p => p && p.complete).length;
+        const panel = header.closest('.advanced-search-panel') || state.advancedSearchPanel || document.getElementById('advanced-search-panel');
+        let badge = header.querySelector('.adv-badge');
+        if (!count) {
+            if (badge) badge.remove();
+            if (panel) {
+                panel.classList.remove('adv-body-collapsed');
+                this._clearFilterBodyMotion(panel.querySelector('.adv-search-body'));
+            }
+            return;
+        }
+        if (!badge) {
+            badge = document.createElement('button');
+            badge.type = 'button';
+            badge.className = 'adv-badge';
+            badge.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleFilterPanel(state);
+            });
+            const clearBtn = header.querySelector('.adv-search-clear-btn');
+            if (clearBtn && clearBtn.nextSibling) header.insertBefore(badge, clearBtn.nextSibling);
+            else header.appendChild(badge);
+        }
+        badge.textContent = count + ' active';
+        const collapsed = !!(panel && panel.classList.contains('adv-body-collapsed'));
+        badge.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        badge.title = collapsed ? 'Expand filters' : 'Collapse filters';
+    },
+    toggleFilterPanel(state) {
+        const panel = (state && state.advancedSearchPanel) || document.getElementById('advanced-search-panel');
+        if (!panel) return;
+        this._setFilterCollapsed(state, panel, !panel.classList.contains('adv-body-collapsed'));
+    },
+    _setFilterCollapsed(state, panel, collapsed) {
+        if (!panel || panel.classList.contains('adv-body-collapsed') === collapsed) return;
+        if (collapsed) {
+            document.querySelectorAll('.adv-add-field-popup').forEach((popup) => {
+                if (popup.style.display === 'block') popup.style.display = 'none';
+            });
+            document.querySelectorAll('.adv-add-field-btn[aria-expanded="true"]').forEach((btn) => {
+                btn.setAttribute('aria-expanded', 'false');
+            });
+        }
+        this._animateFilterBody(panel, collapsed);
+        const header = panel.querySelector('.adv-search-header');
+        if (header) this._syncActiveBadge(state, header);
+    },
+    _clearFilterBodyMotion(body) {
+        if (!body) return;
+        body._goboAnimToken = (body._goboAnimToken || 0) + 1;
+        body.style.maxHeight = '';
+        body.style.opacity = '';
+        body.style.marginTop = '';
+        body.style.overflow = '';
+        body.style.transition = '';
+    },
+    _animateFilterBody(panel, collapsed) {
+        const body = panel.querySelector('.adv-search-body');
+        const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        if (!body) {
+            panel.classList.toggle('adv-body-collapsed', collapsed);
+            return;
+        }
+        body._goboAnimToken = (body._goboAnimToken || 0) + 1;
+        const token = body._goboAnimToken;
+        const motion = 'max-height .24s ease, opacity .2s ease, margin-top .24s ease';
+        body.style.overflow = 'hidden';
+        if (reduce) {
+            panel.classList.toggle('adv-body-collapsed', collapsed);
+            body.style.transition = 'none';
+            body.style.maxHeight = collapsed ? '0px' : '';
+            body.style.opacity = collapsed ? '0' : '';
+            body.style.marginTop = collapsed ? '0px' : '';
+            if (!collapsed) body.style.overflow = '';
+            return;
+        }
+        if (collapsed) {
+            body.style.transition = 'none';
+            body.style.maxHeight = body.scrollHeight + 'px';
+            body.style.opacity = '1';
+            body.style.marginTop = '';
+            void body.offsetHeight;
+            body.style.transition = motion;
+            panel.classList.add('adv-body-collapsed');
+            body.style.maxHeight = '0px';
+            body.style.opacity = '0';
+            body.style.marginTop = '0px';
+            return;
+        }
+        body.style.maxHeight = 'none';
+        const target = body.scrollHeight;
+        panel.classList.remove('adv-body-collapsed');
+        body.style.transition = 'none';
+        body.style.maxHeight = '0px';
+        body.style.opacity = '0';
+        body.style.marginTop = '0px';
+        void body.offsetHeight;
+        if (!target) {
+            this._clearFilterBodyMotion(body);
+            return;
+        }
+        body.style.transition = motion;
+        body.style.maxHeight = target + 'px';
+        body.style.opacity = '1';
+        body.style.marginTop = '';
+        const finish = () => {
+            if (body._goboAnimToken !== token) return;
+            if (panel.classList.contains('adv-body-collapsed')) return;
+            body.style.maxHeight = '';
+            body.style.opacity = '';
+            body.style.marginTop = '';
+            body.style.overflow = '';
+            body.style.transition = '';
+        };
+        body.addEventListener('transitionend', function onEnd(ev) {
+            if (ev.propertyName !== 'max-height') return;
+            body.removeEventListener('transitionend', onEnd);
+            finish();
+        });
+        setTimeout(finish, 320);
+    },
+    _ensureScrollCollapse() {
+        if (this._scrollCollapseBound) return;
+        this._scrollCollapseBound = true;
+        document.addEventListener('scroll', (ev) => this._onMainScroll(ev), { capture: true, passive: true });
+    },
+    _onMainScroll(ev) {
+        const target = ev.target;
+        const el = target && target.nodeType === 1 ? target : null;
+        if (el && el.closest && el.closest('#advanced-search-panel, .adv-add-field-popup, .adv-date-range-popup, .adv-date-range-wrapper')) return;
+        const scroller = el || document.scrollingElement || document.documentElement;
+        if (!scroller || typeof scroller.scrollTop !== 'number') return;
+        const main = !el || el.classList.contains('table-scroll-container') || el.id === 'gobo-offers-table' || el === document.body || el === document.documentElement || el === document.scrollingElement;
+        if (!main) return;
+        const top = scroller.scrollTop;
+        const prev = scroller._goboFilterScrollTop;
+        scroller._goboFilterScrollTop = top;
+        if (prev == null || Math.abs(top - prev) < 8) return;
+        const panel = document.getElementById('advanced-search-panel');
+        if (!panel || panel.classList.contains('adv-body-collapsed') || panel.classList.contains('adv-collapsed')) return;
+        if (!panel.querySelector('.adv-badge')) return;
+        const state = this._lastState;
+        if (!state) return;
+        this._setFilterCollapsed(state, panel, true);
     },
     buildHeader(state, panel) {
         try {
@@ -1534,10 +1678,7 @@ const AdvancedSearch = {
                 setTimeout(() => { try { panel.querySelector('select.adv-add-field-select')?.focus(); } catch(e){} }, 0);
             });
             header.appendChild(clearBtn);
-            const committedCount = state.advancedSearch.predicates.filter(p=>p && p.complete).length;
-            if (committedCount) {
-                const badge = document.createElement('span'); badge.className='adv-badge'; badge.textContent = committedCount + ' active'; header.appendChild(badge);
-            }
+            this._syncActiveBadge(state, header);
             this.renderFilterSetsControls(state, header);
         } catch(e){ this._logDebug('buildHeader:error', e); }
     },
