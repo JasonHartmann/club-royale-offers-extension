@@ -5,17 +5,28 @@ describe('Safari background storage owner', () => {
     delete global.chrome;
     delete global.indexedDB;
   });
+  function installNative(native) {
+    return function sendNativeMessage(appIdOrMessage, messageOrCb, maybeCb) {
+      const message = appIdOrMessage && typeof appIdOrMessage === 'object' ? appIdOrMessage : messageOrCb;
+      const cb = typeof messageOrCb === 'function' ? messageOrCb : maybeCb;
+      if (message && message.op === 'set') Object.assign(native, message.entries || {});
+      const response = { result: message && message.op === 'get' ? { ...native } : {} };
+      if (typeof cb === 'function') cb(response);
+      return Promise.resolve(response);
+    };
+  }
 
-  test('Safari writes storage.local and does not call native messaging', (done) => {
+
+  test('Safari mirrors a write to native storage and keeps storage.local', (done) => {
     const local = {};
-    let nativeCalls = 0;
+    const native = {};
     let listener = null;
     global.navigator = {
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
     };
     global.browser = {
       runtime: {
-        sendNativeMessage() { nativeCalls += 1; return Promise.reject(new Error('native should not be used')); },
+        sendNativeMessage: installNative(native),
         onMessage: { addListener: (fn) => { listener = fn; } }
       },
       storage: {
@@ -39,11 +50,222 @@ describe('Safari background storage owner', () => {
       try {
         expect(response.error).toBeUndefined();
         expect(local['gobo-R-a']).toBe('1');
-        expect(nativeCalls).toBe(0);
+        expect(native['gobo-R-a']).toBe('1');
         done();
       } catch (e) { done(e); }
     });
   });
+
+  test('Mac set returns storage.local when native messaging never answers', (done) => {
+    const local = {};
+    let listener = null;
+    global.navigator = {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
+    };
+    global.browser = {
+      runtime: {
+        sendNativeMessage() {},
+        onMessage: { addListener: (fn) => { listener = fn; } }
+      },
+      storage: {
+        local: {
+          set(items, cb) {
+            Object.assign(local, items);
+            if (cb) cb();
+            return Promise.resolve();
+          }
+        }
+      }
+    };
+    jest.resetModules();
+    require('../background');
+    const started = Date.now();
+    listener({ channel: 'gobo-storage', op: 'set', entries: { 'gobo-R-a': '1' } }, {}, (response) => {
+      try {
+        expect(response.error).toBeUndefined();
+        expect(local['gobo-R-a']).toBe('1');
+        expect(Date.now() - started).toBeLessThan(1000);
+        done();
+      } catch (e) { done(e); }
+    });
+  }, 3000);
+
+
+  test('get returns native profiles when storage.local was wiped', (done) => {
+    const local = {};
+    const native = { 'gobo-R-first': 'kept', 'gobo-R-second': 'also' };
+    let listener = null;
+    global.navigator = {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+    };
+    global.browser = {
+      runtime: {
+        sendNativeMessage: installNative(native),
+        onMessage: { addListener: (fn) => { listener = fn; } }
+      },
+      storage: {
+        local: {
+          get(keys, cb) {
+            const value = { ...local };
+            if (cb) cb(value);
+            return Promise.resolve(value);
+          },
+          set(items, cb) {
+            Object.assign(local, items);
+            if (cb) cb();
+            return Promise.resolve();
+          }
+        }
+      }
+    };
+    jest.resetModules();
+    require('../background');
+    listener({ channel: 'gobo-storage', op: 'get', keys: null }, {}, (response) => {
+      try {
+        expect(response.result['gobo-R-first']).toBe('kept');
+        expect(response.result['gobo-R-second']).toBe('also');
+        setTimeout(() => {
+          try {
+            expect(local['gobo-R-first']).toBe('kept');
+            expect(local['gobo-R-second']).toBe('also');
+            done();
+          } catch (e) { done(e); }
+        }, 30);
+      } catch (e) { done(e); }
+    });
+  });
+
+  test('iOS get prefers native when storage.local is stale', (done) => {
+    const local = { 'gobo-R-first': 'stale' };
+    const native = { 'gobo-R-first': 'kept' };
+    let listener = null;
+    global.navigator = {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+    };
+    global.browser = {
+      runtime: {
+        sendNativeMessage: installNative(native),
+        onMessage: { addListener: (fn) => { listener = fn; } }
+      },
+      storage: {
+        local: {
+          get(keys, cb) {
+            const value = { ...local };
+            if (cb) cb(value);
+            return Promise.resolve(value);
+          },
+          set(items, cb) {
+            Object.assign(local, items);
+            if (cb) cb();
+            return Promise.resolve();
+          }
+        }
+      }
+    };
+    jest.resetModules();
+    require('../background');
+    listener({ channel: 'gobo-storage', op: 'get', keys: null }, {}, (response) => {
+      try {
+        expect(response.result['gobo-R-first']).toBe('kept');
+        done();
+      } catch (e) { done(e); }
+    });
+  });
+
+  test('Mac get prefers storage.local over a different native value', (done) => {
+    const local = { 'gobo-R-first': 'profile-copy' };
+    const native = { 'gobo-R-first': 'other-profile' };
+    let listener = null;
+    global.navigator = {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
+    };
+    global.browser = {
+      runtime: {
+        sendNativeMessage: installNative(native),
+        onMessage: { addListener: (fn) => { listener = fn; } }
+      },
+      storage: {
+        local: {
+          get(keys, cb) {
+            const value = { ...local };
+            if (cb) cb(value);
+            return Promise.resolve(value);
+          },
+          set() { return Promise.resolve(); }
+        }
+      }
+    };
+    jest.resetModules();
+    require('../background');
+    listener({ channel: 'gobo-storage', op: 'get', keys: null }, {}, (response) => {
+      try {
+        expect(response.result['gobo-R-first']).toBe('profile-copy');
+        done();
+      } catch (e) { done(e); }
+    });
+  });
+
+  test('Mac get returns storage.local when native messaging never answers', (done) => {
+    const local = { 'gobo-R-first': 'profile-copy' };
+    let listener = null;
+    global.navigator = {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
+    };
+    global.browser = {
+      runtime: {
+        sendNativeMessage() {},
+        onMessage: { addListener: (fn) => { listener = fn; } }
+      },
+      storage: {
+        local: {
+          get(keys, cb) {
+            const value = { ...local };
+            if (cb) cb(value);
+            return Promise.resolve(value);
+          }
+        }
+      }
+    };
+    jest.resetModules();
+    require('../background');
+    const started = Date.now();
+    listener({ channel: 'gobo-storage', op: 'get', keys: null }, {}, (response) => {
+      try {
+        expect(response.result['gobo-R-first']).toBe('profile-copy');
+        expect(Date.now() - started).toBeLessThan(1000);
+        done();
+      } catch (e) { done(e); }
+    });
+  }, 3000);
+
+
+  test('iOS get returns native when storage.local never answers', (done) => {
+    const native = { 'gobo-R-first': 'kept' };
+    let listener = null;
+    global.navigator = {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+    };
+    global.browser = {
+      runtime: {
+        sendNativeMessage: installNative(native),
+        onMessage: { addListener: (fn) => { listener = fn; } }
+      },
+      storage: {
+        local: {
+          get() {}
+        }
+      }
+    };
+    jest.resetModules();
+    require('../background');
+    listener({ channel: 'gobo-storage', op: 'get', keys: null }, {}, (response) => {
+      try {
+        expect(response.result['gobo-R-first']).toBe('kept');
+        done();
+      } catch (e) { done(e); }
+    });
+  }, 5000);
+
 
   test('uses native messaging only when storage.local throws', (done) => {
     const native = {};
@@ -53,12 +275,7 @@ describe('Safari background storage owner', () => {
     };
     global.browser = {
       runtime: {
-        sendNativeMessage(appId, message, cb) {
-          if (message && message.op === 'set') Object.assign(native, message.entries || {});
-          const response = { result: {} };
-          if (cb) cb(response);
-          return Promise.resolve(response);
-        },
+        sendNativeMessage: installNative(native),
         onMessage: { addListener: (fn) => { listener = fn; } }
       },
       storage: {
@@ -77,8 +294,45 @@ describe('Safari background storage owner', () => {
       } catch (e) { done(e); }
     });
   });
+  test('Safari reaches the extension handler when a bundle id is rejected', (done) => {
+    const native = {};
+    let listener = null;
+    global.navigator = {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+    };
+    global.browser = {
+      runtime: {
+        sendNativeMessage(appIdOrMessage, messageOrCb) {
+          if (typeof appIdOrMessage === 'string') return Promise.reject(new Error('no such native host'));
+          if (appIdOrMessage && appIdOrMessage.op === 'set') Object.assign(native, appIdOrMessage.entries || {});
+          const response = { result: {} };
+          if (typeof messageOrCb === 'function') messageOrCb(response);
+          return Promise.resolve(response);
+        },
+        onMessage: { addListener: (fn) => { listener = fn; } }
+      },
+      storage: {
+        local: {
+          set(items, cb) {
+            if (cb) cb();
+            return Promise.resolve();
+          }
+        }
+      }
+    };
+    jest.resetModules();
+    require('../background');
+    listener({ channel: 'gobo-storage', op: 'set', entries: { 'gobo-ios': 'direct' } }, {}, (response) => {
+      try {
+        expect(response.error).toBeUndefined();
+        expect(native['gobo-ios']).toBe('direct');
+        done();
+      } catch (e) { done(e); }
+    });
+  });
 
-  test('falls back to storage.local when native messaging fails', (done) => {
+
+  test('does not report an iOS write as saved when native messaging fails', (done) => {
     const local = {};
     let listener = null;
     global.navigator = {
@@ -100,16 +354,6 @@ describe('Safari background storage owner', () => {
             Object.assign(local, items);
             if (cb) cb();
             return Promise.resolve();
-          },
-          remove(keys, cb) {
-            (Array.isArray(keys) ? keys : [keys]).forEach((key) => { delete local[key]; });
-            if (cb) cb();
-            return Promise.resolve();
-          },
-          clear(cb) {
-            Object.keys(local).forEach((key) => { delete local[key]; });
-            if (cb) cb();
-            return Promise.resolve();
           }
         }
       }
@@ -118,7 +362,7 @@ describe('Safari background storage owner', () => {
     require('../background');
     listener({ channel: 'gobo-storage', op: 'set', entries: { 'gobo-ios': 'kept' } }, {}, (response) => {
       try {
-        expect(response.error).toBeUndefined();
+        expect(response.error).toBe('native messaging failed');
         expect(local['gobo-ios']).toBe('kept');
         done();
       } catch (e) { done(e); }
@@ -177,7 +421,7 @@ describe('Safari background storage owner', () => {
     require('../background');
     listener({ channel: 'gobo-storage', op: 'set', entries: { 'gobo-ios': 'idb' } }, {}, (response) => {
       try {
-        expect(response.error).toBeUndefined();
+        expect(response.error).toBe('native messaging failed');
         expect(records.get('gobo-ios')).toBe('idb');
         done();
       } catch (e) { done(e); }

@@ -49,6 +49,8 @@ if [ ! -d "$APP_PATH" ]; then
   exit 1
 fi
 
+"$SCRIPT_DIR/inject-safari-native-messaging.py" "$APP_PATH"
+
 SAFE_APP_NAME="${APP_NAME// /-}"
 ZIP_PATH="$ARTIFACTS_DIR/${SAFE_APP_NAME}-macos.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
@@ -72,4 +74,10 @@ if [ "${BUILD_IOS:-0}" = "1" ]; then
     -destination "generic/platform=iOS" \
     build
   echo "Built iOS scheme: $IOS_SCHEME"
+  ios_app=$(find "$DERIVED_DATA/Build/Products" -path "*iphoneos*" -name "$APP_NAME.app" -print -quit)
+  if [ -z "$ios_app" ]; then
+    echo "Error: iOS app was built but not found under $DERIVED_DATA" >&2
+    exit 1
+  fi
+  "$SCRIPT_DIR/inject-safari-native-messaging.py" "$ios_app"
 fi

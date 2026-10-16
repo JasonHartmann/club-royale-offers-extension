@@ -1,9 +1,9 @@
 // background.js
 // Durable gobo* storage for Safari. Content scripts must not use page IndexedDB:
 // that store is the website origin and does not survive sessions or profiles.
-// iOS content scripts often have no storage.local, so prefer the native
-// extension handler (UserDefaults, scoped per Safari profile), then
-// browser.storage.local, then IndexedDB in this extension origin.
+// Mac storage.local is per profile and wins on read. iOS storage.local can
+// return a stale snapshot or never call back, so a native value wins there
+// and a hung local or IndexedDB read cannot block it.
 (function(){
     const NATIVE_APP_IDS = [
         'com.percex.Club-Royale-and-Blue-Chip-Offers.Extension',
@@ -16,6 +16,13 @@
         try {
             const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
             return /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR/.test(ua);
+        } catch (e) { return false; }
+    }
+
+    function isIOSDevice() {
+        try {
+            const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+            return /iPhone|iPad|iPod/.test(ua);
         } catch (e) { return false; }
     }
 
@@ -54,7 +61,7 @@
                 if (response.error) reject(new Error(response.error));
                 else resolve(response);
             };
-            const timer = setTimeout(() => fail(new Error('native messaging timeout')), 1500);
+            const timer = setTimeout(() => fail(new Error('native messaging timeout')), 8000);
             const finishErr = (err) => { clearTimeout(timer); fail(err); };
             try {
                 const callback = (response) => {
@@ -74,19 +81,40 @@
         });
     }
 
-    let nativeDown = false;
-
     function sendNative(message) {
-        if (nativeDown) return Promise.reject(new Error('native messaging unavailable'));
         const runtime = runtimeApi();
         if (!runtime || typeof runtime.sendNativeMessage !== 'function') {
-            nativeDown = true;
             return Promise.reject(new Error('native messaging unavailable'));
         }
-        return callNativeOnce(runtime, NATIVE_APP_IDS[0], message).catch((err) => {
-            nativeDown = true;
-            throw err;
+        // Safari routes sendNativeMessage(message) to this extension. A bundle
+        // id hangs until timeout, and each extra attempt adds another 8s. The
+        // content-script bridge gives up at 12s, so those extra attempts hide
+        // a storage.local value that is already saved.
+        const attempts = isSafari() ? [null] : NATIVE_APP_IDS.slice();
+        const tryNext = (index, lastError) => {
+            if (index >= attempts.length) return Promise.reject(lastError || new Error('native messaging failed'));
+            return callNativeOnce(runtime, attempts[index], message).catch((err) => tryNext(index + 1, err));
+        };
+        return tryNext(0, null);
+    }
+
+    function managedResult(payload) {
+        const result = {};
+        Object.keys((payload && payload.result) || {}).forEach((key) => {
+            if (shouldManage(key)) result[key] = payload.result[key];
         });
+        return result;
+    }
+
+    function mergeManaged(primary, secondary) {
+        const merged = {};
+        Object.keys(secondary || {}).forEach((key) => {
+            if (shouldManage(key)) merged[key] = secondary[key];
+        });
+        Object.keys(primary || {}).forEach((key) => {
+            if (shouldManage(key)) merged[key] = primary[key];
+        });
+        return merged;
     }
 
     function callStorage(api, method, arg) {
@@ -95,8 +123,10 @@
             const finish = (err, value) => {
                 if (settled) return;
                 settled = true;
+                clearTimeout(timer);
                 if (err) reject(err); else resolve(value);
             };
+            const timer = setTimeout(() => finish(new Error('storage.local timeout')), 2000);
             try {
                 const maybe = api[method](arg, (value) => {
                     let lastError = null;
@@ -143,15 +173,17 @@
     }
 
     const openDb = () => new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('indexedDB timeout')), 2000);
+        const fail = (err) => { clearTimeout(timer); reject(err || new Error('indexedDB open failed')); };
         try {
             const request = indexedDB.open(DB_NAME, 1);
             request.onupgradeneeded = () => {
                 const db = request.result;
                 if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'key' });
             };
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        } catch (e) { reject(e); }
+            request.onsuccess = () => { clearTimeout(timer); resolve(request.result); };
+            request.onerror = () => fail(request.error);
+        } catch (e) { fail(e); }
     });
 
     const withStore = (mode, operation) => openDb().then((db) => new Promise((resolve, reject) => {
@@ -160,8 +192,10 @@
         const finish = (err) => {
             if (finished) return;
             finished = true;
+            clearTimeout(timer);
             if (err) reject(err); else resolve(result);
         };
+        const timer = setTimeout(() => finish(new Error('indexedDB timeout')), 2000);
         try {
             const tx = db.transaction(STORE_NAME, mode);
             const store = tx.objectStore(STORE_NAME);
@@ -230,14 +264,77 @@
 
     function handleMessage(message) {
         if (!message || message.channel !== 'gobo-storage') return null;
-        // storage.local is per Safari profile and is what persisted in the live Mac test.
-        // Native UserDefaults is only the iOS fallback, when storage.local throws or is missing.
-        // A failed native call is remembered so later reads are not delayed for seconds.
-        const run = () => handleExtensionStorage(message).catch(() => {
-            if (!isSafari()) return handleIdb(message);
-            return sendNative(message).catch(() => handleIdb(message));
+        // storage.local is per Safari profile and can come back empty on iOS
+        // after a cold start. Native UserDefaults is outside that origin. A
+        // write is not durable until that copy is stored: iOS unloads this
+        // service worker as soon as sendResponse runs.
+        if (!isSafari()) {
+            return handleExtensionStorage(message).catch(() => handleIdb(message)).catch((err) => ({ error: String(err && err.message ? err.message : err) }));
+        }
+        const op = message.op || '';
+        if (op === 'get') {
+            const extP = handleExtensionStorage(message).catch(() => ({ result: {} }));
+            const idbP = handleIdb(message).catch(() => ({ result: {} }));
+            const nativeP = sendNative(message).catch(() => null);
+            // Mac storage.local is the per-profile copy. Do not wait out a
+            // dead native call or the page reloads with an empty GoboStore.
+            const nativeForMerge = isIOSDevice()
+                ? nativeP
+                : Promise.race([
+                    nativeP,
+                    new Promise((resolve) => setTimeout(() => resolve(null), 300))
+                ]);
+            return Promise.all([extP, idbP, nativeForMerge]).then(([ext, idb, native]) => {
+                const extResult = managedResult(ext);
+                const idbResult = managedResult(idb);
+                const nativeResult = native ? managedResult(native) : null;
+
+                if (!nativeResult && isIOSDevice()) {
+                    const partial = mergeManaged(idbResult, extResult);
+                    if (!Object.keys(partial).length) return { error: 'native messaging pending' };
+                    return { result: partial };
+                }
+                // iOS storage.local can keep an older token after the native
+                // write. Prefer native keys there. Mac storage.local is the
+                // per-profile store, so it still covers native.
+                const merged = (isIOSDevice() && nativeResult)
+                    ? mergeManaged(nativeResult, mergeManaged(extResult, idbResult))
+                    : mergeManaged(extResult, mergeManaged(nativeResult || {}, idbResult));
+                if (isIOSDevice() && nativeResult) {
+                    const refreshLocal = {};
+                    Object.keys(nativeResult).forEach((key) => {
+                        if (extResult[key] !== nativeResult[key]) refreshLocal[key] = nativeResult[key];
+                    });
+                    if (Object.keys(refreshLocal).length) {
+                        handleExtensionStorage({ channel: 'gobo-storage', op: 'set', entries: refreshLocal }).catch(() => {});
+                    }
+                    const missingNative = {};
+                    Object.keys(extResult).forEach((key) => {
+                        if (!Object.prototype.hasOwnProperty.call(nativeResult, key)) missingNative[key] = extResult[key];
+                    });
+                    if (Object.keys(missingNative).length) sendNative({ channel: 'gobo-storage', op: 'set', entries: missingNative }).catch(() => {});
+                }
+                return { result: merged };
+            }).catch((err) => ({ error: String(err && err.message ? err.message : err) }));
+        }
+        const localP = handleExtensionStorage(message).catch((err) => ({ error: err }));
+        const nativeP = sendNative(message).then((response) => response || { result: {} }).catch((err) => ({ error: err }));
+        // Same hang as get. iOS still waits, because that write is not durable
+        // until UserDefaults has it. Mac already has storage.local.
+        const nativeForWrite = isIOSDevice()
+            ? nativeP
+            : Promise.race([
+                nativeP,
+                new Promise((resolve) => setTimeout(() => resolve({ error: new Error('native messaging timeout') }), 300))
+            ]);
+        return Promise.all([localP, nativeForWrite]).then(([local, native]) => {
+            if (native && !native.error) return { result: {}, build: 'native-noid' };
+            return handleIdb(message).catch(() => ({})).then(() => {
+                if (!isIOSDevice() && local && !local.error) return { result: {}, build: 'native-noid' };
+                const detail = native && native.error ? String(native.error.message || native.error) : 'native messaging failed';
+                return { error: 'native messaging failed', detail: detail, build: 'native-noid' };
+            });
         });
-        return run().catch((err) => ({ error: String(err && err.message ? err.message : err) }));
     }
 
     try {

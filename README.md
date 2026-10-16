@@ -93,7 +93,8 @@ Runs the Jest harness across all test suites. The GitHub Action workflow runs th
 - **Content script not loading**: Confirm the offers URL matches `manifest.json` `matches` entries, then reload the extension and tab.
 - **Page freezes on load or Export** (Chrome “Page Unresponsive”): Auto run Back-to-back on a large account. v2.4.2 caps that search and runs it after first paint. On an older copy, Settings → turn off Auto run Back-to-back.
 - **Stale data**: Run `chrome.storage.local.clear()` in DevTools or delete the relevant `gobo-*` keys.
-- **Safari data missing after quit**: Profiles are stored by the extension background, not the page. Rebuild/reload the Safari app so `background.js` is packaged, then reopen the offers page once to copy any leftover page data. Each Safari profile keeps its own copy.
+- **Safari data missing after quit**: Profiles are stored by the extension background, not the page. Rebuild/reload the Safari app so `background.js` is packaged, then reopen the offers page once to copy any leftover page data. Each Safari profile keeps its own copy. A native call that never answers must not hide that copy.
+- **iOS profiles or settings vanish after a reload or a second account**: The offers page must not store those in the website. Rebuild the Safari app from Xcode. The build adds `nativeMessaging` and replaces `service_worker` with a non-persistent background page; iOS does not expose `sendNativeMessage` from the worker, so the old manifest never reached UserDefaults. Do not add that permission to the source `manifest.json`: Chrome and Firefox publish that file, and adding it disables existing installs until each user accepts the new permission.
 - **CSS not applying**: Check that `styles.js` is injecting your stylesheet; syntax errors surface as `ERR_FILE_NOT_FOUND` or parsing errors in the console.
 
 ## Customization

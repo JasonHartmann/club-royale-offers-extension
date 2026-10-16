@@ -25,6 +25,13 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Reject Safari-only permissions in the store manifest
+        run: |
+          if grep -q '"nativeMessaging"' manifest.json; then
+            echo "nativeMessaging must stay out of the Chrome and Firefox manifest. The Safari Xcode build injects it into the built .appex only." >&2
+            exit 1
+          fi
+
       - name: Upload extension files as artifact
         uses: actions/upload-artifact@v4
         with:

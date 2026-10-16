@@ -83,6 +83,10 @@ if [ ! -d "$APP_PATH" ]; then
   exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/inject-safari-native-messaging.py" "$APP_PATH"
+
+
 SAFE_APP_NAME="${APP_DISPLAY_NAME// /-}"
 ZIP_PATH="$ARTIFACTS_DIR/${SAFE_APP_NAME}-macos.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"

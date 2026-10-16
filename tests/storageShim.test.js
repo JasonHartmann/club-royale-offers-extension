@@ -221,7 +221,7 @@ describe('GoboStore Safari persistence', () => {
     wait();
   });
 
-  test('falls back to extension storage when the background bridge fails', (done) => {
+  test('does not write page storage when the background bridge fails', (done) => {
     const local = {};
     global.window = {};
     global.document = { addEventListener: () => {}, dispatchEvent: () => {} };
@@ -254,15 +254,53 @@ describe('GoboStore Safari persistence', () => {
           global.window.goboStorageSet('gobo-R-fallback', 'kept');
           setTimeout(() => {
             try {
-              expect(local['gobo-R-fallback']).toBe('kept');
+              expect(local['gobo-R-fallback']).toBeUndefined();
+              expect(global.window.goboStorageGet('gobo-R-fallback')).toBe('kept');
               done();
             } catch (e) { done(e); }
-          }, 80);
+          }, 160);
         } catch (e) { done(e); }
         return;
       }
       if (Date.now() - started > 2500) { done(new Error('GoboStore not ready')); return; }
       setTimeout(wait, 20);
+    };
+    wait();
+  });
+
+  test('restores both profiles when the background wakes after an empty page fallback', (done) => {
+    const started = Date.now();
+    const persisted = { 'gobo-R-one': 'first', 'gobo-R-two': 'second' };
+    global.window = {};
+    global.document = { addEventListener: () => {}, dispatchEvent: () => {} };
+    global.navigator = { userAgent: safariUserAgent(), platform: 'MacIntel', maxTouchPoints: 0 };
+    global.indexedDB = createMemoryIdb({});
+    global.browser = {
+      runtime: {
+        sendMessage(message, cb) {
+          if (message.op === 'get' && Date.now() - started < 200) {
+            return Promise.reject(new Error('no background'));
+          }
+          const response = message.op === 'get' ? { result: { ...persisted } } : { result: {} };
+          if (message.op === 'set') Object.assign(persisted, message.entries || {});
+          if (cb) cb(response);
+          return Promise.resolve(response);
+        }
+      }
+    };
+    jest.resetModules();
+    require('../features/storageShim');
+    const wait = () => {
+      const store = global.window.GoboStore;
+      if (store && store.ready && store.getItem('gobo-R-one') === 'first' && store.getItem('gobo-R-two') === 'second') {
+        done();
+        return;
+      }
+      if (Date.now() - started > 2500) {
+        done(new Error('profiles were not restored from the late bridge'));
+        return;
+      }
+      setTimeout(wait, 40);
     };
     wait();
   });

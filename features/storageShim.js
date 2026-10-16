@@ -177,13 +177,30 @@
         return null;
     }
     function createBridgeTransport(runtime) {
+        const wakeError = (err) => /receiving end|could not establish|invalidated/i.test(String(err && (err.message || err) || ''));
+        const pendingError = (err) => /native messaging pending/i.test(String(err && (err.message || err) || ''));
         const send = (message, attempt) => new Promise((resolve, reject) => {
             let settled = false;
             const fail = (err) => {
                 if (settled) return;
                 settled = true;
+                clearTimeout(timer);
                 const next = (attempt || 0) + 1;
-                if (next <= 2) {
+                const text = String(err && (err.message || err) || '');
+                if (pendingError(err)) {
+                    reject(err);
+                    return;
+                }
+                const wake = wakeError(err);
+                if (wake && next <= 4) {
+                    setTimeout(() => { send(message, next).then(resolve, reject); }, 400 * next);
+                    return;
+                }
+                if (/timeout/i.test(text) && next <= 1) {
+                    setTimeout(() => { send(message, next).then(resolve, reject); }, 500);
+                    return;
+                }
+                if (!wake && !/timeout/i.test(text) && next <= 2) {
                     setTimeout(() => { send(message, next).then(resolve, reject); }, 40 * next);
                     return;
                 }
@@ -197,9 +214,11 @@
                 settled = true;
                 resolve(response);
             };
-            const timer = setTimeout(() => fail(new Error('gobo-storage bridge timeout')), 700);
+            // Longer than the background's native cold-start wait. A shorter
+            // timer makes a live native read look like a failed bridge.
+            const timer = setTimeout(() => fail(new Error('gobo-storage bridge timeout')), 12000);
             const finishOk = (response) => { ok(response); };
-            const finishErr = (err) => { clearTimeout(timer); fail(err); };
+            const finishErr = (err) => { fail(err); };
             try {
                 const maybe = runtime.sendMessage(message, (response) => {
                     let lastError = null;
@@ -219,62 +238,36 @@
         };
         return { send, callbackOrPromise };
     }
-    function createBridgeStorage(runtime, localApi, pageIdb) {
+    function createBridgeStorage(runtime) {
         const transport = createBridgeTransport(runtime);
-        let bridgeDown = false;
-        const fallbackApi = () => localApi || pageIdb || null;
-        const bridgeSend = (message) => {
-            if (bridgeDown) return Promise.reject(new Error('bridge down'));
-            return transport.send(message).catch((err) => {
-                bridgeDown = true;
-                throw err;
-            });
-        };
-        const useFallback = (method, arg) => {
-            const api = fallbackApi();
-            if (!api) return Promise.reject(new Error('no fallback storage'));
-            return new Promise((resolve, reject) => {
-                try {
-                    const maybe = method === 'clear'
-                        ? api.clear((value) => resolve(value))
-                        : api[method](arg, (value) => resolve(value));
-                    if (maybe && typeof maybe.then === 'function') maybe.then(resolve, reject);
-                } catch (e) {
-                    try {
-                        const pending = method === 'clear' ? api.clear() : api[method](arg);
-                        if (pending && typeof pending.then === 'function') pending.then(resolve, reject);
-                        else reject(e);
-                    } catch (e2) { reject(e2); }
-                }
-            });
-        };
+        const bridgeSend = (message) => transport.send(message);
         return {
             get(keys, callback) {
                 const query = keys == null ? null : keys;
                 const promise = bridgeSend({ channel: 'gobo-storage', op: 'get', keys: query })
-                    .then((response) => (response && response.result) || {})
-                    .catch(() => useFallback('get', query).then((value) => value || {}));
+                    .then((response) => (response && response.result) || {});
                 return transport.callbackOrPromise(promise, callback, {});
             },
             set(items, callback) {
                 const payload = items || {};
                 const promise = bridgeSend({ channel: 'gobo-storage', op: 'set', entries: payload })
-                    .then(() => ({}))
-                    .catch(() => useFallback('set', payload).then(() => ({})));
+                    .then(() => ({}));
                 return transport.callbackOrPromise(promise, callback, null);
             },
             remove(keys, callback) {
                 const keyList = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys || {}));
                 const promise = bridgeSend({ channel: 'gobo-storage', op: 'remove', keys: keyList })
-                    .then(() => ({}))
-                    .catch(() => useFallback('remove', keyList).then(() => ({})));
+                    .then(() => ({}));
                 return transport.callbackOrPromise(promise, callback, null);
             },
             clear(callback) {
                 const promise = bridgeSend({ channel: 'gobo-storage', op: 'clear' })
-                    .then(() => ({}))
-                    .catch(() => useFallback('clear').then(() => ({})));
+                    .then(() => ({}));
                 return transport.callbackOrPromise(promise, callback, null);
+            },
+            directGet() {
+                return bridgeSend({ channel: 'gobo-storage', op: 'get', keys: null })
+                    .then((response) => (response && response.result) || {});
             }
         };
     }
@@ -284,9 +277,10 @@
         return null;
     })();
     const runtime = runtimeApi();
-    // Content-script IndexedDB is the page origin. Safari drops it across sessions, and iOS
-    // content scripts often have no storage.local. The background owns the durable store.
-    const bridgeStorage = (isSafari && runtime) ? createBridgeStorage(runtime, extensionLocal, idbStorage) : null;
+    // Content scripts cannot call sendNativeMessage. Page IndexedDB is the
+    // website origin, and iOS drops it on reload and logout. Do not fall
+    // back to it: an empty success there hides a later native read.
+    const bridgeStorage = (isSafari && runtime) ? createBridgeStorage(runtime) : null;
     extStorage = bridgeStorage || extensionLocal || idbStorage;
     try {
         const backend = (bridgeStorage && extStorage === bridgeStorage) ? 'safari-background' : (extStorage === idbStorage ? 'indexeddb' : (extStorage ? 'browser.storage.local' : 'none'));
@@ -443,6 +437,31 @@
         }).catch(() => done());
     }
 
+    function reconcileDurable() {
+        if (!extStorage || typeof extStorage.directGet !== 'function') return;
+        extStorage.directGet().then((durable) => {
+            const fromBridge = durable || {};
+            const missing = {};
+            internal.forEach((value, key) => {
+                if (shouldManage(key) && !Object.prototype.hasOwnProperty.call(fromBridge, key)) missing[key] = value;
+            });
+            const addedKeys = [];
+            Object.keys(fromBridge).forEach((key) => {
+                if (!shouldManage(key) || internal.has(key)) return;
+                internal.set(key, fromBridge[key]);
+                addedKeys.push(key);
+            });
+            if (Object.keys(missing).length) {
+                try { extStorage.set(missing); } catch (e) { /* ignore */ }
+            }
+            if (addedKeys.length && typeof document !== 'undefined') {
+                addedKeys.forEach((key) => {
+                    document.dispatchEvent(new CustomEvent('goboStorageUpdated', { detail: { key } }));
+                });
+            }
+        }).catch(() => {});
+    }
+
     const GoboStore = {
         ready: false,
         _initPromise: null,
@@ -458,6 +477,12 @@
                         }
                     } catch(e) { /* ignore */ }
                     res();
+                    // iOS 26.6 can fail the first background wake. A later read
+                    // must put the other account's profile back on the tabs.
+                    [400, 2000, 6000].forEach((delay) => {
+                        const timer = setTimeout(reconcileDurable, delay);
+                        if (timer && typeof timer.unref === 'function') timer.unref();
+                    });
                 });
                 migratePageIdb(finish);
             });
