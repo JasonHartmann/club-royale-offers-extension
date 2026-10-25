@@ -50,7 +50,7 @@ def autofix(md, log):
     # RELEASE NOTES: trailing periods off, newest-first rebuilt from release-notes files
     if "### RELEASE NOTES" in md2:
         head, notes = md2.split("### RELEASE NOTES", 1)
-        norm = lambda x: rt.ver_label(x if x.count(".") >= 2 else x + ".0")[1:]
+        norm = lambda x: x
         listed = [norm(x) for x in re.findall(r"\*\*v([\d.]+)\*\*", notes)]
         have = {rt.ver_label(v)[1:]: v for v in rt.all_versions()}
         for v in listed:

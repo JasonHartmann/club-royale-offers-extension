@@ -81,9 +81,8 @@ def draft_bullet(subject):
 
 
 def ver_label(v):
-    """House version line: **vX.Y.Z**, or **vX.Y** when the patch number is 0 (v2.1, v2.2 style)."""
-    parts = v.split(".")
-    return "v" + (".".join(parts[:2]) if len(parts) == 3 and parts[2] == "0" else v)
+    """House version line is **v<version as named>**: v2.4.0, but v2.2 / v2.1 for old minor-only files (2.2.md)."""
+    return "v" + v
 
 
 def draft_notes(subjects, v="X.Y.Z"):
