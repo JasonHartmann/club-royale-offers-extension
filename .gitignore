@@ -5,3 +5,4 @@ dist/
 .opencode
 list.json
 details-*.json
+.env.deploy

@@ -1,0 +1,161 @@
+name: Store deploy (Chrome Web Store + Firefox AMO)
+
+# Manual only. Defaults to a dry run that never uploads or submits.
+# Reuses the zip artifact from "Package Chrome Extension" (package-extension.yml); does not rebuild.
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: "Run ID of package-extension.yml to deploy (blank = latest run on main that has the artifact)"
+        required: false
+        default: ""
+      targets:
+        description: "Stores to deploy"
+        type: choice
+        options: [both, chrome, firefox]
+        default: both
+      submit:
+        description: "Really upload and submit for review (false = dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: store-deploy-web
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      run_id: ${{ steps.pick.outputs.run_id }}
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick build run
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN: ${{ inputs.build_run_id }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_RUN" ]; then id="$INPUT_RUN"; else
+            id=""
+            for r in $(gh run list -R "$GITHUB_REPOSITORY" --workflow package-extension.yml --branch main -L 20 --json databaseId -q '.[].databaseId'); do
+              if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$r/artifacts" -q '.artifacts[] | select(.name=="club-royale-offers-extension" and .expired==false) | .id' | grep -q .; then id="$r"; break; fi
+            done
+          fi
+          [ -n "$id" ] || { echo "::error::No package-extension run with the club-royale-offers-extension artifact"; exit 1; }
+          echo "run_id=$id" >> "$GITHUB_OUTPUT"; echo "Using build run $id"
+      - name: Version consistency
+        id: ver
+        run: echo "version=$(bash scripts/ci/version-check.sh)" >> "$GITHUB_OUTPUT"
+
+  chrome:
+    needs: prepare
+    if: inputs.targets == 'both' || inputs.targets == 'chrome'
+    runs-on: ubuntu-latest
+    # Real submissions wait for the protected environment's reviewers.
+    environment: ${{ inputs.submit && 'store-production' || 'store-dry-run' }}
+    env:
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+      CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      SUBMIT: ${{ inputs.submit }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: club-royale-offers-extension
+          path: ext
+          run-id: ${{ needs.prepare.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Validate artifact
+        run: |
+          set -euo pipefail
+          v=$(jq -r .version ext/manifest.json)
+          [ "$v" = "$VERSION" ] || { echo "::error::artifact version $v != repo $VERSION"; exit 1; }
+          if grep -q '"nativeMessaging"' ext/manifest.json; then echo "::error::nativeMessaging in store manifest"; exit 1; fi
+          (cd ext && zip -qr ../chrome.zip .)
+          ls -l chrome.zip
+      - name: Get access token (only if secrets exist)
+        id: auth
+        run: |
+          set -euo pipefail
+          if [ -z "$CWS_CLIENT_ID" ] || [ -z "$CWS_REFRESH_TOKEN" ] || [ -z "$CWS_EXTENSION_ID" ]; then
+            [ "$SUBMIT" = "true" ] && { echo "::error::CWS secrets missing"; exit 1; }
+            echo "CWS secrets not set; skipping store checks (dry run)."; echo "have=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          tok=$(curl -fsS https://oauth2.googleapis.com/token -d client_id="$CWS_CLIENT_ID" -d client_secret="$CWS_CLIENT_SECRET" -d refresh_token="$CWS_REFRESH_TOKEN" -d grant_type=refresh_token | jq -r .access_token)
+          echo "::add-mask::$tok"
+          echo "CWS_TOKEN=$tok" >> "$GITHUB_ENV"; echo "have=true" >> "$GITHUB_OUTPUT"
+      - name: Compare with store version (read-only)
+        if: steps.auth.outputs.have == 'true'
+        run: |
+          set -euo pipefail
+          sv=$(curl -fsS -H "Authorization: Bearer $CWS_TOKEN" "https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID?projection=DRAFT" | jq -r '.crxVersion // "0"')
+          echo "Store draft version: $sv, ours: $VERSION"
+          bash scripts/ci/semver-gt.sh "$VERSION" "$sv" || { echo "::error::$VERSION is not greater than store $sv"; exit 1; }
+      - name: Upload and publish
+        if: inputs.submit && steps.auth.outputs.have == 'true'
+        run: |
+          set -euo pipefail
+          curl -fsS -X PUT -H "Authorization: Bearer $CWS_TOKEN" -H "x-goog-api-version: 2" -T chrome.zip \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$CWS_EXTENSION_ID" | tee up.json | jq '{uploadState, itemError}'
+          [ "$(jq -r .uploadState up.json)" = "SUCCESS" ] || exit 1
+          curl -fsS -X POST -H "Authorization: Bearer $CWS_TOKEN" -H "x-goog-api-version: 2" -H "Content-Length: 0" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID/publish" | jq '{status, statusDetail}'
+      - name: Verify item status
+        if: steps.auth.outputs.have == 'true'
+        run: |
+          curl -fsS -H "Authorization: Bearer $CWS_TOKEN" "https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID?projection=DRAFT" | jq '{id, crxVersion, uploadState, itemError}'
+      - name: Dry-run summary
+        if: ${{ !inputs.submit }}
+        run: |
+          echo "DRY RUN: would upload chrome.zip ($VERSION) to CWS item ${CWS_EXTENSION_ID:-<unset>} and publish." >> "$GITHUB_STEP_SUMMARY"
+
+  firefox:
+    needs: prepare
+    if: inputs.targets == 'both' || inputs.targets == 'firefox'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.submit && 'store-production' || 'store-dry-run' }}
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+      AMO_ADDON_ID: ${{ vars.AMO_ADDON_ID }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/download-artifact@v4
+        with:
+          name: club-royale-offers-extension
+          path: ext
+          run-id: ${{ needs.prepare.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: web-ext lint
+        run: npx --yes web-ext@8 lint --source-dir ext --self-hosted=false --warnings-as-errors=false
+      - name: Compare with AMO version (read-only, public API)
+        if: env.AMO_ADDON_ID != ''
+        run: |
+          set -euo pipefail
+          sv=$(curl -fsS "https://addons.mozilla.org/api/v5/addons/addon/$AMO_ADDON_ID/" | jq -r '.current_version.version // "0"')
+          echo "AMO listed version: $sv, ours: $VERSION"
+          bash scripts/ci/semver-gt.sh "$VERSION" "$sv" || { echo "::error::$VERSION is not greater than AMO $sv"; exit 1; }
+      - name: Sign and submit (listed)
+        if: inputs.submit
+        run: |
+          set -euo pipefail
+          if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then echo "::error::AMO secrets missing"; exit 1; fi
+          npx --yes web-ext@8 sign --source-dir ext --channel listed --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET" --approval-timeout 0
+      - name: Dry-run summary
+        if: ${{ !inputs.submit }}
+        run: |
+          echo "DRY RUN: would run web-ext sign --channel listed for $VERSION (addon ${AMO_ADDON_ID:-<unset>})." >> "$GITHUB_STEP_SUMMARY"

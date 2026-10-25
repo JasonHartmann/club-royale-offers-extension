@@ -1,0 +1,54 @@
+name: Store deploy (Apple, PAUSED stub)
+
+# PAUSED: CI signing is on hold; Jason deploys Apple builds with scripts/deploy-mac.sh.
+# This workflow only does an UNSIGNED build to check that the Safari project compiles.
+# TODO(signing): when resumed, use p12 + temp keychain + manual signing with these secrets:
+#   APPLE_DIST_CERT_P12_BASE64, APPLE_INSTALLER_CERT_P12_BASE64, APPLE_CERT_P12_PASSWORD,
+#   KEYCHAIN_PASSWORD, PROFILE_IOS_APP_BASE64, PROFILE_IOS_EXT_BASE64,
+#   PROFILE_MAC_APP_BASE64, PROFILE_MAC_EXT_BASE64, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8
+# TODO(signing): archive -> exportArchive (method app-store-connect) -> xcrun altool --upload-app,
+#   gated on submit=true + environment store-production; delete temp keychain in always().
+on:
+  workflow_dispatch:
+    inputs:
+      submit:
+        description: "Not implemented yet; must stay false"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-build:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        destination: ["generic/platform=iOS", "generic/platform=macOS"]
+    steps:
+      - name: Refuse submit
+        if: inputs.submit
+        run: |
+          echo "::error::Apple submission is paused; use scripts/deploy-mac.sh"
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SAFARI_XCODE_REPO }}
+          ref: ${{ vars.SAFARI_XCODE_REF || 'main' }}
+          path: ClubRoyaleSafari
+          token: ${{ secrets.SAFARI_XCODE_TOKEN }}
+      - name: Version consistency
+        run: bash scripts/ci/version-check.sh "$(find ClubRoyaleSafari -name project.pbxproj -maxdepth 6 | head -1)" || echo "::warning::Xcode version mismatch (see above)"
+      - name: Unsigned build
+        run: |
+          set -euo pipefail
+          proj=$(find ClubRoyaleSafari -name '*.xcodeproj' -maxdepth 6 | head -1)
+          ok=0
+          for s in $(xcodebuild -project "$proj" -list -json | jq -r '.project.schemes[]'); do
+            echo "== $s"
+            xcodebuild build -project "$proj" -scheme "$s" -destination '${{ matrix.destination }}' \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" && ok=1 || echo "::warning::$s not buildable for ${{ matrix.destination }}"
+          done
+          [ "$ok" = 1 ] || { echo "::error::no scheme built for ${{ matrix.destination }}"; exit 1; }
