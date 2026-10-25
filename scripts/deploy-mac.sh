@@ -8,11 +8,12 @@ usage() {
   cat <<U
 Usage: scripts/deploy-mac.sh [--dry-run] [--only chrome|firefox|ios|mac] [--skip-chrome] [--skip-firefox]
                              [--skip-ios] [--skip-mac] [--build-local] [--run-id ID] [--xcode-project PATH]
-                             [--allow-dirty]
+                             [--allow-dirty] [--skip-docs] [--skip-site] [--skip-listing] [--site-dir PATH]
 U
 }
 
-DRY_RUN=0; BUILD_LOCAL=0; RUN_ID=""; ALLOW_DIRTY=0
+DRY_RUN=0; BUILD_LOCAL=0; RUN_ID=""; ALLOW_DIRTY=0; SKIP_DOCS=0; SKIP_SITE=0; SKIP_LISTING=0
+SITE_DIR="${SITE_DIR:-}"
 XCODE_PROJECT="${XCODE_PROJECT:-}"
 declare -A TGT=([chrome]=1 [firefox]=1 [ios]=1 [mac]=1)
 while [[ $# -gt 0 ]]; do
@@ -25,6 +26,10 @@ while [[ $# -gt 0 ]]; do
     --run-id) shift; RUN_ID="${1:?}" ;;
     --xcode-project) shift; XCODE_PROJECT="${1:?}" ;;
     --allow-dirty) ALLOW_DIRTY=1 ;;
+    --skip-docs) SKIP_DOCS=1 ;;
+    --skip-site) SKIP_SITE=1 ;;
+    --skip-listing) SKIP_LISTING=1 ;;
+    --site-dir) shift; SITE_DIR="${1:?}" ;;
     -h|--help) usage; exit 0 ;;
     *) usage; exit 2 ;;
   esac; shift
@@ -102,22 +107,30 @@ get_web_zip() {
 
 deploy_chrome() {
   log "Chrome Web Store"
-  if ! have_all CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN CWS_EXTENSION_ID; then
+  if ! have_all CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN CWS_EXTENSION_ID CWS_PUBLISHER_ID; then
     [[ $DRY_RUN -eq 1 ]] && { log "CWS credentials not found; skipping read-only checks"; would "upload web.zip and publish to CWS" || true; return; }
     die "CWS credentials missing"
   fi
-  local tok sv
+  local tok sv st i
   tok=$(curl -fsS https://oauth2.googleapis.com/token -d client_id="$CWS_CLIENT_ID" -d client_secret="$CWS_CLIENT_SECRET" \
         -d refresh_token="$CWS_REFRESH_TOKEN" -d grant_type=refresh_token | jq -r .access_token)
-  local api="https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID"
-  sv=$(curl -fsS -H "Authorization: Bearer $tok" "$api?projection=DRAFT" | jq -r '.crxVersion // "0"')
-  log "CWS draft version $sv"
+  # Chrome Web Store API v2 (v1.1 shut down Oct 15, 2026)
+  local item="https://chromewebstore.googleapis.com/v2/publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID"
+  sv=$(curl -fsS -H "Authorization: Bearer $tok" "$item:fetchStatus" \
+       | jq -r '[(.submittedItemRevisionStatus, .publishedItemRevisionStatus) | .distributionChannels[]?.crxVersion] | map(select(.)) | first // "0"')
+  log "CWS store version $sv"
   bash scripts/ci/semver-gt.sh "$VERSION" "$sv" || die "$VERSION is not greater than CWS $sv"
-  if would "PUT web.zip to CWS item $CWS_EXTENSION_ID, then POST publish"; then
-    curl -fsS -X PUT -H "Authorization: Bearer $tok" -H "x-goog-api-version: 2" -T "$OUT/web.zip" \
-      "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$CWS_EXTENSION_ID" | jq '{uploadState,itemError}'
-    curl -fsS -X POST -H "Authorization: Bearer $tok" -H "x-goog-api-version: 2" -H "Content-Length: 0" "$api/publish" | jq '{status,statusDetail}'
-    curl -fsS -H "Authorization: Bearer $tok" "$api?projection=DRAFT" | jq '{crxVersion,uploadState}'
+  if would "POST web.zip to CWS v2 :upload for $CWS_EXTENSION_ID, then :publish"; then
+    st=$(curl -fsS -X POST -H "Authorization: Bearer $tok" -T "$OUT/web.zip" \
+         "https://chromewebstore.googleapis.com/upload/v2/publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID:upload" | jq -r .uploadState)
+    for i in $(seq 1 30); do
+      [[ "$st" == SUCCEEDED ]] && break
+      [[ "$st" == FAILED ]] && die "CWS upload failed"
+      sleep 10; st=$(curl -fsS -H "Authorization: Bearer $tok" "$item:fetchStatus" | jq -r .lastAsyncUploadState)
+      log "upload state $st ($i)"
+    done
+    [[ "$st" == SUCCEEDED ]] || die "CWS upload did not finish"
+    curl -fsS -X POST -H "Authorization: Bearer $tok" -H "Content-Length: 0" "$item:publish" | jq '{state}'
   fi
 }
 
@@ -190,4 +203,65 @@ if [[ ${TGT[chrome]} -eq 1 || ${TGT[firefox]} -eq 1 ]]; then get_web_zip; fi
 [[ ${TGT[firefox]} -eq 1 ]] && deploy_firefox
 [[ ${TGT[ios]}     -eq 1 ]] && deploy_apple ios
 [[ ${TGT[mac]}     -eq 1 ]] && deploy_apple mac
+# ---- release notes, README, website, store listings (after the stores)
+RT=(python3 scripts/ci/release_tools.py)
+APPLY=(); [[ $DRY_RUN -eq 0 ]] && APPLY=(--apply)
+if [[ $SKIP_DOCS -eq 0 || $SKIP_LISTING -eq 0 ]]; then
+  if [[ ! -f "store-listing/release-notes/$VERSION.md" ]]; then
+    log "Drafting release notes for $VERSION (house style; needs wordsmithing)"
+    "${RT[@]}" notes "$VERSION" "${APPLY[@]}"
+    [[ $DRY_RUN -eq 1 ]] || die "edit store-listing/release-notes/$VERSION.md, commit it, and rerun"
+  fi
+  if [[ -f "store-listing/release-notes/$VERSION.md" ]]; then
+    "${RT[@]}" check "$VERSION" || { [[ $DRY_RUN -eq 1 ]] && log "WARNING: notes fail the style check (would abort)"; [[ $DRY_RUN -eq 1 ]] || exit 1; }
+    python3 scripts/ci/listing_lint.py --strict || { [[ $DRY_RUN -eq 1 ]] || die "listing lint errors"; }
+  fi
+fi
+if [[ $SKIP_DOCS -eq 0 && -f "store-listing/release-notes/$VERSION.md" ]]; then
+  log "README + GitHub release notes"
+  "${RT[@]}" docs "$VERSION" "${APPLY[@]}"
+  if would "commit README/listing on docs/release-$VERSION, push it, open a PR to main, and set the release/$VERSION notes"; then
+    if ! git diff --quiet -- README.md docs/store-listing.cleaned.md; then
+      git switch -c "docs/release-$VERSION"
+      git add README.md docs/store-listing.cleaned.md
+      git commit -m "docs: README for v$VERSION"
+      git push -u origin "docs/release-$VERSION"
+      gh pr create --base main --title "docs: v$VERSION README" --body "From scripts/deploy-mac.sh"
+      git switch -
+    fi
+    "${RT[@]}" github "$VERSION" > "$OUT/gh-notes.md"
+    if gh release view "release/$VERSION" >/dev/null 2>&1; then
+      gh release edit "release/$VERSION" --notes-file "$OUT/gh-notes.md"
+    else
+      gh release create "release/$VERSION" --title "v$VERSION" --notes-file "$OUT/gh-notes.md"
+    fi
+  fi
+fi
+if [[ $SKIP_SITE -eq 0 && -f "store-listing/release-notes/$VERSION.md" ]]; then
+  SITE_DIR="${SITE_DIR:-$ROOT/../comproyale-site}"
+  if [[ ! -d "$SITE_DIR/.git" ]]; then log "TODO: website repo not found at $SITE_DIR (--site-dir); skipped"
+  else
+    log "Website ($SITE_DIR)"
+    [[ -z "$(git -C "$SITE_DIR" status --porcelain --untracked-files=no)" ]] || { [[ $DRY_RUN -eq 1 ]] || die "website tree is dirty"; }
+    "${RT[@]}" docs "$VERSION" --site "$SITE_DIR" --site-only "${APPLY[@]}"
+    if would "commit index.html in $SITE_DIR and push its default branch"; then
+      if ! git -C "$SITE_DIR" diff --quiet; then
+        git -C "$SITE_DIR" commit -am "Release v$VERSION"
+        git -C "$SITE_DIR" push origin HEAD
+      fi
+    fi
+  fi
+fi
+if [[ $SKIP_LISTING -eq 0 && -f "store-listing/release-notes/$VERSION.md" ]]; then
+  log "Store listings"
+  "${RT[@]}" listing "$VERSION" --out "$OUT/listing"
+  log "Chrome/Edge have no listing API: paste $OUT/listing/chrome-description.txt in the dashboard"
+  if [[ ${TGT[firefox]} -eq 1 ]]; then cred AMO_JWT_ISSUER || true; cred AMO_JWT_SECRET || true; cred AMO_ADDON_ID || true
+    "${RT[@]}" amo "$VERSION" "${APPLY[@]}" || { [[ $DRY_RUN -eq 1 ]] || exit 1; }; fi
+  for p in ios mac; do
+    [[ ${TGT[$p]} -eq 1 ]] || continue
+    cred ASC_KEY_ID || true; cred ASC_ISSUER_ID || true
+    "${RT[@]}" asc "$VERSION" --platform "$([[ $p == ios ]] && echo IOS || echo MAC_OS)" "${APPLY[@]}" || { [[ $DRY_RUN -eq 1 ]] || exit 1; }
+  done
+fi
 log "Done (dry-run=$DRY_RUN)"

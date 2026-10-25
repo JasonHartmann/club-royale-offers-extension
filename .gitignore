@@ -6,3 +6,4 @@ dist/
 list.json
 details-*.json
 .env.deploy
+__pycache__/

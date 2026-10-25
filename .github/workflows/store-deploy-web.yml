@@ -65,6 +65,7 @@ jobs:
       CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
       CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
       CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+      CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
       VERSION: ${{ needs.prepare.outputs.version }}
       SUBMIT: ${{ inputs.submit }}
     steps:
@@ -87,33 +88,41 @@ jobs:
         id: auth
         run: |
           set -euo pipefail
-          if [ -z "$CWS_CLIENT_ID" ] || [ -z "$CWS_REFRESH_TOKEN" ] || [ -z "$CWS_EXTENSION_ID" ]; then
+          if [ -z "$CWS_CLIENT_ID" ] || [ -z "$CWS_REFRESH_TOKEN" ] || [ -z "$CWS_EXTENSION_ID" ] || [ -z "$CWS_PUBLISHER_ID" ]; then
             [ "$SUBMIT" = "true" ] && { echo "::error::CWS secrets missing"; exit 1; }
             echo "CWS secrets not set; skipping store checks (dry run)."; echo "have=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           tok=$(curl -fsS https://oauth2.googleapis.com/token -d client_id="$CWS_CLIENT_ID" -d client_secret="$CWS_CLIENT_SECRET" -d refresh_token="$CWS_REFRESH_TOKEN" -d grant_type=refresh_token | jq -r .access_token)
           echo "::add-mask::$tok"
           echo "CWS_TOKEN=$tok" >> "$GITHUB_ENV"; echo "have=true" >> "$GITHUB_OUTPUT"
+          # Chrome Web Store API v2 (v1.1 was shut down Oct 15, 2026)
+          echo "CWS_ITEM=https://chromewebstore.googleapis.com/v2/publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID" >> "$GITHUB_ENV"
+          echo "CWS_UPLOAD=https://chromewebstore.googleapis.com/upload/v2/publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID:upload" >> "$GITHUB_ENV"
       - name: Compare with store version (read-only)
         if: steps.auth.outputs.have == 'true'
         run: |
           set -euo pipefail
-          sv=$(curl -fsS -H "Authorization: Bearer $CWS_TOKEN" "https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID?projection=DRAFT" | jq -r '.crxVersion // "0"')
-          echo "Store draft version: $sv, ours: $VERSION"
+          sv=$(curl -fsS -H "Authorization: Bearer $CWS_TOKEN" "$CWS_ITEM:fetchStatus" \
+            | jq -r '[(.submittedItemRevisionStatus, .publishedItemRevisionStatus) | .distributionChannels[]?.crxVersion] | map(select(.)) | first // "0"')
+          echo "Store version (submitted or published): $sv, ours: $VERSION"
           bash scripts/ci/semver-gt.sh "$VERSION" "$sv" || { echo "::error::$VERSION is not greater than store $sv"; exit 1; }
       - name: Upload and publish
         if: inputs.submit && steps.auth.outputs.have == 'true'
         run: |
           set -euo pipefail
-          curl -fsS -X PUT -H "Authorization: Bearer $CWS_TOKEN" -H "x-goog-api-version: 2" -T chrome.zip \
-            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$CWS_EXTENSION_ID" | tee up.json | jq '{uploadState, itemError}'
-          [ "$(jq -r .uploadState up.json)" = "SUCCESS" ] || exit 1
-          curl -fsS -X POST -H "Authorization: Bearer $CWS_TOKEN" -H "x-goog-api-version: 2" -H "Content-Length: 0" \
-            "https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID/publish" | jq '{status, statusDetail}'
+          curl -fsS -X POST -H "Authorization: Bearer $CWS_TOKEN" -T chrome.zip "$CWS_UPLOAD" | tee up.json | jq '{uploadState, crxVersion}'
+          for _ in $(seq 1 30); do
+            st=$(jq -r .uploadState up.json)
+            [ "$st" = "SUCCEEDED" ] && break
+            [ "$st" = "FAILED" ] && { echo "::error::CWS upload failed"; exit 1; }
+            sleep 10; curl -fsS -H "Authorization: Bearer $CWS_TOKEN" "$CWS_ITEM:fetchStatus" | jq '{uploadState: .lastAsyncUploadState}' > up.json
+          done
+          [ "$(jq -r .uploadState up.json)" = "SUCCEEDED" ] || { echo "::error::CWS upload did not finish"; exit 1; }
+          curl -fsS -X POST -H "Authorization: Bearer $CWS_TOKEN" -H "Content-Length: 0" "$CWS_ITEM:publish" | jq '{state}'
       - name: Verify item status
         if: steps.auth.outputs.have == 'true'
         run: |
-          curl -fsS -H "Authorization: Bearer $CWS_TOKEN" "https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID?projection=DRAFT" | jq '{id, crxVersion, uploadState, itemError}'
+          curl -fsS -H "Authorization: Bearer $CWS_TOKEN" "$CWS_ITEM:fetchStatus" | jq '{itemId, published: .publishedItemRevisionStatus, submitted: .submittedItemRevisionStatus, lastAsyncUploadState}'
       - name: Dry-run summary
         if: ${{ !inputs.submit }}
         run: |
@@ -159,3 +168,131 @@ jobs:
         if: ${{ !inputs.submit }}
         run: |
           echo "DRY RUN: would run web-ext sign --channel listed for $VERSION (addon ${AMO_ADDON_ID:-<unset>})." >> "$GITHUB_STEP_SUMMARY"
+
+  # Release notes, README, website and store listings. Dry run: diffs + paste files only.
+  docs-preview:
+    needs: prepare
+    if: ${{ !inputs.submit }}
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      AMO_ADDON_ID: ${{ vars.AMO_ADDON_ID }}
+      SITE_REPO: ${{ vars.SITE_REPO }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check out website (read-only)
+        if: vars.SITE_REPO != ''
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SITE_REPO }}
+          path: site
+          token: ${{ secrets.SITE_REPO_TOKEN }}
+      - name: Release notes, README and site (diff only)
+        run: |
+          set -euo pipefail
+          if [ -n "$SITE_REPO" ]; then bash scripts/ci/update-docs.sh "$VERSION" site; else bash scripts/ci/update-docs.sh "$VERSION"; fi
+      - name: Store listings (diff + paste files)
+        run: |
+          set -euo pipefail
+          # Draft notes only inside this throwaway runner so the listing preview has text.
+          [ -f "store-listing/release-notes/$VERSION.md" ] || python3 scripts/ci/release_tools.py notes "$VERSION" --apply
+          python3 scripts/ci/release_tools.py check "$VERSION" || echo "::warning::release notes fail the house style check"
+          python3 scripts/ci/listing_lint.py --out listing-clean.md || true
+          python3 scripts/ci/release_tools.py listing "$VERSION" --out listing
+          python3 scripts/ci/release_tools.py amo "$VERSION" || echo "::warning::AMO listing diff failed"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-listing-paste-files
+          path: listing/
+
+  post-deploy:
+    needs: [prepare, chrome, firefox]
+    # Only after a real submission where no store job failed (a skipped store is fine).
+    if: ${{ inputs.submit && !cancelled() && !contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    environment: store-production
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+      AMO_ADDON_ID: ${{ vars.AMO_ADDON_ID }}
+      SITE_REPO: ${{ vars.SITE_REPO }}
+      TARGETS: ${{ inputs.targets }}
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require committed release notes in the house style
+        run: |
+          set -euo pipefail
+          # Real releases use hand-reviewed notes committed to the repo; generated drafts are for previews.
+          [ -f "store-listing/release-notes/$VERSION.md" ] || { echo "::error::commit store-listing/release-notes/$VERSION.md first (draft: scripts/ci/update-docs.sh $VERSION --apply)"; exit 1; }
+          python3 scripts/ci/release_tools.py check "$VERSION"
+          # Listing consistency pass; the cleaned copy (not the verbatim paste) feeds every store.
+          python3 scripts/ci/listing_lint.py --strict
+      - name: Update README
+        run: bash scripts/ci/update-docs.sh "$VERSION" --apply
+      - name: Open a PR to main with the docs (no direct push to main)
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then echo "README already current"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          b="docs/release-$VERSION"
+          git switch -c "$b"
+          git add README.md docs/store-listing.cleaned.md
+          git commit -m "docs: README for v$VERSION"
+          git push --force-with-lease origin "$b"
+          gh pr view "$b" >/dev/null 2>&1 || gh pr create --base main --head "$b" --title "docs: v$VERSION README" --body "Automated by store-deploy-web run $RUN_ID."
+      - name: Create or update the GitHub release notes
+        run: |
+          set -euo pipefail
+          # Existing convention: tag release/X.Y.Z, title vX.Y.Z (kept as-is).
+          tag="release/$VERSION"
+          python3 scripts/ci/release_tools.py github "$VERSION" > gh-notes.md
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --notes-file gh-notes.md
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file gh-notes.md
+          fi
+      - name: Update AMO listing (description + version release notes)
+        if: inputs.targets != 'chrome'
+        run: python3 scripts/ci/release_tools.py amo "$VERSION" --apply
+      - name: Render manual paste files (Chrome has no listing API)
+        run: python3 scripts/ci/release_tools.py listing "$VERSION" --out listing
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-listing-paste-files
+          path: listing/
+      - name: Check out website
+        if: vars.SITE_REPO != ''
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SITE_REPO }}
+          path: site
+          token: ${{ secrets.SITE_REPO_TOKEN }}
+      - name: Update and push website
+        if: vars.SITE_REPO != ''
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/release_tools.py docs "$VERSION" --site site --site-only --apply
+          cd site
+          if git diff --quiet; then echo "site already current"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Release v$VERSION"
+          git push origin "HEAD:$(git remote show origin | sed -n 's/.*HEAD branch: //p')"
+      - name: Manual steps
+        run: |
+          {
+            echo "### Manual listing steps"
+            echo "- Chrome Web Store has no listing API: paste listing/chrome-description.txt into Store listing > Description (artifact store-listing-paste-files)."
+            echo "- App Store: run scripts/deploy-mac.sh --only ios|mac (listing step) or paste appstore-*.txt."
+          } >> "$GITHUB_STEP_SUMMARY"
