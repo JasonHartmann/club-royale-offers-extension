@@ -20,7 +20,7 @@ New, manual-only workflows. They do not change `package-extension.yml` and do no
 ## Secrets and variables
 | Name | Kind | What it is | Where to get it |
 |---|---|---|---|
-| `CWS_CLIENT_ID` | secret | Google OAuth client ID (Desktop app type) | Google Cloud Console > APIs & Services > Credentials. First enable "Chrome Web Store API" |
+| `CWS_CLIENT_ID` | secret | Google OAuth client ID, type **Web application**, with authorized redirect URI https://developers.google.com/oauthplayground | Google Cloud Console > APIs & Services > Credentials. First enable "Chrome Web Store API" |
 | `CWS_CLIENT_SECRET` | secret | Secret for that OAuth client | Same place |
 | `CWS_REFRESH_TOKEN` | secret | Refresh token for the Google account that owns the CWS item, with scope `https://www.googleapis.com/auth/chromewebstore` | One-time OAuth consent (OAuth Playground, using your own client) |
 | `CWS_PUBLISHER_ID` | variable | Publisher ID, needed by the Chrome Web Store **API v2** (v1.1 was shut down Oct 15, 2026) | CWS Developer Dashboard > Publisher > Settings |
