@@ -1361,6 +1361,12 @@ const TableRenderer = {
         const showCards = viewMode === 'table' && layoutMode === 'cards';
         table.style.display = (viewMode === 'table' && !showCards) ? 'table' : 'none';
         accordionContainer.style.display = viewMode === 'accordion' ? 'block' : 'none';
+        // Drop accordion rows once the flat table is showing. Closed groups
+        // used to keep every sailing mounted, and hiding that tree on All Offers
+        // was a multi-second style recalc.
+        if (viewMode !== 'accordion' && accordionContainer && accordionContainer.childElementCount) {
+            accordionContainer.textContent = '';
+        }
         if (state.cardContainer) state.cardContainer.style.display = showCards ? 'block' : 'none';
         const shell = document.getElementById('gobo-offers-table');
         if (shell) shell.classList.toggle('gobo-layout-cards', !!showCards);

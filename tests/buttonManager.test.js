@@ -2,6 +2,18 @@
 const fs = require('fs');
 const path = require('path');
 
+function flushScroll() {
+    const queued = [];
+    const prev = global.requestAnimationFrame;
+    global.requestAnimationFrame = (cb) => {
+        queued.push(cb);
+        return queued.length;
+    };
+    window.dispatchEvent(new Event('scroll'));
+    global.requestAnimationFrame = prev;
+    queued.forEach((cb) => cb(0));
+}
+
 function loadButtonManager() {
     const src = fs.readFileSync(path.resolve(__dirname, '..', 'features', 'buttonManager.js'), 'utf8');
     return new Function(src + '\nreturn ButtonManager;')();
@@ -124,11 +136,11 @@ describe('ButtonManager placement', () => {
         expect(document.getElementById('gobo-offers-button').style.visibility).toBe('visible');
 
         hdr.getBoundingClientRect = () => ({ ...zero, top: -117, bottom: -21, height: 96, width: 1200 });
-        window.dispatchEvent(new Event('scroll'));
+        flushScroll();
         expect(document.getElementById('gobo-offers-button').style.visibility).toBe('hidden');
 
         hdr.getBoundingClientRect = () => ({ ...zero, top: 0, bottom: 96, height: 96, width: 1200 });
-        window.dispatchEvent(new Event('scroll'));
+        flushScroll();
         const btn = document.getElementById('gobo-offers-button');
         expect(btn.style.visibility).toBe('visible');
         expect(btn.style.top).toBe('101px');
@@ -178,6 +190,19 @@ describe('ButtonManager placement', () => {
         expect(btn.parentElement).toBe(document.body);
         expect(document.getElementById('overlay').contains(btn)).toBe(false);
         expect(document.getElementById('gobo-offers-center-container')).toBeNull();
+    });
+
+    test('does not rescan the document while the tier heading stays connected', () => {
+        pageWithTier();
+        ButtonManager.addButton();
+        const evaluate = jest.spyOn(document, 'evaluate');
+        expect(ButtonManager.isButtonCorrectlyPlaced()).toBe(true);
+        expect(ButtonManager.isButtonCorrectlyPlaced()).toBe(true);
+        expect(evaluate).not.toHaveBeenCalled();
+        evaluate.mockRestore();
+
+        document.getElementById('tier').remove();
+        expect(ButtonManager.isButtonCorrectlyPlaced()).toBe(false);
     });
 
     test('is idempotent once placed on the tier heading', () => {

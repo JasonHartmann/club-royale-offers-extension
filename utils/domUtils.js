@@ -32,9 +32,23 @@ const DOMUtils = {
         if (this._observer) {
             try { this._observer.disconnect(); } catch (e) { /* ignore */ }
         }
-        const observer = new MutationObserver(() => {
-            if (!App.ButtonManager.isButtonCorrectlyPlaced()) {
-                App.ButtonManager.addButton();
+        // childList+subtree sees every virtual-scroll row swap. A document-wide
+        // heading search from here runs inside the frame and stalls scrolling.
+        const extensionRoot = '#gobo-offers-table, .gobo-cards-container, #gobo-itinerary-modal, #advanced-search-panel, .b2b-visualizer-modal, #gobo-settings-modal';
+        const observer = new MutationObserver((records) => {
+            for (let i = 0; i < records.length; i++) {
+                const node = records[i].target;
+                const el = node && node.nodeType === 1 ? node : (node && node.parentElement);
+                if (!el || !el.closest || !el.closest(extensionRoot)) {
+                    if (App.ButtonManager.isButtonCorrectlyPlaced()) return;
+                    if (this._buttonCheckQueued) return;
+                    this._buttonCheckQueued = true;
+                    requestAnimationFrame(() => {
+                        this._buttonCheckQueued = false;
+                        if (!App.ButtonManager.isButtonCorrectlyPlaced()) App.ButtonManager.addButton();
+                    });
+                    return;
+                }
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });

@@ -362,7 +362,10 @@ const AccordionBuilder = {
                             offers.forEach(({ offer }) => { const exp=offer.campaignOffer?.reserveByDate; if(exp){ const ms=new Date(exp).getTime(); if(ms>=now && ms-now<=twoDays){ if(!soonest|| ms<soonest) soonest=ms; } } });
                             const sorted = newOrder !== 'original' ? App.SortUtils.sortOffers([...offers], headerObj.key, newOrder) : offers;
                             const tbodyRef = table.querySelector('tbody');
-                            if (tbodyRef) tbodyRef.innerHTML='';
+                            if (tbodyRef) {
+                                tbodyRef.innerHTML = '';
+                                tbodyRef.dataset.goboFilled = '1';
+                            }
                             sorted.forEach(({ offer, sailing }) => {
                                 const isNewest = globalMaxOfferDate && offer.campaignOffer?.startDate && new Date(offer.campaignOffer.startDate).getTime() === globalMaxOfferDate;
                                 const expDate = offer.campaignOffer?.reserveByDate;
@@ -394,12 +397,19 @@ const AccordionBuilder = {
             });
             thead.appendChild(tr);
 
-            // Baseline soonest expiring for initial (unsorted) render rows
-            let soonestExpDate = null; const now = Date.now(); const twoDays = 2*24*60*60*1000;
-            groupedData[groupKey].forEach(({ offer }) => { const exp=offer.campaignOffer?.reserveByDate; if(exp){ const ms=new Date(exp).getTime(); if(ms>=now && ms-now<=twoDays){ if(!soonestExpDate || ms<soonestExpDate) soonestExpDate=ms; } }});
             const tbody = document.createElement('tbody');
-            if (groupingStack.length === 0 || groupKeysStack.length < groupingStack.length) {
-                groupedData[groupKey].forEach(({ offer, sailing }) => {
+            // Row-level groups mount their sailings only once opened. Building
+            // every group up front put thousands of hidden rows in the DOM, and
+            // All Offers then paid for that tree on the way back to the table.
+            const rowLevel = groupingStack.length === 0 || groupKeysStack.length < groupingStack.length;
+            const fillGroupBody = () => {
+                if (!rowLevel || tbody.dataset.goboFilled === '1') return;
+                const groupRows = groupedData[groupKey];
+                let soonestExpDate = null;
+                const now = Date.now();
+                const twoDays = 2 * 24 * 60 * 60 * 1000;
+                groupRows.forEach(({ offer }) => { const exp = offer.campaignOffer?.reserveByDate; if (exp) { const ms = new Date(exp).getTime(); if (ms >= now && ms - now <= twoDays) { if (!soonestExpDate || ms < soonestExpDate) soonestExpDate = ms; } } });
+                groupRows.forEach(({ offer, sailing }) => {
                     const offerDate = offer.campaignOffer?.startDate;
                     const isNewest = globalMaxOfferDate && offerDate && new Date(offerDate).getTime() === globalMaxOfferDate;
                     const expDate = offer.campaignOffer?.reserveByDate;
@@ -438,7 +448,9 @@ const AccordionBuilder = {
                     } catch(e){ /* ignore */ }
                     tbody.appendChild(row);
                 });
-            }
+                tbody.dataset.goboFilled = '1';
+            };
+            if (content.classList.contains('open')) fillGroupBody();
             table.appendChild(thead);
             table.appendChild(tbody);
             content.appendChild(table);
@@ -464,6 +476,7 @@ const AccordionBuilder = {
                         content.innerHTML = '';
                         content.appendChild(table);
                     }
+                    fillGroupBody();
                     content.classList.add('open');
                     state.openGroups.add(keyPath);
 

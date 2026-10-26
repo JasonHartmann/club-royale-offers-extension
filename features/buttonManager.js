@@ -1,13 +1,18 @@
 const ButtonManager = {
     _TIER_LABELS: ['CURRENT CLUB TIER', 'CURRENT TIER', 'BLUE CHIP CLUB'],
-    _followGen: 0,
 
     _findTierHeading() {
+        const cached = this._tierHeading;
+        if (cached && cached.isConnected) return cached;
+        this._tierHeading = null;
         try {
             for (const label of this._TIER_LABELS) {
                 const xpath = `//*[translate(normalize-space(text()), "abcdefghijklmnopqrstuvwxyz", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")="${label}"]`;
                 const hit = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                if (hit) return hit;
+                if (hit) {
+                    this._tierHeading = hit;
+                    return hit;
+                }
             }
         } catch (e) { /* ignore */ }
         return null;
@@ -24,19 +29,24 @@ const ButtonManager = {
         return 80;
     },
 
+    _setStyle(button, prop, value) {
+        if (button.style[prop] !== value) button.style[prop] = value;
+    },
+
     _placeAboveTier(button, heading) {
         const hr = heading.getBoundingClientRect();
         const navBottom = this._navBottom();
-        button.style.position = 'fixed';
-        button.style.left = `${hr.left + hr.width / 2}px`;
-        button.style.transform = 'translateX(-50%)';
-        button.dataset.goboPlaced = 'tier';
+        const left = `${hr.left + hr.width / 2}px`;
+        this._setStyle(button, 'position', 'fixed');
+        this._setStyle(button, 'left', left);
+        this._setStyle(button, 'transform', 'translateX(-50%)');
+        if (button.dataset.goboPlaced !== 'tier') button.dataset.goboPlaced = 'tier';
         if (navBottom <= 8) {
-            button.style.visibility = 'hidden';
+            this._setStyle(button, 'visibility', 'hidden');
             return;
         }
-        button.style.top = `${navBottom + 5}px`;
-        button.style.visibility = 'visible';
+        this._setStyle(button, 'top', `${navBottom + 5}px`);
+        this._setStyle(button, 'visibility', 'visible');
     },
 
     _reposition() {
@@ -45,23 +55,39 @@ const ButtonManager = {
         if (btn && heading) this._placeAboveTier(btn, heading);
     },
 
+    _scheduleReposition() {
+        if (this._repositionQueued) return;
+        this._repositionQueued = true;
+        requestAnimationFrame(() => {
+            this._repositionQueued = false;
+            this._reposition();
+        });
+    },
+
     _bindReposition() {
         if (this._repositionBound) return;
         this._repositionBound = true;
         const place = () => this._reposition();
         window.addEventListener('resize', place);
-        window.addEventListener('scroll', place, { passive: true });
+        window.addEventListener('scroll', () => this._scheduleReposition(), { passive: true });
         const header = document.querySelector('header');
         if (!header) return;
         header.addEventListener('transitionend', place);
-        // ponytail: rAF tracks RCL's 0.4s hide-header transform; drop if they hide without CSS
+        // One follow loop per hide-header animation. A new class change extends
+        // the deadline instead of starting another 450ms of layout reads.
         new MutationObserver(() => {
-            const id = ++this._followGen;
             const end = performance.now() + 450;
+            if (this._followRunning) {
+                if (end > this._followUntil) this._followUntil = end;
+                return;
+            }
+            this._followUntil = end;
+            this._followRunning = true;
             const tick = (now) => {
-                if (id !== this._followGen) return;
+                if (!this._followRunning) return;
                 place();
-                if (now < end) requestAnimationFrame(tick);
+                if (now < this._followUntil) requestAnimationFrame(tick);
+                else this._followRunning = false;
             };
             requestAnimationFrame(tick);
         }).observe(header, { attributes: true, attributeFilter: ['class'] });

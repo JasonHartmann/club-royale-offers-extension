@@ -602,12 +602,20 @@ function mergeProfiles(profileA, profileB) {
 }
 
 function preserveSelectedProfileKey(state, prevState) {
-    let selectedProfileKey = state.selectedProfileKey || (prevState && prevState.selectedProfileKey);
-    if (!selectedProfileKey) {
-        const activeTab = document.querySelector('.profile-tab.active');
-        if (activeTab) selectedProfileKey = activeTab.getAttribute('data-storage-key') || activeTab.getAttribute('data-key');
+    if (!state) return state;
+    // Keep the same object. A shallow copy here stranded _lastRenderSig,
+    // _filterCache, and the virtual-scroll handle on an object the header
+    // and breadcrumb listeners no longer pointed at, so All Offers rebuilt
+    // the whole table.
+    if (!state.selectedProfileKey) {
+        let selectedProfileKey = prevState && prevState.selectedProfileKey;
+        if (!selectedProfileKey && typeof document !== 'undefined') {
+            const activeTab = document.querySelector('.profile-tab.active');
+            if (activeTab) selectedProfileKey = activeTab.getAttribute('data-storage-key') || activeTab.getAttribute('data-key');
+        }
+        if (selectedProfileKey) state.selectedProfileKey = selectedProfileKey;
     }
-    return { ...state, selectedProfileKey: selectedProfileKey || null };
+    return state;
 }
 
 function getLinkedAccounts() {
