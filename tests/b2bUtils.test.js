@@ -231,6 +231,23 @@
             });
         });
 
+        describe('paired row spends both player offers', () => {
+            test('blocks the second id and still chains a different one', () => {
+                const pair = row('AA / BB', 'SHIP1', 'Miami', '2025-01-01', 3, { playerOfferId: 'uA' });
+                pair.sailing.__spendOfferKeys = ['uA', 'uB'];
+                const bOnly = row('BB', 'SHIP1', 'Miami', '2025-01-04', 3, { playerOfferId: 'uB' });
+                const later = row('CC', 'SHIP1', 'Miami', '2025-01-07', 3, { playerOfferId: 'uC' });
+                const blocked = B2BUtils.computeB2BDepth([pair, bOnly, later], { allowSideBySide: false, force: true });
+                expect(blocked.get(0)).toBe(1);
+                expect(blocked.get(1)).toBe(2);
+
+                const free = row('DD', 'SHIP1', 'Miami', '2025-01-04', 3, { playerOfferId: 'uD' });
+                const open = B2BUtils.computeB2BDepth([pair, free], { allowSideBySide: false, force: true });
+                expect(open.get(0)).toBe(2);
+                expect(B2BUtils.getOfferKeys(pair)).toEqual(['uA', 'uB']);
+            });
+        });
+
         describe('fallback: no playerOfferId', () => {
             test('collapses the second A when identity is offerCode', () => {
                 const rows = [

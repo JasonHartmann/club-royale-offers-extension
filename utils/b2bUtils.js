@@ -159,6 +159,31 @@
         return offer.campaignOffer && offer.campaignOffer.offerCode != null
             ? String(offer.campaignOffer.offerCode).trim() : '';
     }
+    // A combined sailing stamps both player offers. Otherwise one id, else the code.
+    function getOfferKeys(row) {
+        const stamped = row && row.sailing && row.sailing.__spendOfferKeys;
+        if (Array.isArray(stamped) && stamped.length) {
+            const out = [];
+            for (let i = 0; i < stamped.length; i++) {
+                const k = stamped[i] != null ? String(stamped[i]).trim() : '';
+                if (k && out.indexOf(k) === -1) out.push(k);
+            }
+            if (out.length) return out;
+        }
+        return [getOfferKey(row)];
+    }
+
+    function addUsed(used, keys) {
+        const next = new Set(used);
+        for (let i = 0; i < keys.length; i++) if (keys[i]) next.add(keys[i]);
+        return next;
+    }
+
+    function hitUsed(used, keys) {
+        for (let i = 0; i < keys.length; i++) if (keys[i] && used.has(keys[i])) return true;
+        return false;
+    }
+
 
     // Stable row id for B2B handler attachment. Normalizes parts to [a-zA-Z0-9_-]; falls back to idx.
     function buildB2BRowId(offer, sailing, idx) {
@@ -259,7 +284,8 @@
             const { endISO, endPort, startISO, startPort } = computeEndDateAndPort(row);
             const sailing = row.sailing || {};
             const shipKey = ((sailing.shipCode || sailing.shipName || '') + '').trim().toLowerCase();
-            const offerKey = getOfferKey(row);
+            const offerKeys = getOfferKeys(row);
+            const offerKey = offerKeys[0] || '';
             let allow = !filterPredicate || filterPredicate(row);
             if (!filterPredicate && typeof Filtering !== 'undefined') {
                 try {
@@ -270,16 +296,18 @@
                     if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) allow = false;
                 } catch (e) { /* ignore */ }
             }
+            const kis = [];
             let bit = 0;
-            let ki = -1;
             if (allow) {
-                let found = pidIndex.get(offerKey);
-                if (found === undefined) {
-                    found = kCount++;
-                    pidIndex.set(offerKey, found);
+                for (let k = 0; k < offerKeys.length; k++) {
+                    let found = pidIndex.get(offerKeys[k]);
+                    if (found === undefined) {
+                        found = kCount++;
+                        pidIndex.set(offerKeys[k], found);
+                    }
+                    kis.push(found);
+                    if (found < 31) bit |= (1 << found);
                 }
-                ki = found;
-                if (ki < 31) bit = 1 << ki;
             }
             meta[i] = {
                 sn: dayNum(startISO),
@@ -288,9 +316,10 @@
                 endPort,
                 shipKey,
                 offerKey,
+                kis,
                 allow,
                 bit,
-                ki
+                ki: kis.length ? kis[0] : -1
             };
         }
 
@@ -378,7 +407,7 @@
                 for (let a = 0; a < list.length; a++) {
                     const j = list[a];
                     const bj = meta[j].bit;
-                    if (bj && !(avail & bj)) continue;
+                    if (bj && (avail & bj) !== bj) continue;
                     const d = dfs(j, avail & ~bj);
                     if (d > best) best = d;
                 }
@@ -408,6 +437,15 @@
                 if (ki >= 0) next[ki >> 5] |= (1 << (ki & 31));
                 return next;
             };
+            const kisHit = (bits, kis) => {
+                for (let t = 0; t < kis.length; t++) if (hasKi(bits, kis[t])) return true;
+                return false;
+            };
+            const addKis = (bits, kis) => {
+                let next = bits;
+                for (let t = 0; t < kis.length; t++) next = copyAdd(next, kis[t]);
+                return next;
+            };
             const order = [];
             for (let i = 0; i < n; i++) if (meta[i].allow && meta[i].sn != null) order.push(i);
             order.sort((a, b) => (meta[b].sn - meta[a].sn) || (b - a));
@@ -421,16 +459,16 @@
                 for (let oi = 0; oi < order.length; oi++) {
                     if ((oi & 127) === 0 && userAbort()) { pending = false; break; }
                     const i = order[oi];
-                    const ki = meta[i].ki;
+                    const kis = meta[i].kis || [];
                     const list = adj[i];
-                    const beam = [{ depth: 1, bits: copyAdd(seedBits, ki) }];
+                    const beam = [{ depth: 1, bits: addKis(seedBits, kis) }];
                     for (let a = 0; a < list.length; a++) {
                         const j = list[a];
                         const jp = paths[j];
                         if (!jp) { pending = true; continue; }
                         for (let p = 0; p < jp.length; p++) {
-                            if (hasKi(jp[p].bits, ki)) continue;
-                            beam.push({ depth: 1 + jp[p].depth, bits: copyAdd(jp[p].bits, ki) });
+                            if (kisHit(jp[p].bits, kis)) continue;
+                            beam.push({ depth: 1 + jp[p].depth, bits: addKis(jp[p].bits, kis) });
                         }
                     }
                     beam.sort((x, y) => y.depth - x.depth);
@@ -477,7 +515,8 @@
             const sailing = row.sailing || {};
             const shipKey = (sailing.shipCode || sailing.shipName || '').toString().trim().toLowerCase();
             const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
-            const offerKey = getOfferKey(row);
+            const offerKeys = getOfferKeys(row);
+            const offerKey = offerKeys[0] || '';
             let allow = !filterPredicate || filterPredicate(row);
             // Use hidden-row Sets directly to avoid re-entrancy into Filtering helpers
             if (!filterPredicate && typeof Filtering !== 'undefined') {
@@ -493,7 +532,7 @@
                     } catch(e) { /* ignore per-row key build errors */ }
                 } catch(e) { /* ignore */ }
             }
-            return { idx, endISO, endPort, startISO, startPort, shipKey, offerCode, offerKey, allow };
+            return { idx, endISO, endPort, startISO, startPort, shipKey, offerCode, offerKey, offerKeys, allow };
         });
 
         let lagDays2 = 0;
@@ -563,8 +602,7 @@
                 keysToCheck.push(day + '|' + portKey + '|' + shipKey);
                 if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
             }
-            const usedHere = new Set(usedSet);
-            usedHere.add(rootInfo.offerKey);
+            const usedHere = addUsed(usedSet, rootInfo.offerKeys || [rootInfo.offerKey]);
             for (let k = 0; k < keysToCheck.length; k++) {
                 const bucket = startIndex.get(keysToCheck[k]);
                 if (!bucket || !bucket.length) continue;
@@ -576,7 +614,7 @@
                     if (!nextInfo.startISO) continue;
                     const gap = diffDaysLocal(nextInfo.startISO, day);
                     if (gap == null || gap < 0 || gap > lagDays2) continue;
-                    if (usedHere.has(nextInfo.offerKey)) continue;
+                    if (hitUsed(usedHere, nextInfo.offerKeys || [nextInfo.offerKey])) continue;
                     dfsPath(nextIdx, usedHere, curPath);
                 }
             }
@@ -592,6 +630,7 @@
 
     const B2BUtils = {
         getOfferKey,
+        getOfferKeys,
         getPlayerOfferId,
         buildB2BRowId,
         computeB2BDepth,
@@ -609,7 +648,8 @@
                 const sailing = row.sailing || {};
                 const shipName = (sailing.shipName || sailing.shipCode || '').toString().trim();
                 const offerCode = (row.offer && row.offer.campaignOffer && row.offer.campaignOffer.offerCode ? String(row.offer.campaignOffer.offerCode) : '').trim();
-                const offerKey = getOfferKey(row);
+                const offerKeys = getOfferKeys(row);
+                const offerKey = offerKeys[0] || '';
                 let allow = !filterPredicate || filterPredicate(row);
                 if (!filterPredicate && typeof Filtering !== 'undefined') {
                     try {
@@ -617,7 +657,7 @@
                         else if (typeof Filtering.isRowHidden === 'function') allow = allow && !Filtering.isRowHidden(row, (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null);
                     } catch(e) { /* ignore */ }
                 }
-                return { idx, endISO, endPort, startISO, startPort, shipName, offerCode, offerKey, allow };
+                return { idx, endISO, endPort, startISO, startPort, shipName, offerCode, offerKey, offerKeys, allow };
             });
 
             if (!meta[startIdx] || !meta[startIdx].allow) return [];
@@ -707,8 +747,7 @@
                     keysToCheck.push(day + '|' + portKey + '|' + shipKey);
                     if (allowSideBySide) keysToCheck.push(day + '|' + portKey + '|*');
                 }
-                const usedHere = new Set(usedSet);
-                usedHere.add(rootInfo.offerKey);
+                const usedHere = addUsed(usedSet, rootInfo.offerKeys || [rootInfo.offerKey]);
                 for (let k = 0; k < keysToCheck.length; k++) {
                     const bucket = startIndex.get(keysToCheck[k]);
                     if (!bucket || !bucket.length) continue;
@@ -720,7 +759,7 @@
                         if (!nextInfo.startISO) continue;
                         const gap = diffDaysL(nextInfo.startISO, day);
                         if (gap == null || gap < 0 || gap > lagDays3) continue;
-                        if (usedHere.has(nextInfo.offerKey)) continue;
+                        if (hitUsed(usedHere, nextInfo.offerKeys || [nextInfo.offerKey])) continue;
                         dfsLocal(nextIdx, usedHere, curPath);
                     }
                 }

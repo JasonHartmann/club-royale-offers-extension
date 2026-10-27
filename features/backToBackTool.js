@@ -794,6 +794,7 @@
                 rowId,
                 offerCode: safeOfferCode(entry),
                 offerKey: B2BUtils.getOfferKey(entry),
+                offerKeys: B2BUtils.getOfferKeys(entry),
                 offerName: entry.offer && entry.offer.campaignOffer ? entry.offer.campaignOffer.name : '',
                 shipName: (entry.sailing && entry.sailing.shipName) || (itineraryRecord && itineraryRecord.shipName) || '',
                 shipCode: (entry.sailing && entry.sailing.shipCode) || (itineraryRecord && itineraryRecord.shipCode) || '',
@@ -815,6 +816,37 @@
             };
             this._metaCache.set(rowId, meta);
             return meta;
+        },
+        _keysOf(meta) {
+            if (!meta) return [];
+            if (Array.isArray(meta.offerKeys) && meta.offerKeys.length) return meta.offerKeys;
+            return meta.offerKey ? [meta.offerKey] : [];
+        },
+
+
+        _profileBadges(meta) {
+            let key = '';
+            try {
+                key = (this._context && this._context.state && this._context.state.selectedProfileKey) || '';
+                if (!key && typeof App !== 'undefined' && App.CurrentProfile) key = App.CurrentProfile.key || '';
+            } catch (e) { key = ''; }
+            if (key !== 'goob-combined-linked') return null;
+            const entry = meta && meta.entry;
+            const sailing = entry && entry.sailing;
+            const offer = entry && entry.offer;
+            const sources = (sailing && sailing.__profileSources) || (offer && offer.__profileSources);
+            if (!Array.isArray(sources) || !sources.length) return null;
+            const row = document.createElement('span');
+            row.className = 'b2b-profile-badges';
+            sources.forEach(s => {
+                const id = (s && s.id != null && s.id !== '') ? String(s.id) : '?';
+                const badge = document.createElement('span');
+                badge.className = 'profile-id-badge profile-id-badge-' + id;
+                badge.textContent = id;
+                badge.title = (s && (s.email || s.key)) || ('Profile ' + id);
+                row.appendChild(badge);
+            });
+            return row;
         },
 
         _resolveRegion(meta) {
@@ -1085,7 +1117,10 @@
                 head.className = 'b2b-chain-step-head';
                 const title = document.createElement('h4');
                     title.innerHTML = `<strong>${meta.shipName}</strong>`;
+                    const profileBadges = this._profileBadges(meta);
+                    if (profileBadges) title.insertBefore(profileBadges, title.firstChild);
                 const step = document.createElement('span');
+                step.className = 'b2b-chain-step';
                 step.textContent = idx === 0 ? 'Root sailing' : `Leg ${idx + 1}`;
                 head.appendChild(title);
                 head.appendChild(step);
@@ -1262,16 +1297,14 @@
                     drivingRangeHours = App.B2BDrivingRangeHours;
                 }
             } catch (e) { /* ignore */ }
-            const usedOfferCodes = new Set(chain.map(id => {
-                const meta = this._getMeta(id);
-                return meta && meta.offerKey ? meta.offerKey : null;
-            }).filter(Boolean));
+            const usedOfferCodes = new Set();
+            chain.forEach(id => this._keysOf(this._getMeta(id)).forEach(k => { if (k) usedOfferCodes.add(k); }));
             const options = [];
             this._context.rowMap.forEach((entry, rowId) => {
                 if (chain.includes(rowId)) return;
                 const candidateMeta = this._getMeta(rowId);
                 if (!candidateMeta) return;
-                if (candidateMeta.offerKey && usedOfferCodes.has(candidateMeta.offerKey)) return;
+                if (this._keysOf(candidateMeta).some(k => usedOfferCodes.has(k))) return;
                 const linkable = this._isLinkable(lastMeta, candidateMeta, allowSideBySide);
                 if (!linkable) {
                     _dbg('Not linkable: isLinkable returned false', { from: lastMeta, to: candidateMeta });
@@ -1428,14 +1461,9 @@
             if (!lastMeta) return [];
             const allowSideBySide = this._activeSession ? this._activeSession.allowSideBySide : this._context.allowSideBySide;
             const chain = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain : [];
-            const usedOfferCodes = new Set(chain.map(id => {
-                const m = this._getMeta(id);
-                return m && m.offerKey ? m.offerKey : null;
-            }).filter(Boolean));
-            if (simulateAddRowId) {
-                const simMeta = this._getMeta(simulateAddRowId);
-                if (simMeta && simMeta.offerKey) usedOfferCodes.add(simMeta.offerKey);
-            }
+            const usedOfferCodes = new Set();
+            chain.forEach(id => this._keysOf(this._getMeta(id)).forEach(k => { if (k) usedOfferCodes.add(k); }));
+            if (simulateAddRowId) this._keysOf(this._getMeta(simulateAddRowId)).forEach(k => { if (k) usedOfferCodes.add(k); });
             const ctxState = this._context ? this._context.state : null;
             const isVisibleRow = (r) => {
                 try {
@@ -1461,7 +1489,7 @@
                 if (!isVisibleRow(entry)) return;
                 const candidateMeta = this._getMeta(rId);
                 if (!candidateMeta) return;
-                if (candidateMeta.offerKey && usedOfferCodes.has(candidateMeta.offerKey)) return;
+                if (this._keysOf(candidateMeta).some(k => usedOfferCodes.has(k))) return;
                 if (this._isLinkable(lastMeta, candidateMeta, allowSideBySide)) candidates.push(rId);
             });
             return candidates;
@@ -1619,7 +1647,10 @@
                     rows.forEach((entry, idx) => { if (entry && entry.sailing && entry.sailing.__b2bRowId) rowIndexById.set(entry.sailing.__b2bRowId, idx); });
 
                     // Precompute the session's used offer keys (excluded globally for the depth calculation)
-                    sessionUsedOfferCodes = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain.map(id => { const m = this._getMeta(id); return m && m.offerKey ? m.offerKey : null; }).filter(Boolean) : [];
+                    sessionUsedOfferCodes = [];
+                    if (this._activeSession && Array.isArray(this._activeSession.chain)) {
+                        this._activeSession.chain.forEach(id => this._keysOf(this._getMeta(id)).forEach(k => { if (k) sessionUsedOfferCodes.push(k); }));
+                    }
 
                     // One pass. The start row's own offer key is already excluded inside computeB2BDepth.
                     const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes: sessionUsedOfferCodes, drivingRangeHours, force: true };
@@ -1701,6 +1732,11 @@
                 headerDiv.className = 'b2b-option-card-header';
                 const shipTitle = document.createElement('strong');
                 shipTitle.textContent = opt.meta.shipName || opt.meta.shipCode || 'Ship';
+                const nameWrap = document.createElement('span');
+                nameWrap.className = 'b2b-ship-name';
+                nameWrap.appendChild(shipTitle);
+                const profileBadges = this._profileBadges(opt.meta);
+                if (profileBadges) nameWrap.insertBefore(profileBadges, shipTitle);
                 const badges = document.createElement('div');
                 badges.className = 'b2b-option-badges';
                 const badge = document.createElement('div');
@@ -1719,7 +1755,7 @@
                     regionBadge.textContent = opt.regionLabel;
                     badges.appendChild(regionBadge);
                 }
-                headerDiv.appendChild(shipTitle);
+                headerDiv.appendChild(nameWrap);
                 headerDiv.appendChild(badges);
 
                 // Compute route including intermediate regions from timeline
