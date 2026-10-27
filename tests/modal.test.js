@@ -471,4 +471,39 @@ describe('Modal.exportToCSV', () => {
         expect(csvContent).not.toContain('"1 a');
         expect(header).not.toContain('\u2605');
     });
+
+    test('favorite CSV names the saved pair, not the first two linked accounts', () => {
+        let csvContent = '';
+        global.Blob = jest.fn((content) => { csvContent = content[0]; });
+        const aElem = { href: '', download: '', click: jest.fn() };
+        global.document.createElement = jest.fn((tag) => {
+            if (tag === 'a') return aElem;
+            return { appendChild: jest.fn(), style: { cssText: '', setProperty: jest.fn() }, classList: { add: jest.fn() }, setAttribute: jest.fn(), getAttribute: jest.fn(() => null), dataset: {} };
+        });
+        global.App.ProfileIdMap = {
+            'gobo-R-jason1_percex.com': 2,
+            'gobo-C-jason1_percex.com': 3,
+            'gobo-R-catiejellybear_gmail.com': 4,
+            'gobo-R-scraptwink_verizon.net': 5,
+        };
+        global.goboStorageGet = () => JSON.stringify([
+            { key: 'gobo-R-jason1_percex.com', email: 'jason1@percex.com' },
+            { key: 'gobo-R-scraptwink_verizon.net', email: 'scraptwink@verizon.net' },
+            { key: 'gobo-R-catiejellybear_gmail.com', email: 'catiejellybear@gmail.com' },
+        ]);
+        const state = {
+            headers: [{ key: 'favorite', label: '\u2605' }, { key: 'offerCode', label: 'Code' }],
+            sortedOffers: [{
+                offer: { campaignOffer: { offerCode: '26EMV503 / 26EMV507', startDate: '2025-01-01', reserveByDate: '2025-02-01', name: 'Pair', tradeInValue: 0 }, __favoriteMeta: { profileId: '2-4' } },
+                sailing: { shipName: 'Serenade', sailDate: '2027-01-24', departurePort: { name: 'Miami' }, itineraryDescription: '7 Nights Caribbean', roomType: 'Interior', isGOBO: false, isGTY: false, isDOLLARSOFF: false, DOLLARSOFF_AMT: 0, isFREEPLAY: false, FREEPLAY_AMT: 0, __profileId: '2-4' },
+            }],
+            selectedProfileKey: 'goob-favorites',
+            viewMode: 'table',
+            groupKeysStack: [],
+            groupingStack: [],
+        };
+        Modal.exportToCSV(state);
+        expect(csvContent).toContain('"jason1 + catiejellybear"');
+        expect(csvContent).not.toContain('scraptwink');
+    });
 });

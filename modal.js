@@ -460,25 +460,21 @@ const Modal = {
         const staticProfileLabel = (activeKey && /^gobo-/.test(activeKey)) ? shorten(activeKey) : (activeKey === 'goob-combined-linked' ? combinedLabel() : null);
         const combinedStatic = activeKey === 'goob-combined-linked' ? staticProfileLabel : null;
 
-        function labelForFavoriteRow(offer, sailing) {
-            let pid = (sailing && sailing.__profileId != null) ? sailing.__profileId : (offer && offer.__favoriteMeta && offer.__favoriteMeta.profileId != null ? offer.__favoriteMeta.profileId : null);
-            // Handle legacy 'C' marker and joined numeric profile IDs like '3-4'
-            if (pid === 'C') return combinedLabel();
-            if (typeof pid === 'string' && pid.indexOf('-') !== -1) {
-                // Combined favorites were stored with joined profile IDs (e.g. '3-4'); treat as combined
-                return combinedLabel();
-            }
-            if (pid == null) return '';
-            // Map numeric/string pid to key
-            let key = reverseProfileMap[pid];
+        function nameForPid(part) {
+            let key = reverseProfileMap[part];
             if (!key) {
-                try {
-                    const n = parseInt(String(pid),10);
-                    if (!isNaN(n)) key = reverseProfileMap[n];
-                } catch(e){}
+                const n = parseInt(String(part), 10);
+                if (!isNaN(n)) key = reverseProfileMap[n];
             }
-            if (!key) return String(pid);
-            return shorten(key);
+            return key ? shorten(key) : String(part);
+        }
+        function labelForFavoriteRow(offer, sailing) {
+            const pid = (sailing && sailing.__profileId != null) ? sailing.__profileId : (offer && offer.__favoriteMeta && offer.__favoriteMeta.profileId != null ? offer.__favoriteMeta.profileId : null);
+            if (pid === 'C') return combinedLabel();
+            if (pid == null) return '';
+            const parts = String(pid).split('-').filter(Boolean);
+            if (parts.length >= 2) return parts.map(nameForPid).join(' + ');
+            return nameForPid(pid);
         }
 
         const buildCsvRow = ({ offer, sailing }) => {
