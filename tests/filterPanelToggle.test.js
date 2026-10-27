@@ -56,6 +56,17 @@ describe('active filter badge', () => {
         expect(badge.title).toBe('Collapse filters');
     });
 
+    test('clicking the header free space toggles the filter body', () => {
+        const { panel } = panelWithFilter(AdvancedSearch);
+        const header = panel.querySelector('.adv-search-header');
+        header.click();
+        expect(panel.classList.contains('adv-body-collapsed')).toBe(true);
+        header.click();
+        expect(panel.classList.contains('adv-body-collapsed')).toBe(false);
+        panel.querySelector('.adv-search-clear-btn').click();
+        expect(panel.classList.contains('adv-body-collapsed')).toBe(false);
+    });
+
     test('a badge refresh keeps the button and the collapsed state', () => {
         const { panel, state } = panelWithFilter(AdvancedSearch);
         panel.querySelector('.adv-badge').click();

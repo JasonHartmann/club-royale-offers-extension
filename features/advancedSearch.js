@@ -1663,6 +1663,14 @@ const AdvancedSearch = {
         try {
             let header = panel.querySelector('.adv-search-header');
             if (!header) { header = document.createElement('div'); header.className = 'adv-search-header'; panel.appendChild(header); }
+            if (!header._goboFreeSpaceToggle) {
+                header._goboFreeSpaceToggle = true;
+                header.addEventListener('click', (e) => {
+                    if (e.target.closest('button, select, input, textarea, a, label')) return;
+                    if (!header.querySelector('.adv-badge')) return;
+                    this.toggleFilterPanel(this._lastState || state);
+                });
+            }
             header.innerHTML = '';
             const clearBtn = document.createElement('button');
             clearBtn.type = 'button'; clearBtn.className = 'adv-search-clear-btn'; clearBtn.textContent = 'Clear All';
