@@ -359,6 +359,8 @@ const ApiClient = {
                         detailsParams.append('page', '1');
                         detailsParams.append('sortBy', baseRequestBody.sortBy);
                         detailsParams.append('sortDirection', baseRequestBody.sortDirection);
+                        detailsParams.append('digitalRedemption', 'true');
+                        detailsParams.append('includeSailingList', 'true');
                         const detailsEndpoint = (onSupportedDomain ? detailsRelativePath : `${defaultDomain}${detailsRelativePath}`) +
                             '?' + detailsParams.toString();
 
