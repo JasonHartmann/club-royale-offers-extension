@@ -97,4 +97,34 @@ describe('tableBuilder batched row measurement', () => {
 
         expect(measured).toBeNull();
     });
+
+    test('scrolling reuses rows that stay in the window', () => {
+        const scroller = document.createElement('div');
+        scroller.className = 'table-scroll-container';
+        Object.defineProperty(scroller, 'clientHeight', { configurable: true, get() { return 320; } });
+        const table = document.createElement('table');
+        const tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+        scroller.appendChild(table);
+        document.body.appendChild(scroller);
+
+        const state = makeState(80);
+        state.headers = [{ key: 'offerCode' }];
+        TableBuilder._attachVirtualScroll(tbody, state, null, null);
+
+        const before = new Map();
+        tbody.querySelectorAll('tr[data-vs-idx]').forEach(tr => before.set(tr.dataset.vsIdx, tr));
+        const calls = createOfferRow.mock.calls.length;
+        scroller.scrollTop = 1280;
+        state._vsRenderVisible();
+
+        const after = new Map();
+        tbody.querySelectorAll('tr[data-vs-idx]').forEach(tr => after.set(tr.dataset.vsIdx, tr));
+        let reused = 0;
+        before.forEach((tr, idx) => { if (after.get(idx) === tr) reused++; });
+        const created = createOfferRow.mock.calls.length - calls;
+        expect(reused).toBeGreaterThan(0);
+        expect(created).toBe(after.size - reused);
+        expect(created).toBeLessThan(after.size);
+    });
 });

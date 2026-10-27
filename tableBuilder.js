@@ -307,19 +307,29 @@ const TableBuilder = {
 
             if (startIdx === vs.renderedStart && endIdx === vs.renderedEnd) return;
 
+            const keep = new Map();
+            let node = topSpacer.nextSibling;
+            while (node && node !== bottomSpacer) {
+                const next = node.nextSibling;
+                const idx = Number(node.dataset.vsIdx);
+                if (idx >= startIdx && idx < endIdx) keep.set(idx, node);
+                else node.remove();
+                node = next;
+            }
+
             const frag = document.createDocumentFragment();
+            let added = 0;
             for (let i = startIdx; i < endIdx; i++) {
-                const row = self._createRow(state, i, globalMaxOfferDate, soonestExpDate);
-                if (row) {
-                    row.dataset.vsIdx = i;
-                    frag.appendChild(row);
+                let row = keep.get(i);
+                if (!row) {
+                    row = self._createRow(state, i, globalMaxOfferDate, soonestExpDate);
+                    if (row) {
+                        row.dataset.vsIdx = i;
+                        added++;
+                    }
                 }
+                if (row) frag.appendChild(row);
             }
-
-            while (topSpacer.nextSibling && topSpacer.nextSibling !== bottomSpacer) {
-                tbody.removeChild(topSpacer.nextSibling);
-            }
-
             tbody.insertBefore(frag, bottomSpacer);
 
             topSpacer.firstChild.style.height = positions[startIdx] + 'px';
@@ -336,7 +346,8 @@ const TableBuilder = {
                 }
             } catch(e) {}
 
-            // Dispatch event so B2B depth badges can be applied to visible rows
+            // New rows still need depth badges. Kept rows already have them.
+            if (!added) return;
             try {
                 const evt = new CustomEvent('tableChunkRendered', { detail: { token: state._rowRenderToken, rendered: endIdx, virtualStart: startIdx, virtualEnd: endIdx } });
                 document.dispatchEvent(evt);
