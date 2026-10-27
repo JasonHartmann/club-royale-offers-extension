@@ -448,9 +448,13 @@ const Modal = {
         }
         if (rows.length === 0) rows = state.sortedOffers || [];
 
-        // Prepare headers (override first to 'Profile')
-    const csvHeaders = headers.map(h => h.label);
-        if (csvHeaders.length) csvHeaders[0] = 'Profile';
+        // Combined already has a Profile column. Drop the star column so the sheet does not repeat it.
+        const dropStar = activeKey === 'goob-combined-linked' && headers.some(h => h && h.key === 'profile');
+        const exportHeaders = dropStar
+            ? headers.filter(h => h && h.key !== 'favorite')
+            : headers.filter((h, i) => !(h && h.key === 'profile' && i > 0));
+        const csvHeaders = exportHeaders.map(h => h.label);
+        if (!dropStar && csvHeaders.length) csvHeaders[0] = 'Profile';
 
         // Pre-calculate static label for non-favorites non-combined tabs
         const staticProfileLabel = (activeKey && /^gobo-/.test(activeKey)) ? shorten(activeKey) : (activeKey === 'goob-combined-linked' ? combinedLabel() : null);
@@ -483,7 +487,10 @@ const Modal = {
             if (activeKey === 'goob-favorites') {
                 profileLabel = labelForFavoriteRow(offer, sailing) || 'Favorites';
             } else if (activeKey === 'goob-combined-linked') {
-                profileLabel = combinedStatic;
+                const sources = (sailing && sailing.__profileSources) || (offer && offer.__profileSources) || [];
+                profileLabel = sources.length
+                    ? sources.map(s => shorten(s.email || s.key)).filter(Boolean).join(' + ')
+                    : combinedStatic;
             } else if (staticProfileLabel) {
                 profileLabel = staticProfileLabel;
             } else {
@@ -530,7 +537,7 @@ const Modal = {
                     return (App && App.Utils && typeof App.Utils.formatOfferValue === 'function') ? App.Utils.formatOfferValue(rawSuite) : (rawSuite!=null?`$${Number(rawSuite).toFixed(2)}`:'-');
                 } catch(e){ return '-'; }
             })();
-            return [
+            const csvRow = [
                 profileLabel,
                 b2bDepth,
                 offer.campaignOffer?.offerCode || '-',
@@ -553,6 +560,7 @@ const Modal = {
                 (() => { let guestsText = sailing.isGOBO ? '1 Guest' : '2 Guests'; if (sailing.isDOLLARSOFF && sailing.DOLLARSOFF_AMT > 0) guestsText += ` + $${sailing.DOLLARSOFF_AMT} off`; if (sailing.isFREEPLAY && sailing.FREEPLAY_AMT > 0) guestsText += ` + $${sailing.FREEPLAY_AMT} freeplay`; return guestsText; })(),
                 perksStr
             ];
+            return csvRow;
         };
         const emitCsv = (csvRows) => {
             let csvContent = [csvHeaders, ...csvRows]

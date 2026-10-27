@@ -439,4 +439,36 @@ describe('Modal.exportToCSV', () => {
         expect(csvContent).toContain('john');
         expect(csvContent).not.toContain('gobo-');
     });
+
+    test('combined CSV drops the star column and keeps Profile', () => {
+        let csvContent = '';
+        global.Blob = jest.fn((content) => { csvContent = content[0]; });
+        const aElem = { href: '', download: '', click: jest.fn() };
+        global.document.createElement = jest.fn((tag) => {
+            if (tag === 'a') return aElem;
+            return { appendChild: jest.fn(), style: { cssText: '', setProperty: jest.fn() }, classList: { add: jest.fn() }, setAttribute: jest.fn(), getAttribute: jest.fn(() => null), dataset: {} };
+        });
+        const state = {
+            headers: [
+                { key: 'favorite', label: '\u2605' },
+                { key: 'profile', label: 'Profile' },
+                { key: 'b2bDepth', label: 'B2B' },
+                { key: 'offerCode', label: 'Code' },
+            ],
+            sortedOffers: [{
+                offer: { campaignOffer: { offerCode: 'AA / BB', startDate: '2025-01-01', reserveByDate: '2025-02-01', name: 'Pair', tradeInValue: 0 }, __profileSources: [{ id: 1, email: 'a@x.com' }, { id: 2, email: 'b@x.com' }] },
+                sailing: { shipName: 'Wonder', sailDate: '2025-03-15', departurePort: { name: 'Miami' }, itineraryDescription: '7 Nights Caribbean', roomType: 'Interior', isGOBO: false, isGTY: false, isDOLLARSOFF: false, DOLLARSOFF_AMT: 0, isFREEPLAY: false, FREEPLAY_AMT: 0, __profileSources: [{ id: 1, email: 'a@x.com' }, { id: 2, email: 'b@x.com' }] },
+            }],
+            selectedProfileKey: 'goob-combined-linked',
+            viewMode: 'table',
+            groupKeysStack: [],
+            groupingStack: [],
+        };
+        Modal.exportToCSV(state);
+        const header = csvContent.split('\r\n')[0];
+        expect(header).toBe('"Profile","B2B","Code"');
+        expect(csvContent).toContain('"a + b"');
+        expect(csvContent).not.toContain('"1 a');
+        expect(header).not.toContain('\u2605');
+    });
 });
