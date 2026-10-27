@@ -1633,13 +1633,28 @@
             } catch (e) { return null; }
         },
 
-        _distanceRank(opt, lastCat) {
-            const cat = this._broadRoom(opt && opt.meta && opt.meta.roomLabel);
-            if (lastCat && cat && cat === lastCat) return 0;
-            if (!opt.isSideBySide && !opt.isRegionMatch) return 1;
+        _isSameRoom(opt, lastMeta) {
+            try {
+                if (!lastMeta) return false;
+                const lastRoom = lastMeta.roomLabel ? String(lastMeta.roomLabel).trim() : '';
+                const lastShip = lastMeta.shipKey ? String(lastMeta.shipKey).trim() : '';
+                const thisRoom = opt && opt.meta && opt.meta.roomLabel ? String(opt.meta.roomLabel).trim() : '';
+                const thisShip = opt && opt.meta && opt.meta.shipKey ? String(opt.meta.shipKey).trim() : '';
+                return !!(lastRoom && lastShip && thisRoom === lastRoom && thisShip === lastShip);
+            } catch (e) { return false; }
+        },
+
+        _distanceRank(opt, lastMeta) {
+            // rank 0 = the green criteria: same ship AND exact room label match
+            if (this._isSameRoom(opt, lastMeta)) return 0;
+            // rank 1 = same ship, different room
+            const lastShip = lastMeta && lastMeta.shipKey ? String(lastMeta.shipKey).trim() : '';
+            const thisShip = opt && opt.meta && opt.meta.shipKey ? String(opt.meta.shipKey).trim() : '';
+            if (lastShip && thisShip && thisShip === lastShip) return 1;
             const gap = (opt.lag || 0) > 0;
             if (opt.isRegionMatch) return gap ? 5 : 4;
-            return gap ? 3 : 2;
+            if (opt.isSideBySide) return gap ? 3 : 2;
+            return 6;
         },
 
         _sortNextOptions(options, mode, lastMeta) {
@@ -1656,8 +1671,8 @@
             const date = (opt) => (opt.meta && opt.meta.startISO) || '';
             const depth = (opt) => (typeof opt.depth === 'number') ? Math.max(0, opt.depth - 1) : 0;
             const byDist = (a, b) => {
-                const ra = this._distanceRank(a, lastCat);
-                const rb = this._distanceRank(b, lastCat);
+                const ra = this._distanceRank(a, lastMeta);
+                const rb = this._distanceRank(b, lastMeta);
                 if (ra !== rb) return ra - rb;
                 const la = a.lag || 0;
                 const lb = b.lag || 0;
@@ -1669,8 +1684,8 @@
                 if (!!a.isSoldOut !== !!b.isSoldOut) return a.isSoldOut ? 1 : -1;
                 if (use === 'distance') return byDist(a, b);
                 if (use === 'same-room-price') {
-                    const aSame = this._broadRoom(a.meta && a.meta.roomLabel) === lastCat;
-                    const bSame = this._broadRoom(b.meta && b.meta.roomLabel) === lastCat;
+                    const aSame = this._isSameRoom(a, lastMeta);
+                    const bSame = this._isSameRoom(b, lastMeta);
                     if (aSame !== bSame) return aSame ? -1 : 1;
                     if (aSame && price(a) !== price(b)) return price(a) - price(b);
                     return byDist(a, b);
@@ -1937,12 +1952,7 @@
                     const chain = (this._activeSession && Array.isArray(this._activeSession.chain)) ? this._activeSession.chain : [];
                     const lastChainId = chain.length ? chain[chain.length - 1] : null;
                     const lastMeta = lastChainId ? this._getMeta(lastChainId) : null;
-                    const lastRoom = lastMeta && lastMeta.roomLabel ? String(lastMeta.roomLabel).trim() : '';
-                    const lastShipKey = lastMeta && lastMeta.shipKey ? String(lastMeta.shipKey).trim() : '';
-                    const thisShipKey = opt.meta && opt.meta.shipKey ? String(opt.meta.shipKey).trim() : '';
-                    const sameRoom = lastRoom && roomLabel && String(roomLabel).trim() === lastRoom;
-                    const sameShip = lastShipKey && thisShipKey && lastShipKey === thisShipKey;
-                    if (sameRoom && sameShip) {
+                    if (this._isSameRoom(opt, lastMeta)) {
                         offerInfo = `<strong><span style="color: #059669">${offerText}</span></strong>`; // green-600
                     }
                 } catch (e) { /* ignore matching errors */ }

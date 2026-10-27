@@ -25,47 +25,43 @@ function opt(id, extra) {
     return out;
 }
 
-describe('Next Connections sort', () => {
-    const last = { roomLabel: 'Balcony' };
+// "Same room" is the green criteria: same ship (shipKey) AND exact room label.
+const LAST = { roomLabel: 'Balcony', shipKey: 'SHIP_A' };
 
-    test('Distance ranks same room, same ship, side-by-side, then different port, gaps last within those', () => {
+describe('Next Connections sort', () => {
+    test('Distance: same-room (green) then same-ship then side-by-side then region then different port, gaps last within each', () => {
         const tool = load();
         const options = [
-            opt('port-gap', { isSideBySide: true, isRegionMatch: true, lag: 2, meta: { roomLabel: 'Interior' } }),
-            opt('same-room-other-ship', { isSideBySide: true, meta: { roomLabel: 'Balcony', startISO: '2026-03-01' } }),
-            opt('sbs-gap', { isSideBySide: true, lag: 1, meta: { roomLabel: 'Interior' } }),
-            opt('same-ship-gap', { lag: 2, meta: { roomLabel: 'Interior', startISO: '2026-01-08' } }),
-            opt('sbs', { isSideBySide: true, meta: { roomLabel: 'Interior' } }),
-            opt('port', { isSideBySide: true, isRegionMatch: true, meta: { roomLabel: 'Interior' } }),
-            opt('same-ship', { meta: { roomLabel: 'Interior', startISO: '2026-01-05' } })
+            opt('diff-port', { meta: { roomLabel: 'Interior', shipKey: 'SHIP_C' } }),
+            opt('same-room', { meta: { roomLabel: 'Balcony', shipKey: 'SHIP_A' } }),
+            opt('region-gap', { isRegionMatch: true, lag: 2, meta: { roomLabel: 'Interior', shipKey: 'SHIP_B' } }),
+            opt('same-ship-diff-room', { meta: { roomLabel: 'Interior', shipKey: 'SHIP_A' } }),
+            opt('sbs-gap', { isSideBySide: true, lag: 1, meta: { roomLabel: 'Interior', shipKey: 'SHIP_B' } }),
+            opt('sbs', { isSideBySide: true, meta: { roomLabel: 'Interior', shipKey: 'SHIP_B' } }),
+            opt('region', { isRegionMatch: true, meta: { roomLabel: 'Interior', shipKey: 'SHIP_B' } })
         ];
-        tool._sortNextOptions(options, 'distance', last);
+        tool._sortNextOptions(options, 'distance', LAST);
         expect(options.map(o => o.rowId)).toEqual([
-            'same-room-other-ship',
-            'same-ship',
-            'same-ship-gap',
+            'same-room',
+            'same-ship-diff-room',
             'sbs',
             'sbs-gap',
-            'port',
-            'port-gap'
+            'region',
+            'region-gap',
+            'diff-port'
         ]);
     });
 
-    test('Same Room by Price uses the chip for the room the chain ends on', () => {
+    test('Same Room by Price: green offers first by their chip, rest by distance', () => {
         const tool = load();
         const options = [
-            opt('balcony-dear', { meta: { roomLabel: 'Balcony' } }),
-            opt('interior-cheap', { meta: { roomLabel: 'Interior' } }),
-            opt('balcony-cheap', { isSideBySide: true, meta: { roomLabel: 'Balcony', startISO: '2026-02-01' } }),
-            opt('balcony-mid', { meta: { roomLabel: 'Balcony', startISO: '2026-01-04' } })
+            opt('balcony-dear', { meta: { roomLabel: 'Balcony', shipKey: 'SHIP_A', __row: 'balcony-dear' } }),
+            opt('interior-cheap', { meta: { roomLabel: 'Interior', shipKey: 'SHIP_B', __row: 'interior-cheap' } }),
+            opt('balcony-cheap', { meta: { roomLabel: 'Balcony', shipKey: 'SHIP_A', __row: 'balcony-cheap' } }),
+            opt('balcony-mid', { meta: { roomLabel: 'Balcony', shipKey: 'SHIP_A', __row: 'balcony-mid' } })
         ];
-        // Give the balcony options distinct chips via a per-rowId stub
-        tool._chipPrice = (meta) => {
-            const byRow = { 'balcony-dear': 900, 'balcony-cheap': 400, 'balcony-mid': 600, 'interior-cheap': 100 };
-            return byRow[meta.__row] != null ? byRow[meta.__row] : null;
-        };
-        options.forEach(o => { o.meta.__row = o.rowId; });
-        tool._sortNextOptions(options, 'same-room-price', last);
+        tool._chipPrice = (meta) => ({ balcony_dear: 900, balcony_cheap: 400, balcony_mid: 600, interior_cheap: 100 })[meta.__row.replace('-', '_')] ?? null;
+        tool._sortNextOptions(options, 'same-room-price', LAST);
         expect(options.map(o => o.rowId)).toEqual([
             'balcony-cheap',
             'balcony-mid',
@@ -74,7 +70,7 @@ describe('Next Connections sort', () => {
         ]);
     });
 
-    test('Cheapest is the cheapest balcony chip, Cheapest Longest Chain keeps depth first', () => {
+    test('Cheapest is the cheapest balcony chip; Cheapest Longest Chain keeps depth first', () => {
         const tool = load();
         const mk = () => [
             opt('short-cheap', { depth: 1, meta: { roomLabel: 'Interior', __chip: 100 } }),
@@ -83,21 +79,21 @@ describe('Next Connections sort', () => {
         ];
         tool._chipPrice = (meta) => meta.__chip;
         const cheapest = mk();
-        tool._sortNextOptions(cheapest, 'cheapest', last);
+        tool._sortNextOptions(cheapest, 'cheapest', LAST);
         expect(cheapest.map(o => o.rowId)).toEqual(['short-cheap', 'long-cheap', 'long-dear']);
         const longest = mk();
-        tool._sortNextOptions(longest, 'cheapest-longest', last);
+        tool._sortNextOptions(longest, 'cheapest-longest', LAST);
         expect(longest.map(o => o.rowId)).toEqual(['long-cheap', 'long-dear', 'short-cheap']);
     });
 
     test('sold-out cards stay last', () => {
         const tool = load();
+        tool._chipPrice = (meta) => meta.__chip;
         const options = [
             opt('dead', { isSoldOut: true, meta: { roomLabel: 'Balcony', __chip: 0 } }),
             opt('live', { meta: { roomLabel: 'Interior', __chip: 700 } })
         ];
-        tool._chipPrice = (meta) => meta.__chip;
-        tool._sortNextOptions(options, 'cheapest', last);
+        tool._sortNextOptions(options, 'cheapest', LAST);
         expect(options.map(o => o.rowId)).toEqual(['live', 'dead']);
     });
 
@@ -115,5 +111,13 @@ describe('Next Connections sort', () => {
         expect(tool._chipPrice({}, 'OUTSIDE')).toBeNull();
         expect(tool._chipPrice({}, 'BALCONY')).toBe(1045);
         expect(tool._chipPrice({}, 'DELUXE')).toBe(2943);
+    });
+
+    test('_isSameRoom is the green criteria: same ship AND exact room label', () => {
+        const tool = load();
+        expect(tool._isSameRoom({ meta: { roomLabel: 'Balcony', shipKey: 'SHIP_A' } }, LAST)).toBe(true);
+        expect(tool._isSameRoom({ meta: { roomLabel: 'Interior', shipKey: 'SHIP_A' } }, LAST)).toBe(false); // same ship, different room
+        expect(tool._isSameRoom({ meta: { roomLabel: 'Balcony', shipKey: 'SHIP_B' } }, LAST)).toBe(false); // different ship, same room
+        expect(tool._isSameRoom({ meta: { roomLabel: 'Balcony', shipKey: 'SHIP_B' } }, null)).toBe(false);
     });
 });
