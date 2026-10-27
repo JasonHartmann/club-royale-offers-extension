@@ -35,6 +35,33 @@
         return cloned;
     }
 
+    function sourceFavoritePid(offer, sailing) {
+        const sources = (sailing && sailing.__profileSources) || (offer && offer.__profileSources);
+        if (!Array.isArray(sources) || !sources.length) return null;
+        const ids = sources.map(s => (s && s.id != null && s.id !== '') ? String(s.id) : '').filter(Boolean);
+        return ids.length ? ids.join('-') : null;
+    }
+
+    function linkedAccountsPid() {
+        let linkedAccounts = [];
+        try { if (typeof getLinkedAccounts === 'function') linkedAccounts = getLinkedAccounts(); } catch (e) {}
+        const linkedIds = linkedAccounts.map(acc => {
+            try { return (App.ProfileIdMap && acc.key in App.ProfileIdMap) ? App.ProfileIdMap[acc.key] : acc.key; } catch (e) { return acc.key; }
+        }).filter(id => id != null && id !== '');
+        if (linkedIds.length >= 2) return linkedIds.join('-');
+        return 'C';
+    }
+
+    function resolveFavoritePid(offer, sailing, profileId) {
+        const fromRow = sourceFavoritePid(offer, sailing);
+        if (fromRow) return fromRow;
+        try {
+            if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') return linkedAccountsPid();
+        } catch (e) {}
+        return profileId || '0';
+    }
+
+
     function getSailingKey(offer, sailing, profileId) {
         const code = offer.campaignOffer?.offerCode || '';
         const ship = sailing.shipName || '';
@@ -72,33 +99,26 @@
     }
 
     function isFavorite(offer, sailing, profileId) {
-        const profile = getCachedProfile(); // use cached profile instead of loading each call
+        const profile = getCachedProfile();
         const offers = profile.data.offers || [];
-        const requestedPid = profileId; // may be undefined/null
+        const rowPid = sourceFavoritePid(offer, sailing);
+        const requestedPid = rowPid || profileId;
         let isCombinedContext = (typeof requestedPid === 'string' && requestedPid.includes('-'));
-        try { if (!isCombinedContext && App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') isCombinedContext = true; } catch(e){}
-        // Pre-compute comparable core fields (excluding profileId)
+        try { if (!isCombinedContext && !rowPid && App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') isCombinedContext = true; } catch (e) {}
         const coreCode = offer.campaignOffer?.offerCode || '';
         const coreShip = sailing.shipName || '';
         const coreDate = sailing.sailDate || '';
         const coreIsGOBO = String(sailing.isGOBO === true);
-        // Exact key (when we have a requestedPid) for fast path
         const exactKey = requestedPid ? getSailingKey(offer, sailing, requestedPid) : null;
         for (const off of offers) {
             const sailings = off.campaignOffer?.sailings || [];
             for (const s of sailings) {
                 const storedPid = s.__profileId || requestedPid || 'C';
-                // First try exact key match (only if we have requestedPid)
                 if (exactKey && getSailingKey(off, s, storedPid) === exactKey) return true;
-                // If in combined context, allow core-field match ignoring pid differences
-                if (isCombinedContext) {
+                if (rowPid && String(storedPid) === String(rowPid) && (off.campaignOffer?.offerCode || '') === coreCode && (s.shipName || '') === coreShip && (s.sailDate || '') === coreDate && String(s.isGOBO === true) === coreIsGOBO) return true;
+                if (!rowPid && isCombinedContext) {
                     const sCode = off.campaignOffer?.offerCode || '';
-                    const sShip = s.shipName || '';
-                    const sDate = s.sailDate || '';
-                    const sIsGOBO = String(s.isGOBO === true);
-                    if (coreCode === sCode && coreShip === sShip && coreDate === sDate && coreIsGOBO === sIsGOBO) {
-                        return true;
-                    }
+                    if (coreCode === sCode && coreShip === (s.shipName || '') && coreDate === (s.sailDate || '') && coreIsGOBO === String(s.isGOBO === true)) return true;
                 }
             }
         }
@@ -108,23 +128,7 @@
     function addFavorite(offer, sailing, profileId) {
         const profile = loadProfileObject();
         // Determine effective profile id: 'C' when on combined offers tab, else provided or '0'
-        let effectivePid = profileId;
-        try {
-            if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') {
-                // For combined tab, use concatenated numeric profile IDs of linked accounts
-                let linkedAccounts = [];
-                try { if (typeof getLinkedAccounts === 'function') linkedAccounts = getLinkedAccounts(); } catch(e){}
-                const linkedIds = linkedAccounts.map(acc => {
-                    try { return (App.ProfileIdMap && acc.key in App.ProfileIdMap) ? App.ProfileIdMap[acc.key] : acc.key; } catch(e){ return acc.key; }
-                });
-                if (linkedIds.length >= 2) {
-                    effectivePid = linkedIds.join('-');
-                } else {
-                    effectivePid = 'C';
-                }
-            }
-        } catch(e){}
-        if (!effectivePid) effectivePid = '0';
+        const effectivePid = resolveFavoritePid(offer, sailing, profileId);
         let idx = findOfferIndex(profile, offer);
         const clonedSailing = JSON.parse(JSON.stringify(sailing));
         clonedSailing.__profileId = effectivePid;
@@ -165,21 +169,14 @@
         // Determine effectivePid similarly to addFavorite if not provided per-item
         let defaultPid = profileId;
         try {
-            if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') {
-                let linkedAccounts = [];
-                try { if (typeof getLinkedAccounts === 'function') linkedAccounts = getLinkedAccounts(); } catch(e){}
-                const linkedIds = linkedAccounts.map(acc => {
-                    try { return (App.ProfileIdMap && acc.key in App.ProfileIdMap) ? App.ProfileIdMap[acc.key] : acc.key; } catch(e){ return acc.key; }
-                });
-                if (linkedIds.length >= 2) defaultPid = linkedIds.join('-'); else defaultPid = 'C';
-            }
-        } catch(e){}
+            if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') defaultPid = linkedAccountsPid();
+        } catch (e) {}
         if (!defaultPid) defaultPid = '0';
 
         for (const it of items) {
             const offer = it.offer || {};
             const sailing = it.sailing || {};
-            const effectivePid = it.profileId || defaultPid;
+            const effectivePid = sourceFavoritePid(offer, sailing) || it.profileId || defaultPid;
             let idx = findOfferIndex(profile, offer);
             const clonedSailing = JSON.parse(JSON.stringify(sailing));
             clonedSailing.__profileId = effectivePid;
@@ -205,9 +202,10 @@
         const profile = loadProfileObject();
         const offers = profile.data.offers || [];
         // Determine if we're in a combined context (so we should match by core fields, not PID)
-        const requestedPid = profileId; // may be undefined/null
+        const rowPid = sourceFavoritePid(offer, sailing);
+        const requestedPid = rowPid || profileId;
         let isCombinedContext = (typeof requestedPid === 'string' && requestedPid.includes('-'));
-        try { if (!isCombinedContext && App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') isCombinedContext = true; } catch(e){}
+        try { if (!isCombinedContext && !rowPid && App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked') isCombinedContext = true; } catch (e) {}
         // Core fields for comparison
         const coreCode = offer.campaignOffer?.offerCode || '';
         const coreShip = sailing.shipName || '';
@@ -235,12 +233,12 @@
             }
         } else {
             // Precise removal using PID-based key (default behavior)
-            const key = getSailingKey(offer, sailing, profileId);
+            const key = getSailingKey(offer, sailing, requestedPid);
             for (let i = offers.length -1; i >= 0; i--) {
                 const off = offers[i];
                 const sailings = off.campaignOffer?.sailings || [];
                 for (let j = sailings.length -1; j >= 0; j--) {
-                    if (getSailingKey(off, sailings[j], sailings[j].__profileId || profileId) === key) {
+                    if (getSailingKey(off, sailings[j], sailings[j].__profileId || requestedPid) === key) {
                         sailings.splice(j, 1);
                     }
                 }
