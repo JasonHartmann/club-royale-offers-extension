@@ -840,6 +840,7 @@ var Filtering = {
             const U = resolveUtils();
             if (U && typeof U.computePerks === 'function') perksStr = U.computePerks(offer, sailing);
         } catch (e) { perksStr = '-'; }
+        if (key === 'profile') return (typeof combinedProfileLabel === 'function') ? combinedProfileLabel(offer, sailing) : '-';
         switch (key) {
             case 'offerCode':
                 return offer.campaignOffer?.offerCode;

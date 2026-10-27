@@ -646,6 +646,17 @@ const TableRenderer = {
         this._refreshingAllItins = run().finally(() => { this._refreshingAllItins = null; });
         return this._refreshingAllItins;
     },
+    _syncCombinedProfileColumn(state, key) {
+        if (!state || !Array.isArray(state.headers)) return;
+        const want = key === 'goob-combined-linked';
+        const idx = state.headers.findIndex(h => h && h.key === 'profile');
+        if (want && idx === -1) {
+            const fav = state.headers.findIndex(h => h && h.key === 'favorite');
+            state.headers.splice(fav >= 0 ? fav + 1 : 0, 0, { key: 'profile', label: 'Profile' });
+        } else if (!want && idx !== -1) {
+            state.headers.splice(idx, 1);
+        }
+    },
     loadProfile(key, payload) {
         // Normalize legacy unbranded keys to branded keys when possible
         try {
@@ -831,6 +842,7 @@ const TableRenderer = {
                 }
             }, 0);
         };
+        this._syncCombinedProfileColumn(state, key);
         state.thead = App.TableBuilder.createTableHeader(state);
         state.table = App.TableBuilder.createMainTable();
         state.tbody = document.createElement('tbody');
@@ -1204,6 +1216,7 @@ const TableRenderer = {
             }
         };
         state.table = App.TableBuilder.createMainTable();
+        this._syncCombinedProfileColumn(state, key);
         state.thead = App.TableBuilder.createTableHeader(state);
         state.tbody = document.createElement('tbody');
         // Breadcrumb
@@ -1583,8 +1596,8 @@ const TableRenderer = {
                     try {
                         // Virtual scroll: re-render with actual viewport dims
                         if (state._vsRenderVisible) {
-                            // Reset rendered range so renderVisibleRows detects
-                            // a change and actually re-creates rows.
+                            // Reset the range so a wrong first viewport is recomputed.
+                            // Row nodes that are still in the window are kept.
                             try {
                                 if (state._virtualScroll) {
                                     state._virtualScroll.renderedStart = -1;

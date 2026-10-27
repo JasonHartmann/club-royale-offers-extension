@@ -33,7 +33,9 @@ const SortUtils = {
         const sail = row && row.sailing && row.sailing.sailDate ? new Date(row.sailing.sailDate).getTime() : 0;
         let state = 0;
         let v;
-        switch (sortColumn) {
+        if (sortColumn === 'profile') {
+            v = (typeof combinedProfileLabel === 'function') ? combinedProfileLabel(row.offer, row.sailing) : '';
+        } else switch (sortColumn) {
             case 'destination': {
                 const itin = row.sailing.itineraryDescription || row.sailing.sailingType?.name || '';
                 v = App.Utils.parseItinerary(itin).destination || '';

@@ -708,15 +708,19 @@ try {
                             // If Combined Offers is currently active, reload it immediately from storage so the view updates
                             try {
                                 if (App && App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked' && typeof App.TableRenderer.loadProfile === 'function') {
-                                    const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
-                                    if (raw) {
-                                        try {
-                                            const payload = JSON.parse(raw);
-                                            if (payload && payload.data) {
-                                                debugStore('Reloading Combined Offers profile in response to storage update');
-                                                App.TableRenderer.loadProfile('goob-combined-linked', payload);
-                                            }
-                                        } catch(e) { /* ignore malformed */ }
+                                    let payload = null;
+                                    try {
+                                        if (typeof resolveCombinedPayload === 'function') payload = resolveCombinedPayload();
+                                    } catch (e) { payload = null; }
+                                    if (!payload) {
+                                        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
+                                        if (raw) {
+                                            try { payload = JSON.parse(raw); } catch (e) { payload = null; }
+                                        }
+                                    }
+                                    if (payload && payload.data) {
+                                        debugStore('Reloading Combined Offers profile in response to storage update');
+                                        App.TableRenderer.loadProfile('goob-combined-linked', payload);
                                     }
                                 }
                             } catch(e) { /* ignore */ }

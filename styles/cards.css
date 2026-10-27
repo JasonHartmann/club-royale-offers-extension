@@ -551,6 +551,7 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed { c
 #gobo-offers-table .gobo-profile-combo .profile-tab-linked-emails {
     text-align: left !important;
     margin: 2px 0 0 !important;
+    width: 100%;
 }
 #gobo-offers-table .gobo-profile-combo .profile-tab:has(.profile-link-icon) > div:last-child {
     flex: 0 0 28px;

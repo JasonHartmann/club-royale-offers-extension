@@ -383,19 +383,21 @@ const Breadcrumbs = {
                             try {
                                 const linked = getLinkedAccounts();
                                 if (linked.length >= 2) {
-                                    // Ensure ProfileIdMap has IDs for normalized keys
-                                    const ids = linked.slice(0, 2).map(acc => {
+                                    const ids = linked.map(acc => {
                                         const k = acc.key;
                                         return (App.ProfileIdMap && App.ProfileIdMap[k]) || (ProfileIdManager && ProfileIdManager.map && ProfileIdManager.map[k]) || '?';
                                     });
-                                    // If any missing IDs, attempt to ensure
                                     if (ids.some(id => id === '?')) {
-                                        try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) { ProfileIdManager.assignMissingIds(linked.slice(0,2).map(acc=>acc.key)); App.ProfileIdMap = { ...ProfileIdManager.map }; } } catch(eEns) { /* ignore */ }
-                                        for (let i=0;i<ids.length;i++) if (ids[i] === '?') ids[i] = (App.ProfileIdMap && App.ProfileIdMap[linked[i].key]) || '?';
+                                        try { if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager) { ProfileIdManager.assignMissingIds(linked.map(acc => acc.key)); App.ProfileIdMap = { ...ProfileIdManager.map }; } } catch (eEns) { /* ignore */ }
+                                        for (let i = 0; i < ids.length; i++) if (ids[i] === '?') ids[i] = (App.ProfileIdMap && App.ProfileIdMap[linked[i].key]) || '?';
                                     }
-                                    badgeText = `${ids[0]}+${ids[1]}`;
-                                    const sum = (Number(ids[0])||0) + (Number(ids[1])||0);
-                                    if (!isNaN(sum) && sum>0) badgeClass += ` profile-id-badge-combined-${sum}`;
+                                    badgeText = ids.join('+');
+                                    if (ids.length === 2) {
+                                        const sum = (Number(ids[0]) || 0) + (Number(ids[1]) || 0);
+                                        if (!isNaN(sum) && sum > 0) badgeClass += ` profile-id-badge-combined-${sum}`;
+                                    } else if (ids.length > 2) {
+                                        badgeClass += ' gobo-combined-n';
+                                    }
                                 }
                             } catch (e) { /* ignore */ }
                             const badge = document.createElement('span');
@@ -513,7 +515,6 @@ const Breadcrumbs = {
                                         } catch (err) { /* ignore */ }
                                     }
                                 } else {
-                                    if (updated.length >= 2) return; // already have two linked
                                     let email = p.label;
                                     try {
                                         const payload = JSON.parse((typeof goboStorageGet === 'function' ? goboStorageGet(storageKey) : localStorage.getItem(storageKey)));
@@ -521,17 +522,6 @@ const Breadcrumbs = {
                                     } catch (e2) {
                                     }
                                     updated.push({key: storageKey, email});
-                                    if (updated.length === 2) {
-                                        try {
-                                            const raw1 = (typeof goboStorageGet === 'function' ? goboStorageGet(updated[0].key) : localStorage.getItem(updated[0].key));
-                                            const raw2 = (typeof goboStorageGet === 'function' ? goboStorageGet(updated[1].key) : localStorage.getItem(updated[1].key));
-                                            const profile1 = raw1 ? JSON.parse(raw1) : null;
-                                            const profile2 = raw2 ? JSON.parse(raw2) : null;
-                                            const merged = mergeProfiles(profile1, profile2);
-                                            if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged));
-                                        } catch (e3) {
-                                        }
-                                    }
                                 }
                                 setLinkedAccounts(updated);
                                 try {
@@ -595,15 +585,61 @@ const Breadcrumbs = {
                             emailsDiv.style.marginTop = '2px';
                             emailsDiv.style.color = '#2a7';
                             emailsDiv.style.textAlign = 'left';
-                            let lines;
-                            if (p.linkedEmails && p.linkedEmails.length) {
-                                lines = p.linkedEmails.slice(0, 2);
-                                while (lines.length < 2) lines.push('&nbsp;');
+                            const lines = (p.linkedEmails && p.linkedEmails.length) ? p.linkedEmails.slice() : [];
+                            emailsDiv.title = lines.join('\n');
+                            emailsDiv.textContent = '';
+                            const shown = lines.slice(0, 2);
+                            if (!shown.length) {
+                                emailsDiv.textContent = '\u00a0';
                             } else {
-                                lines = ['&nbsp;', '&nbsp;'];
+                                shown.forEach((line, i) => {
+                                    const row = document.createElement('div');
+                                    row.className = 'profile-tab-email-line';
+                                    row.textContent = (i === 1 && lines.length > 2) ? (line + '…') : line;
+                                    emailsDiv.appendChild(row);
+                                });
                             }
-                            emailsDiv.innerHTML = lines.map(e => `<div>${e}</div>`).join('');
                             labelContainer.appendChild(emailsDiv);
+                            const unionLabel = document.createElement('label');
+                            unionLabel.className = 'gobo-union-all';
+                            unionLabel.title = "Also show each account's own sailings, even when that sailing has a pair. Each code can be used once in Back-to-Back.";
+                            const unionCheck = document.createElement('input');
+                            unionCheck.type = 'checkbox';
+                            unionCheck.className = 'gobo-union-all-check';
+                            unionCheck.checked = (typeof isUnionAllEnabled === 'function') && isUnionAllEnabled();
+                            unionCheck.tabIndex = -1;
+                            const unionText = document.createElement('span');
+                            unionText.textContent = 'Union All';
+                            unionLabel.appendChild(unionCheck);
+                            unionLabel.appendChild(unionText);
+                            unionLabel.addEventListener('mousedown', (ev) => ev.stopPropagation());
+                            unionLabel.addEventListener('click', (ev) => {
+                                ev.preventDefault();
+                                ev.stopPropagation();
+                                const next = !unionCheck.checked;
+                                unionCheck.checked = next;
+                                if (typeof setUnionAllEnabled === 'function') setUnionAllEnabled(next);
+                                const viewing = btn.classList.contains('active') || (App.CurrentProfile && App.CurrentProfile.key === 'goob-combined-linked');
+                                if (!viewing || !App.TableRenderer || typeof App.TableRenderer.loadProfile !== 'function') return;
+                                const reload = () => {
+                                    try {
+                                        const payload = (typeof resolveCombinedPayload === 'function') ? resolveCombinedPayload() : null;
+                                        if (!payload || !payload.data) {
+                                            App.ErrorHandler.showError('Link at least two accounts to view combined offers.');
+                                            return;
+                                        }
+                                        if (App.ProfileCache) delete App.ProfileCache['goob-combined-linked'];
+                                        App.TableRenderer.loadProfile('goob-combined-linked', payload);
+                                    } catch (err) {
+                                        App.ErrorHandler.showError('Failed to load Combined Offers.');
+                                    }
+                                };
+                                if (typeof Spinner !== 'undefined' && Spinner.showSpinner) {
+                                    Spinner.showSpinner();
+                                    setTimeout(() => { try { reload(); } finally { try { Spinner.hideSpinner(); } catch (e) {} } }, 0);
+                                } else reload();
+                            });
+                            labelDiv.appendChild(unionLabel);
                         }
                         if (storageKey === activeKey) {
                             btn.classList.add('active');
@@ -649,21 +685,15 @@ const Breadcrumbs = {
                                 setTimeout(() => {
                                     if (clickedStorageKey === 'goob-combined-linked') {
                                         try {
-                                            const raw = (typeof goboStorageGet === 'function' ? goboStorageGet('goob-combined') : localStorage.getItem('goob-combined'));
-                                            if (!raw) {
-                                              App.ErrorHandler.showError('Link two accounts to view combined offers.');
+                                            const payload = (typeof resolveCombinedPayload === 'function') ? resolveCombinedPayload() : null;
+                                            if (!payload || !payload.data) {
+                                              App.ErrorHandler.showError('Link at least two accounts to view combined offers.');
                                               Spinner.hideSpinner();
                                               return;
                                             }
-                                            const payload = JSON.parse(raw);
-                                                                                        if (payload?.data) {
-                                                                                            try { warnIfStale(payload, clickedStorageKey); } catch(e) {}
-                                                                                            App.TableRenderer.loadProfile('goob-combined-linked', payload);
-                                                                                            Spinner.hideSpinner();
-                                                                                        } else {
-                                              App.ErrorHandler.showError('Combined Offers data is malformed.');
-                                              Spinner.hideSpinner();
-                                            }
+                                            try { warnIfStale(payload, clickedStorageKey); } catch (e) {}
+                                            App.TableRenderer.loadProfile('goob-combined-linked', payload);
+                                            Spinner.hideSpinner();
                                         } catch (err) {
                                             App.ErrorHandler.showError('Failed to load Combined Offers.');
                                             Spinner.hideSpinner();

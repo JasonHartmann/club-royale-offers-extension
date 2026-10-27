@@ -16,7 +16,7 @@ This browser extension enhances the Royal Caribbean Club Royale Offers page by a
   - **Green Row**: The newest offer (by offer date).
   - **Pink Row**: The offer expiring soonest (within 3 days).
 - **Favorites Profile**: Star individual sailings to add them to a persistent Favorites pseudo‑profile.
-- **Linked / Combined Offers**: Link exactly two profiles to view a merged, upgraded "Combined Offers" view.
+- **Linked / Combined Offers**: Link any number of accounts. Each row pairs at most two of the same brand. **Union All** also lists each account's own sailings, including ones that have a pair, so Back-to-Back can use each person's code once. Royal still sits next to Celebrity. The Profile column names who is on the row.
 - **Back‑to‑Back Builder**: Discover and save chains of same‑day connecting sailings for back‑to‑back itineraries and upgrade paths.
 - **Stable Profile IDs**: Each saved profile gets a permanent numeric ID badge that never changes.
 - **CSV Export**: Download your offers as a CSV file for offline analysis.
@@ -35,7 +35,7 @@ This browser extension enhances the Royal Caribbean Club Royale Offers page by a
 - Click the **Show All Offers** button on an offers page.
 - Sort or group columns as needed; drill down via accordion mode.
 - Use the star column to add/remove sailings from Favorites.
-- Link two accounts with the chain icon to view Combined Offers.
+- Link accounts with the chain icon, then open **Combined Offers**. Check **Union All** to include each account's own sailings, even when a pair exists. CSV from that tab has one Profile column (`scraptwink + jason1`). Cards keep each pair on its own card.
 - Use **Advanced Search** to layer filters or define a date range.
 - Click **CSV Export** to download raw data.
 

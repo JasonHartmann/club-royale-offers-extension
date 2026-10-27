@@ -516,6 +516,18 @@ function mergeProfiles(profileA, profileB) {
             const key = codeA + '|' + (sailingA.shipName || '') + '|' + (sailingA.sailDate || '') + '|' + String(sailingA.isGOBO);
             const matchObj = sailingMapB.get(key);
             if (!matchObj) return false;
+            const spendId = (offer, code) => {
+                const top = offer && offer.playerOfferId != null ? String(offer.playerOfferId).trim() : '';
+                if (top) return top;
+                const nested = offer && offer.campaignOffer && offer.campaignOffer.playerOfferId != null ? String(offer.campaignOffer.playerOfferId).trim() : '';
+                if (nested) return nested;
+                return code != null ? String(code).trim() : '';
+            };
+            const spend = [];
+            [spendId(offerA, offerCodeA), spendId(matchObj.offerB, matchObj.offerCodeB)].forEach(id => {
+                if (id && spend.indexOf(id) === -1) spend.push(id);
+            });
+            if (spend.length) sailingA.__spendOfferKeys = spend;
             const offerNameB = (matchObj.offerB?.campaignOffer?.name || '').toLowerCase();
             // if (offerNameA.includes('two room offer') || offerNameB.includes('two room offer')) return false;
             const isGOBOA = sailingA.isGOBO === true;
@@ -600,6 +612,158 @@ function mergeProfiles(profileA, profileB) {
     deepCopy.savedAt = Date.now();
     return deepCopy;
 }
+
+function copyProfileOffers(profile) {
+    const out = [];
+    const offers = profile && profile.data && profile.data.offers;
+    if (!Array.isArray(offers)) return out;
+    offers.forEach(offer => {
+        const sailings = offer && offer.campaignOffer && offer.campaignOffer.sailings;
+        if (!Array.isArray(sailings) || !sailings.length) return;
+        out.push(JSON.parse(JSON.stringify(offer)));
+    });
+    return out;
+}
+
+function profileBrand(acc) {
+    const key = (acc && acc.key) || '';
+    const m = /^gobo-([A-Za-z])-/.exec(key);
+    if (m) return m[1].toUpperCase();
+    const profile = acc && acc.profile;
+    const raw = profile && (profile.brand || (profile.data && profile.data.brand));
+    return raw ? String(raw).charAt(0).toUpperCase() : '';
+}
+
+
+function combinedSourceMeta(acc) {
+    const key = acc && acc.key;
+    let id = null;
+    try {
+        if (typeof App !== 'undefined' && App && App.ProfileIdMap && key && App.ProfileIdMap[key] != null) id = App.ProfileIdMap[key];
+        else if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && key && typeof ProfileIdManager.getId === 'function') id = ProfileIdManager.getId(key);
+    } catch (e) { /* ignore */ }
+    const email = (acc && acc.email) || (acc && acc.profile && acc.profile.data && acc.profile.data.email) || '';
+    return { key: key || '', id: id, email: email };
+}
+
+function combinedProfileLabel(offer, sailing) {
+    const sources = (sailing && sailing.__profileSources) || (offer && offer.__profileSources) || [];
+    if (!sources.length) return '-';
+    return sources.map(s => {
+        if (!s) return '?';
+        if (s.id != null && s.id !== '') return String(s.id);
+        return s.email || s.key || '?';
+    }).join('+');
+}
+
+
+// A line combines two profiles, never more. N linked profiles emit every pair that shares a sailing.
+// ponytail: one mergeProfiles copy per pair. Fine for a handful of linked accounts.
+function buildCombinedOffers(linked, opts) {
+    const unionAll = !!(opts && opts.unionAll);
+    if (!Array.isArray(linked) || linked.length < 2) return null;
+    const uniq = [];
+    const seenAcc = new Set();
+    linked.forEach(acc => {
+        if (!acc || !acc.profile || !acc.key || seenAcc.has(acc.key)) return;
+        seenAcc.add(acc.key);
+        uniq.push(acc);
+    });
+    if (uniq.length < 2) return null;
+    try {
+        if (typeof ProfileIdManager !== 'undefined' && ProfileIdManager && typeof ProfileIdManager.assignMissingIds === 'function') {
+            ProfileIdManager.assignMissingIds(uniq.map(a => a.key));
+            if (typeof App !== 'undefined' && App) App.ProfileIdMap = Object.assign({}, ProfileIdManager.map);
+        }
+    } catch (e) { /* ignore */ }
+    const offers = [];
+    let shell = null;
+    for (let i = 0; i < uniq.length; i++) {
+        for (let j = i + 1; j < uniq.length; j++) {
+            const brandI = profileBrand(uniq[i]);
+            const brandJ = profileBrand(uniq[j]);
+            if (brandI && brandJ && brandI !== brandJ) continue;
+            const merged = mergeProfiles(uniq[i].profile, uniq[j].profile);
+            if (!merged || !merged.data || !Array.isArray(merged.data.offers)) continue;
+            if (!shell) shell = merged;
+            const sources = [combinedSourceMeta(uniq[i]), combinedSourceMeta(uniq[j])];
+            merged.data.offers.forEach(offer => {
+                const sailings = offer && offer.campaignOffer && offer.campaignOffer.sailings;
+                if (!Array.isArray(sailings) || !sailings.length) return;
+                sailings.forEach(s => { s.__profileSources = sources; });
+                offer.__profileSources = sources;
+                offers.push(offer);
+            });
+        }
+    }
+    if (unionAll) {
+        uniq.forEach(acc => {
+            const sources = [combinedSourceMeta(acc)];
+            copyProfileOffers(acc.profile).forEach(offer => {
+                const sailings = offer.campaignOffer && offer.campaignOffer.sailings;
+                if (Array.isArray(sailings)) sailings.forEach(s => { s.__profileSources = sources; });
+                offer.__profileSources = sources;
+                offers.push(offer);
+            });
+        });
+    }
+    if (!shell) {
+        try { shell = JSON.parse(JSON.stringify(uniq[0].profile)); } catch (e) { shell = { data: {} }; }
+        if (!shell.data) shell.data = {};
+    }
+    shell.data.offers = offers;
+    shell.merged = true;
+    shell.unionAll = unionAll;
+    shell.mergedFrom = uniq.map(acc => acc.email || (acc.profile && acc.profile.data && acc.profile.data.email) || '').filter(Boolean);
+    shell.savedAt = Date.now();
+    return shell;
+}
+
+var GOBO_UNION_ALL_KEY = 'goboUnionAll';
+
+function isUnionAllEnabled() {
+    try {
+        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(GOBO_UNION_ALL_KEY) : (typeof localStorage !== 'undefined' ? localStorage.getItem(GOBO_UNION_ALL_KEY) : null));
+        return raw === '1' || raw === 'true';
+    } catch (e) { return false; }
+}
+
+function setUnionAllEnabled(on) {
+    const v = on ? '1' : '0';
+    try {
+        if (typeof goboStorageSet === 'function') goboStorageSet(GOBO_UNION_ALL_KEY, v);
+        else if (typeof localStorage !== 'undefined') localStorage.setItem(GOBO_UNION_ALL_KEY, v);
+    } catch (e) { /* ignore */ }
+    try {
+        if (typeof App !== 'undefined' && App && App.ProfileCache) delete App.ProfileCache['goob-combined-linked'];
+    } catch (e) { /* ignore */ }
+}
+
+function loadLinkedProfileRecords() {
+    let linked = [];
+    try { linked = (typeof getLinkedAccounts === 'function' ? getLinkedAccounts() : []) || []; } catch (e) { linked = []; }
+    const out = [];
+    const seen = new Set();
+    linked.forEach(acc => {
+        if (!acc || !acc.key || seen.has(acc.key)) return;
+        seen.add(acc.key);
+        let raw = null;
+        try { raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key)); } catch (e) { raw = null; }
+        if (!raw) return;
+        let profile = null;
+        try { profile = JSON.parse(raw); } catch (e) { profile = null; }
+        if (!profile) return;
+        out.push({ key: acc.key, email: acc.email || (profile.data && profile.data.email) || '', profile: profile });
+    });
+    return out;
+}
+
+function resolveCombinedPayload() {
+    const linked = loadLinkedProfileRecords();
+    if (linked.length >= 2) return buildCombinedOffers(linked, { unionAll: isUnionAllEnabled() });
+    return null;
+}
+
 
 function preserveSelectedProfileKey(state, prevState) {
     if (!state) return state;
@@ -725,16 +889,12 @@ function formatTimeAgo(savedAt) {
 }
 
 function updateCombinedOffersCache() {
-    const linkedAccounts = getLinkedAccounts();
-    if (!linkedAccounts || linkedAccounts.length < 2) return;
-    const profiles = linkedAccounts.map(acc => {
-        const raw = (typeof goboStorageGet === 'function' ? goboStorageGet(acc.key) : localStorage.getItem(acc.key));
-        return raw ? JSON.parse(raw) : null;
-    }).filter(Boolean);
-    if (profiles.length < 2) return;
-    const merged = mergeProfiles(profiles[0], profiles[1]);
+    const linked = loadLinkedProfileRecords();
+    if (!linked || linked.length < 2) return;
+    const merged = buildCombinedOffers(linked, { unionAll: false });
+    if (!merged) return;
     if (typeof goboStorageSet === 'function') goboStorageSet('goob-combined', JSON.stringify(merged)); else localStorage.setItem('goob-combined', JSON.stringify(merged));
-    if (App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked'];
+    if (typeof App !== 'undefined' && App && App.ProfileCache && App.ProfileCache['goob-combined-linked']) delete App.ProfileCache['goob-combined-linked'];
 }
 
 function getAssetUrl(path) {
@@ -751,6 +911,15 @@ function getAssetUrl(path) {
     } catch(e) { /* ignore */ }
     return path;
 }
+
+try {
+    globalThis.buildCombinedOffers = buildCombinedOffers;
+    globalThis.combinedProfileLabel = combinedProfileLabel;
+    globalThis.mergeProfiles = mergeProfiles;
+    globalThis.isUnionAllEnabled = isUnionAllEnabled;
+    globalThis.setUnionAllEnabled = setUnionAllEnabled;
+    globalThis.resolveCombinedPayload = resolveCombinedPayload;
+} catch (e) { /* ignore */ }
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = globalThis.ProfileIdManager;

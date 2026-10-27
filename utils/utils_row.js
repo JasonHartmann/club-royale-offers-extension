@@ -129,8 +129,23 @@
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
+        let profileCellHtml = '';
+        try {
+            const headers = App && App.TableRenderer && App.TableRenderer.lastState && App.TableRenderer.lastState.headers;
+            const showProfile = Array.isArray(headers) && headers.some(h => h && h.key === 'profile');
+            if (showProfile) {
+                const sources = (sailing && sailing.__profileSources) || (offer && offer.__profileSources) || [];
+                const badges = sources.map(s => {
+                    const id = (s && s.id != null && s.id !== '') ? String(s.id) : '?';
+                    const title = (s && (s.email || s.key)) || ('Profile ' + id);
+                    return `<span class="profile-id-badge profile-id-badge-${esc(id)}" title="${esc(title)}">${esc(id)}</span>`;
+                }).join('');
+                profileCellHtml = `<td class="${tdClass('profile','border p-1 text-center')}" data-col="profile"><div class="gobo-profile-sources">${badges || '-'}</div></td>`;
+            }
+        } catch (e) { profileCellHtml = ''; }
         row.innerHTML = `
             ${favCellHtml}
+            ${profileCellHtml}
             <td class="${tdClass('b2bDepth','border p-2 b2b-depth-cell')}" data-col="b2bDepth"></td>
             <td class="${tdClass('offerCode','border p-2')}" data-col="offerCode">${esc(codeCell)}</td>
             <td class="${tdClass('offerDate','border p-2')}" data-col="offerDate">${Utils.formatDate(offer.campaignOffer?.startDate)}</td>

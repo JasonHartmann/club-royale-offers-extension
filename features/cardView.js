@@ -307,7 +307,11 @@
             const parsed = this._destParts(sailing);
             const ship = (sailing.shipCode || sailing.shipName || '-').toString().trim().toLowerCase();
             const port = (sailing.departurePort && sailing.departurePort.name) || '-';
-            return [ship, parsed.nights, parsed.key, port.trim().toLowerCase()].join('|');
+            const base = [ship, parsed.nights, parsed.key, port.trim().toLowerCase()].join('|');
+            const sources = sailing && sailing.__profileSources;
+            if (!Array.isArray(sources) || !sources.length) return base;
+            const who = sources.map(s => (s && s.id != null && s.id !== '') ? String(s.id) : ((s && (s.key || s.email)) || '?')).sort().join('+');
+            return base + '|' + who;
         },
 
         _destParts(sailing) {
@@ -520,6 +524,8 @@
             if (expiringSoon) article.classList.add('expiring-soon-row');
 
             article.appendChild(this._buildHero(state, offer, sailing, parsed, urgent, newest));
+            const profileRow = this._profileSourceRow(sailing);
+            if (profileRow) article.appendChild(profileRow);
             const body = document.createElement('div');
             body.className = 'gobo-card-body';
             body.appendChild(this._buildPriceBlock(anchor, urgent, state));
@@ -554,6 +560,22 @@
                 article.appendChild(footer);
             }
             return article;
+        },
+
+        _profileSourceRow(sailing) {
+            const sources = sailing && sailing.__profileSources;
+            if (!Array.isArray(sources) || !sources.length) return null;
+            const row = document.createElement('div');
+            row.className = 'gobo-card-profiles';
+            sources.forEach(s => {
+                const id = (s && s.id != null && s.id !== '') ? String(s.id) : '?';
+                const badge = document.createElement('span');
+                badge.className = 'profile-id-badge profile-id-badge-' + id;
+                badge.textContent = id;
+                badge.title = (s && (s.email || s.key)) || ('Profile ' + id);
+                row.appendChild(badge);
+            });
+            return row;
         },
 
         _buildHero(state, offer, sailing, parsed, urgent, newest) {

@@ -13,6 +13,10 @@
 .profile-tab.active .profile-tab-label { font-weight:bold; }
 .profile-tab-loyalty { font-size:12px; color:#555; margin-top:2px; margin-bottom:2px; }
 .profile-tab-refreshed { font-size:10px; color:#888; margin-top:2px; }
+.profile-tab-linked-emails { align-self:stretch; width:100%; min-width:0; max-width:100%; overflow:hidden !important; }
+.profile-tabs .profile-tab-email-line { overflow:hidden !important; text-overflow:ellipsis; white-space:nowrap; max-width:100%; font-size:11px; line-height:1.25; }
+.profile-tabs .profile-tab { overflow:hidden; }
+.profile-tabs .profile-tab:has(.profile-tab-linked-emails) { align-items:flex-start; overflow:hidden !important; padding-top:6px !important; padding-bottom:6px !important; }
 .profile-tabs { min-height:60px !important; height:60px !important; align-items:center !important; }
 .profile-tabs .profile-tab { height:62px !important; padding:16px 10px !important; font-size:15px !important; line-height:1.25 !important; }
 /* Make the scrolling wrapper only show an overflow when the parent forces it */
@@ -235,3 +239,10 @@ body.gobo-dark .profile-link-icon-img {
 	filter:brightness(2.5) contrast(1.0) saturate(1.1);
 }
 
+.gobo-union-all { display:inline-flex; align-items:center; gap:4px; margin-left:8px; font-size:11px; font-weight:600; line-height:1; white-space:nowrap; cursor:pointer; flex:0 0 auto; color:inherit; }
+.gobo-union-all input { margin:0; pointer-events:none; }
+.profile-id-badge-combined.gobo-combined-n { width:auto; min-width:18px; height:18px; padding:0 5px; border-radius:9px; font-size:9px; }
+.gobo-profile-sources { display:inline-flex; gap:3px; align-items:center; justify-content:center; }
+.gobo-profile-sources .profile-id-badge { width:auto; min-width:18px; padding:0 3px; }
+td[data-col="profile"], th[data-key="profile"] { text-align:center; white-space:nowrap; min-width:54px; }
+.gobo-card-profiles { display:flex; gap:4px; padding:6px 10px 0; }

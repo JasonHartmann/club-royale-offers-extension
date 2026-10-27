@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '19'; // r1 initial, r2 adds Buy Me a Coffee, r3 adds Advanced Search + Itinerary Links, r4 adds Offer Code external lookup, r5 adds Back-to-Back Builder, r6 reset for 2.1, r7 dark mode + visible columns, r8 solo booking + OV/Balcony/Suite columns, r9 pricing tooltips, r10 B2B compute-by-region, r11 B2B driving range, r12 itinerary refresh icon, r13 2.2 release notes, r14 B2B lag days, r15 date format setting, r16 updated offer retrieval, r17 2.3.5 performance fixes, r18 card layout + offer PDF, r19 sign out
+    const TOUR_REVISION = '20'; // r20 Union All
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const OPT_OUT_KEY = 'goboWhatsNewOptOut';
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
@@ -106,6 +106,12 @@
         },
         _initSteps(){
             this._steps = [
+                {
+                    id:'unionAll',
+                    target:()=> document.querySelector('.profile-tab[data-storage-key="goob-combined-linked"]') || document.querySelector('.gobo-union-all'),
+                    title:'Union All',
+                    body:"Link as many accounts as you want. A row still pairs only two — 1+2 or 2+4, never all of them. Check Union All to also list each account's own sailings, even when that sailing has a pair, so Back-to-Back can spend each person's code once. Royal still shows next to Celebrity.",
+                },
                 {
                     id:'signOut',
                     target:()=> document.querySelector('.gobo-top-signout'),
