@@ -199,6 +199,7 @@
         _context: { rows: [], rowMap: new Map(), allowSideBySide: true, stateKey: null },
         _metaCache: new Map(),
         _activeSession: null,
+        _optionSort: 'deepest',
         _selectedRowId: null, // persist the currently selected row for B2B highlighting
 
         _scheduleWithSpinner(task) {
@@ -571,7 +572,30 @@
             optionColumn.className = 'b2b-option-column';
             const optionTitle = document.createElement('h3');
             optionTitle.className = 'b2b-section-title';
-            optionTitle.innerHTML = '<span>Next Connections</span><small>Matches by port & dates</small>';
+            const optionLabel = document.createElement('span');
+            optionLabel.textContent = 'Next Connections';
+            const optionSort = document.createElement('select');
+            optionSort.className = 'b2b-option-sort';
+            optionSort.setAttribute('aria-label', 'Sort next connections');
+            [
+                ['deepest', 'Deepest'],
+                ['distance', 'Distance'],
+                ['same-room-price', 'Same Room by Price'],
+                ['cheapest', 'Cheapest'],
+                ['cheapest-longest', 'Cheapest Longest Chain']
+            ].forEach(pair => {
+                const opt = document.createElement('option');
+                opt.value = pair[0];
+                opt.textContent = pair[1];
+                optionSort.appendChild(opt);
+            });
+            optionSort.value = this._optionSort || 'deepest';
+            optionSort.addEventListener('change', () => {
+                this._optionSort = optionSort.value;
+                this._renderOptions();
+            });
+            optionTitle.appendChild(optionLabel);
+            optionTitle.appendChild(optionSort);
             const optionList = document.createElement('div');
             optionList.className = 'b2b-option-list';
             optionColumn.appendChild(optionTitle);
@@ -838,11 +862,18 @@
             if (!Array.isArray(sources) || !sources.length) return null;
             const row = document.createElement('span');
             row.className = 'b2b-profile-badges';
+            const badgeLetter = (label, fallback) => {
+                const raw = String(label || '').trim();
+                const at = raw.indexOf('@');
+                const local = at > 0 ? raw.slice(0, at) : raw.replace(/^gobo-[A-Za-z]-/, '').replace(/^gobo-/, '');
+                const ch = local.replace(/[^A-Za-z0-9]/g, '').charAt(0);
+                return (ch || String(fallback == null || fallback === '' ? '?' : fallback)).toUpperCase();
+            };
             sources.forEach(s => {
                 const id = (s && s.id != null && s.id !== '') ? String(s.id) : '?';
                 const badge = document.createElement('span');
                 badge.className = 'profile-id-badge profile-id-badge-' + id;
-                badge.textContent = id;
+                badge.textContent = badgeLetter(s && (s.email || s.key), id);
                 badge.title = (s && (s.email || s.key)) || ('Profile ' + id);
                 row.appendChild(badge);
             });
@@ -1574,6 +1605,104 @@
             return true;
         },
 
+        _broadRoom(label) {
+            try {
+                const fn = (typeof RoomCategoryUtils !== 'undefined' && RoomCategoryUtils && RoomCategoryUtils.classifyBroad)
+                    || (typeof window !== 'undefined' && window.RoomCategoryUtils && window.RoomCategoryUtils.classifyBroad);
+                if (typeof fn === 'function') return fn(label);
+            } catch (e) {}
+            const up = String(label || '').toUpperCase();
+            if (!up) return null;
+            if (up.indexOf('SUITE') !== -1 || up.indexOf('DELUXE') !== -1) return 'DELUXE';
+            if (up.indexOf('BALC') !== -1) return 'BALCONY';
+            if (up.indexOf('OCEAN') !== -1 || up.indexOf('OUTSIDE') !== -1) return 'OUTSIDE';
+            if (up.indexOf('INTERIOR') !== -1) return 'INTERIOR';
+            return null;
+        },
+
+        _chipPrice(meta, cat) {
+            try {
+                const key = { INTERIOR: 'interior', OUTSIDE: 'oceanViewUpgrade', BALCONY: 'balconyUpgrade', DELUXE: 'suiteUpgrade' }[cat];
+                if (!key) return null;
+                const pd = this._getPricingData(meta);
+                const v = pd && pd.valuesRaw ? pd.valuesRaw[key] : null;
+                if (v == null) return null;
+                const n = typeof v === 'number' ? v : Number(v);
+                if (!isFinite(n)) return null;
+                return Math.abs(n) < 0.01 ? 0 : n;
+            } catch (e) { return null; }
+        },
+
+        _distanceRank(opt, lastCat) {
+            const cat = this._broadRoom(opt && opt.meta && opt.meta.roomLabel);
+            if (lastCat && cat && cat === lastCat) return 0;
+            if (!opt.isSideBySide && !opt.isRegionMatch) return 1;
+            const gap = (opt.lag || 0) > 0;
+            if (opt.isRegionMatch) return gap ? 5 : 4;
+            return gap ? 3 : 2;
+        },
+
+        _sortNextOptions(options, mode, lastMeta) {
+            const lastCat = this._broadRoom(lastMeta && lastMeta.roomLabel);
+            let use = mode || 'deepest';
+            if (use === 'same-room-price' && !lastCat) use = 'cheapest';
+            // The number on the card is the upgrade chip. Cheapest = cheapest balcony;
+            // Same Room = the chip for the room the chain ends on.
+            const priceCat = (use === 'same-room-price') ? lastCat : 'BALCONY';
+            const price = (opt) => {
+                const p = this._chipPrice(opt.meta, priceCat);
+                return (p != null) ? p : Infinity;
+            };
+            const date = (opt) => (opt.meta && opt.meta.startISO) || '';
+            const depth = (opt) => (typeof opt.depth === 'number') ? Math.max(0, opt.depth - 1) : 0;
+            const byDist = (a, b) => {
+                const ra = this._distanceRank(a, lastCat);
+                const rb = this._distanceRank(b, lastCat);
+                if (ra !== rb) return ra - rb;
+                const la = a.lag || 0;
+                const lb = b.lag || 0;
+                if (la !== lb) return la - lb;
+                if (date(a) !== date(b)) return date(a) < date(b) ? -1 : 1;
+                return price(a) - price(b);
+            };
+            options.sort((a, b) => {
+                if (!!a.isSoldOut !== !!b.isSoldOut) return a.isSoldOut ? 1 : -1;
+                if (use === 'distance') return byDist(a, b);
+                if (use === 'same-room-price') {
+                    const aSame = this._broadRoom(a.meta && a.meta.roomLabel) === lastCat;
+                    const bSame = this._broadRoom(b.meta && b.meta.roomLabel) === lastCat;
+                    if (aSame !== bSame) return aSame ? -1 : 1;
+                    if (aSame && price(a) !== price(b)) return price(a) - price(b);
+                    return byDist(a, b);
+                }
+                if (use === 'cheapest') {
+                    if (price(a) !== price(b)) return price(a) - price(b);
+                    return byDist(a, b);
+                }
+                if (use === 'cheapest-longest') {
+                    if (depth(a) !== depth(b)) return depth(b) - depth(a);
+                    if (price(a) !== price(b)) return price(a) - price(b);
+                    return byDist(a, b);
+                }
+                if (depth(a) !== depth(b)) return depth(b) - depth(a);
+                if (date(a) !== date(b)) return date(a) < date(b) ? -1 : 1;
+                const typeRank = (opt) => (!opt.isSideBySide && !opt.isRegionMatch) ? 0 : (opt.isSideBySide && !opt.isRegionMatch ? 1 : 2);
+                const ra = typeRank(a);
+                const rb = typeRank(b);
+                if (ra !== rb) return ra - rb;
+                if (ra === 2) {
+                    const ta = (typeof a.travelMinutes === 'number') ? a.travelMinutes : Infinity;
+                    const tb = (typeof b.travelMinutes === 'number') ? b.travelMinutes : Infinity;
+                    if (ta !== tb) return ta - tb;
+                }
+                const va = (a.offerValue != null && isFinite(a.offerValue)) ? a.offerValue : -Infinity;
+                const vb = (b.offerValue != null && isFinite(b.offerValue)) ? b.offerValue : -Infinity;
+                if (va !== vb) return vb - va;
+                return 0;
+            });
+            return options;
+        },
+
         _renderOptions() {
             if (!this._activeSession || !this._activeSession.ui) return;
             // reset diagnostic emission counter for this render and collect mismatches
@@ -1678,36 +1807,8 @@
                 }
             });
 
-            // Sort options by: sold-out last, then depth desc, then start date asc,
-            // then connection type (Same Ship -> Side-by-Side -> Different Port by distance)
-            const connectionTypeRank = (opt) => {
-                if (!opt.isSideBySide && !opt.isRegionMatch) return 0; // same ship
-                if (opt.isSideBySide && !opt.isRegionMatch) return 1;  // side-by-side
-                return 2; // different port (region match)
-            };
-            options.sort((a, b) => {
-                // Sold-out cards go to the bottom
-                if (a.isSoldOut !== b.isSoldOut) return a.isSoldOut ? 1 : -1;
-                const da = (typeof a.depth === 'number') ? Math.max(0, a.depth - 1) : 0;
-                const db = (typeof b.depth === 'number') ? Math.max(0, b.depth - 1) : 0;
-                if (db !== da) return db - da; // larger descendant counts first
-                if (a.meta.startISO !== b.meta.startISO) return a.meta.startISO < b.meta.startISO ? -1 : 1;
-                // Same depth and start date: rank by connection type
-                const ra = connectionTypeRank(a);
-                const rb = connectionTypeRank(b);
-                if (ra !== rb) return ra - rb;
-                // Both different-port: sort by travel distance ascending
-                if (ra === 2) {
-                    const ta = (typeof a.travelMinutes === 'number') ? a.travelMinutes : Infinity;
-                    const tb = (typeof b.travelMinutes === 'number') ? b.travelMinutes : Infinity;
-                    if (ta !== tb) return ta - tb;
-                }
-                // Within same connection type: sort by offer value descending (greatest first)
-                const va = (a.offerValue != null && isFinite(a.offerValue)) ? a.offerValue : -Infinity;
-                const vb = (b.offerValue != null && isFinite(b.offerValue)) ? b.offerValue : -Infinity;
-                if (vb !== va) return vb - va;
-                return 0;
-            });
+            const lastId = this._activeSession.chain && this._activeSession.chain[this._activeSession.chain.length - 1];
+            this._sortNextOptions(options, this._optionSort || 'deepest', lastId ? this._getMeta(lastId) : null);
 
             options.forEach(opt => {
                 const card = document.createElement('div');
