@@ -63,4 +63,33 @@ describe('accordion group rows', () => {
         const bahamas = [...container.querySelectorAll('.accordion-header')].find(h => h.dataset.baseKey === 'Bahamas');
         expect(bahamas.parentElement.querySelector('.accordion-content').classList.contains('open')).toBe(true);
     });
+
+    test('opening a group shows the spinner before building rows', () => {
+        const showSpinner = jest.fn();
+        const hideSpinner = jest.fn();
+        global.Spinner = { showSpinner, hideSpinner };
+        const queued = [];
+        const prevRaf = global.requestAnimationFrame;
+        global.requestAnimationFrame = (cb) => { queued.push(cb); return 1; };
+        jest.useFakeTimers();
+        try {
+            const { container } = render(null);
+            const caribbean = [...container.querySelectorAll('.accordion-header')].find(h => h.dataset.baseKey === 'Caribbean');
+            caribbean.click();
+            expect(showSpinner).toHaveBeenCalledTimes(1);
+            expect(createOfferRow).not.toHaveBeenCalled();
+            expect(caribbean.parentElement.querySelector('.accordion-content').classList.contains('open')).toBe(false);
+            queued.forEach(cb => cb());
+            jest.runAllTimers();
+            expect(createOfferRow).toHaveBeenCalledTimes(2);
+            expect(hideSpinner).toHaveBeenCalledTimes(1);
+            expect(caribbean.parentElement.querySelector('.accordion-content').classList.contains('open')).toBe(true);
+            caribbean.click();
+            expect(showSpinner).toHaveBeenCalledTimes(1);
+        } finally {
+            jest.useRealTimers();
+            global.requestAnimationFrame = prevRaf;
+            delete global.Spinner;
+        }
+    });
 });

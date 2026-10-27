@@ -6,7 +6,9 @@ const AccordionBuilder = {
         const normalizedDestMap = {};
         sortedOffers.forEach(({ offer, sailing }) => {
             let groupKey;
-            switch (currentGroupColumn) {
+            if (currentGroupColumn === 'profile') {
+                groupKey = (typeof combinedProfileLabel === 'function') ? combinedProfileLabel(offer, sailing) : '-';
+            } else switch (currentGroupColumn) {
                 case 'nights': {
                     const itinerary = sailing.itineraryDescription || sailing.sailingType?.name || '-';
                     groupKey = App.Utils.parseItinerary(itinerary).nights;
@@ -459,6 +461,7 @@ const AccordionBuilder = {
             accordionContainer.appendChild(accordion);
 
             header.addEventListener('click', () => {
+                if (content.dataset.goboOpening === '1') return;
                 const keyPath = [...groupKeysStack, groupKey].join('>');
                 const isOpen = content.classList.contains('open');
                 const currentDepth = groupKeysStack.length; // depth index for this header's grouping column
@@ -470,20 +473,53 @@ const AccordionBuilder = {
                 const deeperPrefix = keyPath + '>';
                 Array.from(state.openGroups).forEach(p => { if (p.startsWith(deeperPrefix)) state.openGroups.delete(p); });
 
-                if (!isOpen) {
-                    // Restore flat table view (remove any nested accordions under this content)
-                    if (content.querySelector('.accordion-header')) {
-                        content.innerHTML = '';
-                        content.appendChild(table);
-                    }
-                    fillGroupBody();
-                    content.classList.add('open');
-                    state.openGroups.add(keyPath);
+                const syncChrome = () => {
+                    if (App?.TableRenderer?.updateBreadcrumb) App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
+                    AccordionBuilder.updateHeaderTitles(state.rootAccordionContainer, state);
+                };
 
-                    // Trim groupingStack to this depth + 1 (keep this column only, drop deeper columns)
-                    state.groupingStack = state.groupingStack.slice(0, currentDepth + 1);
-                    // Set groupKeysStack to include this group's value only up to this depth
-                    state.groupKeysStack = state.groupKeysStack.slice(0, currentDepth).concat(groupKey);
+                if (!isOpen) {
+                    const openIt = () => {
+                        // Restore flat table view (remove any nested accordions under this content)
+                        if (content.querySelector('.accordion-header')) {
+                            content.innerHTML = '';
+                            content.appendChild(table);
+                        }
+                        fillGroupBody();
+                        content.classList.add('open');
+                        state.openGroups.add(keyPath);
+                        // Trim groupingStack to this depth + 1 (keep this column only, drop deeper columns)
+                        state.groupingStack = state.groupingStack.slice(0, currentDepth + 1);
+                        // Set groupKeysStack to include this group's value only up to this depth
+                        state.groupKeysStack = state.groupKeysStack.slice(0, currentDepth).concat(groupKey);
+                        syncChrome();
+                    };
+                    // First open builds the sailing rows. Show the spinner and yield
+                    // so it paints before that work blocks the thread.
+                    const needsFill = rowLevel && tbody.dataset.goboFilled !== '1';
+                    if (needsFill && typeof Spinner !== 'undefined' && typeof Spinner.showSpinner === 'function' && typeof Spinner.hideSpinner === 'function') {
+                        content.dataset.goboOpening = '1';
+                        let spinner = null;
+                        try {
+                            Spinner.showSpinner();
+                            spinner = Spinner;
+                        } catch (err) {
+                            console.debug('[accordionBuilder] Unable to show spinner before group expand', err);
+                        }
+                        try { if (spinner) { const el = document.getElementById('gobo-loading-spinner-container'); if (el) el.offsetHeight; } } catch (err) {}
+                        const doWork = () => {
+                            try { openIt(); }
+                            finally {
+                                delete content.dataset.goboOpening;
+                                if (spinner && typeof spinner.hideSpinner === 'function') {
+                                    try { spinner.hideSpinner(); } catch (hideErr) { console.debug('[accordionBuilder] Spinner.hideSpinner error post-group-expand', hideErr); }
+                                }
+                            }
+                        };
+                        requestAnimationFrame(() => setTimeout(doWork, 0));
+                        return;
+                    }
+                    openIt();
                 } else {
                     // Collapse: remove this open state and its value selection
                     content.classList.remove('open');
@@ -492,10 +528,8 @@ const AccordionBuilder = {
                     state.groupingStack = state.groupingStack.slice(0, currentDepth + 1);
                     // Remove the value at this depth so user is back at parent list
                     state.groupKeysStack = state.groupKeysStack.slice(0, currentDepth);
+                    syncChrome();
                 }
-
-                if (App?.TableRenderer?.updateBreadcrumb) App.TableRenderer.updateBreadcrumb(state.groupingStack, state.groupKeysStack);
-                AccordionBuilder.updateHeaderTitles(state.rootAccordionContainer, state);
             });
         });
         AccordionBuilder.updateHeaderTitles(state.rootAccordionContainer, state);
