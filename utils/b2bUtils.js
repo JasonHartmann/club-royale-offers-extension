@@ -276,7 +276,9 @@
         };
 
         // Chain length 16 means "longer than 15". Pills show 15+. Slice via options._job.
-        const DEPTH_CAP = 16;
+        // options.depthCap raises the cap: the builder passes a high value to keep the true
+        // chain length (it's behind a spinner, so the extra search is acceptable).
+        const DEPTH_CAP = (typeof options.depthCap === 'number' && options.depthCap > 0) ? options.depthCap : 16;
         const unlimited = typeof options.deadlineMs === 'number' && options.deadlineMs < 0;
         const deadline = unlimited ? 0 : Date.now() + (typeof options.deadlineMs === 'number' ? options.deadlineMs : 800);
         const userAbort = () => {

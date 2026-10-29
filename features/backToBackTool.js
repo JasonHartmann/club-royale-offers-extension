@@ -1799,7 +1799,9 @@
                     // One pass. The start row's own offer key is already excluded inside computeB2BDepth.
                     // Sliced with a total budget: a single 800ms call can come back incomplete on
                     // large accounts, and an incomplete map must not be treated as final.
-                    const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes: sessionUsedOfferCodes, drivingRangeHours, force: true };
+                    // depthCap 999: effectively unbounded — the builder shows the true chain
+                    // length, and it's behind a spinner so the extra search is fine.
+                    const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes: sessionUsedOfferCodes, drivingRangeHours, force: true, depthCap: 999 };
                     const depthsMap = B2BUtils.computeB2BDepthComplete(rows, b2bOpts) || new Map();
                     options.forEach(o => {
                         try {
@@ -2013,9 +2015,10 @@
                     const depthDiv = document.createElement('div');
                     depthDiv.className = 'b2b-depth-pill';
                     if (Number(descendantDepth) > 15) {
-                        depthDiv.textContent = '15+ more >>';
-                        try { depthDiv.setAttribute('title', 'Chain longer than 15'); } catch(e){}
-                        try { depthDiv.setAttribute('aria-label', '15 or more additional connections'); } catch(e){}
+                        // The builder keeps the true depth (depthCap 999), so show the real count.
+                        depthDiv.textContent = `${childCount} more >>`;
+                        try { depthDiv.setAttribute('title', `${descendantDepth} total depth including descendants`); } catch(e){}
+                        try { depthDiv.setAttribute('aria-label', `Additional connections ${childCount}`); } catch(e){}
                     } else if (childCount > 0) {
                         let depthMarkup = null;
                         // Markup takes the chain length (childCount + 1); the immediate-candidate

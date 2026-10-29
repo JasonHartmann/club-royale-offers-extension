@@ -92,6 +92,17 @@ describe('B2B large offer set', () => {
         expect(B2BUtils.formatB2BPill(1)).toBe('0');
     });
 
+    test('a high depthCap keeps the true chain length (builder)', () => {
+        const rows = [];
+        for (let i = 0; i < 21; i++) rows.push(row('C' + i, 'SHIP', 'Miami', iso(i * 7), 7, 'p' + i));
+        // Default cap (table): the 21-chain is stored as 16.
+        const capped = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false, deadlineMs: -1 });
+        expect(capped.get(0)).toBe(16);
+        // Builder cap: the true length is kept.
+        const uncapped = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false, deadlineMs: -1, depthCap: 999 });
+        expect(uncapped.get(0)).toBe(21);
+    });
+
     test('a dense set cannot block past the deadline', () => {
         const rows = [];
         for (let i = 0; i < 2000; i++) rows.push(row('C' + i, 'SHIP', 'Miami', iso(0), 3, 'p' + i));
