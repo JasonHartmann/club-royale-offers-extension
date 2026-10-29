@@ -138,4 +138,14 @@ describe("What's New next() and Enter", () => {
         wn.maybeAutoStart();
         expect(document.getElementById('gobo-whatsnew-overlay')).toBeNull();
     });
+
+    test('this release does not display the tour or its badge', () => {
+        const wn = loadWhatsNew();
+        document.body.innerHTML = '<div id="gobo-offers-table"></div><button id="gobo-offers-button"></button>';
+        wn.maybeAutoStart();
+        wn.start(true);
+        expect(wn.display).toBe(false);
+        expect(document.getElementById('gobo-whatsnew-overlay')).toBeNull();
+        expect(document.getElementById('gobo-whatsnew-launch')).toBeNull();
+    });
 });

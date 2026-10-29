@@ -338,6 +338,18 @@ const TableRenderer = {
             document.body.appendChild(el);
         } catch (e) {}
     },
+    _stampB2BDepths(rows, depthsMap) {
+        if (!Array.isArray(rows) || !depthsMap) return;
+        for (let idx = 0; idx < rows.length; idx++) {
+            const row = rows[idx];
+            if (!row || !row.sailing) continue;
+            row.sailing.__b2bDepth = depthsMap.has(idx) ? depthsMap.get(idx) : 1;
+        }
+        try {
+            const stateToken = this.lastState && this.lastState._switchToken;
+            if (stateToken && this._metaCache) this._metaCache.set('b2bDepth:' + stateToken, depthsMap);
+        } catch (e) {}
+    },
     _deferAutoB2B(rows, options, apply) {
         if (this._b2bHold) { if (apply) apply(); return; }
         let autoRun = true;
@@ -348,16 +360,30 @@ const TableRenderer = {
         if (!autoRun) { if (apply) apply(); return; }
         const gen = ++this._b2bGen;
         const chip = setTimeout(() => this._showB2BChip(gen), 280);
+        let job = null;
         const run = () => {
-            clearTimeout(chip);
-            if (this._b2bGen !== gen || this._b2bHold) { this._hideB2BChip(); return; }
+            if (this._b2bGen !== gen || this._b2bHold) { clearTimeout(chip); this._hideB2BChip(); return; }
+            let map = null;
             try {
-                this._computeB2BDepths(rows, Object.assign({}, options, {
-                    shouldAbort: () => this._b2bGen !== gen || this._b2bHold
+                map = B2BUtils.computeB2BDepth(rows, Object.assign({}, options, {
+                    shouldAbort: () => this._b2bGen !== gen || this._b2bHold,
+                    deadlineMs: 40,
+                    _job: job
                 }));
-            } catch (e) {}
+            } catch (e) {
+                clearTimeout(chip);
+                this._hideB2BChip();
+                return;
+            }
+            if (map && map.incomplete && map._job && this._b2bGen === gen && !this._b2bHold) {
+                job = map._job;
+                setTimeout(run, 0);
+                return;
+            }
+            clearTimeout(chip);
             this._hideB2BChip();
             if (this._b2bGen !== gen || this._b2bHold) return;
+            if (map && !map.incomplete) this._stampB2BDepths(rows, map);
             if (apply) apply();
         };
         try {
@@ -407,8 +433,10 @@ const TableRenderer = {
         return Number.isFinite(num) && num >= 0 ? num : 1;
     },
     getB2BDepthBadgeMarkup(depth) {
-        const normalized = this._normalizeB2BDepthValue(depth);
-        return `<span class="b2b-chevrons" aria-hidden="true"><span class="b2b-chevrons-value">${normalized}</span></span>`;
+        const label = (typeof B2BUtils !== 'undefined' && B2BUtils.formatB2BPill)
+            ? B2BUtils.formatB2BPill(depth)
+            : String(this._normalizeB2BDepthValue(depth));
+        return `<span class="b2b-chevrons" aria-hidden="true"><span class="b2b-chevrons-value">${label}</span></span>`;
     },
     updateB2BDepthCell(cell, depth, chainId) {
         if (!cell) return;
@@ -466,7 +494,7 @@ const TableRenderer = {
                 wrapper.appendChild(idSpan);
                 const depthSpan = document.createElement('span');
                 depthSpan.className = 'b2b-depth-number';
-                depthSpan.textContent = String(normalized);
+                depthSpan.textContent = normalized > 15 ? '15+' : String(normalized);
                 depthSpan.style.fontSize = '11px';
                 depthSpan.style.color = '#374151';
                 wrapper.appendChild(depthSpan);
@@ -478,9 +506,9 @@ const TableRenderer = {
         } else {
             // Default: render numeric child-count pill (keeps sorting deterministic in non-favorites)
             if (typeof cell.innerHTML === 'string') {
-                cell.innerHTML = this.getB2BDepthBadgeMarkup(childCount);
+                cell.innerHTML = this.getB2BDepthBadgeMarkup(normalized);
             } else {
-                cell.textContent = String(childCount);
+                cell.textContent = (typeof B2BUtils !== 'undefined' && B2BUtils.formatB2BPill) ? B2BUtils.formatB2BPill(normalized) : String(childCount);
             }
         }
         try {
@@ -488,7 +516,9 @@ const TableRenderer = {
             cell.dataset.depth = String(normalized);
             cell.dataset.childCount = String(childCount);
         } catch (e) { /* ignore dataset assignment errors */ }
-        if (childCount > 0) {
+        if (normalized > 15) {
+            cell.setAttribute('aria-label', '15 or more additional connections');
+        } else if (childCount > 0) {
             cell.setAttribute('aria-label', `Additional connections ${childCount}`);
         } else {
             cell.setAttribute('aria-label', `No additional connections`);

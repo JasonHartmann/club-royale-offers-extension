@@ -27,6 +27,7 @@
     }
 
     const WhatsNew = {
+        display: false, // 2.5.0: no tour, no button. Flip when the next tour should appear.
         _shown:false,
         _forced:false,
         _currentStepIndex: -1,
@@ -52,6 +53,7 @@
             this._shown = true;
         },
         maybeAutoStart(){
+            if (!this.display) return;
             if (this._shown) return;
             // If the storage shim exists but isn't initialized yet, wait for it so we correctly
             // read the persisted shown flag instead of starting prematurely when in-memory cache
@@ -70,6 +72,7 @@
             this.start(false);
         },
         start(force){
+            if (!this.display) return;
             // Prevent multiple concurrent starts (page may fire multiple triggers during load).
             if (this._starting && !force) return;
             if (this._shown && !force) return;

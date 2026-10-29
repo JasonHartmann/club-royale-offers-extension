@@ -2008,15 +2008,19 @@
                     let childCount = Math.max(0, Number(descendantDepth) - 1);
                     // Precompute already ran once. A per-card search here freezes large accounts.
                     if (childCount === 0 && Array.isArray(immedList) && immedList.length > 0) childCount = immedList.length;
-                    let depthMarkup = null;
-                    if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                        depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(childCount);
-                    } else if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                        depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(childCount);
-                    }
                     const depthDiv = document.createElement('div');
                     depthDiv.className = 'b2b-depth-pill';
-                    if (childCount > 0) {
+                    if (Number(descendantDepth) > 15) {
+                        depthDiv.textContent = '15+ more >>';
+                        try { depthDiv.setAttribute('title', 'Chain longer than 15'); } catch(e){}
+                        try { depthDiv.setAttribute('aria-label', '15 or more additional connections'); } catch(e){}
+                    } else if (childCount > 0) {
+                        let depthMarkup = null;
+                        if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
+                            depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(descendantDepth);
+                        } else if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getB2BDepthBadgeMarkup === 'function') {
+                            depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(descendantDepth);
+                        }
                         if (depthMarkup) {
                             depthDiv.innerHTML = depthMarkup;
                             try {
@@ -2026,7 +2030,6 @@
                         } else {
                             depthDiv.textContent = `${childCount} more`;
                         }
-                        // Also expose descendant depth in tooltip for context
                         try { depthDiv.setAttribute('title', `${descendantDepth} total depth including descendants`); } catch(e){}
                         try { depthDiv.setAttribute('aria-label', `Additional connections ${childCount}`); } catch(e){}
                     } else {

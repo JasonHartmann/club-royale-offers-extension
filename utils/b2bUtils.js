@@ -275,217 +275,349 @@
             return keys;
         };
 
-        const n = rows.length;
-        const meta = new Array(n);
-        const pidIndex = new Map();
-        let kCount = 0;
-        for (let i = 0; i < n; i++) {
-            const row = rows[i];
-            const { endISO, endPort, startISO, startPort } = computeEndDateAndPort(row);
-            const sailing = row.sailing || {};
-            const shipKey = ((sailing.shipCode || sailing.shipName || '') + '').trim().toLowerCase();
-            const offerKeys = getOfferKeys(row);
-            const offerKey = offerKeys[0] || '';
-            let allow = !filterPredicate || filterPredicate(row);
-            if (!filterPredicate && typeof Filtering !== 'undefined') {
-                try {
-                    const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
-                    const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
-                    const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
-                    const key = Filtering.rowKey(row);
-                    if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) allow = false;
-                } catch (e) { /* ignore */ }
-            }
-            const kis = [];
-            let bit = 0;
-            if (allow) {
-                for (let k = 0; k < offerKeys.length; k++) {
-                    let found = pidIndex.get(offerKeys[k]);
-                    if (found === undefined) {
-                        found = kCount++;
-                        pidIndex.set(offerKeys[k], found);
-                    }
-                    kis.push(found);
-                    if (found < 31) bit |= (1 << found);
-                }
-            }
-            meta[i] = {
-                sn: dayNum(startISO),
-                en: dayNum(endISO),
-                startPort,
-                endPort,
-                shipKey,
-                offerKey,
-                kis,
-                allow,
-                bit,
-                ki: kis.length ? kis[0] : -1
-            };
-        }
-
-        const bucket = new Map();
-        const push = (key, idx) => {
-            let a = bucket.get(key);
-            if (!a) { a = []; bucket.set(key, a); }
-            a.push(idx);
-        };
-        for (let i = 0; i < n; i++) {
-            const m = meta[i];
-            if (!m.allow || m.sn == null || !m.startPort || !m.shipKey) continue;
-            const mks = getMatchKeys(m.startPort);
-            if (!mks.length) continue;
-            for (let ld = 0; ld <= lagDays; ld++) {
-                const indexDay = m.sn - ld;
-                for (let p = 0; p < mks.length; p++) {
-                    const pk = mks[p];
-                    push(indexDay + '|' + pk + '|' + m.shipKey, i);
-                    if (allowSideBySide) push(indexDay + '|' + pk + '|*', i);
-                }
-            }
-        }
-
-        const adj = new Array(n);
-        for (let i = 0; i < n; i++) {
-            const m = meta[i];
-            const list = [];
-            if (m.allow && m.en != null && m.endPort && m.shipKey) {
-                const mks = getMatchKeys(m.endPort);
-                const seen = new Set();
-                for (let p = 0; p < mks.length; p++) {
-                    const pk = mks[p];
-                    const k1 = m.en + '|' + pk + '|' + m.shipKey;
-                    const k2 = allowSideBySide ? m.en + '|' + pk + '|*' : null;
-                    const buckets = k2 ? [bucket.get(k1), bucket.get(k2)] : [bucket.get(k1)];
-                    for (let b = 0; b < buckets.length; b++) {
-                        const arr = buckets[b];
-                        if (!arr) continue;
-                        for (let t = 0; t < arr.length; t++) {
-                            const j = arr[t];
-                            if (j === i || seen.has(j)) continue;
-                            seen.add(j);
-                            const gap = meta[j].sn - m.en;
-                            if (gap >= 0 && gap <= lagDays) list.push(j);
-                        }
-                    }
-                }
-            }
-            adj[i] = list;
-        }
-
-        const depthMap = new Map();
-        const K = kCount;
-        const deadline = Date.now() + (typeof options.deadlineMs === 'number' ? options.deadlineMs : 800);
+        // Chain length 16 means "longer than 15". Pills show 15+. Slice via options._job.
+        const DEPTH_CAP = 16;
+        const unlimited = typeof options.deadlineMs === 'number' && options.deadlineMs < 0;
+        const deadline = unlimited ? 0 : Date.now() + (typeof options.deadlineMs === 'number' ? options.deadlineMs : 800);
         const userAbort = () => {
             try { return typeof options.shouldAbort === 'function' && options.shouldAbort(); } catch (e) { return false; }
         };
-        const pastDeadline = () => Date.now() > deadline;
+        const pastDeadline = () => !unlimited && Date.now() > deadline;
+        let steps = 0;
+        const maxSteps = (typeof options.maxSteps === 'number' && options.maxSteps > 0) ? options.maxSteps : 0;
+        const stop = () => {
+            if (maxSteps && ++steps > maxSteps) return true;
+            return userAbort() || pastDeadline();
+        };
+        const yieldMap = (job) => {
+            const map = job.depthMap;
+            map.incomplete = true;
+            if (!userAbort()) map._job = job;
+            return map;
+        };
 
-        // ponytail: exact 20-bit DP, 200k state budget. More offer keys → beam of 4. Raise the beam if a badge under-counts.
-        const MASK_MAX = 20;
-        const STATE_BUDGET = 200000;
-        let usedExact = false;
-        if (K <= MASK_MAX) {
-            const MOD = K === 0 ? 1 : (1 << K);
-            const fullMask = K === 0 ? 0 : (MOD - 1);
-            let seedMask = 0;
-            for (let s = 0; s < initialUsedOfferCodes.length; s++) {
-                const c = initialUsedOfferCodes[s];
-                if (!c) continue;
-                const si = pidIndex.get(c);
-                if (si !== undefined && si < 31) seedMask |= (1 << si);
-            }
-            const memo = new Map();
-            let states = 0;
-            let blown = false;
-            const dfs = (i, avail) => {
-                const key = i * MOD + avail;
-                const hit = memo.get(key);
-                if (hit !== undefined) return hit;
-                if (blown || ++states > STATE_BUDGET || userAbort() || pastDeadline()) { blown = true; return 1; }
-                let best = 0;
-                const list = adj[i];
-                for (let a = 0; a < list.length; a++) {
-                    const j = list[a];
-                    const bj = meta[j].bit;
-                    if (bj && (avail & bj) !== bj) continue;
-                    const d = dfs(j, avail & ~bj);
-                    if (d > best) best = d;
-                }
-                const val = 1 + best;
-                memo.set(key, val);
-                return val;
+        let job = options._job || null;
+        if (!job) {
+            job = {
+                phase: 'meta',
+                i: 0,
+                n: rows.length,
+                meta: new Array(rows.length),
+                pidIndex: new Map(),
+                kCount: 0,
+                bucket: null,
+                adj: null,
+                sub: null,
+                depthMap: new Map(),
+                initialUsedOfferCodes,
+                search: null
             };
-            for (let i = 0; i < n; i++) {
-                if (!meta[i].allow || blown) continue;
-                depthMap.set(i, dfs(i, fullMask & ~(seedMask | meta[i].bit)));
-            }
-            usedExact = !blown;
-            if (blown) depthMap.clear();
+        }
+        const n = job.n;
+        const meta = job.meta;
+        const pidIndex = job.pidIndex;
+        const depthMap = job.depthMap;
+        if (userAbort() && job.phase === 'meta' && job.i === 0) {
+            depthMap.incomplete = true;
+            return depthMap;
         }
 
-        if (!usedExact && !userAbort()) {
-            const words = Math.max(1, (K + 31) >> 5);
-            const seedBits = new Array(words).fill(0);
-            for (let s = 0; s < initialUsedOfferCodes.length; s++) {
-                const si = pidIndex.get(initialUsedOfferCodes[s]);
-                if (si == null || si < 0) continue;
-                seedBits[si >> 5] |= (1 << (si & 31));
+        if (job.phase === 'meta') {
+            let kCount = job.kCount;
+            for (; job.i < n; job.i++) {
+                if ((job.i & 255) === 0 && stop()) {
+                    job.kCount = kCount;
+                    return yieldMap(job);
+                }
+                const row = rows[job.i];
+                const { endISO, endPort, startISO, startPort } = computeEndDateAndPort(row);
+                const sailing = row.sailing || {};
+                const shipKey = ((sailing.shipCode || sailing.shipName || '') + '').trim().toLowerCase();
+                const offerKeys = getOfferKeys(row);
+                const offerKey = offerKeys[0] || '';
+                let allow = !filterPredicate || filterPredicate(row);
+                if (!filterPredicate && typeof Filtering !== 'undefined') {
+                    try {
+                        const lastState = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) ? App.TableRenderer.lastState : null;
+                        const globalHidden = Filtering._globalHiddenRowKeys instanceof Set ? Filtering._globalHiddenRowKeys : null;
+                        const stateHidden = lastState && lastState._hiddenGroupRowKeys instanceof Set ? lastState._hiddenGroupRowKeys : null;
+                        const key = Filtering.rowKey(row);
+                        if (key && ((globalHidden && globalHidden.has(key)) || (stateHidden && stateHidden.has(key)))) allow = false;
+                    } catch (e) { /* ignore */ }
+                }
+                const kis = [];
+                let bit = 0;
+                if (allow) {
+                    for (let k = 0; k < offerKeys.length; k++) {
+                        let found = pidIndex.get(offerKeys[k]);
+                        if (found === undefined) {
+                            found = kCount++;
+                            pidIndex.set(offerKeys[k], found);
+                        }
+                        kis.push(found);
+                        if (found < 31) bit |= (1 << found);
+                    }
+                }
+                meta[job.i] = {
+                    sn: dayNum(startISO),
+                    en: dayNum(endISO),
+                    startPort,
+                    endPort,
+                    shipKey,
+                    offerKey,
+                    kis,
+                    allow,
+                    bit,
+                    ki: kis.length ? kis[0] : -1
+                };
             }
-            const hasKi = (bits, ki) => ki >= 0 && ((bits[ki >> 5] & (1 << (ki & 31))) !== 0);
-            const copyAdd = (bits, ki) => {
-                const next = bits.slice();
-                if (ki >= 0) next[ki >> 5] |= (1 << (ki & 31));
-                return next;
+            job.kCount = kCount;
+            job.phase = 'bucket';
+            job.i = 0;
+            job.bucket = new Map();
+        }
+
+        if (job.phase === 'bucket') {
+            const bucket = job.bucket;
+            const push = (key, idx) => {
+                let a = bucket.get(key);
+                if (!a) { a = []; bucket.set(key, a); }
+                a.push(idx);
             };
-            const kisHit = (bits, kis) => {
-                for (let t = 0; t < kis.length; t++) if (hasKi(bits, kis[t])) return true;
-                return false;
-            };
-            const addKis = (bits, kis) => {
-                let next = bits;
-                for (let t = 0; t < kis.length; t++) next = copyAdd(next, kis[t]);
-                return next;
-            };
-            const order = [];
-            for (let i = 0; i < n; i++) if (meta[i].allow && meta[i].sn != null) order.push(i);
-            order.sort((a, b) => (meta[b].sn - meta[a].sn) || (b - a));
-            const BEAM = 4;
-            const paths = new Array(n);
-            let pending = true;
-            let passes = 0;
-            while (pending && passes < 4 && !userAbort()) {
-                pending = false;
-                passes++;
-                for (let oi = 0; oi < order.length; oi++) {
-                    if ((oi & 127) === 0 && userAbort()) { pending = false; break; }
-                    const i = order[oi];
-                    const kis = meta[i].kis || [];
-                    const list = adj[i];
-                    const beam = [{ depth: 1, bits: addKis(seedBits, kis) }];
-                    for (let a = 0; a < list.length; a++) {
-                        const j = list[a];
-                        const jp = paths[j];
-                        if (!jp) { pending = true; continue; }
-                        for (let p = 0; p < jp.length; p++) {
-                            if (kisHit(jp[p].bits, kis)) continue;
-                            beam.push({ depth: 1 + jp[p].depth, bits: addKis(jp[p].bits, kis) });
+            for (; job.i < n; job.i++) {
+                if ((job.i & 255) === 0 && stop()) return yieldMap(job);
+                const m = meta[job.i];
+                if (!m.allow || m.sn == null || !m.startPort || !m.shipKey) continue;
+                const mks = getMatchKeys(m.startPort);
+                if (!mks.length) continue;
+                for (let ld = 0; ld <= lagDays; ld++) {
+                    const indexDay = m.sn - ld;
+                    for (let p = 0; p < mks.length; p++) {
+                        const pk = mks[p];
+                        push(indexDay + '|' + pk + '|' + m.shipKey, job.i);
+                        if (allowSideBySide) push(indexDay + '|' + pk + '|*', job.i);
+                    }
+                }
+            }
+            job.phase = 'adj';
+            job.i = 0;
+            job.adj = new Array(n);
+            job.sub = null;
+        }
+
+        if (job.phase === 'adj') {
+            const bucket = job.bucket;
+            const adj = job.adj;
+            const finish = (i) => {
+                const m = meta[i];
+                const cont = job.sub && job.sub.i === i ? job.sub : null;
+                const list = cont ? cont.list : [];
+                const seen = cont ? cont.seen : new Set();
+                const p0 = cont ? cont.p : 0;
+                const b0 = cont ? cont.b : 0;
+                const t0 = cont ? cont.t : 0;
+                let ticks = 0;
+                if (m.allow && m.en != null && m.endPort && m.shipKey) {
+                    const mks = getMatchKeys(m.endPort);
+                    for (let p = p0; p < mks.length; p++) {
+                        const pk = mks[p];
+                        const k1 = m.en + '|' + pk + '|' + m.shipKey;
+                        const k2 = allowSideBySide ? m.en + '|' + pk + '|*' : null;
+                        const buckets = k2 ? [bucket.get(k1), bucket.get(k2)] : [bucket.get(k1)];
+                        for (let b = (p === p0 ? b0 : 0); b < buckets.length; b++) {
+                            const arr = buckets[b];
+                            if (!arr) continue;
+                            const tStart = (p === p0 && b === b0) ? t0 : 0;
+                            for (let t = tStart; t < arr.length; t++) {
+                                if ((++ticks & 127) === 0 && stop()) {
+                                    job.sub = { i, list, seen, p, b, t };
+                                    return false;
+                                }
+                                const j = arr[t];
+                                if (j === i || seen.has(j)) continue;
+                                seen.add(j);
+                                const gap = meta[j].sn - m.en;
+                                if (gap >= 0 && gap <= lagDays) list.push(j);
+                            }
                         }
                     }
-                    beam.sort((x, y) => y.depth - x.depth);
-                    const kept = [];
-                    const seen = new Set();
-                    for (let p = 0; p < beam.length && kept.length < BEAM; p++) {
-                        const sig = beam[p].bits.join(',');
-                        if (seen.has(sig)) continue;
-                        seen.add(sig);
-                        kept.push(beam[p]);
+                }
+                adj[i] = list;
+                job.sub = null;
+                return true;
+            };
+            for (; job.i < n; ) {
+                if (stop() && !(job.sub && job.sub.i === job.i)) return yieldMap(job);
+                if (!finish(job.i)) return yieldMap(job);
+                job.i++;
+            }
+            job.phase = 'search';
+            job.i = 0;
+            job.sub = null;
+        }
+
+        if (job.phase === 'search') {
+            const adj = job.adj;
+            const K = job.kCount;
+            if (!job.search) job.search = { mode: K <= 20 ? 'dp' : 'beam' };
+            const search = job.search;
+            if (search.mode === 'dp') {
+                const MOD = K === 0 ? 1 : (1 << K);
+                const fullMask = K === 0 ? 0 : (MOD - 1);
+                if (!search.memo) {
+                    let seedMask = 0;
+                    for (let s = 0; s < job.initialUsedOfferCodes.length; s++) {
+                        const c = job.initialUsedOfferCodes[s];
+                        if (!c) continue;
+                        const si = pidIndex.get(c);
+                        if (si !== undefined && si < 31) seedMask |= (1 << si);
                     }
-                    paths[i] = kept;
-                    depthMap.set(i, kept[0].depth);
+                    search.memo = new Map();
+                    search.states = 0;
+                    search.dpI = 0;
+                    search.seedMask = seedMask;
+                    search.blown = false;
+                }
+                const memo = search.memo;
+                const STATE_BUDGET = 200000;
+                let yielded = false;
+                const dfs = (i, avail) => {
+                    const key = i * MOD + avail;
+                    const hit = memo.get(key);
+                    if (hit !== undefined) return hit;
+                    if (search.blown) return 1;
+                    if (yielded || stop()) { yielded = true; return -1; }
+                    if (++search.states > STATE_BUDGET) { search.blown = true; return 1; }
+                    let best = 0;
+                    const list = adj[i];
+                    for (let a = 0; a < list.length; a++) {
+                        if (best >= DEPTH_CAP - 1) break;
+                        if ((a & 63) === 0 && stop()) { yielded = true; return -1; }
+                        const j = list[a];
+                        const bj = meta[j].bit;
+                        if (bj && (avail & bj) !== bj) continue;
+                        const d = dfs(j, avail & ~bj);
+                        if (d < 0) return -1;
+                        if (d > best) best = d;
+                    }
+                    const val = Math.min(DEPTH_CAP, 1 + best);
+                    memo.set(key, val);
+                    return val;
+                };
+                for (; search.dpI < n; search.dpI++) {
+                    if (search.blown || yielded) break;
+                    if (!meta[search.dpI].allow) continue;
+                    const d = dfs(search.dpI, fullMask & ~(search.seedMask | meta[search.dpI].bit));
+                    if (d < 0) return yieldMap(job);
+                    depthMap.set(search.dpI, d);
+                }
+                if (yielded) return yieldMap(job);
+                if (search.blown) {
+                    depthMap.clear();
+                    search.mode = 'beam';
+                } else {
+                    job.phase = 'done';
+                }
+            }
+            if (search.mode === 'beam' && job.phase !== 'done') {
+                if (!search.order) {
+                    const words = Math.max(1, (K + 31) >> 5);
+                    const seedBits = new Array(words).fill(0);
+                    for (let s = 0; s < job.initialUsedOfferCodes.length; s++) {
+                        const si = pidIndex.get(job.initialUsedOfferCodes[s]);
+                        if (si == null || si < 0) continue;
+                        seedBits[si >> 5] |= (1 << (si & 31));
+                    }
+                    const order = [];
+                    for (let i = 0; i < n; i++) if (meta[i].allow && meta[i].sn != null) order.push(i);
+                    order.sort((a, b) => (meta[b].sn - meta[a].sn) || (b - a));
+                    search.order = order;
+                    search.paths = new Array(n);
+                    search.passes = 0;
+                    search.oi = 0;
+                    search.a = 0;
+                    search.nodeBeam = null;
+                    search.pending = true;
+                    search.inPass = false;
+                    search.seedBits = seedBits;
+                    search.hasKi = (bits, ki) => ki >= 0 && ((bits[ki >> 5] & (1 << (ki & 31))) !== 0);
+                    search.copyAdd = (bits, ki) => {
+                        const next = bits.slice();
+                        if (ki >= 0) next[ki >> 5] |= (1 << (ki & 31));
+                        return next;
+                    };
+                    search.kisHit = (bits, kis) => {
+                        for (let t = 0; t < kis.length; t++) if (search.hasKi(bits, kis[t])) return true;
+                        return false;
+                    };
+                    search.addKis = (bits, kis) => {
+                        let next = bits;
+                        for (let t = 0; t < kis.length; t++) next = search.copyAdd(next, kis[t]);
+                        return next;
+                    };
+                }
+                const BEAM = 4;
+                const order = search.order;
+                const paths = search.paths;
+                if (!order.length) {
+                    job.phase = 'done';
+                } else {
+                    while ((search.pending || search.inPass) && search.passes < 4 && !userAbort()) {
+                        if (!search.inPass) {
+                            search.pending = false;
+                            search.passes++;
+                            search.inPass = true;
+                        }
+                        for (; search.oi < order.length; ) {
+                            const i = order[search.oi];
+                            const kis = meta[i].kis || [];
+                            const list = adj[i] || [];
+                            if (!search.nodeBeam) search.nodeBeam = [{ depth: 1, bits: search.addKis(search.seedBits, kis) }];
+                            const beam = search.nodeBeam;
+                            let capped = 0;
+                            for (let p = 0; p < beam.length; p++) if (beam[p].depth >= DEPTH_CAP) capped++;
+                            for (; search.a < list.length && capped < BEAM; search.a++) {
+                                if ((search.a & 31) === 0 && stop()) return yieldMap(job);
+                                const j = list[search.a];
+                                const jp = paths[j];
+                                if (!jp) { search.pending = true; continue; }
+                                for (let p = 0; p < jp.length; p++) {
+                                    if (search.kisHit(jp[p].bits, kis)) continue;
+                                    const d = Math.min(DEPTH_CAP, 1 + jp[p].depth);
+                                    beam.push({ depth: d, bits: search.addKis(jp[p].bits, kis) });
+                                    if (d >= DEPTH_CAP) capped++;
+                                }
+                            }
+                            if (search.a < list.length && capped < BEAM) return yieldMap(job);
+                            beam.sort((x, y) => y.depth - x.depth);
+                            const kept = [];
+                            const seen = new Set();
+                            for (let p = 0; p < beam.length && kept.length < BEAM; p++) {
+                                const sig = beam[p].bits.join(',');
+                                if (seen.has(sig)) continue;
+                                seen.add(sig);
+                                kept.push(beam[p]);
+                            }
+                            paths[i] = kept;
+                            depthMap.set(i, kept[0].depth);
+                            search.nodeBeam = null;
+                            search.a = 0;
+                            search.oi++;
+                            if ((search.oi & 31) === 0 && stop()) return yieldMap(job);
+                        }
+                        search.inPass = false;
+                        search.oi = 0;
+                        search.a = 0;
+                        search.nodeBeam = null;
+                    }
+                    if (userAbort()) return yieldMap(job);
+                    job.phase = 'done';
                 }
             }
         }
-        if (userAbort()) depthMap.incomplete = true;
+
+        delete depthMap.incomplete;
+        delete depthMap._job;
         return depthMap;
     }
 
@@ -628,12 +760,20 @@
         return bestPath.filter(Boolean);
     }
 
+    function formatB2BPill(depth) {
+        const n = Number(depth);
+        if (!Number.isFinite(n) || n <= 0) return '0';
+        if (n > 15) return '15+';
+        return String(Math.floor(n) - 1);
+    }
+
     const B2BUtils = {
         getOfferKey,
         getOfferKeys,
         getPlayerOfferId,
         buildB2BRowId,
         computeB2BDepth,
+        formatB2BPill,
         computeLongestB2BPath,
         // Compute the longest chain (detailed nodes) starting from a specific index
         computeLongestChainFromIndex: function(rows, options, startIdx) {

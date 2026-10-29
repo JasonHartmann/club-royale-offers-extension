@@ -235,8 +235,10 @@ const Modal = {
         footerContainer.appendChild(donateButton);
 
         // Ensure a single authoritative What's New button exists and is placed here (modal-driven)
-        let wnBtn = document.getElementById('gobo-whatsnew-btn');
-        if (!wnBtn) {
+        const showTour = !(window.WhatsNew && WhatsNew.display === false);
+        let wnBtn = showTour ? document.getElementById('gobo-whatsnew-btn') : null;
+        if (!showTour) { /* this release: no button */ }
+        else if (!wnBtn) {
             // Create a footer-local What's New button so ordering is guaranteed
                 try {
                 wnBtn = document.createElement('button');

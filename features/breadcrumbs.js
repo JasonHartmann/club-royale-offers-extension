@@ -946,7 +946,8 @@ const Breadcrumbs = {
             }
             // What's New button
             try {
-                if (!document.getElementById('gobo-whatsnew-btn')) {
+                if (window.WhatsNew && !WhatsNew.display) { /* this release: no button */ }
+                else if (!document.getElementById('gobo-whatsnew-btn')) {
                     const wnBtn = document.createElement('button');
                     wnBtn.id = 'gobo-whatsnew-btn';
                     wnBtn.type = 'button';

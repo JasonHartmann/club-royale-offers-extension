@@ -79,4 +79,40 @@ describe('B2B large offer set', () => {
             else global.App = prev;
         }
     });
+
+    test('a chain longer than 15 is stored as 16 and the pill says 15+', () => {
+        const rows = [];
+        for (let i = 0; i < 21; i++) rows.push(row('C' + i, 'SHIP', 'Miami', iso(i * 7), 7, 'p' + i));
+        const depths = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false });
+        expect(depths.get(0)).toBe(16);
+        expect(B2BUtils.formatB2BPill(16)).toBe('15+');
+        expect(B2BUtils.formatB2BPill(2)).toBe('1');
+        expect(B2BUtils.formatB2BPill(1)).toBe('0');
+    });
+
+    test('a dense set cannot block past the deadline', () => {
+        const rows = [];
+        for (let i = 0; i < 2000; i++) rows.push(row('C' + i, 'SHIP', 'Miami', iso(0), 3, 'p' + i));
+        const t0 = Date.now();
+        const depths = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: true, deadlineMs: 20 });
+        expect(Date.now() - t0).toBeLessThan(150);
+        expect(depths.incomplete).toBe(true);
+        expect(depths._job).toBeTruthy();
+    });
+
+    test('sliced compute resumes to the same cap', () => {
+        const rows = [];
+        for (let i = 0; i < 21; i++) rows.push(row('C' + i, 'SHIP', 'Miami', iso(i * 7), 7, 'p' + i));
+        let job = null;
+        let map;
+        let slices = 0;
+        do {
+            map = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false, maxSteps: 30, _job: job });
+            job = map && map._job;
+            slices++;
+        } while (map && map.incomplete && job && slices < 40);
+        expect(map.incomplete).toBeFalsy();
+        expect(map.get(0)).toBe(16);
+        expect(slices).toBeGreaterThan(1);
+    });
 });
