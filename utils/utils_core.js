@@ -437,14 +437,14 @@ const Utils = {
             }
             rows.forEach(r => {
                 try {
-                    const cells = r.querySelectorAll('td');
-                    // Expecting at least Value + Interior + OV $ + Balcony $ + Suite $ after Trade. Abort if too short.
-                    if (cells.length < 11) return;
-                    const valCell = cells[6];
-                    const interiorCell = cells[7];
-                    const oceanViewCell = cells[8];
-                    const balconyCell = cells[9];
-                    const suiteCell = cells[10];
+                    // Find the pricing cells by data-col, not by index — an inserted column
+                    // (e.g. the combined-view Profile column) must not shift which cell we write to.
+                    const byCol = (col) => r.querySelector('td[data-col="' + col + '"]');
+                    const valCell = byCol('offerValue');
+                    const interiorCell = byCol('interior');
+                    const oceanViewCell = byCol('oceanViewUpgrade');
+                    const balconyCell = byCol('balconyUpgrade');
+                    const suiteCell = byCol('suiteUpgrade');
                     if (!valCell) return;
                     const code = (r.dataset.offerCode || '').trim();
                     const sailISO = (r.dataset.sailDate || '').trim();

@@ -6,16 +6,21 @@ describe('Utils.refreshOfferValues recomputes Value column on refresh', () => {
     function setup(options = {}) {
         jest.resetModules();
         const { offerValue = 100, rowText = '-' } = options;
-        const cells = [];
-        for (let i = 0; i < 11; i++) {
-            cells.push({ textContent: '' });
-        }
-        // Cell 6 = Value column
-        cells[6].textContent = rowText;
+        // Column layout INCLUDING the combined-view Profile column (index 1). This is what
+        // broke the old positional cells[6] lookup: with Profile present the Value cell is no
+        // longer at index 6. Cells are located by data-col, so the layout is explicit here.
+        const cols = ['favorite','profile','b2bDepth','offerCode','offerDate','expiration','tradeInValue','offerValue','interior','oceanViewUpgrade','balconyUpgrade','suiteUpgrade'];
+        const cells = cols.map(col => ({ textContent: '', _col: col, getAttribute: (a) => (a === 'data-col') ? col : null }));
+        // Seed the Value cell (located by data-col, not index)
+        cells[cols.indexOf('offerValue')].textContent = rowText;
 
         const row = {
             dataset: { offerCode: 'GOBO1', sailDate: '2026-09-04', shipName: 'Ovation Of The Seas', offerIndex: '0' },
-            querySelectorAll: (sel) => (sel === 'td') ? cells : []
+            querySelectorAll: (sel) => (sel === 'td') ? cells : [],
+            querySelector: (sel) => {
+                const m = sel && sel.match ? sel.match(/data-col="([^"]+)"/) : null;
+                return m ? (cells.find(c => c._col === m[1]) || null) : null;
+            }
         };
 
         const rowsList = [row];
@@ -74,21 +79,22 @@ describe('Utils.refreshOfferValues recomputes Value column on refresh', () => {
     test('updates Value cell even when it already has a value', () => {
         const { cells } = setup({ offerValue: 200, rowText: '$100' });
         Utils.refreshOfferValues();
-        expect(cells[6].textContent).toBe('$200');
+        expect(cells.find(c => c._col === 'offerValue').textContent).toBe('$200');
     });
 
     test('populates Value cell when it was empty/dash', () => {
         const { cells } = setup({ offerValue: 150, rowText: '-' });
         Utils.refreshOfferValues();
-        expect(cells[6].textContent).toBe('$150');
+        expect(cells.find(c => c._col === 'offerValue').textContent).toBe('$150');
     });
 
     test('does not overwrite Value cell when computed value matches existing', () => {
         const { cells } = setup({ offerValue: 100, rowText: '$100' });
+        const vc = cells.find(c => c._col === 'offerValue');
         // Track writes via property descriptor
         let writeCount = 0;
-        let _val = cells[6].textContent;
-        Object.defineProperty(cells[6], 'textContent', {
+        let _val = vc.textContent;
+        Object.defineProperty(vc, 'textContent', {
             get() { return _val; },
             set(v) { writeCount++; _val = v; },
             configurable: true
