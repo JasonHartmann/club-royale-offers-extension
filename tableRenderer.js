@@ -292,13 +292,23 @@ const TableRenderer = {
         const finish = this._startB2BDepthComputation();
         try {
             // Sliced with a total budget so a large account cannot block this sync path unbounded.
-            // A partial map is still better than blank: stamp what was computed.
+            // Stamp only the rows the map contains: an index missing from a partial map must
+            // stay un-stamped, so _ensureRowsHaveB2BDepth recomputes it next time instead of
+            // keeping a placeholder 1.
             const depthsMap = B2BUtils.computeB2BDepthComplete(rows, opts);
             const cancelled = (typeof opts.shouldAbort === 'function' && opts.shouldAbort());
             if (cancelled || !depthsMap) return null;
+            const complete = !depthsMap.incomplete;
             rows.forEach((row, idx) => {
                 if (!row || !row.sailing) return;
-                row.sailing.__b2bDepth = (depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
+                if (depthsMap.has(idx)) {
+                    row.sailing.__b2bDepth = depthsMap.get(idx);
+                } else if (complete) {
+                    // Complete map: an unmapped row is filtered/hidden, so it has no chain.
+                    row.sailing.__b2bDepth = 1;
+                }
+                // Incomplete map: leave unmapped rows un-stamped so _ensureRowsHaveB2BDepth
+                // recomputes them next time instead of keeping a placeholder 1.
             });
             // Only cache complete maps; a partial map is recomputed next time.
             try {
@@ -363,9 +373,14 @@ const TableRenderer = {
         if (!autoRun) { if (apply) apply(); return; }
         const gen = ++this._b2bGen;
         const chip = setTimeout(() => this._showB2BChip(gen), 280);
+        // Register this idle job in the pending/in-flight machinery so a B2B sort or
+        // preference refresh that lands mid-slice waits for it (via waitForB2BDepths)
+        // instead of running a competing sync computeB2BDepthComplete on the same rows.
+        const finish = this._startB2BDepthComputation();
+        const done = () => { try { finish(); } catch (e) { /* ignore */ } };
         let job = null;
         const run = () => {
-            if (this._b2bGen !== gen || this._b2bHold) { clearTimeout(chip); this._hideB2BChip(); return; }
+            if (this._b2bGen !== gen || this._b2bHold) { clearTimeout(chip); this._hideB2BChip(); done(); return; }
             let map = null;
             try {
                 map = B2BUtils.computeB2BDepth(rows, Object.assign({}, options, {
@@ -376,6 +391,7 @@ const TableRenderer = {
             } catch (e) {
                 clearTimeout(chip);
                 this._hideB2BChip();
+                done();
                 return;
             }
             if (map && map.incomplete && map._job && this._b2bGen === gen && !this._b2bHold) {
@@ -385,6 +401,7 @@ const TableRenderer = {
             }
             clearTimeout(chip);
             this._hideB2BChip();
+            done();
             if (this._b2bGen !== gen || this._b2bHold) return;
             if (map && !map.incomplete) this._stampB2BDepths(rows, map);
             if (apply) apply();

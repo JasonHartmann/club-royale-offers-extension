@@ -1797,12 +1797,20 @@
                     }
 
                     // One pass. The start row's own offer key is already excluded inside computeB2BDepth.
-                    // Sliced with a total budget: a single 800ms call can come back incomplete on
-                    // large accounts, and an incomplete map must not be treated as final.
                     // depthCap 999: effectively unbounded — the builder shows the true chain
                     // length, and it's behind a spinner so the extra search is fine.
                     const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes: sessionUsedOfferCodes, drivingRangeHours, force: true, depthCap: 999 };
-                    const depthsMap = B2BUtils.computeB2BDepthComplete(rows, b2bOpts) || new Map();
+                    // Keep slicing until complete: the builder is behind the spinner, so a
+                    // partial map (which would render unevaluated options as depth 1 / "No more")
+                    // must not be treated as final. The search is bounded (DP or ≤4 beam passes),
+                    // so this terminates; the CSS spinner keeps spinning on the compositor.
+                    let b2bJob = null;
+                    let depthsMap = null;
+                    do {
+                        depthsMap = B2BUtils.computeB2BDepth(rows, Object.assign({}, b2bOpts, { deadlineMs: 40, _job: b2bJob }));
+                        b2bJob = (depthsMap && depthsMap._job) ? depthsMap._job : null;
+                    } while (depthsMap && depthsMap.incomplete && b2bJob);
+                    depthsMap = depthsMap || new Map();
                     options.forEach(o => {
                         try {
                             const idx = rowIndexById.get(o.rowId);
@@ -2014,29 +2022,10 @@
                     if (childCount === 0 && Array.isArray(immedList) && immedList.length > 0) childCount = immedList.length;
                     const depthDiv = document.createElement('div');
                     depthDiv.className = 'b2b-depth-pill';
-                    if (Number(descendantDepth) > 15) {
-                        // The builder keeps the true depth (depthCap 999), so show the real count.
+                    if (childCount > 0) {
+                        // The builder keeps the true depth (depthCap 999): always the real count,
+                        // never the table's '15+' pill.
                         depthDiv.textContent = `${childCount} more >>`;
-                        try { depthDiv.setAttribute('title', `${descendantDepth} total depth including descendants`); } catch(e){}
-                        try { depthDiv.setAttribute('aria-label', `Additional connections ${childCount}`); } catch(e){}
-                    } else if (childCount > 0) {
-                        let depthMarkup = null;
-                        // Markup takes the chain length (childCount + 1); the immediate-candidate
-                        // override above can bump childCount beyond descendantDepth - 1.
-                        if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                            depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(childCount + 1);
-                        } else if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                            depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(childCount + 1);
-                        }
-                        if (depthMarkup) {
-                            depthDiv.innerHTML = depthMarkup;
-                            try {
-                                const innerText = depthDiv.textContent || '';
-                                if (innerText.trim() === String(childCount)) depthDiv.textContent = `${childCount} more >>`;
-                            } catch(e) {}
-                        } else {
-                            depthDiv.textContent = `${childCount} more`;
-                        }
                         try { depthDiv.setAttribute('title', `${descendantDepth} total depth including descendants`); } catch(e){}
                         try { depthDiv.setAttribute('aria-label', `Additional connections ${childCount}`); } catch(e){}
                     } else {

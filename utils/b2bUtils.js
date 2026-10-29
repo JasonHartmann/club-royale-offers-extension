@@ -592,7 +592,6 @@
                                     if (d >= DEPTH_CAP) capped++;
                                 }
                             }
-                            if (search.a < list.length && capped < BEAM) return yieldMap(job);
                             beam.sort((x, y) => y.depth - x.depth);
                             const kept = [];
                             const seen = new Set();

@@ -131,8 +131,9 @@ describe('B2B large offer set', () => {
 
     test('sliced compute matches a full run on same-day cycles', () => {
         // 0-night sailings on the same date/port/ship form same-day edges in both
-        // directions, which is what forces the extra beam passes. A sliced run must
-        // land on exactly the same depths as one that runs to completion.
+        // directions. Four distinct keys means K<=20, so this exercises the exact
+        // DP path (the beam variant is the next test). A sliced run must land on
+        // exactly the same depths as one that runs to completion.
         const mk = (code, pid) => {
             const r = row(code, 'SHIP', 'Miami', iso(0), 7, pid);
             r.sailing.endDate = iso(0);
@@ -151,6 +152,32 @@ describe('B2B large offer set', () => {
             job = map && map._job;
             slices++;
         } while (map && map.incomplete && job && slices < 200);
+        expect(map.incomplete).toBeFalsy();
+        expect(slices).toBeGreaterThan(1);
+        for (let i = 0; i < rows.length; i++) expect(map.get(i)).toBe(full.get(i));
+    });
+
+    test('sliced beam compute resumes across passes to the same depths', () => {
+        // 25 same-day sailings with distinct offer keys: K=25 > 20 forces the beam
+        // (not the exact DP). Same-day edges point at lower-index rows that are
+        // processed later, so the beam needs multiple passes; a small maxSteps
+        // forces a yield mid-pass, exercising the inPass resume.
+        const rows = [];
+        for (let i = 0; i < 25; i++) {
+            const r = row('C' + i, 'SHIP', 'Miami', iso(0), 7, 'p' + i);
+            r.sailing.endDate = iso(0);
+            rows.push(r);
+        }
+        const full = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false, deadlineMs: -1 });
+        expect(full.incomplete).toBeFalsy();
+        let job = null;
+        let map;
+        let slices = 0;
+        do {
+            map = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false, maxSteps: 20, _job: job });
+            job = map && map._job;
+            slices++;
+        } while (map && map.incomplete && job && slices < 400);
         expect(map.incomplete).toBeFalsy();
         expect(slices).toBeGreaterThan(1);
         for (let i = 0; i < rows.length; i++) expect(map.get(i)).toBe(full.get(i));
