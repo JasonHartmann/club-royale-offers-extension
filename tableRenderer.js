@@ -291,15 +291,18 @@ const TableRenderer = {
         const opts = Object.assign({ allowSideBySide: defaultAllow }, options || {});
         const finish = this._startB2BDepthComputation();
         try {
-            const depthsMap = B2BUtils.computeB2BDepth(rows, opts);
-            const cancelled = (typeof opts.shouldAbort === 'function' && opts.shouldAbort()) || (depthsMap && depthsMap.incomplete);
-            if (cancelled) return null;
+            // Sliced with a total budget so a large account cannot block this sync path unbounded.
+            // A partial map is still better than blank: stamp what was computed.
+            const depthsMap = B2BUtils.computeB2BDepthComplete(rows, opts);
+            const cancelled = (typeof opts.shouldAbort === 'function' && opts.shouldAbort());
+            if (cancelled || !depthsMap) return null;
             rows.forEach((row, idx) => {
                 if (!row || !row.sailing) return;
                 row.sailing.__b2bDepth = (depthsMap && typeof depthsMap.has === 'function' && depthsMap.has(idx)) ? depthsMap.get(idx) : 1;
             });
+            // Only cache complete maps; a partial map is recomputed next time.
             try {
-                if (stateToken && this._metaCache) this._metaCache.set('b2bDepth:' + stateToken, depthsMap);
+                if (!depthsMap.incomplete && stateToken && this._metaCache) this._metaCache.set('b2bDepth:' + stateToken, depthsMap);
             } catch(e) { /* ignore caching errors */ }
             return depthsMap;
         } catch (err) {

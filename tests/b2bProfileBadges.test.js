@@ -16,7 +16,8 @@ describe('combined profile badges in the builder', () => {
         expect(tool._profileBadges(meta)).toBeNull();
         tool._context = { state: { selectedProfileKey: 'goob-combined-linked' } };
         const row = tool._profileBadges(meta);
-        expect([...row.querySelectorAll('.profile-id-badge')].map(b => b.textContent)).toEqual(['1', '2']);
+        // Badges show the account's first letter (J+C style), not the numeric id.
+        expect([...row.querySelectorAll('.profile-id-badge')].map(b => b.textContent)).toEqual(['A', 'B']);
         expect(row.querySelector('.profile-id-badge-1').title).toBe('a@x.com');
         expect(row.querySelector('.profile-id-badge-2').title).toBe('gobo-R-b');
     });

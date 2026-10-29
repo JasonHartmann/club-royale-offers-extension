@@ -1797,8 +1797,10 @@
                     }
 
                     // One pass. The start row's own offer key is already excluded inside computeB2BDepth.
+                    // Sliced with a total budget: a single 800ms call can come back incomplete on
+                    // large accounts, and an incomplete map must not be treated as final.
                     const b2bOpts = { allowSideBySide: this._context.allowSideBySide, filterPredicate, initialUsedOfferCodes: sessionUsedOfferCodes, drivingRangeHours, force: true };
-                    const depthsMap = B2BUtils.computeB2BDepth(rows, b2bOpts) || new Map();
+                    const depthsMap = B2BUtils.computeB2BDepthComplete(rows, b2bOpts) || new Map();
                     options.forEach(o => {
                         try {
                             const idx = rowIndexById.get(o.rowId);
@@ -2016,10 +2018,12 @@
                         try { depthDiv.setAttribute('aria-label', '15 or more additional connections'); } catch(e){}
                     } else if (childCount > 0) {
                         let depthMarkup = null;
+                        // Markup takes the chain length (childCount + 1); the immediate-candidate
+                        // override above can bump childCount beyond descendantDepth - 1.
                         if (typeof TableRenderer !== 'undefined' && typeof TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                            depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(descendantDepth);
+                            depthMarkup = TableRenderer.getB2BDepthBadgeMarkup(childCount + 1);
                         } else if (typeof App !== 'undefined' && App.TableRenderer && typeof App.TableRenderer.getB2BDepthBadgeMarkup === 'function') {
-                            depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(descendantDepth);
+                            depthMarkup = App.TableRenderer.getB2BDepthBadgeMarkup(childCount + 1);
                         }
                         if (depthMarkup) {
                             depthDiv.innerHTML = depthMarkup;

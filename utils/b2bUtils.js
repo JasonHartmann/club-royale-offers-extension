@@ -562,7 +562,9 @@
                 if (!order.length) {
                     job.phase = 'done';
                 } else {
-                    while ((search.pending || search.inPass) && search.passes < 4 && !userAbort()) {
+                    // inPass keeps a sliced pass alive: passes is already 4 when pass 4 runs,
+                    // so a mid-pass-4 yield must still resume instead of reporting done.
+                    while ((search.pending || search.inPass) && (search.passes < 4 || search.inPass) && !userAbort()) {
                         if (!search.inPass) {
                             search.pending = false;
                             search.passes++;
@@ -767,12 +769,30 @@
         return String(Math.floor(n) - 1);
     }
 
+    // Run computeB2BDepth in 40ms slices until complete or the total budget is spent.
+    // For sync callers (builder, b2bDepth sort, accordion) that need real depths now:
+    // a single 800ms call can come back incomplete on large accounts, and an
+    // incomplete map must not be treated as final.
+    function computeB2BDepthComplete(rows, options, totalBudgetMs) {
+        options = options || {};
+        const budget = (typeof totalBudgetMs === 'number' && totalBudgetMs > 0) ? totalBudgetMs : 4000;
+        const started = Date.now();
+        let job = null;
+        let map = null;
+        do {
+            map = computeB2BDepth(rows, Object.assign({}, options, { deadlineMs: 40, _job: job }));
+            job = (map && map._job) ? map._job : null;
+        } while (map && map.incomplete && job && (Date.now() - started) < budget);
+        return map;
+    }
+
     const B2BUtils = {
         getOfferKey,
         getOfferKeys,
         getPlayerOfferId,
         buildB2BRowId,
         computeB2BDepth,
+        computeB2BDepthComplete,
         formatB2BPill,
         computeLongestB2BPath,
         // Compute the longest chain (detailed nodes) starting from a specific index

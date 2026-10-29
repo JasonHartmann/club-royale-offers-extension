@@ -64,7 +64,9 @@ describe('B2B large offer set', () => {
         }
         const t0 = Date.now();
         const path = B2BUtils.computeLongestB2BPath(rows, { allowSideBySide: true });
-        expect(Date.now() - t0).toBeLessThan(800);
+        // The search is visit-capped (VISIT_CAP); the original hang was 20s+. 2s keeps the
+        // guard meaningful without flaking on a loaded machine (observed 350-800ms).
+        expect(Date.now() - t0).toBeLessThan(2000);
         expect(Array.isArray(path)).toBe(true);
     });
 
@@ -114,5 +116,32 @@ describe('B2B large offer set', () => {
         expect(map.incomplete).toBeFalsy();
         expect(map.get(0)).toBe(16);
         expect(slices).toBeGreaterThan(1);
+    });
+
+    test('sliced compute matches a full run on same-day cycles', () => {
+        // 0-night sailings on the same date/port/ship form same-day edges in both
+        // directions, which is what forces the extra beam passes. A sliced run must
+        // land on exactly the same depths as one that runs to completion.
+        const mk = (code, pid) => {
+            const r = row(code, 'SHIP', 'Miami', iso(0), 7, pid);
+            r.sailing.endDate = iso(0);
+            return r;
+        };
+        const rows = [mk('A', 'pa'), mk('B', 'pb'), mk('C', 'pc'), mk('D', 'pd')];
+        const full = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false, deadlineMs: -1 });
+        expect(full.incomplete).toBeFalsy();
+        let job = null;
+        let map;
+        let slices = 0;
+        do {
+            // 10 steps per slice: the DFS needs more than a few steps to complete a frame,
+            // so a smaller budget would yield without making progress.
+            map = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: false, maxSteps: 10, _job: job });
+            job = map && map._job;
+            slices++;
+        } while (map && map.incomplete && job && slices < 200);
+        expect(map.incomplete).toBeFalsy();
+        expect(slices).toBeGreaterThan(1);
+        for (let i = 0; i < rows.length; i++) expect(map.get(i)).toBe(full.get(i));
     });
 });

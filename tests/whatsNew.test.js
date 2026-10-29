@@ -141,7 +141,9 @@ describe("What's New next() and Enter", () => {
 
     test('this release does not display the tour or its badge', () => {
         const wn = loadWhatsNew();
-        document.body.innerHTML = '<div id="gobo-offers-table"></div><button id="gobo-offers-button"></button>';
+        // .gobo-union-all is the real first step's target: without the display guard,
+        // start(true) would resolve it and build the overlay synchronously.
+        document.body.innerHTML = '<div id="gobo-offers-table"></div><div class="gobo-union-all"></div><button id="gobo-offers-button"></button>';
         wn.maybeAutoStart();
         wn.start(true);
         expect(wn.display).toBe(false);

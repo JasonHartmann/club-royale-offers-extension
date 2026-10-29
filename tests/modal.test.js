@@ -58,6 +58,7 @@ function createModalEnv() {
         removeEventListener: jest.fn(),
     };
 
+    global.window = global;
     global.App = { TableRenderer: { lastState: {} }, Modal: { exportToCSV: jest.fn() } };
     global.chrome = { runtime: { getURL: (p) => p } };
     global.URL = { createObjectURL: jest.fn(() => 'blob:test'), revokeObjectURL: jest.fn() };
@@ -98,6 +99,7 @@ describe('Modal scroll lock', () => {
         delete global.chrome;
         delete global.URL;
         delete global.Blob;
+        delete global.window;
     });
 
     test('setupModal sets body overflow to hidden', () => {
@@ -126,6 +128,7 @@ describe('Modal ESC key handling', () => {
         delete global.chrome;
         delete global.URL;
         delete global.Blob;
+        delete global.window;
     });
 
     test('setupModal registers a keydown listener', () => {
@@ -171,6 +174,7 @@ describe('Modal close idempotency', () => {
         delete global.chrome;
         delete global.URL;
         delete global.Blob;
+        delete global.window;
     });
 
     test('closeModal returns early when no container/backdrop stored', () => {
@@ -206,6 +210,7 @@ describe('Modal session watcher', () => {
         delete global.chrome;
         delete global.URL;
         delete global.Blob;
+        delete global.window;
     });
 
     test('setupModal starts a session check interval', () => {
@@ -234,6 +239,7 @@ describe('Modal overlapping elements', () => {
         delete global.chrome;
         delete global.URL;
         delete global.Blob;
+        delete global.window;
     });
 
     test('closeModal restores overlapping elements display', () => {
