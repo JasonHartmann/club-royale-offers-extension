@@ -1468,11 +1468,8 @@ const TableRenderer = {
                 const validKeys = profileTabs.map(tab => tab.getAttribute('data-storage-key') || tab.getAttribute('data-key'));
                 // Only change selectedProfileKey if it is not valid
                 if (!validKeys.includes(state.selectedProfileKey)) {
-                    console.log('[DEBUG] selectedProfileKey invalid after accordion reset:', state.selectedProfileKey, 'validKeys:', validKeys);
                     state.selectedProfileKey = validKeys.includes(App.TableRenderer.lastState.selectedProfileKey) ? App.TableRenderer.lastState.selectedProfileKey : (validKeys[0] || null);
-                    console.log('[DEBUG] selectedProfileKey set to:', state.selectedProfileKey);
                 } else {
-                    console.log('[DEBUG] selectedProfileKey preserved after accordion reset:', state.selectedProfileKey);
                 }
             }
         }

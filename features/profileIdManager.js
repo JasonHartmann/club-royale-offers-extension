@@ -8,7 +8,7 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
     var STORAGE_KEY = 'goboProfileIdMap_v1';
     var FREE_KEY = 'goboProfileIdFreeIds_v1';
     var NEXT_KEY = 'goboProfileIdNext_v1';
-    var DEBUG = true;
+    var DEBUG = false;
     function log(){ if (!DEBUG) return; try { console.debug('[ProfileIdManager]', [].slice.call(arguments)); } catch(e){} }
     function warn(){ try { console.warn('[ProfileIdManager]', [].slice.call(arguments)); } catch(e){} }
     function error(){ try { console.error('[ProfileIdManager]', [].slice.call(arguments)); } catch(e){} }
@@ -186,7 +186,7 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
                 try {
                     var persistMarker = { ts: Date.now(), mapSize: Object.keys(this.map||{}).length, free: (this.free||[]).slice(), next: this.next };
                     try { if (typeof localStorage !== 'undefined' && localStorage) localStorage.setItem('__goboProfileIdLastPersist_v1', JSON.stringify(persistMarker)); } catch(e) {}
-                    try { console.log('[ProfileIdManager][PERSIST]', persistMarker); } catch(e) {}
+                    if (DEBUG) { try { console.log('[ProfileIdManager][PERSIST]', persistMarker); } catch(e) {} }
                 } catch(ignoreMarker) {}
                 // Clear the in-progress flag on the next tick so other listeners know this was an internal write
                 try { if (typeof window !== 'undefined') { setTimeout(function(){ try{ window.__profileIdPersistInProgress = false; } catch(e){} }, 0); } } catch(ignore2) {}
@@ -300,7 +300,7 @@ var RESTRICTED_PROFILE_KEY_PATTERN = /^gobo-[RC]-/i;
                 // Move id
                 this.map[newKey] = id;
                 delete this.map[oldKey];
-                try { console.log('[ProfileIdManager] transferId moved', { from: oldKey, to: newKey, id: id }); } catch(e) {}
+                if (DEBUG) { try { console.log('[ProfileIdManager] transferId moved', { from: oldKey, to: newKey, id: id }); } catch(e) {} }
                 // Ensure free/next consistency
                 if (this.free && this.free.indexOf(id) !== -1) {
                     this.free = this.free.filter(function(v){ return v !== id; });

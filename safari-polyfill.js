@@ -15,9 +15,6 @@
             const host = (location.hostname || '').toLowerCase();
             if (host.endsWith('comproyale.com')) {
                 window.GOBO_DEBUG_LOGS = false;
-                if (typeof console !== 'undefined' && console.log) {
-                    console.log('[SIM] GOBO debug logging enabled via safari-polyfill for comproyale.');
-                }
             }
         }
     } catch(e){ /* ignore */ }
