@@ -78,6 +78,27 @@ jobs:
       - name: Install extension dependencies
         run: npm ci
 
+      - name: Setup keychain and import signing cert
+        env:
+          CERT_B64: ${{ secrets.SAFARI_MAC_DEV_CERT_B64 }}
+          CERT_PASSWORD: ${{ secrets.SAFARI_MAC_DEV_CERT_PASSWORD }}
+        run: |
+          if [ -z "$CERT_B64" ] || [ -z "$CERT_PASSWORD" ]; then
+            echo "::error::SAFARI_MAC_DEV_CERT_B64 / SAFARI_MAC_DEV_CERT_PASSWORD are not set. Run scripts/export-safari-cert.sh on a Mac and add them as repo secrets." >&2
+            exit 1
+          fi
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-properties "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$CERT_B64" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" -A -t ssl -k "$KEYCHAIN_PATH"
+          # Authorize the private key for use by xcodebuild (no GUI prompt on CI).
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+
       - name: Build Safari bundles
         run: ./scripts/build-safari-xcode.sh
         env:
