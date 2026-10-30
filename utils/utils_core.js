@@ -273,6 +273,8 @@ const Utils = {
     // Only COMP offers with the "Apply $XXX Off" wording match; the DO type ("$XXX Off or ...") does not.
     getDualChoiceDollarOff(offer, sailing) {
         try {
+            // A combined pair rewrites the room to the stacked category but keeps this wording.
+            if (sailing && Array.isArray(sailing.__spendOfferKeys) && sailing.__spendOfferKeys.length) return null;
             const co = offer && offer.campaignOffer;
             if (!co) return null;
             const typeCode = co.offerType && co.offerType.code;

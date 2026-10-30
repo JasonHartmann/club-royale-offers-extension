@@ -377,6 +377,16 @@ function computeAdvancedMinPrice(offer, sailing, key, includeTaxes) {
         const categoryMinDual = getCategoryMin(broadKey);
         if (categoryMinDual == null) return '-';
 
+        try {
+            const dual = (App && App.Utils && typeof App.Utils.getDualChoiceDollarOff === 'function')
+                ? App.Utils.getDualChoiceDollarOff(offer, sailing) : null;
+            if (dual != null && offerBroad && App.Utils.dualChoiceYouPay) {
+                const order = ['INTERIOR', 'OUTSIDE', 'BALCONY', 'DELUXE'];
+                const above = order.indexOf(broadKey) > order.indexOf(offerBroad);
+                return Number(App.Utils.dualChoiceYouPay(categoryMinDual, taxesDual, dual, above, includeTaxes).toFixed(2));
+            }
+        } catch (e) {}
+
         if (isOneGuestOffer && singleGuestOfferValue != null) {
             let estimated = categoryMinDual - singleGuestOfferValue;
             if (!isFinite(estimated) || estimated < taxesDual) estimated = taxesDual;

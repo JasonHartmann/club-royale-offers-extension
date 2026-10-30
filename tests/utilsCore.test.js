@@ -634,5 +634,11 @@ describe('Utils (utils_core)', () => {
             expect(Utils.dualChoiceYouPay(2397, 324, 800, false, true)).toBeCloseTo(324);
             expect(Utils.dualChoiceYouPay(1198, 324, 800, false, false)).toBe(0);
         });
+
+        test('a combined pair keeps the stacked-room fare, not the $XXX', () => {
+            const paired = { ...sailing, __spendOfferKeys: ['a', 'b'] };
+            expect(Utils.getDualChoiceDollarOff(dualOffer, paired)).toBeNull();
+            expect(Utils.computeOfferValue(dualOffer, paired)).toBeNull();
+        });
     });
 });

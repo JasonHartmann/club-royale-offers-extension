@@ -937,9 +937,9 @@
                             const thisIdx = thisCat ? orderCats.indexOf(thisCat) : -1;
                             if (dualChoiceAmt != null && awardIdx >= 0 && thisIdx >= 0 && App.Utils && typeof App.Utils.dualChoiceYouPay === 'function') {
                                 const above = thisIdx > awardIdx;
-                                estimatedNum = App.Utils.dualChoiceYouPay(currentPriceNum, taxesForCalc, dualChoiceAmt, above, includeTaxesFlag);
+                                estimatedNum = App.Utils.dualChoiceYouPay(currentPriceNum, taxesNumber, dualChoiceAmt, above, includeTaxesFlag);
                                 if (above) {
-                                    const fare = Math.max(0, currentPriceNum - taxesForCalc);
+                                    const fare = Math.max(0, currentPriceNum - Number(taxesNumber));
                                     const taxesNote = includeTaxesFlag
                                         ? `+ Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})`
                                         : 'Taxes & Fees excluded';
