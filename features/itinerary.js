@@ -842,21 +842,31 @@
 
                     const offerValueForTooltip = isOneGuestOffer ? singleGuestOfferValue : dualGuestOfferValue;
 
+                    // Dual-choice "or Apply $XXX Off" offers: value is the fixed $XXX, not the base fare.
+                    let dualChoiceAmt = null;
+                    try {
+                        const raw = sourceEl && sourceEl.dataset && sourceEl.dataset.dualChoiceDollarOff;
+                        if (raw != null && raw !== '') { const n = Number(raw); if (isFinite(n) && n > 0) dualChoiceAmt = n; }
+                    } catch(e){}
+
                     // Now create header and inject Offer Value span for either scenario
                     const priceTitle = document.createElement('h3');
                     priceTitle.className = 'gobo-itinerary-section-title';
                     priceTitle.textContent = 'Stateroom Pricing';
-                    if ((isOneGuestOffer && singleGuestOfferValue != null) || (!isOneGuestOffer && dualGuestOfferValue != null)) {
+                    const showOfferValue = (isOneGuestOffer && singleGuestOfferValue != null) || (!isOneGuestOffer && dualGuestOfferValue != null) || dualChoiceAmt != null;
+                    if (showOfferValue) {
                         try {
                             const offerValueEl = document.createElement('span');
                             offerValueEl.className = 'gobo-itinerary-offervalue';
                             offerValueEl.style.cssText = 'float:right;font-weight:normal;font-size:0.85em;cursor:help;';
-                            const valNum = isOneGuestOffer ? singleGuestOfferValue : dualGuestOfferValue;
-                            const label = isOneGuestOffer ? 'Offer Value (est.)' : 'Offer Value';
+                            const valNum = dualChoiceAmt != null ? dualChoiceAmt : (isOneGuestOffer ? singleGuestOfferValue : dualGuestOfferValue);
+                            const label = dualChoiceAmt != null ? 'Offer Value' : (isOneGuestOffer ? 'Offer Value (est.)' : 'Offer Value');
                             offerValueEl.textContent = `${label}: ${valNum.toFixed(2)} ${currencyFallback}`;
-                            const offerValueTitle = isOneGuestOffer
-                                ? 'Estimated single-guest offer value derived from base price, assumed $200 discount, and taxes.'
-                                : 'Difference between base category price (dual occupancy) and estimated You Pay.';
+                            const offerValueTitle = dualChoiceAmt != null
+                                ? 'Fixed dollar-off amount you can apply toward an upgraded stateroom.'
+                                : (isOneGuestOffer
+                                    ? 'Estimated single-guest offer value derived from base price, assumed $200 discount, and taxes.'
+                                    : 'Difference between base category price (dual occupancy) and estimated You Pay.');
                             offerValueEl.title = offerValueTitle;
                             offerValueEl.setAttribute('tabindex', '0');
                             offerValueEl.setAttribute('role', 'button');
@@ -925,7 +935,21 @@
                             const currentPriceNum=Number(entry.priceNum); let estimatedNum;
                             const awardIdx = originalAwardCategoryResolved ? orderCats.indexOf(originalAwardCategoryResolved) : -1;
                             const thisIdx = thisCat ? orderCats.indexOf(thisCat) : -1;
-                            if (scenarioAllLowerSoldOut && awardIdx >= 0 && thisIdx > awardIdx) {
+                            if (dualChoiceAmt != null && awardIdx >= 0 && thisIdx >= 0 && App.Utils && typeof App.Utils.dualChoiceYouPay === 'function') {
+                                const above = thisIdx > awardIdx;
+                                estimatedNum = App.Utils.dualChoiceYouPay(currentPriceNum, taxesForCalc, dualChoiceAmt, above, includeTaxesFlag);
+                                if (above) {
+                                    const fare = Math.max(0, currentPriceNum - taxesForCalc);
+                                    const taxesNote = includeTaxesFlag
+                                        ? `+ Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency})`
+                                        : 'Taxes & Fees excluded';
+                                    youPayTitle = `You Pay = max(0, Base Fare (${fare.toFixed(2)} ${currency}) − Apply $${dualChoiceAmt.toFixed(2)} Off) ${taxesNote} = ${Number(estimatedNum).toFixed(2)} ${currency}`;
+                                } else {
+                                    youPayTitle = includeTaxesFlag
+                                        ? `You Pay = Taxes & Fees (${taxesForCalc.toFixed(2)} ${currency}) (awarded category or below).`
+                                        : 'You Pay = 0 (Taxes & Fees excluded).';
+                                }
+                            } else if (scenarioAllLowerSoldOut && awardIdx >= 0 && thisIdx > awardIdx) {
                                 // All lower tiers including awarded are sold out; unknown discount => You Pay equals base price
                                 estimatedNum = currentPriceNum;
                                 youPayTitle = `You Pay = Base Price (${currentPriceNum.toFixed(2)} ${currency}) because awarded and lower categories are sold out.`;

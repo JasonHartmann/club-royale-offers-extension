@@ -107,6 +107,25 @@ describe('PricingUtils upgrade calculations', () => {
         expect(res).toBeCloseTo(500); // target 1500 - offerValue 800 - taxes 200
     });
 
+    test('dual-choice credits the fixed amount only above the awarded room', () => {
+        const { cache } = loadModule();
+        const entry = makeEntry({ INT: 200, B: 500, DLX: 1000 }, 50); // dual 400 / 1000 / 2000, taxes 100
+        cache.set('SD_OA_2026-12-12', entry);
+        const fs = require('fs');
+        const src = fs.readFileSync(path.resolve(__dirname, '..', 'utils', 'utils_core.js'), 'utf8');
+        const real = new Function(src + '\nreturn Utils;')();
+        global.App.Utils = {
+            getDualChoiceDollarOff: () => 800,
+            dualChoiceYouPay: real.dualChoiceYouPay,
+        };
+        const offer = { category: 'Balcony', campaignOffer: { offerCode: '26TCR403', offerType: { code: 'COMP' }, description: 'Apply $800 Off' } };
+        const sailing = { shipCode: 'OA', sailDate: '2026-12-12', roomType: 'Balcony' };
+        expect(PricingUtils.computeInteriorYouPayPrice(offer, sailing, { includeTaxes: true })).toBeCloseTo(100);
+        expect(PricingUtils.computeBalconyUpgradePrice(offer, sailing, { includeTaxes: true })).toBeCloseTo(100);
+        expect(PricingUtils.computeSuiteUpgradePrice(offer, sailing, { includeTaxes: true })).toBeCloseTo(1200);
+        expect(PricingUtils.computeSuiteUpgradePrice({ ...offer }, { ...sailing, isGOBO: true }, { includeTaxes: true })).toBeCloseTo(1200);
+    });
+
     test('returns null when pricing missing or non-positive', () => {
         const { cache } = loadModule();
         const entry = makeEntry({}, 100);

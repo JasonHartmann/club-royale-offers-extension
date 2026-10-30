@@ -576,4 +576,63 @@ describe('Utils (utils_core)', () => {
             global.location.hostname = 'www.royalcaribbean.com';
         });
     });
+
+    describe('getDualChoiceDollarOff / computeOfferValue dual-choice', () => {
+        const dualOffer = {
+            campaignOffer: {
+                offerType: { code: 'COMP' },
+                description: 'Exclusive Stateroom Offer or Apply $800 Off an Upgraded Stateroom on Eligible Cruises',
+            },
+        };
+        const sailing = { shipCode: 'OA', sailDate: '2026-09-01', roomType: 'Balcony' };
+
+        test('returns 800 for Apply $800 Off COMP wording', () => {
+            expect(Utils.getDualChoiceDollarOff(dualOffer, sailing)).toBe(800);
+        });
+
+        test('returns null for Dollars Off type even with Off wording', () => {
+            const doOffer = {
+                campaignOffer: {
+                    offerType: { code: 'DO' },
+                    description: '$300 Off or an Exclusive Stateroom Offer on Select Cruises',
+                },
+            };
+            expect(Utils.getDualChoiceDollarOff(doOffer, sailing)).toBeNull();
+        });
+
+        test('returns null for a plain comp with no Apply wording', () => {
+            const plain = {
+                campaignOffer: {
+                    offerType: { code: 'COMP' },
+                    description: 'Exclusive Stateroom Offer on Eligible Cruises',
+                },
+            };
+            expect(Utils.getDualChoiceDollarOff(plain, sailing)).toBeNull();
+        });
+
+        test('computeOfferValue short-circuits to 800 before itinerary cache', () => {
+            ItineraryCache.get.mockClear();
+            expect(Utils.computeOfferValue(dualOffer, sailing)).toBe(800);
+            expect(ItineraryCache.get).not.toHaveBeenCalled();
+        });
+
+        test('computeOfferValue is unchanged for a non-dual-choice offer', () => {
+            const plain = {
+                campaignOffer: {
+                    offerType: { code: 'COMP' },
+                    description: 'Exclusive Stateroom Offer on Eligible Cruises',
+                    category: 'Balcony',
+                },
+            };
+            expect(Utils.computeOfferValue(plain, sailing)).toBeNull();
+        });
+
+        test('dualChoiceYouPay credits $800 only above the awarded room', () => {
+            // Mariner 2026-12-12 screenshot: suite retail 5318, taxes 324, credit 800
+            expect(Utils.dualChoiceYouPay(5318, 324, 800, true, true)).toBeCloseTo(4518);
+            expect(Utils.dualChoiceYouPay(5318, 324, 800, true, false)).toBeCloseTo(4194);
+            expect(Utils.dualChoiceYouPay(2397, 324, 800, false, true)).toBeCloseTo(324);
+            expect(Utils.dualChoiceYouPay(1198, 324, 800, false, false)).toBe(0);
+        });
+    });
 });

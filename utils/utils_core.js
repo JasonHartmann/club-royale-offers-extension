@@ -268,10 +268,37 @@ const Utils = {
             return (raw != null && isFinite(raw)) ? Utils.formatOfferValue(raw) : '-';
         } catch(e) { return '-'; }
     },
+    // Dual-choice "Exclusive Stateroom Offer or Apply $XXX Off an Upgraded Stateroom" offers:
+    // the value you can apply toward an upgrade is the fixed $XXX, not the awarded room's base fare.
+    // Only COMP offers with the "Apply $XXX Off" wording match; the DO type ("$XXX Off or ...") does not.
+    getDualChoiceDollarOff(offer, sailing) {
+        try {
+            const co = offer && offer.campaignOffer;
+            if (!co) return null;
+            const typeCode = co.offerType && co.offerType.code;
+            if (typeCode && typeCode !== 'COMP') return null;
+            const m = String(co.description || '').match(/Apply\s*\$([\d,]+)\s*Off/i);
+            if (!m) return null;
+            const amt = Number(m[1].replace(/,/g, ''));
+            return (isFinite(amt) && amt > 0) ? amt : null;
+        } catch (e) { return null; }
+    },
+    // $XXX applies only to a room above the awarded one. At or below, You Pay is taxes.
+    // targetRetail is the tax-inclusive dual-occupancy price.
+    dualChoiceYouPay(targetRetail, taxes, credit, aboveAward, includeTaxes) {
+        const tax = Number(taxes) || 0;
+        if (!aboveAward) return includeTaxes === false ? 0 : tax;
+        const fare = Math.max(0, (Number(targetRetail) || 0) - tax);
+        const net = Math.max(0, fare - (Number(credit) || 0));
+        return includeTaxes === false ? net : net + tax;
+    },
     // New: compute raw offer value (numeric) based on itinerary pricing + guest occupancy
     computeOfferValue(offer, sailing) {
         try {
             if (!offer || !sailing) return null;
+            // Dual-choice "or Apply $XXX Off" offers: value is the fixed $XXX, not the base fare.
+            const dual = Utils.getDualChoiceDollarOff(offer, sailing);
+            if (dual != null) { _recordReason('dualChoiceDollarOff', offer, sailing); return dual; }
             const isOneGuestOffer = !!sailing.isGOBO;
             const shipCode = (sailing.shipCode || '').toString().trim();
             const sailDate = (sailing.sailDate || '').toString().trim().slice(0,10);

@@ -45,6 +45,8 @@
         } catch(e) { itineraryKey = 'SD_UNKNOWN'; }
         const perksStr = Utils.computePerks(offer, sailing);
         const codeCell = offer.campaignOffer?.offerCode || '-';
+        let dualChoiceAmt = null;
+        try { dualChoiceAmt = App.Utils.getDualChoiceDollarOff(offer, sailing); } catch(e){}
         const shipClass = Utils.getShipClass(sailing.shipName);
         // Trade-in value extraction & formatting (inserted between Expiration and Name columns)
         const rawTrade = offer.campaignOffer?.tradeInValue;
@@ -243,6 +245,7 @@
                 a.dataset.itineraryKey = itineraryKey;
                 // Attach offer category (raw room label) so the itinerary modal can compute estimates
                 try { a.dataset.offerCategory = (offer.campaignOffer && offer.campaignOffer.category) ? String(offer.campaignOffer.category) : (sailing.roomType || ''); } catch(e) {}
+                try { if (dualChoiceAmt != null) a.dataset.dualChoiceDollarOff = String(dualChoiceAmt); } catch(e){}
                 a.textContent = text || destination || itineraryKey;
                 a.addEventListener('click', (ev) => {
                     ev.preventDefault();

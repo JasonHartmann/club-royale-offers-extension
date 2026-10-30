@@ -256,6 +256,17 @@
                 return null;
             }
 
+            // Dual-choice "Apply $XXX Off": credit the fixed $XXX only above the awarded room.
+            try {
+                const dual = (App.Utils && typeof App.Utils.getDualChoiceDollarOff === 'function')
+                    ? App.Utils.getDualChoiceDollarOff(offer, sailing) : null;
+                const awardIdx = WIDE_CATS.indexOf(offerBroad);
+                const targetIdx = WIDE_CATS.indexOf(targetBroad);
+                if (dual != null && awardIdx >= 0 && targetIdx >= 0 && typeof App.Utils.dualChoiceYouPay === 'function') {
+                    return App.Utils.dualChoiceYouPay(targetPriceNum, taxesNumber, dual, targetIdx > awardIdx, includeTaxes);
+                }
+            } catch (e) {}
+
             // Prefer the shared offer-value pipeline for base pricing to keep consistency with table Value column
             let offerValueNum = getOfferValue(offer, sailing);
 

@@ -850,6 +850,7 @@
             link.textContent = 'Itinerary';
             link.dataset.itineraryKey = itineraryKey;
             try { link.dataset.offerCategory = (offer.campaignOffer && offer.campaignOffer.category) ? String(offer.campaignOffer.category) : (sailing.roomType || ''); } catch(e) {}
+            try { const da = (App && App.Utils && App.Utils.getDualChoiceDollarOff) ? App.Utils.getDualChoiceDollarOff(offer, sailing) : null; if (da != null) link.dataset.dualChoiceDollarOff = String(da); } catch(e){}
             link.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
