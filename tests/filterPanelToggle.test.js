@@ -91,12 +91,35 @@ describe('active filter badge', () => {
         expect(panel.classList.contains('adv-body-collapsed')).toBe(false);
     });
 
-    test('scrolling the offers list collapses the open filter body and does not expand it again', () => {
-        const { panel, state } = panelWithFilter(AdvancedSearch);
+    test('scrolling the offers list does not collapse the filter body in table layout', () => {
+        const { panel } = panelWithFilter(AdvancedSearch);
         const scroll = document.createElement('div');
         scroll.className = 'table-scroll-container';
         scroll.appendChild(panel);
         document.body.appendChild(scroll);
+
+        scroll.scrollTop = 0;
+        scroll.dispatchEvent(new Event('scroll'));
+        scroll.scrollTop = 48;
+        scroll.dispatchEvent(new Event('scroll'));
+        expect(panel.classList.contains('adv-body-collapsed')).toBe(false);
+        expect(panel.querySelector('.adv-badge').getAttribute('aria-expanded')).toBe('true');
+
+        scroll.scrollTop = 96;
+        scroll.dispatchEvent(new Event('scroll'));
+        expect(panel.classList.contains('adv-body-collapsed')).toBe(false);
+    });
+
+    test('scrolling the offers list still collapses the filter body in cards layout', () => {
+        const { panel, state } = panelWithFilter(AdvancedSearch);
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.className = 'gobo-layout-cards';
+        const scroll = document.createElement('div');
+        scroll.className = 'table-scroll-container';
+        shell.appendChild(scroll);
+        scroll.appendChild(panel);
+        document.body.appendChild(shell);
 
         scroll.scrollTop = 0;
         scroll.dispatchEvent(new Event('scroll'));
@@ -107,14 +130,14 @@ describe('active filter badge', () => {
         expect(panel.classList.contains('adv-body-collapsed')).toBe(true);
         expect(panel.querySelector('.adv-badge').getAttribute('aria-expanded')).toBe('false');
         expect(state).toBe(AdvancedSearch._lastState);
-
-        scroll.scrollTop = 96;
-        scroll.dispatchEvent(new Event('scroll'));
-        expect(panel.classList.contains('adv-body-collapsed')).toBe(true);
     });
 
     test('scrolling inside the filter panel does not collapse it', () => {
         const { panel, body } = panelWithFilter(AdvancedSearch);
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.className = 'gobo-layout-cards';
+        document.body.appendChild(shell);
         body.scrollTop = 0;
         body.dispatchEvent(new Event('scroll'));
         body.scrollTop = 80;
@@ -124,10 +147,14 @@ describe('active filter badge', () => {
 
     test('a short scroll does not collapse the filter body', () => {
         const { panel } = panelWithFilter(AdvancedSearch);
+        const shell = document.createElement('div');
+        shell.id = 'gobo-offers-table';
+        shell.className = 'gobo-layout-cards';
         const scroll = document.createElement('div');
         scroll.className = 'table-scroll-container';
+        shell.appendChild(scroll);
         scroll.appendChild(panel);
-        document.body.appendChild(scroll);
+        document.body.appendChild(shell);
         scroll.scrollTop = 0;
         scroll.dispatchEvent(new Event('scroll'));
         scroll.scrollTop = 4;

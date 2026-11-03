@@ -887,12 +887,12 @@ const AdvancedSearch = {
                                  const alreadySelected = new Set((pred.values || []).map(normVal));
                                  const CHUNK_SYNC_THRESHOLD = 250, CHUNK_SIZE = 300;
                                  if (values.length <= CHUNK_SYNC_THRESHOLD) {
-                                     values.forEach(v => { const opt = document.createElement('option'); const label = String(displayOpt(v) == null ? '' : displayOpt(v)); opt.value = label; opt.text = label; opt.textContent = label; this._paintInOption(opt); opt.selected = alreadySelected.has(normVal(v)); sel.appendChild(opt); });
+                                     values.forEach(v => { const opt = document.createElement('option'); const label = String(displayOpt(v) == null ? '' : displayOpt(v)); opt.value = String(v == null ? '' : v); opt.text = label; opt.textContent = label; this._paintInOption(opt); opt.selected = alreadySelected.has(normVal(v)) || alreadySelected.has(normVal(label)); sel.appendChild(opt); });
                                  } else {
                                      sel.classList.add('loading'); let idx = 0;
                                      const addChunk = () => {
                                          const start = performance.now(); const frag = document.createDocumentFragment(); let added = 0;
-                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); const label = String(displayOpt(v) == null ? '' : displayOpt(v)); opt.value = label; opt.text = label; opt.textContent = label; this._paintInOption(opt); opt.selected = alreadySelected.has(normVal(v)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
+                                         while (idx < values.length && added < CHUNK_SIZE) { const v = values[idx++]; const opt = document.createElement('option'); const label = String(displayOpt(v) == null ? '' : displayOpt(v)); opt.value = String(v == null ? '' : v); opt.text = label; opt.textContent = label; this._paintInOption(opt); opt.selected = alreadySelected.has(normVal(v)) || alreadySelected.has(normVal(label)); frag.appendChild(opt); added++; if (performance.now() - start > 12) break; }
                                          sel.appendChild(frag);
                                          if (idx < values.length) { if (typeof requestAnimationFrame === 'function') requestAnimationFrame(addChunk); else setTimeout(addChunk, 0); } else { sel.classList.remove('loading'); }
                                      }; (typeof requestAnimationFrame === 'function') ? requestAnimationFrame(addChunk) : setTimeout(addChunk,0);
@@ -1641,6 +1641,8 @@ const AdvancedSearch = {
         document.addEventListener('scroll', (ev) => this._onMainScroll(ev), { capture: true, passive: true });
     },
     _onMainScroll(ev) {
+        const shell = document.getElementById('gobo-offers-table');
+        if (!shell || !shell.classList.contains('gobo-layout-cards')) return;
         const target = ev.target;
         const el = target && target.nodeType === 1 ? target : null;
         if (el && el.closest && el.closest('#advanced-search-panel, .adv-add-field-popup, .adv-date-range-popup, .adv-date-range-wrapper')) return;
