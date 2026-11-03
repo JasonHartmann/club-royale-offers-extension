@@ -55,6 +55,10 @@ describe('Utils (utils_core)', () => {
             expect(Utils.formatDate('')).toBe('-');
         });
 
+        test('leaves an already-formatted date alone', () => {
+            expect(Utils.formatDate('12/01/26')).toBe('12/01/26');
+        });
+
         test('handles single-digit month and day in source', () => {
             expect(Utils.formatDate('2025-01-05')).toBe('01/05/25');
         });

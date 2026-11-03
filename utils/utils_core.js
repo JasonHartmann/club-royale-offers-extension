@@ -112,7 +112,8 @@ const Utils = {
     },
     formatDate(dateStr) {
         if (!dateStr) return '-';
-        const [year, month, day] = dateStr.split('T')[0].split('-');
+        const [year, month, day] = String(dateStr).split('T')[0].split('-');
+        if (!year || !month || !day) return String(dateStr);
         if (App.DateFullFormat) return `${year}-${month}-${day}`;
         return `${month}/${day}/${year.slice(-2)}`;
     },
