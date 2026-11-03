@@ -53,6 +53,19 @@ function _logOfferValueSummary(tag='OfferValueSummary') {
         console.debug(`[DEBUG][${tag}]`, summary);
     } catch(e){}
 }
+// ponytail: graph ship.name is null for WN/OA/AL/SY/HM (2026-11-02). Drop a code when the graph name returns.
+const SHIP_BY_CODE = {
+    AD: 'Adventure of the Seas', AL: 'Allure of the Seas', AN: 'Anthem of the Seas',
+    BR: 'Brilliance of the Seas', EN: 'Enchantment of the Seas', EX: 'Explorer of the Seas',
+    FR: 'Freedom of the Seas', GR: 'Grandeur of the Seas', HM: 'Harmony of the Seas',
+    IC: 'Icon of the Seas', ID: 'Independence of the Seas', JW: 'Jewel of the Seas',
+    LB: 'Liberty of the Seas', MA: 'Mariner of the Seas', OA: 'Oasis of the Seas',
+    OV: 'Ovation of the Seas', OY: 'Odyssey of the Seas', QN: 'Quantum of the Seas',
+    RD: 'Radiance of the Seas', RH: 'Rhapsody of the Seas', SC: 'Spectrum of the Seas',
+    SR: 'Serenade of the Seas', SY: 'Symphony of the Seas', UT: 'Utopia of the Seas',
+    VI: 'Vision of the Seas', VY: 'Voyager of the Seas', WN: 'Wonder of the Seas'
+};
+
 
 const Utils = {
     getCookie(name) {
@@ -99,7 +112,8 @@ const Utils = {
     },
     formatDate(dateStr) {
         if (!dateStr) return '-';
-        const [year, month, day] = dateStr.split('T')[0].split('-');
+        const [year, month, day] = String(dateStr).split('T')[0].split('-');
+        if (!year || !month || !day) return String(dateStr);
         if (App.DateFullFormat) return `${year}-${month}-${day}`;
         return `${month}/${day}/${year.slice(-2)}`;
     },
@@ -268,9 +282,8 @@ const Utils = {
             return (raw != null && isFinite(raw)) ? Utils.formatOfferValue(raw) : '-';
         } catch(e) { return '-'; }
     },
-    // Dual-choice "Exclusive Stateroom Offer or Apply $XXX Off an Upgraded Stateroom" offers:
-    // the value you can apply toward an upgrade is the fixed $XXX, not the awarded room's base fare.
-    // Only COMP offers with the "Apply $XXX Off" wording match; the DO type ("$XXX Off or ...") does not.
+    // Dual-choice COMP: "Apply $XXX Off" or "Apply $750.00 Towards the Purchase".
+    // Value is the fixed $XXX, not the awarded room's base fare. DO type stays on the base-fare path.
     getDualChoiceDollarOff(offer, sailing) {
         try {
             // A combined pair rewrites the room to the stacked category but keeps this wording.
@@ -279,7 +292,7 @@ const Utils = {
             if (!co) return null;
             const typeCode = co.offerType && co.offerType.code;
             if (typeCode && typeCode !== 'COMP') return null;
-            const m = String(co.description || '').match(/Apply\s*\$([\d,]+)\s*Off/i);
+            const m = String(co.description || '').match(/Apply\s*\$([\d,]+(?:\.\d{1,2})?)\s*(?:Off|Towards?)\b/i);
             if (!m) return null;
             const amt = Number(m[1].replace(/,/g, ''));
             return (isFinite(amt) && amt > 0) ? amt : null;
@@ -583,7 +596,7 @@ const Utils = {
                             if (!sailing.roomType && Array.isArray(sailing.roomTypeList) && sailing.roomTypeList.length > 0) {
                                 sailing.roomType = sailing.roomTypeList[0].name || sailing.roomTypeList[0].code || '';
                             }
-                            if (typeof sailing.shipName === 'string') sailing.shipName = Utils.toTitleCase(sailing.shipName.trim());
+                            Utils.repairShipName(sailing);
                             if (sailing.departurePort?.name) sailing.departurePort.name = Utils.toPortTitleCase(sailing.departurePort.name.trim());
                             if (typeof sailing.itineraryDescription === 'string') sailing.itineraryDescription = Utils.toTitleCase(sailing.itineraryDescription.trim());
                             if (sailing.sailingType?.name) sailing.sailingType.name = Utils.toTitleCase(sailing.sailingType.name.trim());
@@ -597,6 +610,23 @@ const Utils = {
             } catch(e) { /* ignore cache build errors */ }
         }
         return data;
+    },
+    blankShipName(v) {
+        if (v == null) return true;
+        const s = String(v).trim();
+        return !s || /^(null|undefined|-|n\/a)$/i.test(s);
+    },
+    shipNameFromCode(code) {
+        return SHIP_BY_CODE[String(code || '').trim().toUpperCase()] || '';
+    },
+    // Payload name, else itinerary name, else ship code. Writes the result onto the sailing.
+    repairShipName(sailing, itineraryName) {
+        if (!sailing || typeof sailing !== 'object') return '';
+        const payload = this.blankShipName(sailing.shipName) ? '' : String(sailing.shipName).trim();
+        const itin = this.blankShipName(itineraryName) ? '' : String(itineraryName).trim();
+        const name = payload || itin || this.shipNameFromCode(sailing.shipCode);
+        sailing.shipName = name ? this.toTitleCase(name) : '';
+        return sailing.shipName;
     },
     // Ship class lookup
     getShipClass(shipName) {

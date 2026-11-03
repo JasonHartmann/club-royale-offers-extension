@@ -41,6 +41,24 @@
         }
         return { shipCode: null, sailDate: null };
     }
+    function _usableShipName(v) {
+        try {
+            if (typeof Utils !== 'undefined' && Utils && typeof Utils.blankShipName === 'function') {
+                return Utils.blankShipName(v) ? '' : String(v).trim();
+            }
+        } catch (e) {}
+        if (v == null) return '';
+        const s = String(v).trim();
+        if (!s || /^(null|undefined|-|n\/a)$/i.test(s)) return '';
+        return s;
+    }
+    function _codeShipName(code) {
+        try {
+            if (typeof Utils !== 'undefined' && Utils && typeof Utils.shipNameFromCode === 'function') return Utils.shipNameFromCode(code) || '';
+        } catch (e) {}
+        return '';
+    }
+
 
     const ItineraryCache = {
         _cache: {},
@@ -136,6 +154,48 @@
                 entry.hydratedAt = Date.now();
             } catch (e) { /* swallow enrichment errors */ }
         },
+        _fillMissingShipNames() {
+            const state = (typeof App !== 'undefined' && App && App.TableRenderer && App.TableRenderer.lastState) || null;
+            if (!state) return;
+            const lists = [state.sortedOffers, state.originalOffers].filter(Array.isArray);
+            const seen = new Set();
+            const patched = [];
+            lists.forEach(list => {
+                list.forEach(row => {
+                    const sailing = row && row.sailing;
+                    if (!sailing || seen.has(sailing)) return;
+                    seen.add(sailing);
+                    if (_usableShipName(sailing.shipName)) return;
+                    const code = (sailing.shipCode || '').toString().trim();
+                    const date = (sailing.sailDate || '').toString().trim().slice(0, 10);
+                    let entry = null;
+                    try { entry = (code && date) ? this.getByShipDate(code, date) : null; } catch (e) { entry = null; }
+                    const name = _usableShipName(entry && entry.shipName) || _codeShipName(code);
+                    if (!name) return;
+                    let titled = name;
+                    try { if (typeof Utils !== 'undefined' && Utils && typeof Utils.toTitleCase === 'function') titled = Utils.toTitleCase(name); } catch (e) {}
+                    sailing.shipName = titled;
+                    patched.push(sailing);
+                });
+            });
+            if (!patched.length || typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+            const rows = document.querySelectorAll('#gobo-offers-table tbody tr, .accordion-table tbody tr');
+            patched.forEach(sailing => {
+                const code = (sailing.shipCode || '').toString().trim();
+                const date = (sailing.sailDate || '').toString().trim().slice(0, 10);
+                rows.forEach(tr => {
+                    if ((tr.dataset.shipCode || '') !== code || (tr.dataset.sailDate || '') !== date) return;
+                    if (_usableShipName(tr.dataset.shipName)) return;
+                    tr.dataset.shipName = sailing.shipName;
+                    const shipCell = tr.querySelector && tr.querySelector('td[data-col="ship"]');
+                    if (shipCell) shipCell.textContent = sailing.shipName;
+                    const classCell = tr.querySelector && tr.querySelector('td[data-col="shipClass"]');
+                    if (classCell && typeof Utils !== 'undefined' && Utils && typeof Utils.getShipClass === 'function') {
+                        classCell.textContent = Utils.getShipClass(sailing.shipName);
+                    }
+                });
+            });
+        },
         getByShipDate(shipCode, sailDate) {
             this._ensureLoaded();
             if (!shipCode || !sailDate) return null;
@@ -211,7 +271,7 @@
                                     sailDate,
                                     shipCode,
                                     offerCodes: [],
-                                    shipName: s.shipName || '',
+                                    shipName: _usableShipName(s.shipName) || _codeShipName(shipCode),
                                     itineraryDescription: s.itineraryDescription || '',
                                     destinationName: '',
                                     departurePortName: '',
@@ -239,7 +299,10 @@
                                 });
                                 updatedEntries++;
                                 entry.hydratedAt = now;
-                                if (!entry.shipName && s.shipName) entry.shipName = s.shipName;
+                                if (!_usableShipName(entry.shipName)) {
+                                    const incoming = _usableShipName(s.shipName) || _codeShipName(shipCode);
+                                    if (incoming) entry.shipName = incoming;
+                                }
                                 if (!entry.shipCode && shipCode) entry.shipCode = shipCode;
                                 if (!entry.itineraryDescription && s.itineraryDescription) entry.itineraryDescription = s.itineraryDescription;
                                 if (offerCode && !entry.offerCodes.includes(offerCode)) entry.offerCodes.push(offerCode);
@@ -370,7 +433,7 @@
                                             sailDate: sDate,
                                             shipCode: sShip,
                                             offerCodes: [],
-                                            shipName: (s?.shipName || itinShipName || ''),
+                                            shipName: (_usableShipName(itinShipName) || _usableShipName(s?.shipName) || _codeShipName(sShip)),
                                             itineraryDescription: (s?.itineraryDescription || itinName || ''),
                                             destinationName: destinationName,
                                             destinationCode: destinationCode,
@@ -394,7 +457,8 @@
                                         const entry = self._cache[compositeKey];
                                         if (!entry.cruiseId && cruiseId) entry.cruiseId = cruiseId;
                                         if (!entry.productViewLink && productViewLink) entry.productViewLink = productViewLink;
-                                        if (!entry.shipName && itinShipName) entry.shipName = itinShipName;
+                                        if (_usableShipName(itinShipName)) entry.shipName = _usableShipName(itinShipName);
+                                        else if (!_usableShipName(entry.shipName)) entry.shipName = _usableShipName(s?.shipName) || _codeShipName(sShip) || '';
                                         if (!entry.itineraryDescription && itinName) entry.itineraryDescription = itinName;
                                         if (!entry.destinationName && destinationName) entry.destinationName = destinationName;
                                         if (!entry.destinationCode && destinationCode) entry.destinationCode = destinationCode;
@@ -429,6 +493,7 @@
                 const results = await Promise.all(promises);
                 results.forEach(r => { if (!r) return; if (r.localUpdated) anyUpdated = true; });
                 if (anyUpdated) {
+                    try { this._fillMissingShipNames(); } catch (e) { dbg('fill ship names', e); }
                     this._persist();
                     try { document.dispatchEvent(new CustomEvent('goboItineraryHydrated', { detail: { keys: targetKeys } })); } catch (e) {}
                 }

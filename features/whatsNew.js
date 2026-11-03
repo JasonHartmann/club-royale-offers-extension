@@ -27,7 +27,7 @@
     }
 
     const WhatsNew = {
-        display: false, // 2.5.0: no tour, no button. Flip when the next tour should appear.
+        display: false, // 2.5.1: no tour, no button. Flip when the next tour should appear.
         _shown:false,
         _forced:false,
         _currentStepIndex: -1,

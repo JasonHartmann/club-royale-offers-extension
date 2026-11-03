@@ -979,6 +979,7 @@ const TableRenderer = {
             data.offers.forEach(offer => {
                 if (offer.campaignOffer && offer.campaignOffer.sailings) {
                     offer.campaignOffer.sailings.forEach(sailing => {
+                        try { if (App && App.Utils && typeof App.Utils.repairShipName === 'function') App.Utils.repairShipName(sailing); } catch (e) {}
                         originalOffers.push({ offer, sailing });
                     });
                 }

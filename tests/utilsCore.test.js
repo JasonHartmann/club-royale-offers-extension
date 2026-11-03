@@ -55,6 +55,10 @@ describe('Utils (utils_core)', () => {
             expect(Utils.formatDate('')).toBe('-');
         });
 
+        test('leaves an already-formatted date alone', () => {
+            expect(Utils.formatDate('12/01/26')).toBe('12/01/26');
+        });
+
         test('handles single-digit month and day in source', () => {
             expect(Utils.formatDate('2025-01-05')).toBe('01/05/25');
         });
@@ -506,6 +510,34 @@ describe('Utils (utils_core)', () => {
             expect(data.offers[0].campaignOffer.sailings[0].shipName).toBe('Icon Of The Seas');
         });
 
+        test('replaces the string null with the ship-code name', () => {
+            const data = {
+                offers: [{
+                    campaignOffer: {
+                        offerCode: 'X',
+                        name: 'deal',
+                        sailings: [{ shipName: 'null', shipCode: 'WN', sailDate: '2026-12-04' }],
+                    },
+                }],
+            };
+            Utils.normalizeOffers(data);
+            expect(data.offers[0].campaignOffer.sailings[0].shipName).toBe('Wonder Of The Seas');
+        });
+
+        test('leaves an unknown null ship blank instead of the word Null', () => {
+            const data = {
+                offers: [{
+                    campaignOffer: {
+                        offerCode: 'X',
+                        name: 'deal',
+                        sailings: [{ shipName: 'Null', shipCode: 'ZZ' }],
+                    },
+                }],
+            };
+            Utils.normalizeOffers(data);
+            expect(data.offers[0].campaignOffer.sailings[0].shipName).toBe('');
+        });
+
         test('handles null offers array gracefully', () => {
             expect(() => Utils.normalizeOffers({})).not.toThrow();
             expect(() => Utils.normalizeOffers(null)).not.toThrow();
@@ -588,6 +620,26 @@ describe('Utils (utils_core)', () => {
 
         test('returns 800 for Apply $800 Off COMP wording', () => {
             expect(Utils.getDualChoiceDollarOff(dualOffer, sailing)).toBe(800);
+        });
+
+        test('returns 750 for Apply $750.00 Towards wording', () => {
+            const offer = {
+                campaignOffer: {
+                    offerType: { code: 'COMP' },
+                    description: 'Exclusive Stateroom for Two Or Trade In Your Offer & Apply $750.00 Towards the Purchase of an Upgraded Stateroom on Eligible Cruises',
+                },
+            };
+            expect(Utils.getDualChoiceDollarOff(offer, sailing)).toBe(750);
+        });
+
+        test('returns 800 for Apply $800 Towards with no cents', () => {
+            const offer = {
+                campaignOffer: {
+                    offerType: { code: 'COMP' },
+                    description: 'Exclusive Stateroom Offer Or Trade In Your Offer & Apply $800 Towards the Purchase of an Upgraded Stateroom on Eligible Cruises',
+                },
+            };
+            expect(Utils.getDualChoiceDollarOff(offer, sailing)).toBe(800);
         });
 
         test('returns null for Dollars Off type even with Off wording', () => {
