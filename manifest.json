@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cruise Comp Offers Viewer",
   "short_name": "Cruise Comp Offers",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "description": "View cruise comp offers in a sortable, groupable table and accordion.",
   "browser_specific_settings": {
     "gecko": {
@@ -31,7 +31,8 @@
     "https://royalcaribbean.com/*",
     "https://celebritycruises.com/*",
     "https://comproyale.com/*",
-    "https://www.comproyale.com/*"
+    "https://www.comproyale.com/*",
+    "https://aws-prd.api.rccl.com/*"
   ],
   "content_scripts": [
     {
@@ -74,6 +75,7 @@
         "features/accordionBuilder.js",
         "features/favorites.js",
         "features/filtering.js",
+        "features/bookings.js",
         "features/whatsNew.js",
         "features/settings.js",
         "features/advancedSearch.js",

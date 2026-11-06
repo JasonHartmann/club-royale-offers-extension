@@ -7,7 +7,8 @@ const ADVANCED_ONLY_FALLBACK_KEYS = [
     'minInteriorPrice',
     'minOutsidePrice',
     'minBalconyPrice',
-    'minSuitePrice'
+    'minSuitePrice',
+    'booked'
 ];
 
 const ADV_PRICE_KEY_TO_CATEGORY = {
@@ -1013,6 +1014,13 @@ var Filtering = {
             case 'minSuitePrice': {
                 const computed = computeAdvancedMinPrice(offer, sailing, key, true);
                 return computed === '-' ? '-' : computed;
+            }
+            case 'booked': {
+                try {
+                    if (typeof Bookings === 'undefined' || !Bookings.isBooked) return 'No';
+                    const brand = typeof Bookings.activeBrand === 'function' ? Bookings.activeBrand() : null;
+                    return Bookings.isBooked(sailing && sailing.shipCode, sailing && sailing.sailDate, brand) ? 'Yes' : 'No';
+                } catch (e) { return 'No'; }
             }
             default:
                 return offer[key];

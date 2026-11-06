@@ -421,7 +421,7 @@ body.gobo-dark .gobo-card-detail-val { color: #e2e8f0; }
 #gobo-offers-table .gobo-profile-combo {
     overflow: clip !important;
     display: grid !important;
-    grid-template-columns: 1fr 32px 32px 32px;
+    grid-template-columns: 1fr 32px 32px 32px 32px;
     gap: 0 !important;
     align-items: stretch !important;
     background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.22)) !important;
@@ -586,7 +586,8 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed { c
     color: #64748b;
 }
 #gobo-offers-table .gobo-profile-combo .gobo-top-signout,
-#gobo-offers-table .gobo-profile-combo .gobo-top-gear {
+#gobo-offers-table .gobo-profile-combo .gobo-top-gear,
+#gobo-offers-table .gobo-profile-combo .gobo-top-cruises {
     grid-row: 1;
     display: inline-flex;
     align-items: center;
@@ -606,20 +607,24 @@ body.gobo-dark #gobo-offers-table .gobo-profile-combo .profile-tab-refreshed { c
     cursor: pointer;
     transition: background .15s ease, color .15s ease;
 }
-#gobo-offers-table .gobo-profile-combo .gobo-top-signout { grid-column: 3; }
-#gobo-offers-table .gobo-profile-combo .gobo-top-gear { grid-column: 4; width: 32px; min-width: 32px; }
+#gobo-offers-table .gobo-profile-combo .gobo-top-cruises { grid-column: 3; }
+#gobo-offers-table .gobo-profile-combo .gobo-top-signout { grid-column: 4; }
+#gobo-offers-table .gobo-profile-combo .gobo-top-gear { grid-column: 5; width: 32px; min-width: 32px; }
 body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-signout,
-body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-gear {
+body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-gear,
+body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-cruises {
     color: #94a3b8;
     border-left-color: rgba(255,255,255,0.14);
 }
 #gobo-offers-table .gobo-profile-combo .gobo-top-signout:hover,
-#gobo-offers-table .gobo-profile-combo .gobo-top-gear:hover {
+#gobo-offers-table .gobo-profile-combo .gobo-top-gear:hover,
+#gobo-offers-table .gobo-profile-combo .gobo-top-cruises:hover {
     color: #0f172a;
     background: rgba(15, 23, 42, 0.06);
 }
 body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-signout:hover,
-body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-gear:hover {
+body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-gear:hover,
+body.gobo-dark #gobo-offers-table .gobo-profile-combo .gobo-top-cruises:hover {
     color: #e2e8f0;
     background: rgba(255, 255, 255, 0.08);
 }

@@ -476,7 +476,41 @@ const ApiClient = {
                 const brandCode = App.Utils.detectBrand();
                 const legacyKey = `gobo-${usernameKey}`; // backward-compatible
                 const brandedKey = `gobo-${brandCode}-${usernameKey}`;
+                let previousBookings = null;
+                try {
+                    const existingRaw = (typeof goboStorageGet === 'function') ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey);
+                    const existing = typeof existingRaw === 'string' ? JSON.parse(existingRaw) : existingRaw;
+                    if (existing && existing.bookings) previousBookings = existing.bookings;
+                } catch (e) {}
                 const payload = { savedAt: Date.now(), data: normalizedData, brand: brandCode, email: App.CurrentUserEmail || user.email };
+                if (previousBookings) payload.bookings = previousBookings;
+                if (!isSimDomain && (brandCode === 'R' || brandCode === 'C') && typeof Bookings !== 'undefined' && Bookings.load) {
+                    try { if (Bookings.markLoading) Bookings.markLoading(brandedKey, true); } catch (e) {}
+                    const load = Bookings.load(authToken, accountId, brandCode);
+                    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 45000));
+                    Promise.race([load, timeout]).then(snap => {
+                        if (!snap) return;
+                        let current = payload;
+                        try {
+                            const raw = (typeof goboStorageGet === 'function') ? goboStorageGet(brandedKey) : localStorage.getItem(brandedKey);
+                            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                            if (parsed && parsed.data) current = parsed;
+                        } catch (e) {}
+                        current.bookings = snap;
+                        const raw = JSON.stringify(current);
+                        if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, raw); else localStorage.setItem(brandedKey, raw);
+                        try { Bookings._keys = null; } catch (e) {}
+                        try { if (Bookings.syncBadges) Bookings.syncBadges(); } catch (e) {}
+                        try { if (Bookings.markDeal) Bookings.markDeal(brandedKey, Bookings.hasDeal(snap)); } catch (e) {}
+                        const modal = document.getElementById('gobo-bookings-modal');
+                        if (modal && modal.getAttribute('data-storage-key') === brandedKey && Bookings.renderPanel) {
+                            const body = modal.querySelector('.gobo-bookings-body');
+                            if (body) Bookings.renderPanel(body, current);
+                        }
+                    }).catch(() => {}).finally(() => {
+                        try { if (Bookings.markLoading) Bookings.markLoading(brandedKey, false); } catch (e) {}
+                    });
+                }
                 // Write branded key
                 if (typeof goboStorageSet === 'function') goboStorageSet(brandedKey, JSON.stringify(payload)); else localStorage.setItem(brandedKey, JSON.stringify(payload));
                 // If legacy key exists already, leave it untouched; else optionally seed it for a transition (commented out for now)

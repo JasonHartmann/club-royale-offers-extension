@@ -18,7 +18,8 @@
                 { key: 'minInteriorPrice', label: 'Interior Price' },
                 { key: 'minOutsidePrice', label: 'Outside Price' },
                 { key: 'minBalconyPrice', label: 'Balcony Price' },
-                { key: 'minSuitePrice', label: 'Suite Price' }
+                { key: 'minSuitePrice', label: 'Suite Price' },
+                { key: 'booked', label: 'Booked' }
                 // Removed retired upgrade-to-suite fields: upgradeInteriorToSuite, upgradeOutsideToSuite, upgradeBalconyToSuite
             ];
         } catch(e) { return []; }

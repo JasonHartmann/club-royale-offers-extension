@@ -223,7 +223,7 @@ describe('Column coverage across systems', () => {
         // Advanced-only fields that legitimately appear in filtering but not in headers
         const advancedOnlyKeys = new Set([
             'departureDayOfWeek', 'departureMonth', 'visits', 'endDate',
-            'minInteriorPrice', 'minOutsidePrice', 'minBalconyPrice', 'minSuitePrice'
+            'minInteriorPrice', 'minOutsidePrice', 'minBalconyPrice', 'minSuitePrice', 'booked'
         ]);
 
         // 'itinerary' is a valid sort key that maps to destination/nights columns

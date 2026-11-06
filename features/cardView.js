@@ -578,6 +578,19 @@
             return row;
         },
 
+        _bookedSpan(sailing) {
+            try {
+                if (typeof Bookings === 'undefined' || !Bookings.isBooked || !sailing) return null;
+                const brand = typeof Bookings.activeBrand === 'function' ? Bookings.activeBrand() : null;
+                if (!Bookings.isBooked(sailing.shipCode, sailing.sailDate, brand)) return null;
+                const span = document.createElement('span');
+                span.className = 'gobo-booked-badge';
+                span.title = 'Already booked';
+                span.textContent = 'Booked';
+                return span;
+            } catch (e) { return null; }
+        },
+
         _buildHero(state, offer, sailing, parsed, urgent, newest) {
             const hero = document.createElement('div');
             hero.className = 'gobo-card-hero';
@@ -607,6 +620,8 @@
             const dest = parsed.label || sailing.shipName || '-';
             const shipName = sailing.shipName || '-';
             title.textContent = byShip ? shipName : dest;
+            const heroBooked = this._bookedSpan(sailing);
+            if (heroBooked) title.appendChild(heroBooked);
             copy.appendChild(title);
             const sub = document.createElement('p');
             sub.className = 'gobo-hero-sub';
@@ -786,6 +801,8 @@
             when.className = 'gobo-date-when';
             when.textContent = this._formatDay(sailing.sailDate);
             top.appendChild(when);
+            const dateBooked = this._bookedSpan(sailing);
+            if (dateBooked) top.appendChild(dateBooked);
             const room = this._roomLabel(sailing);
             if (room && !isHiddenCol('category')) {
                 const roomEl = document.createElement('span');

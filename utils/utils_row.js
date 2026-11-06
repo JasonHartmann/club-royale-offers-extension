@@ -145,6 +145,12 @@
                 profileCellHtml = `<td class="${tdClass('profile','border p-1 text-center')}" data-col="profile"><div class="gobo-profile-sources">${badges || '-'}</div></td>`;
             }
         } catch (e) { profileCellHtml = ''; }
+        let bookedBadge = '';
+        try {
+            if (typeof Bookings !== 'undefined' && Bookings.isBooked && sailing && Bookings.isBooked(sailing.shipCode, sailing.sailDate, typeof Bookings.activeBrand === 'function' ? Bookings.activeBrand() : null)) {
+                bookedBadge = ' <span class="gobo-booked-badge" title="Already booked">Booked</span>';
+            }
+        } catch (e) {}
         row.innerHTML = `
             ${favCellHtml}
             ${profileCellHtml}
@@ -160,7 +166,7 @@
             <td class="${tdClass('suiteUpgrade','border p-2')}" data-col="suiteUpgrade">${suiteUpgradeDisplay}</td>
             <td class="${tdClass('offerName','border p-2')}" data-col="offerName">${esc(offer.campaignOffer.name || '-')}</td>
             <td class="${tdClass('shipClass','border p-2')}" data-col="shipClass">${shipClass}</td>
-            <td class="${tdClass('ship','border p-2')}" data-col="ship">${esc(sailing.shipName || '-')}</td>
+            <td class="${tdClass('ship','border p-2')}" data-col="ship">${esc(sailing.shipName || '-')}${bookedBadge}</td>
             <td class="${tdClass('sailDate','border p-2')}" data-col="sailDate">${Utils.formatDate(sailing.sailDate)}</td>
             <td class="${tdClass('departurePort','border p-2')}" data-col="departurePort">${esc(sailing.departurePort?.name || '-')}</td>
             <td class="${tdClass('nights','border p-2')}" data-col="nights">${nights}</td>

@@ -358,6 +358,22 @@
                     });
                     return true;
                 }
+                if (message && message.channel === 'gobo-rccl' && typeof message.url === 'string') {
+                    if (!message.url.startsWith('https://aws-prd.api.rccl.com/')) {
+                        sendResponse({ error: 'host' });
+                        return false;
+                    }
+                    const method = message.method || 'GET';
+                    const init = { method: method, headers: message.headers || {} };
+                    if (method !== 'GET' && message.body != null) init.body = message.body;
+                    fetch(message.url, init).then(async (resp) => {
+                        const body = await resp.text();
+                        sendResponse({ ok: resp.ok, status: resp.status, body });
+                    }).catch((err) => {
+                        sendResponse({ error: String(err && err.message ? err.message : err) });
+                    });
+                    return true;
+                }
                 if (message && message.channel === 'gobo-flyer' && typeof message.html === 'string') {
                     try {
                         const blob = new Blob([message.html], { type: 'text/html' });

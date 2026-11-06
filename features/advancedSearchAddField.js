@@ -20,7 +20,8 @@ const AdvancedSearchAddField = {
                 minInteriorPrice: { title: 'Interior Price', hint: 'You Pay amount for Interior vs offer category' },
                 minOutsidePrice: { title: 'Ocean View Price', hint: 'You Pay amount for Ocean View' },
                 minBalconyPrice: { title: 'Balcony Price', hint: 'You Pay amount for Balcony' },
-                minSuitePrice: { title: 'Suite Price', hint: 'You Pay amount for Suite' }
+                minSuitePrice: { title: 'Suite Price', hint: 'You Pay amount for Suite' },
+                booked: { title: 'Booked', hint: 'Sailing already on this account' }
             };
 
             // Exclude removed upgrade-to-suite filters entirely from add-field options

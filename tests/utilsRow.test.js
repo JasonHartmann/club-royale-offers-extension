@@ -30,6 +30,7 @@ describe('createOfferRow HTML escaping', () => {
     afterEach(() => {
         delete global.App;
         delete global.B2BUtils;
+        delete global.Bookings;
     });
 
     function rowFor(offer, sailing) {
@@ -124,5 +125,33 @@ describe('createOfferRow HTML escaping', () => {
         expect(row.querySelector('[data-col="departurePort"]').textContent).toBe('Miami');
         expect(row.querySelector('[data-col="destination"]').textContent).toContain('Western Caribbean');
         expect(row.querySelector('[data-col="perks"]').textContent).toBe('Beverage');
+    });
+
+    test('booked sailing gets a badge and the row is still created', () => {
+        global.Bookings = {
+            activeBrand: () => 'R',
+            isBooked: (ship, date) => ship === 'OA' && String(date).indexOf('2026-11-16') !== -1
+        };
+        const offer = {
+            campaignOffer: {
+                offerCode: '26TOR604',
+                name: 'Play Your Way',
+                startDate: '2026-01-01',
+                reserveByDate: '2026-09-16'
+            }
+        };
+        const sailing = {
+            shipName: 'Oasis of the Seas',
+            shipCode: 'OA',
+            sailDate: '2026-11-16',
+            departurePort: { name: 'Miami' },
+            itineraryDescription: '7 Night Western Caribbean',
+            roomType: 'Interior'
+        };
+        const row = rowFor(offer, sailing);
+        expect(row).toBeTruthy();
+        expect(row.querySelector('.gobo-booked-badge')).not.toBeNull();
+        expect(row.querySelector('.gobo-booked-badge').textContent).toBe('Booked');
+        expect(row.querySelector('[data-col="ship"]')).not.toBeNull();
     });
 });

@@ -14,7 +14,7 @@
         return '2.0';
     })();
     // Increment REVISION when adding new steps within the same extension version to force re-showing the tour.
-    const TOUR_REVISION = '20'; // r20 Union All
+    const TOUR_REVISION = '21'; // r21 Cruises. r20 Union All
     const STORAGE_KEY = 'goboWhatsNewShown-' + VERSION + '-r' + TOUR_REVISION;
     const OPT_OUT_KEY = 'goboWhatsNewOptOut';
     const RETRY_LIMIT = 20; // up to ~8s (200ms interval) waiting for elements
@@ -27,7 +27,7 @@
     }
 
     const WhatsNew = {
-        display: false, // 2.5.1: no tour, no button. Flip when the next tour should appear.
+        display: false, // 2.6.0: no tour, no button. Flip when the next tour should appear.
         _shown:false,
         _forced:false,
         _currentStepIndex: -1,
@@ -110,10 +110,10 @@
         _initSteps(){
             this._steps = [
                 {
-                    id:'unionAll',
-                    target:()=> document.querySelector('.profile-tab[data-storage-key="goob-combined-linked"]') || document.querySelector('.gobo-union-all'),
-                    title:'Union All',
-                    body:"Link as many accounts as you want. A row still pairs only two — 1+2 or 2+4, never all of them. Check Union All to also list each account's own sailings, even when that sailing has a pair, so Back-to-Back can spend each person's code once. Royal still shows next to Celebrity.",
+                    id:'cruises',
+                    target:()=> document.querySelector('.gobo-cruises-btn'),
+                    title:'Cruises',
+                    body:'The ship icon on the profile row opens the sailings already booked on that account. Each reservation lists what you bought, what you paid, and the current price. Modify opens that reservation\'s Order history.',
                 },
                 {
                     id:'signOut',

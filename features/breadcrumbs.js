@@ -18,7 +18,40 @@ const Breadcrumbs = {
         e.stopPropagation();
         try { App.SignOut.signOut(); } catch (err) { console.error('[SignOut] button error:', err); }
     },
+    _ensureCruises(tabsRow) {
+        let btn = tabsRow.querySelector('.gobo-cruises-btn');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'gobo-cruises-btn gobo-top-cruises';
+            btn.setAttribute('aria-label', 'Cruises');
+            btn.title = 'Cruises';
+            btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10.189V14"/><path d="M12 2v3"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-8.188-3.639a2 2 0 0 0-1.624 0L3 14a11.6 11.6 0 0 0 2.81 7.76"/><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.5 0 2.5 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>';
+            btn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const key = btn.getAttribute('data-storage-key');
+                if (!key || typeof Bookings === 'undefined' || !Bookings.open) return;
+                Bookings.open(key);
+            });
+            const signout = tabsRow.querySelector('.gobo-top-signout');
+            if (signout) tabsRow.insertBefore(btn, signout);
+            else tabsRow.appendChild(btn);
+        }
+        let key = null;
+        try {
+            key = (App.CurrentProfile && App.CurrentProfile.key) || (App.TableRenderer && App.TableRenderer.lastState && App.TableRenderer.lastState.selectedProfileKey);
+        } catch (e) {}
+        if (!key || !/^gobo-[RC]-/.test(key)) {
+            const active = tabsRow.querySelector('.profile-tab.active');
+            key = active && active.getAttribute('data-storage-key');
+        }
+        const show = !!(key && /^gobo-[RC]-/.test(key));
+        btn.hidden = !show;
+        if (show) btn.setAttribute('data-storage-key', key);
+        try { if (typeof Bookings !== 'undefined' && Bookings.paintCruisesBtn) Bookings.paintCruisesBtn(btn); } catch (e) {}
+    },
     _ensureTopActions(tabsRow) {
+        this._ensureCruises(tabsRow);
         const logout = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>';
         this._topAction(tabsRow, 'gobo-top-signout', 'Sign Out', logout, (e) => this._signOutClick(e));
         if (tabsRow.querySelector('.gobo-top-gear') || tabsRow.querySelector('#gobo-settings-gear')) return;
