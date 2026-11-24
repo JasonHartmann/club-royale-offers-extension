@@ -193,10 +193,20 @@ body.gobo-dark .breadcrumb-tabs-row .gobo-cruises-btn:hover {
 .gobo-cruises-btn { position: relative; }
 .gobo-cruises-btn.is-loading svg { visibility: hidden; }
 .gobo-cruises-btn.is-loading::after { content: ''; position: absolute; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: gobo-cruises-spin .6s linear infinite; }
+.breadcrumb-tabs-row .gobo-cruises-btn.is-loading,
+.breadcrumb-tabs-row .gobo-cruises-btn.is-loading:hover,
+body.gobo-dark .breadcrumb-tabs-row .gobo-cruises-btn.is-loading:hover { cursor: default; background: transparent; }
 @keyframes gobo-cruises-spin { to { transform: rotate(360deg); } }
-.gobo-cruises-btn.is-deal { color: #047857; animation: gobo-cruises-glow 1.8s ease-in-out infinite; }
-@keyframes gobo-cruises-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(4, 120, 87, 0); } 50% { box-shadow: 0 0 8px 2px rgba(4, 120, 87, 0.55); } }
-body.gobo-dark .gobo-cruises-btn.is-deal { color: #6ee7b7; }
+.breadcrumb-tabs-row .gobo-cruises-btn.is-deal,
+body.gobo-dark .breadcrumb-tabs-row .gobo-cruises-btn.is-deal {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.22);
+  animation: gobo-cruises-glow 1.3s ease-in-out infinite;
+}
+@keyframes gobo-cruises-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.7), 0 0 10px 3px rgba(16, 185, 129, 0.45); }
+  50% { color: #ecfdf5; background: rgba(16, 185, 129, 0.4); box-shadow: 0 0 0 2px rgba(167, 243, 208, 0.95), 0 0 22px 8px rgba(52, 211, 153, 0.9); }
+}
 @media (prefers-reduced-motion: reduce) {
   .gobo-cruises-btn.is-loading::after, .gobo-cruises-btn.is-deal { animation: none; }
 }
@@ -274,7 +284,7 @@ td[data-col="profile"], th[data-key="profile"] { text-align:center; white-space:
 .gobo-booking-room-body { display:none; }
 .gobo-booking-room.is-open .gobo-booking-room-body { display:block; padding-bottom:8px; }
 .gobo-booking-addon-money { margin-left:auto; display:flex; gap:14px; align-items:baseline; white-space:nowrap; }
-.gobo-booking-now { color:#334155; font-size:13px; font-weight:650; }
+.gobo-booking-now { color:#334155; font-size:20px; font-weight:750; }
 .gobo-booking-line-paid { margin-left:0; }
 .breadcrumb-tabs-row .gobo-cruises-btn:hover { background:rgba(15,23,42,0.06); color:#0f172a; }
 .breadcrumb-tabs-row .gobo-cruises-btn[hidden] { display:none; }
@@ -296,43 +306,46 @@ body.gobo-dark .breadcrumb-tabs-row .gobo-cruises-btn:hover { background:rgba(25
 .gobo-booking-hero-copy .gobo-booking-when, .gobo-booking-hero-copy .gobo-booking-desc, .gobo-booking-hero-copy .gobo-booking-caption { color:rgba(255,255,255,.88); }
 .gobo-booking-caption { margin-top:2px; font-size:12px; letter-spacing:.02em; }
 .gobo-booking-rooms { padding:2px 16px 10px; }
-.gobo-booking-ship { font-size:22px; font-weight:750; letter-spacing:-0.02em; line-height:1.2; }
-.gobo-booking-when { margin-top:4px; color:#334155; font-size:15px; }
-.gobo-booking-desc { margin-top:2px; color:#64748b; font-size:14px; }
+.gobo-booking-ship { font-size:26px; font-weight:750; letter-spacing:-0.02em; line-height:1.15; }
+.gobo-booking-when { margin-top:4px; color:#334155; font-size:16px; }
+.gobo-booking-desc { margin-top:2px; color:#64748b; font-size:15px; }
 .gobo-booking-room { margin-top:8px; padding-top:8px; border-top:1px solid #e5e7eb; background:none; }
-.gobo-booking-plan { display:inline-flex; margin:4px 0 10px; font-size:14px; font-weight:650; color:#1d4ed8; text-decoration:none; }
+.gobo-booking-plan { display:inline-flex; margin:6px 0 12px; font-size:16px; font-weight:650; color:#1d4ed8; text-decoration:none; }
 .gobo-booking-plan:hover { text-decoration:underline; }
-.gobo-booking-compare { display:flex; gap:18px; margin-top:4px; }
-.gobo-booking-compare-cell { display:flex; gap:6px; align-items:baseline; }
-.gobo-booking-compare-k { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#94a3b8; }
-.gobo-booking-compare-cell.is-cheaper .gobo-booking-compare-k, .gobo-booking-compare-cell.is-cheaper .gobo-booking-now { color:#047857; }
-.gobo-booking-cheaper-note { display:inline-block; margin-top:4px; margin-right:8px; font-size:12px; font-weight:650; color:#047857; }
+.gobo-booking-compare { display:flex; gap:22px; margin-top:8px; align-items:baseline; }
+.gobo-booking-compare-cell { display:flex; gap:8px; align-items:baseline; }
+.gobo-booking-compare-k { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#94a3b8; }
+.gobo-booking-compare-cell.is-cheaper .gobo-booking-compare-k { font-size:13px; color:#059669; }
+.gobo-booking-compare-cell.is-cheaper .gobo-booking-now { font-size:24px; color:#047857; }
+.gobo-booking-cheaper-note { display:inline-block; margin-top:6px; margin-right:8px; font-size:15px; font-weight:700; color:#047857; }
 body.gobo-dark .gobo-booking-plan { color:#93c5fd; }
 body.gobo-dark .gobo-booking-cheaper-note { color:#6ee7b7; }
-.gobo-booking-room-where { font-size:15px; font-weight:700; }
-.gobo-booking-guests { margin-top:2px; color:#334155; }
+.gobo-booking-room-where { font-size:17px; font-weight:700; }
+.gobo-booking-guests { margin-top:2px; color:#334155; font-size:15px; }
 .gobo-booking-chips { display:flex; flex-wrap:wrap; gap:0; margin-top:4px; color:#64748b; font-size:13px; }
 .gobo-booking-chip { background:none; border:0; padding:0; color:#64748b; font-size:13px; font-weight:500; }
 .gobo-booking-chip + .gobo-booking-chip::before { content:'·'; margin:0 8px; color:#cbd5e1; }
-.gobo-booking-addon { display:block; padding:12px 0 2px; }
+.gobo-booking-addon { display:block; padding:14px 0 4px; }
 .gobo-booking-addon-top { display:flex; gap:12px; align-items:flex-start; }
 .gobo-booking-addon-main { flex:1; min-width:0; }
-.gobo-booking-addon-prices { margin-top:8px; }
+.gobo-booking-addon-prices { margin-top:10px; }
 .gobo-booking-thumb { width:72px; height:54px; object-fit:cover; border-radius:8px; flex:0 0 auto; background:#e5e7eb; }
 .gobo-booking-addon-head { display:flex; align-items:baseline; gap:12px; }
-.gobo-booking-addon-title { font-size:15px; font-weight:650; flex:1; min-width:0; }
-.gobo-booking-status { font-size:12px; font-weight:650; color:#047857; white-space:nowrap; }
+.gobo-booking-addon-title { font-size:18px; font-weight:700; flex:1; min-width:0; }
+.gobo-booking-status { font-size:13px; font-weight:650; color:#047857; white-space:nowrap; }
 .gobo-booking-status.is-cancelled { color:#94a3b8; }
-.gobo-booking-line-paid { font-size:15px; font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; }
-.gobo-booking-room-meta { color:#64748b; font-size:13px; font-weight:500; }
-.gobo-booking-order { color:#94a3b8; font-size:12px; margin-top:1px; }
+.gobo-booking-line-paid { font-size:20px; font-variant-numeric:tabular-nums; font-weight:750; white-space:nowrap; }
+.gobo-booking-room-meta { color:#64748b; font-size:14px; font-weight:500; }
+.gobo-booking-order { color:#94a3b8; font-size:13px; margin-top:2px; }
 .gobo-booking-addon.is-cancelled .gobo-booking-addon-title { color:#64748b; font-weight:550; }
-.gobo-booking-guest { display:grid; grid-template-columns:96px 1fr; gap:2px 12px; margin-top:6px; font-size:13px; color:#334155; }
-.gobo-booking-guest-name { color:#64748b; }
-.gobo-booking-price { font-variant-numeric:tabular-nums; }
+.gobo-booking-guest { display:grid; grid-template-columns:112px 1fr; gap:2px 12px; margin-top:8px; font-size:15px; color:#334155; }
+.gobo-booking-guest-name { color:#64748b; font-size:15px; }
+.gobo-booking-price { font-variant-numeric:tabular-nums; font-size:16px; }
 .gobo-booking-base { color:#94a3b8; margin-right:8px; }
-.gobo-booking-paid { font-weight:650; }
-.gobo-booking-promo { grid-column:2; color:#64748b; font-size:12px; }
+.gobo-booking-paid { font-weight:700; font-size:16px; }
+.gobo-booking-promo { grid-column:2; color:#64748b; font-size:13px; }
+.gobo-booking-rate { font-size:15px; }
+.gobo-booking-grat { margin-top: 2px; color: #94a3b8; font-size: 12px; }
 .gobo-booking-refund { color:#64748b; }
 .gobo-booking-cheaper, .gobo-booking-repurchased { margin-top:6px; font-size:13px; font-weight:650; }
 .gobo-booking-cheaper { color:#047857; }
@@ -349,4 +362,8 @@ body.gobo-dark .gobo-booking-room, body.gobo-dark .gobo-booking-sailing + .gobo-
 body.gobo-dark .gobo-booking-sailing { border-color:#334155; }
 body.gobo-dark .gobo-booking-now, body.gobo-dark .gobo-booking-line-paid { color:#f8fafc; }
 body.gobo-dark .gobo-booking-compare-k { color:#94a3b8; }
+body.gobo-dark .gobo-booking-compare-cell.is-cheaper .gobo-booking-now,
+body.gobo-dark .gobo-booking-compare-cell.is-cheaper .gobo-booking-compare-k { color:#34d399; }
+body.gobo-dark .breadcrumb-tabs-row .gobo-cruises-btn.is-deal,
+body.gobo-dark .breadcrumb-tabs-row .gobo-cruises-btn.is-deal:hover { color:#34d399; background:rgba(16,185,129,0.28); }
 #gobo-offers-table .gobo-profile-combo .gobo-cruises-btn { grid-column:3; grid-row:1; align-self:center; margin:0; }

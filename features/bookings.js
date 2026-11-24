@@ -122,6 +122,16 @@ function promoOf(item, guest) {
     return g || i || null;
 }
 
+function gratuityOf(price) {
+    const n = finiteNum(price && price.gratuity);
+    if (!Number.isFinite(n) || n <= 0 || Math.round(n * 100) === -99999) return 0;
+    return n;
+}
+
+function guestGratuity(g) {
+    return gratuityOf(g);
+}
+
 function guestOf(guest, item) {
     const price = (guest && guest.priceDetails) || {};
     return {
@@ -130,7 +140,8 @@ function guestOf(guest, item) {
         base: finiteNum(price.basePrice),
         paid: finiteNum(price.total),
         refund: finiteNum(price.refund),
-        promo: promoOf(item, guest)
+        promo: promoOf(item, guest),
+        gratuity: gratuityOf(price)
     };
 }
 
@@ -152,7 +163,8 @@ function flattenOrder(order, source) {
             base: Number.isFinite(g.base) ? g.base : null,
             paid: Number.isFinite(g.paid) ? g.paid : null,
             refund: Number.isFinite(g.refund) ? g.refund : null,
-            promo: g.promo
+            promo: g.promo,
+            gratuity: g.gratuity || 0
         })),
         current: null,
         cheaperNow: false,
@@ -165,11 +177,38 @@ function linePaid(addon) {
     let any = false;
     (addon && addon.guests || []).forEach(g => {
         if ((g.status || addon.itemStatus) === 'BOOKED' && Number.isFinite(g.paid)) {
-            sum += g.paid;
+            sum += g.paid + guestGratuity(g);
             any = true;
         }
     });
     return any ? Math.round(sum * 100) / 100 : null;
+}
+
+function bookedGuestCount(addon) {
+    return (addon && addon.guests || []).filter(g => (g.status || addon.itemStatus) === 'BOOKED' && Number.isFinite(g.paid)).length;
+}
+
+function lineNow(addon, nights) {
+    const cur = addon && addon.current;
+    if (!cur || !Number.isFinite(cur.amount)) return null;
+    const n = Number(nights);
+    const period = cur.period || (cur.daily ? 'day' : '');
+    let each = cur.amount;
+    if (period) {
+        if (!Number.isFinite(n) || n <= 0) return null;
+        each = cur.amount * n;
+    } else if (cur.comparable === false) return null;
+    const booked = (addon.guests || []).filter(g => (g.status || addon.itemStatus) === 'BOOKED' && Number.isFinite(g.paid));
+    if (!booked.length) return null;
+    // A promo that already matches one guest's price is theirs, not a rate the others can buy.
+    const personal = booked.some(g => Math.abs(g.paid - each) < 0.02);
+    let sum = 0;
+    booked.forEach(g => {
+        const base = (personal && g.paid > each + 0.02) ? g.paid : each;
+        const rate = g.paid > 0 ? guestGratuity(g) / g.paid : 0;
+        sum += base * (1 + rate);
+    });
+    return Math.round(sum * 100) / 100;
 }
 
 function guestLines(addon) {
@@ -253,16 +292,10 @@ function catalogPrice(price) {
 }
 
 function cheaperThanPaid(addon, current, nights) {
-    if (!current || !addon || addon.itemStatus !== 'BOOKED' || !Number.isFinite(current.amount)) return false;
-    const paid = bookedGuestPaid(addon);
-    if (!Number.isFinite(paid)) return false;
-    if (current.daily || current.period) {
-        const n = Number(nights);
-        if (!Number.isFinite(n) || n <= 0) return false;
-        return Math.round(current.amount * n * 100) / 100 + 0.009 < paid;
-    }
-    if (current.comparable === false) return false;
-    return current.amount + 0.009 < paid;
+    if (!current || !addon || addon.itemStatus !== 'BOOKED') return false;
+    const paid = linePaid(addon);
+    const now = lineNow(addon, nights);
+    return Number.isFinite(paid) && Number.isFinite(now) && now + 0.009 < paid;
 }
 
 function productImage(product) {
@@ -287,22 +320,21 @@ function applyCatalogPrice(addon, product, nights) {
 }
 
 function priceView(addon, nights) {
-    const cur = addon && addon.current;
-    if (!cur || !cur.label) return { label: '', cheaper: false };
-    const paid = bookedGuestPaid(addon);
-    const n = Number(nights);
-    if (!cur.daily && !cur.period && Number.isFinite(n) && n > 0 && Number.isFinite(cur.amount) && Number.isFinite(paid) && Math.abs(Math.round(cur.amount * n * 100) / 100 - paid) < 0.02) {
-        return { label: String(cur.label).replace(/\/(day|night)$/i, '') + '/night', cheaper: false };
-    }
-    return { label: cur.label, cheaper: cheaperThanPaid(addon, cur, nights) };
+    const total = lineNow(addon, nights);
+    if (total == null) return { label: '', cheaper: false };
+    const paid = linePaid(addon);
+    return { label: money(total), cheaper: Number.isFinite(paid) && total + 0.009 < paid };
 }
 function ratePeriod(addon, nights) {
-    const view = priceView(addon, nights);
-    const fromLabel = String(view.label || '').match(/\/(night|day)$/i);
-    if (fromLabel) return fromLabel[1].toLowerCase();
     const cur = addon && addon.current;
-    if (cur && (cur.period === 'night' || cur.period === 'day')) return cur.period;
-    if (cur && cur.daily) return 'day';
+    if (!cur) return '';
+    if (cur.period === 'night' || cur.period === 'day') return cur.period;
+    if (cur.daily) return 'day';
+    const fromLabel = String(cur.label || '').match(/\/(night|day)$/i);
+    if (fromLabel) return fromLabel[1].toLowerCase();
+    const n = Number(nights);
+    const paid = bookedGuestPaid(addon);
+    if (Number.isFinite(n) && n > 0 && Number.isFinite(cur.amount) && Number.isFinite(paid) && Math.abs(Math.round(cur.amount * n * 100) / 100 - paid) < 0.02) return 'night';
     return '';
 }
 
@@ -523,7 +555,8 @@ function renderGuest(g, addon, nights) {
     if (status === 'BOOKED') {
         const price = el('span', 'gobo-booking-price');
         if (Number.isFinite(g.base) && Number.isFinite(g.paid) && g.base > g.paid) price.appendChild(el('s', 'gobo-booking-base', money(g.base)));
-        if (Number.isFinite(g.paid)) price.appendChild(el('span', 'gobo-booking-paid', money(g.paid)));
+        const shown = Number.isFinite(g.paid) ? g.paid + guestGratuity(g) : g.paid;
+        if (Number.isFinite(shown)) price.appendChild(el('span', 'gobo-booking-paid', money(shown)));
         const rate = guestRateLabel(g.paid, nights, ratePeriod(addon, nights));
         if (rate) price.appendChild(el('span', 'gobo-booking-rate', rate));
         line.appendChild(price);
@@ -624,6 +657,7 @@ function renderAddon(a, nights, cancelUrl) {
             compare.appendChild(cell);
         }
         if (compare.childNodes.length) prices.appendChild(compare);
+        if ((a.guests || []).some(g => guestGratuity(g) > 0)) prices.appendChild(el('div', 'gobo-booking-grat', 'Includes gratuity'));
         (a.guests || []).forEach(g => prices.appendChild(renderGuest(g, a, nights)));
         if (a.repurchasedCheaper) prices.appendChild(el('div', 'gobo-booking-repurchased', 'Repurchased cheaper (was ' + money(a.repurchasedCheaper.was) + ')'));
     } else prices.appendChild(el('div', 'gobo-booking-note', 'Details unavailable'));
@@ -843,6 +877,7 @@ const Bookings = {
         });
     },
     guestRateLabel: guestRateLabel,
+    lineNow: lineNow,
     hasDeal(bookings) {
         const sailings = bookings && bookings.sailings || [];
         for (let i = 0; i < sailings.length; i++) {
@@ -875,6 +910,7 @@ const Bookings = {
         const key = btn.getAttribute('data-storage-key') || '';
         const loading = !!(key && this._loading && this._loading.has(key));
         btn.classList.toggle('is-loading', loading);
+        btn.disabled = loading;
         if (loading) btn.setAttribute('aria-busy', 'true');
         else btn.removeAttribute('aria-busy');
         let deal = false;
@@ -883,7 +919,7 @@ const Bookings = {
             else deal = this._storedDeal(key);
         }
         btn.classList.toggle('is-deal', deal);
-        btn.title = deal ? 'Cruises — cheaper now' : 'Cruises';
+        btn.title = loading ? 'Loading cruises' : (deal ? 'Cruises — cheaper now' : 'Cruises');
     },
     _storedDeal(key) {
         try {
@@ -1027,32 +1063,41 @@ const Bookings = {
                 });
             });
         });
+        const shelves = ['dining', 'packages', 'beverage', 'shorex'];
         for (const g of groups.values()) {
             try {
                 const found = new Map();
-                for (let page = 0; page < 12 && found.size < g.ids.size; page++) {
-                    const origin = cfg.code === 'C' ? 'https://www.celebritycruises.com' : 'https://www.royalcaribbean.com';
-                    const catalogHeaders = Object.assign({}, headers, { origin: origin, referer: origin + '/' });
-                    const res = await this._send(cfg.catalogUrl, 'POST', catalogHeaders, JSON.stringify({
-                        query: CATALOG_QUERY,
-                        variables: {
-                            category: g.category,
-                            passengerId: g.passengerId || null,
-                            shipCode: g.shipCode,
-                            sailDate: g.sailDate,
-                            reservationId: g.reservationId || null,
-                            pageSize: 24,
-                            currentPage: page,
-                            currencyCode: 'USD'
-                        }
-                    }));
-                    if (!res || !res.ok || !res.json) break;
-                    const products = productsOf(res.json);
-                    if (!products) break;
-                    (products.commerceProducts || []).forEach(p => {
-                        if (p && g.ids.has(p.id)) found.set(p.id, p);
-                    });
-                    if (!products.pageInfo || products.pageInfo.hasNextPage === false) break;
+                const origin = cfg.code === 'C' ? 'https://www.celebritycruises.com' : 'https://www.royalcaribbean.com';
+                const catalogHeaders = Object.assign({}, headers, { origin: origin, referer: origin + '/' });
+                const scan = async (category) => {
+                    for (let page = 0; page < 12 && found.size < g.ids.size; page++) {
+                        const res = await this._send(cfg.catalogUrl, 'POST', catalogHeaders, JSON.stringify({
+                            query: CATALOG_QUERY,
+                            variables: {
+                                category: category,
+                                passengerId: g.passengerId || null,
+                                shipCode: g.shipCode,
+                                sailDate: g.sailDate,
+                                reservationId: g.reservationId || null,
+                                pageSize: 24,
+                                currentPage: page,
+                                currencyCode: 'USD'
+                            }
+                        }));
+                        if (!res || !res.ok || !res.json) break;
+                        const products = productsOf(res.json);
+                        if (!products) break;
+                        (products.commerceProducts || []).forEach(p => {
+                            if (p && g.ids.has(p.id)) found.set(p.id, p);
+                        });
+                        if (!products.pageInfo || products.pageInfo.hasNextPage === false) break;
+                    }
+                };
+                await scan(g.category);
+                if (found.size < g.ids.size) {
+                    for (let i = 0; i < shelves.length && found.size < g.ids.size; i++) {
+                        if (shelves[i] !== g.category) await scan(shelves[i]);
+                    }
                 }
                 g.addons.forEach(addon => {
                     if (found.has(addon.productId)) applyCatalogPrice(addon, found.get(addon.productId), g.nights);

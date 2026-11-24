@@ -196,6 +196,63 @@ describe('Bookings helpers', () => {
         expect(soda.current.label).toBe('$10.99/night');
         expect(soda.image).toBe('https://www.royalcaribbean.com/media-assets/pmc/content/dam/commerce/products/royal/beverage-packages/soda.jpg?w=240');
 
+        const pair = Bookings.flattenOrder({
+            orderCode: '204105825',
+            status: 'BOOKED',
+            orderHistoryDetailItems: [{
+                status: 'BOOKED',
+                productSummary: { id: 'shore', title: 'Hideaway Beach' },
+                productTypeCategory: { id: 'pt_shoreX' },
+                guests: [
+                    { firstName: 'Caitlyn', orderStatus: 'BOOKED', priceDetails: { total: 56.99 } },
+                    { firstName: 'Jeanna', orderStatus: 'BOOKED', priceDetails: { total: 56.99 } }
+                ]
+            }]
+        })[0];
+        Bookings.applyCatalogPrice(pair, {
+            price: [{ currency: 'USD', promotionalPrice: 104, formattedPromotionalPrice: '$104.00', salesUnit: { code: 'perSeat' } }]
+        });
+        expect(Bookings.lineNow(pair, 9)).toBe(208);
+        expect(pair.cheaperNow).toBe(false);
+
+        const dining = Bookings.flattenOrder({
+            orderCode: '231530769',
+            status: 'BOOKED',
+            orderHistoryDetailItems: [{
+                status: 'BOOKED',
+                productSummary: { id: 'Y7OE', title: 'Unlimited Dining' },
+                productTypeCategory: { id: 'pt_packages' },
+                guests: [
+                    { firstName: 'Shannon', orderStatus: 'BOOKED', priceDetails: { total: 155.96, gratuity: 28.04 } },
+                    { firstName: 'Nicholas', orderStatus: 'BOOKED', priceDetails: { total: 155.96, gratuity: 28.04 } }
+                ]
+            }]
+        })[0];
+        Bookings.applyCatalogPrice(dining, {
+            price: [{ currency: 'USD', promotionalPrice: '38.99', formattedPromotionalPrice: '$38.99', salesUnit: { code: 'perNight' } }]
+        }, 4);
+        expect(Bookings.linePaid(dining)).toBe(368);
+        expect(Bookings.lineNow(dining, 4)).toBe(368);
+
+        const casino = Bookings.flattenOrder({
+            orderCode: '263164208',
+            status: 'BOOKED',
+            orderHistoryDetailItems: [{
+                status: 'BOOKED',
+                productSummary: { id: '3222', title: 'Deluxe Beverage Package' },
+                productTypeCategory: { id: 'pt_beverage' },
+                guests: [
+                    { firstName: 'Caitlyn', orderStatus: 'BOOKED', priceDetails: { total: 356.93, gratuity: 64.19 } },
+                    { firstName: 'Justin', orderStatus: 'BOOKED', priceDetails: { total: 517.93, gratuity: 93.17 } }
+                ]
+            }]
+        })[0];
+        Bookings.applyCatalogPrice(casino, {
+            price: [{ currency: 'USD', promotionalPrice: '50.99', formattedPromotionalPrice: '$50.99', salesUnit: { code: 'perDay' } }]
+        }, 7);
+        expect(Bookings.lineNow(casino, 7)).toBe(1032.22);
+        expect(casino.cheaperNow).toBe(false);
+
         const dropped = booked(76.93);
         Bookings.applyCatalogPrice(dropped, {
             price: [{ currency: 'USD', promotionalPrice: '8.99', formattedPromotionalPrice: '$8.99', salesUnit: { code: 'perNight' } }]

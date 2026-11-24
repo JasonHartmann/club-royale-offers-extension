@@ -28,7 +28,9 @@ const Breadcrumbs = {
             btn.title = 'Cruises';
             btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10.189V14"/><path d="M12 2v3"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-8.188-3.639a2 2 0 0 0-1.624 0L3 14a11.6 11.6 0 0 0 2.81 7.76"/><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.5 0 2.5 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>';
             btn.addEventListener('click', (ev) => {
+                ev.preventDefault();
                 ev.stopPropagation();
+                if (btn.disabled || btn.classList.contains('is-loading')) return;
                 const key = btn.getAttribute('data-storage-key');
                 if (!key || typeof Bookings === 'undefined' || !Bookings.open) return;
                 Bookings.open(key);
