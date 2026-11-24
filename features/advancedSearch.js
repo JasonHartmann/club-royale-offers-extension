@@ -314,7 +314,7 @@ const AdvancedSearch = {
                         }
                     }
                 } catch (e) { /* ignore */ }
-                try { TableRenderer.updateView(state); } catch (e) { /* ignore */ }
+                try { this.lightRefresh(state, { showSpinner: true }); } catch (e) { /* ignore */ }
             }, 0);
         } catch (e) { /* ignore restore errors */ }
     },
@@ -1236,14 +1236,12 @@ const AdvancedSearch = {
             // Update button pressed state
             btn.setAttribute('aria-pressed', nowEnabled ? 'true' : 'false');
             btn.title = nowEnabled ? 'Disable Advanced Search filters' : 'Enable Advanced Search filters';
-            // Refresh table (filters applied or removed) after panel animation for smoother UX
-            const refreshDelayMs = nowEnabled ? 420 : 320;
-            try {
-                this._logDebug('Calling lightRefresh after toggle (delayed)', { showSpinner: true, refreshDelayMs });
-                setTimeout(() => {
-                    try { this.lightRefresh(state, { showSpinner: true }); } catch(e) { this._logDebug('lightRefresh error', e); }
-                }, refreshDelayMs);
-            } catch(e) { this._logDebug('lightRefresh schedule error', e); }
+            // Opening or closing the panel with no committed filters does not change the row set.
+            // A refresh here used to remeasure every sailing before the spinner could paint.
+            const committed = (state.advancedSearch.predicates || []).filter(p => p && p.complete && p.fieldKey && p.operator && Array.isArray(p.values) && p.values.length);
+            if (committed.length) {
+                try { this.lightRefresh(state, { showSpinner: true }); } catch(e) { this._logDebug('lightRefresh error', e); }
+            }
             // If we just enabled, defer panel creation to the breadcrumb rebuild for a smoother drawer animation.
             if (nowEnabled && !prevEnabled) {
                 // no-op
@@ -1388,9 +1386,14 @@ const AdvancedSearch = {
         try {
             this._logDebug('lightRefresh:start', { showSpinner });
             if (!state) return;
-            state._skipBreadcrumb = true;
-            let spinnerSessionId = null;
+            const run = () => {
+                try { state._skipBreadcrumb = true; } catch(e) {}
+                try { TableRenderer.updateView(state); this._logDebug('lightRefresh:updateViewCalled'); } catch(e){ this._logDebug('lightRefresh:updateViewError', e); }
+                try { this.updateBadge(state); } catch(e){ this._logDebug('lightRefresh:updateBadgeError', e); }
+                try { this.ensureAddFieldDropdown(state); } catch(e){ this._logDebug('lightRefresh:ensureDropdownError', e); }
+            };
             if (showSpinner && typeof Spinner !== 'undefined' && Spinner.showSpinner) {
+                let spinnerSessionId = null;
                 try { Spinner.showSpinner(); this._logDebug('lightRefresh:spinnerShown'); } catch(e){ this._logDebug('lightRefresh:spinnerShowError', e); }
                 spinnerSessionId = Date.now().toString(36)+Math.random().toString(36).slice(2);
                 AdvancedSearch._activeSpinnerSession = spinnerSessionId;
@@ -1410,12 +1413,13 @@ const AdvancedSearch = {
                         AdvancedSearch._activeSpinnerSession = null;
                     }
                 }, 1500);
+                // setTimeout(0) runs before the next paint. Flush, then yield a frame.
+                try { const el = document.getElementById('gobo-loading-spinner-container'); if (el) el.offsetHeight; } catch(e) {}
+                if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(run, 0));
+                else setTimeout(run, 0);
+            } else {
+                setTimeout(run, 0);
             }
-            setTimeout(() => {
-                try { TableRenderer.updateView(state); this._logDebug('lightRefresh:updateViewCalled'); } catch(e){ this._logDebug('lightRefresh:updateViewError', e); }
-                try { this.updateBadge(state); } catch(e){ this._logDebug('lightRefresh:updateBadgeError', e); }
-                try { this.ensureAddFieldDropdown(state); } catch(e){ this._logDebug('lightRefresh:ensureDropdownError', e); }
-            }, 0);
         } catch (e) { this._logDebug('lightRefresh:errorOuter', e); }
     },
     debouncedPersist(state) {

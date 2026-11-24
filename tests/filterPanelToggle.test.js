@@ -162,3 +162,29 @@ describe('active filter badge', () => {
         expect(panel.classList.contains('adv-body-collapsed')).toBe(false);
     });
 });
+
+describe('lightRefresh spinner paint', () => {
+    test('shows the spinner and defers updateView until after a frame', async () => {
+        const raf = [];
+        global.requestAnimationFrame = (cb) => { raf.push(cb); return 1; };
+        const showSpinner = jest.fn();
+        const hideSpinner = jest.fn();
+        global.Spinner = { showSpinner, hideSpinner };
+        const updateView = jest.fn();
+        global.TableRenderer = { updateView };
+        const AdvancedSearch = loadAdvancedSearch();
+        const state = { advancedSearch: { enabled: true, predicates: [] } };
+
+        AdvancedSearch.lightRefresh(state, { showSpinner: true });
+
+        expect(showSpinner).toHaveBeenCalledTimes(1);
+        expect(updateView).not.toHaveBeenCalled();
+        raf.splice(0).forEach((cb) => cb());
+        await new Promise((r) => setTimeout(r, 0));
+        expect(updateView).toHaveBeenCalledWith(state);
+
+        delete global.Spinner;
+        delete global.TableRenderer;
+        delete global.requestAnimationFrame;
+    });
+});

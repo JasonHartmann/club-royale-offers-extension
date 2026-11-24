@@ -1347,7 +1347,10 @@ const TableRenderer = {
         // Build a filter signature from committed predicates + hidden groups + dataset length
         const hg = Array.isArray(Filtering?.loadHiddenGroups?.()) ? Filtering.loadHiddenGroups() : [];
         const hgSig = hg.length ? hg.slice().sort().join('|') : 'NONE';
-        const preds = (state.advancedSearch?.enabled && state.advancedSearch?.predicates) ? state.advancedSearch.predicates.filter(p => p && p.complete).map(p => `${p.fieldKey}:${p.operator}:${(p.values||[]).join(',')}`).join('::') : 'NONE';
+        const committed = (state.advancedSearch?.enabled && Array.isArray(state.advancedSearch.predicates))
+            ? state.advancedSearch.predicates.filter(p => p && p.complete && p.fieldKey && p.operator && Array.isArray(p.values) && p.values.length)
+            : [];
+        const preds = committed.length ? committed.map(p => `${p.fieldKey}:${p.operator}:${p.values.join(',')}`).join('::') : 'NONE';
         const filterSig = `${base.length}|HG:${hgSig}|AS:${preds}`;
         if (state._filterCache && state._filterCache.sig === filterSig) {
             filtered = state._filterCache.data;

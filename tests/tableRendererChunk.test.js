@@ -111,4 +111,18 @@ describe('table chunk listener and card resize pause', () => {
         TableRenderer.updateView(state);
         expect(chunkListeners).toHaveLength(1);
     });
+
+    test('enabling advanced search with no committed predicates does not rebuild the table', () => {
+        layoutMode = 'table';
+        const state = makeState();
+        TableRenderer.updateView(state);
+        state.tbody.appendChild(document.createElement('tr'));
+        const calls = App.TableBuilder.renderTable.mock.calls.length;
+        state.advancedSearch.enabled = true;
+        TableRenderer.updateView(state);
+        expect(App.TableBuilder.renderTable).toHaveBeenCalledTimes(calls);
+        state.advancedSearch.predicates = [{ fieldKey: 'ship', operator: 'in', values: ['Oasis'], complete: true }];
+        TableRenderer.updateView(state);
+        expect(App.TableBuilder.renderTable).toHaveBeenCalledTimes(calls + 1);
+    });
 });
