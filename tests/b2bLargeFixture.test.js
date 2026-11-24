@@ -106,11 +106,20 @@ describe('B2B large offer set', () => {
     test('a dense set cannot block past the deadline', () => {
         const rows = [];
         for (let i = 0; i < 2000; i++) rows.push(row('C' + i, 'SHIP', 'Miami', iso(0), 3, 'p' + i));
-        const t0 = Date.now();
-        const depths = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: true, deadlineMs: 20 });
-        expect(Date.now() - t0).toBeLessThan(150);
-        expect(depths.incomplete).toBe(true);
-        expect(depths._job).toBeTruthy();
+        const realNow = Date.now;
+        const t0 = realNow();
+        let ticks = 0;
+        // First tick sets the deadline. The next check is already past it, so a fast
+        // runner cannot finish the set inside 20ms and skip the yield.
+        Date.now = () => t0 + (ticks++ === 0 ? 0 : 5000);
+        try {
+            const depths = B2BUtils.computeB2BDepth(rows, { force: true, allowSideBySide: true, deadlineMs: 20 });
+            expect(realNow() - t0).toBeLessThan(150);
+            expect(depths.incomplete).toBe(true);
+            expect(depths._job).toBeTruthy();
+        } finally {
+            Date.now = realNow;
+        }
     });
 
     test('sliced compute resumes to the same cap', () => {
