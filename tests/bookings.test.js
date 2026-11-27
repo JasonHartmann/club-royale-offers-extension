@@ -157,6 +157,66 @@ describe('Bookings helpers', () => {
         expect(different[1].repurchasedCheaper).toBeFalsy();
     });
 
+    test('owning room cancellation wins over the booked-for-me copy', () => {
+        const owner = Bookings.flattenOrder({
+            orderCode: '26364208',
+            status: 'CANCELLED',
+            orderDate: '2026-01-01',
+            orderHistoryDetailItems: [{
+                status: 'CANCELLED',
+                productSummary: { id: 'voom', title: 'VOOM' },
+                guests: [
+                    { firstName: 'Jason', orderStatus: 'CANCELLED', priceDetails: { total: 0, refund: 335.93 } },
+                    { firstName: 'Justin', orderStatus: 'CANCELLED', priceDetails: { total: 0, refund: 335.93 } }
+                ]
+            }]
+        }, 'mine');
+        const stale = Bookings.flattenOrder({
+            orderCode: '26364208',
+            status: 'BOOKED',
+            orderDate: '2026-01-01',
+            orderHistoryDetailItems: [{
+                status: 'BOOKED',
+                productSummary: { id: 'voom', title: 'VOOM' },
+                guests: [
+                    { firstName: 'Jason', orderStatus: 'BOOKED', priceDetails: { total: 335.93, refund: 0 } },
+                    { firstName: 'Justin', orderStatus: 'BOOKED', priceDetails: { total: 335.93, refund: 0 } }
+                ]
+            }]
+        }, 'other');
+        const beach = Bookings.flattenOrder({
+            orderCode: '26364208',
+            status: 'BOOKED',
+            orderHistoryDetailItems: [{
+                status: 'BOOKED',
+                productSummary: { id: 'beach', title: 'Beach' },
+                guests: [{ firstName: 'Jason', orderStatus: 'BOOKED', priceDetails: { total: 100, refund: 0 } }]
+            }]
+        }, 'other');
+        const again = Bookings.flattenOrder({
+            orderCode: '263830405',
+            status: 'BOOKED',
+            orderDate: '2026-02-01',
+            orderHistoryDetailItems: [{
+                status: 'BOOKED',
+                productSummary: { id: 'voom', title: 'VOOM' },
+                guests: [
+                    { firstName: 'Jason', orderStatus: 'BOOKED', priceDetails: { total: 307.93, refund: 0 } },
+                    { firstName: 'Justin', orderStatus: 'BOOKED', priceDetails: { total: 307.93, refund: 0 } }
+                ]
+            }]
+        }, 'other');
+        Bookings.reconcileOtherOrders([
+            { addons: owner },
+            { addons: stale.concat(beach, again) }
+        ]);
+        expect(stale[0].itemStatus).toBe('CANCELLED');
+        expect(stale[0].guests.map(g => g.status)).toEqual(['CANCELLED', 'CANCELLED']);
+        expect(stale[0].guests.map(g => g.refund)).toEqual([335.93, 335.93]);
+        expect(beach[0].itemStatus).toBe('BOOKED');
+        expect(again[0].repurchasedCheaper).toEqual({ was: 335.93, now: 307.93 });
+    });
+
     test('cheaperNow only for a comparable per-seat price', () => {
         function booked(paid) {
             return Bookings.flattenOrder({
@@ -301,5 +361,11 @@ describe('Bookings helpers', () => {
             .toBe('https://www.royalcaribbean.com/account/cruise-planner?bookingId=20419888&sailDate=20270221&shipCode=AL');
         expect(Bookings.plannerUrl('C', { bookingId: '1' }, { shipCode: 'SL', sailDate: '2026-01-01' }))
             .toContain('https://www.celebritycruises.com/account/cruise-planner?');
+    });
+
+    test('interim statuses are words, not raw enums', () => {
+        expect(Bookings.statusLabel('Payment_authorized')).toBe('Payment Authorized');
+        expect(Bookings.statusLabel('BOOKED')).toBe('Booked');
+        expect(Bookings.statusLabel('CANCELLED')).toBe('Cancelled');
     });
 });

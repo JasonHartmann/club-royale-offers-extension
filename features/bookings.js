@@ -269,6 +269,44 @@ function markRepurchases(addons) {
     return addons;
 }
 
+function reconcileOtherOrders(rooms) {
+    const owned = new Map();
+    (rooms || []).forEach(room => {
+        (room.addons || []).forEach(a => {
+            if (!a || a.detailError || a.source === 'other' || !a.orderCode) return;
+            const key = a.orderCode + '|' + (a.productId || a.title || '');
+            const prev = owned.get(key);
+            if (!prev || (a.itemStatus === 'CANCELLED' && prev.itemStatus !== 'CANCELLED')) owned.set(key, a);
+        });
+    });
+    (rooms || []).forEach(room => {
+        let changed = false;
+        (room.addons || []).forEach(a => {
+            if (!a || a.detailError || a.source !== 'other' || !a.orderCode) return;
+            const owner = owned.get(a.orderCode + '|' + (a.productId || a.title || ''));
+            if (!owner || owner.itemStatus === a.itemStatus) return;
+            a.itemStatus = owner.itemStatus;
+            if (owner.orderStatus) a.orderStatus = owner.orderStatus;
+            (a.guests || []).forEach(g => {
+                const name = String(g.first || '').trim().toLowerCase();
+                const src = name && (owner.guests || []).find(o => String(o.first || '').trim().toLowerCase() === name);
+                if (src) {
+                    g.status = src.status || owner.itemStatus;
+                    if (Number.isFinite(src.refund)) g.refund = src.refund;
+                } else if (owner.itemStatus) g.status = owner.itemStatus;
+                if (owner.itemStatus === 'CANCELLED' && !Number.isFinite(g.refund) && Number.isFinite(g.paid)) g.refund = g.paid;
+            });
+            if (owner.itemStatus === 'CANCELLED') {
+                a.current = null;
+                a.cheaperNow = false;
+            }
+            changed = true;
+        });
+        if (changed) markRepurchases(room.addons);
+    });
+    return rooms;
+}
+
 function catalogPrice(price) {
     const arr = Array.isArray(price) ? price : (price ? [price] : []);
     if (!arr.length) return null;
@@ -538,10 +576,8 @@ function niceCase(value) {
 }
 
 function statusLabel(status) {
-    if (status === 'BOOKED') return 'Booked';
-    if (status === 'CANCELLED') return 'Cancelled';
     if (!status) return '';
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    return String(status).split(/[_\s]+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
 function renderGuest(g, addon, nights) {
@@ -794,6 +830,7 @@ const Bookings = {
     linePaid: linePaid,
     guestLines: guestLines,
     markRepurchases: markRepurchases,
+    reconcileOtherOrders: reconcileOtherOrders,
     applyCatalogPrice: applyCatalogPrice,
     mapOrderHistory: mapOrderHistory,
     _keys: null,
@@ -878,6 +915,7 @@ const Bookings = {
     },
     guestRateLabel: guestRateLabel,
     lineNow: lineNow,
+    statusLabel: statusLabel,
     hasDeal(bookings) {
         const sailings = bookings && bookings.sailings || [];
         for (let i = 0; i < sailings.length; i++) {
@@ -1030,6 +1068,7 @@ const Bookings = {
                         }
                     }
                 }
+                sailings.forEach(s => reconcileOtherOrders(s.rooms));
                 await this._fillPrices(cfg, commerceHeaders, sailings);
             }
             return { savedAt: Date.now(), brand: cfg.code, error: null, sailings: sailings };
