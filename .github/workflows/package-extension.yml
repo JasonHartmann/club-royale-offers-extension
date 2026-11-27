@@ -52,6 +52,7 @@ jobs:
             !**/jest.config.js
 
   safari-package:
+    if: false # signing cert secrets are unset; re-enable when they exist
     runs-on: macos-latest
     steps:
       - name: Checkout extension repository
